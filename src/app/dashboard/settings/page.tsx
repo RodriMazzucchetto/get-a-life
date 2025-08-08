@@ -33,7 +33,7 @@ export default function SettingsPage() {
 
         try {
       // Primeiro, verificar se o usuário tem perfil
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles')
         .select('onboarding_data')
         .eq('user_id', user.id)
@@ -111,7 +111,7 @@ export default function SettingsPage() {
     }
   }
 
-  const handleInputChange = (field: keyof OnboardingData, value: any) => {
+  const handleInputChange = (field: keyof OnboardingData, value: string | number | boolean | string[]) => {
     setEditedData(prev => ({ ...prev, [field]: value }))
   }
 

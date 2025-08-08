@@ -35,7 +35,7 @@ const currentStates = [
 
 export default function CurrentStateStep({ data, onUpdate }: OnboardingStepProps) {
   const handleSelect = (state: string) => {
-    onUpdate({ currentState: state as any })
+    onUpdate({ currentState: state as 'automatic' | 'pleasure' | 'stimulus' | 'memories' })
   }
 
   return (
