@@ -166,7 +166,7 @@ export default function DashboardPage() {
     
     try {
       console.log('🚀 Chamando generateSuggestion...')
-      const generatedSuggestion = await generateSuggestion(contextualAnswers, onboardingData)
+      const generatedSuggestion = await generateSuggestion(contextualAnswers, onboardingData || undefined)
       console.log('✅ Sugestão gerada com sucesso')
       setSuggestion(generatedSuggestion)
     } catch (error) {
