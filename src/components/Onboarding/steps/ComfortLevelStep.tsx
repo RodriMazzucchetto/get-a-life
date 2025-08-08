@@ -35,7 +35,7 @@ const comfortLevels = [
 
 export default function ComfortLevelStep({ data, onUpdate }: OnboardingStepProps) {
   const handleSelect = (level: string) => {
-    onUpdate({ comfortLevel: level as any })
+    onUpdate({ comfortLevel: level as 'comfort' | 'routine' | 'challenge' | 'surprise' })
   }
 
   return (

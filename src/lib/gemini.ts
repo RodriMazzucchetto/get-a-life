@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { OnboardingData } from '@/types'
 
 // Verificar se a chave da API está disponível
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
@@ -18,7 +19,7 @@ export const generateSuggestion = async (
     specificDesire: string
     lifeFront: string[]
   },
-  onboardingData?: any
+  onboardingData?: OnboardingData
 ): Promise<string> => {
   console.log('=== DEBUG: Iniciando geração de sugestão ===')
   console.log('API Key presente:', !!apiKey)
@@ -75,7 +76,7 @@ const buildPrompt = (
     specificDesire: string
     lifeFront: string[]
   },
-  onboardingData?: any
+  onboardingData?: OnboardingData
 ): string => {
   console.log('🔍 DEBUG: Construindo prompt com dados:', {
     mood: contextualAnswers.mood,

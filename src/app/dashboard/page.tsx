@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
         try {
       // Primeiro, verificar se o usuário tem perfil
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles')
         .select('onboarding_data')
         .eq('user_id', user.id)
