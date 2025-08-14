@@ -20,6 +20,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
   const map = useRef<maplibregl.Map | null>(null)
   const [popupInfo, setPopupInfo] = useState<Country | null>(null)
   const [isClient, setIsClient] = useState(false)
+  const [isTipClosed, setIsTipClosed] = useState(false)
 
   // Lista de países principais com coordenadas reais
   const countries: Country[] = [
@@ -254,11 +255,22 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
 
 
       {/* Instruções */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
-        <p className="text-xs text-gray-600">
-          💡 <strong>Dica:</strong> Use os controles para navegar no mapa mundial.
-        </p>
-      </div>
+      {!isTipClosed && (
+        <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs text-gray-600">
+              💡 <strong>Dica:</strong> Use os controles para zoom, clique e arraste para navegar.
+            </p>
+            <button
+              onClick={() => setIsTipClosed(true)}
+              className="text-gray-400 hover:text-gray-600 text-sm font-bold ml-2"
+              title="Fechar dica"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
