@@ -302,22 +302,37 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
   useEffect(() => {
     if (!mapContainer.current || map.current) return
 
-    // Inicializar o mapa
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-      center: [0, 20],
-      zoom: 2,
-      attributionControl: false,
-      renderWorldCopies: false, // Não repetir o mapa
-      maxZoom: 18,
-      minZoom: 1
-    })
+    console.log('🚀 Inicializando mapa MapLibre...')
 
-    // Adicionar controles de navegação
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-right')
+    try {
+      // Inicializar o mapa
+      map.current = new maplibregl.Map({
+        container: mapContainer.current,
+        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+        center: [0, 20],
+        zoom: 2,
+        attributionControl: false,
+        renderWorldCopies: false,
+        maxZoom: 18,
+        minZoom: 1
+      })
 
-    // Mapa sem marcadores - apenas para visualização
+      // Adicionar controles de navegação
+      map.current.addControl(new maplibregl.NavigationControl(), 'top-right')
+
+      // Aguardar o mapa carregar
+      map.current.on('load', () => {
+        console.log('✅ Mapa carregado com sucesso!')
+      })
+
+      // Tratar erros
+      map.current.on('error', (e) => {
+        console.error('❌ Erro no mapa:', e)
+      })
+
+    } catch (error) {
+      console.error('❌ Erro ao inicializar mapa:', error)
+    }
 
     // Limpar o mapa quando o componente for desmontado
     return () => {
@@ -326,7 +341,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
         map.current = null
       }
     }
-  }, [updatedCountries, onPlaceToggle])
+  }, [])
 
   if (!isClient) {
     return (
@@ -344,44 +359,42 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
       {/* Mapa MapLibre GL JS */}
       <div ref={mapContainer} className="w-full h-full" />
 
+      {/* Botão Adicionar Local */}
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
+          title="Adicionar local visitado"
+        >
+          <span className="text-lg">📍</span>
+          <span className="text-sm font-medium">Adicionar Local</span>
+        </button>
+      </div>
 
-
-              {/* Botão Adicionar Local */}
-        <div className="absolute top-4 right-4 z-10">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
-            title="Adicionar local visitado"
-          >
-            <span className="text-lg">📍</span>
-            <span className="text-sm font-medium">Adicionar Local</span>
-          </button>
-        </div>
-
-        {/* Instruções */}
-        {!isTipClosed && (
-          <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-xs text-gray-600">
-                💡 <strong>Dica:</strong> Use os controles para zoom, clique e arraste para navegar.
-              </p>
-              <button
-                onClick={() => setIsTipClosed(true)}
-                className="text-gray-400 hover:text-gray-600 text-sm font-bold ml-2"
-                title="Fechar dica"
-              >
-                ×
-              </button>
-            </div>
+      {/* Instruções */}
+      {!isTipClosed && (
+        <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs text-gray-600">
+              💡 <strong>Dica:</strong> Use os controles para zoom, clique e arraste para navegar.
+            </p>
+            <button
+              onClick={() => setIsTipClosed(true)}
+              className="text-gray-400 hover:text-gray-600 text-sm font-bold ml-2"
+              title="Fechar dica"
+            >
+              ×
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Modal de Adicionar Local */}
-        <AddLocationModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onAddLocation={handleAddLocation}
-        />
+      {/* Modal de Adicionar Local */}
+      <AddLocationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAddLocation={handleAddLocation}
+      />
     </div>
   )
 }
