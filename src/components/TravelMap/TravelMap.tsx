@@ -1,29 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import dynamic from 'next/dynamic'
-
-// Importação dinâmica para evitar problemas de SSR
-const Map = dynamic(
-  () => import('react-map-gl').then((mod) => mod.Map),
-  { ssr: false }
-)
-const Source = dynamic(
-  () => import('react-map-gl').then((mod) => mod.Source),
-  { ssr: false }
-)
-const Layer = dynamic(
-  () => import('react-map-gl').then((mod) => mod.Layer),
-  { ssr: false }
-)
-const Marker = dynamic(
-  () => import('react-map-gl').then((mod) => mod.Marker),
-  { ssr: false }
-)
-const Popup = dynamic(
-  () => import('react-map-gl').then((mod) => mod.Popup),
-  { ssr: false }
-)
+import { useState, useEffect, useRef } from 'react'
+import maplibregl from 'maplibre-gl'
 
 interface TravelMapProps {
   visitedPlaces: string[]
@@ -38,11 +16,8 @@ interface Country {
 }
 
 export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapProps) {
-  const [viewState, setViewState] = useState({
-    longitude: 0,
-    latitude: 20,
-    zoom: 2
-  })
+  const mapContainer = useRef<HTMLDivElement>(null)
+  const map = useRef<maplibregl.Map | null>(null)
   const [popupInfo, setPopupInfo] = useState<Country | null>(null)
   const [isClient, setIsClient] = useState(false)
 
@@ -231,13 +206,51 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
     setIsClient(true)
   }, [])
 
-  const handleCountryClick = useCallback((country: Country) => {
-    onPlaceToggle(country.id)
-  }, [onPlaceToggle])
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return
 
-  const onMapClick = useCallback(() => {
-    setPopupInfo(null)
-  }, [])
+    // Inicializar o mapa
+    map.current = new maplibregl.Map({
+      container: mapContainer.current,
+      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+      center: [0, 20],
+      zoom: 2,
+      attributionControl: false
+    })
+
+    // Adicionar controles de navegação
+    map.current.addControl(new maplibregl.NavigationControl(), 'top-right')
+
+    // Adicionar marcadores para cada país
+    updatedCountries.forEach(country => {
+      // Criar elemento HTML para o marcador
+      const el = document.createElement('div')
+      el.className = `w-4 h-4 rounded-full cursor-pointer transition-all duration-200 ${
+        country.visited 
+          ? 'bg-green-500 shadow-lg shadow-green-500/50' 
+          : 'bg-gray-500 hover:bg-gray-600'
+      }`
+      el.title = country.name
+
+      // Adicionar evento de clique
+      el.addEventListener('click', () => {
+        onPlaceToggle(country.id)
+      })
+
+      // Criar e adicionar o marcador
+      new maplibregl.Marker(el)
+        .setLngLat(country.coordinates)
+        .addTo(map.current!)
+    })
+
+    // Limpar o mapa quando o componente for desmontado
+    return () => {
+      if (map.current) {
+        map.current.remove()
+        map.current = null
+      }
+    }
+  }, [updatedCountries, onPlaceToggle])
 
   if (!isClient) {
     return (
@@ -252,73 +265,8 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
 
   return (
     <div className="w-full h-96 bg-gray-100 rounded-lg overflow-hidden relative">
-      {/* Mapa Mapbox */}
-      <Map
-        {...viewState}
-        onMove={evt => setViewState(evt.viewState)}
-        onClick={onMapClick}
-        style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/light-v11"
-        mapboxAccessToken="pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3NnAifQ.rJcFIG214AriISLbB6B5aw"
-        attributionControl={false}
-      >
-        {/* Marcadores dos países */}
-        {updatedCountries.map((country) => (
-          <Marker
-            key={country.id}
-            longitude={country.coordinates[0]}
-            latitude={country.coordinates[1]}
-            anchor="bottom"
-            onClick={e => {
-              e.originalEvent.stopPropagation()
-              setPopupInfo(country)
-            }}
-          >
-            <div
-              className={`w-4 h-4 rounded-full cursor-pointer transition-all duration-200 ${
-                country.visited 
-                  ? 'bg-green-500 shadow-lg shadow-green-500/50' 
-                  : 'bg-gray-500 hover:bg-gray-600'
-              }`}
-              onClick={() => handleCountryClick(country)}
-              title={country.name}
-            />
-          </Marker>
-        ))}
-
-        {/* Popup com informações do país */}
-        {popupInfo && (
-          <Popup
-            anchor="top"
-            longitude={popupInfo.coordinates[0]}
-            latitude={popupInfo.coordinates[1]}
-            onClose={() => setPopupInfo(null)}
-            closeButton={true}
-            closeOnClick={false}
-            className="z-50"
-          >
-            <div className="text-center p-2">
-              <div className="font-bold text-lg">{popupInfo.name}</div>
-              <div className="text-sm text-gray-600 mb-2">
-                {popupInfo.visited ? '✅ Visitado' : '❌ Não visitado'}
-              </div>
-              <button
-                onClick={() => {
-                  handleCountryClick(popupInfo)
-                  setPopupInfo(null)
-                }}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  popupInfo.visited
-                    ? 'bg-red-500 text-white hover:bg-red-600'
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}
-              >
-                {popupInfo.visited ? 'Marcar como não visitado' : 'Marcar como visitado'}
-              </button>
-            </div>
-          </Popup>
-        )}
-      </Map>
+      {/* Mapa MapLibre GL JS */}
+      <div ref={mapContainer} className="w-full h-full" />
 
       {/* Legenda */}
       <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10">
@@ -337,7 +285,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
       {/* Instruções */}
       <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
         <p className="text-xs text-gray-600">
-          💡 <strong>Dica:</strong> Clique nos marcadores dos países para marcar como visitados. Use o mouse para navegar no mapa.
+          💡 <strong>Dica:</strong> Clique nos marcadores dos países para marcar como visitados. Use os controles para navegar no mapa.
         </p>
       </div>
     </div>

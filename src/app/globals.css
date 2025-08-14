@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Mapbox CSS imports */
-@import 'mapbox-gl/dist/mapbox-gl.css';
+/* MapLibre CSS imports */
+@import 'maplibre-gl/dist/maplibre-gl.css';
 
 :root {
   --background: #ffffff;
