@@ -251,12 +251,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
       {/* Mapa MapLibre GL JS */}
       <div ref={mapContainer} className="w-full h-full" />
 
-      {/* Legenda */}
-      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10">
-        <div className="text-sm text-gray-600">
-          <span>🌍 Mapa mundial interativo</span>
-        </div>
-      </div>
+
 
       {/* Instruções */}
       <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
