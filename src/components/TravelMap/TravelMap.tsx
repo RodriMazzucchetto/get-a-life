@@ -244,24 +244,6 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
 
   return (
     <div className="w-full h-96 bg-gray-100 rounded-lg overflow-hidden relative">
-      {/* Controles */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-        <button
-          onClick={() => window.history.back()}
-          className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors"
-          title="Voltar"
-        >
-          ←
-        </button>
-        <button
-          onClick={() => window.history.forward()}
-          className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors"
-          title="Avançar"
-        >
-          →
-        </button>
-      </div>
-
       {/* Mapa Leaflet */}
       <MapContainer
         center={[20, 0]}
@@ -269,6 +251,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
         attributionControl={false}
+        className="z-0"
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -309,7 +292,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
       </MapContainer>
 
       {/* Legenda */}
-      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3">
+      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10">
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
@@ -323,7 +306,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
       </div>
 
       {/* Instruções */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs">
+      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
         <p className="text-xs text-gray-600">
           💡 <strong>Dica:</strong> Clique nos marcadores dos países para marcar como visitados. Use o mouse para navegar no mapa.
         </p>
