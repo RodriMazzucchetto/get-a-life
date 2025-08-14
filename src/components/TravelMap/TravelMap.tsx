@@ -215,7 +215,10 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
       style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       center: [0, 20],
       zoom: 2,
-      attributionControl: false
+      attributionControl: false,
+      renderWorldCopies: false, // Não repetir o mapa
+      maxZoom: 18,
+      minZoom: 1
     })
 
     // Adicionar controles de navegação
