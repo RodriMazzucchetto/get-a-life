@@ -1,6 +1,29 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
+
+// Importação dinâmica para evitar problemas de SSR
+const Map = dynamic(
+  () => import('react-map-gl').then((mod) => mod.Map),
+  { ssr: false }
+)
+const Source = dynamic(
+  () => import('react-map-gl').then((mod) => mod.Source),
+  { ssr: false }
+)
+const Layer = dynamic(
+  () => import('react-map-gl').then((mod) => mod.Layer),
+  { ssr: false }
+)
+const Marker = dynamic(
+  () => import('react-map-gl').then((mod) => mod.Marker),
+  { ssr: false }
+)
+const Popup = dynamic(
+  () => import('react-map-gl').then((mod) => mod.Popup),
+  { ssr: false }
+)
 
 interface TravelMapProps {
   visitedPlaces: string[]
@@ -10,58 +33,193 @@ interface TravelMapProps {
 interface Country {
   id: string
   name: string
-  path: string
+  coordinates: [number, number]
   visited: boolean
 }
 
 export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapProps) {
-  const [scale, setScale] = useState(1)
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [tooltip, setTooltip] = useState({ show: false, content: '', x: 0, y: 0 })
-  const mapRef = useRef<HTMLDivElement>(null)
+  const [viewState, setViewState] = useState({
+    longitude: 0,
+    latitude: 20,
+    zoom: 2
+  })
+  const [popupInfo, setPopupInfo] = useState<Country | null>(null)
+  const [isClient, setIsClient] = useState(false)
 
-  // Dados simplificados de países principais com coordenadas SVG
+  // Lista de países principais com coordenadas reais
   const countries: Country[] = [
     // América do Norte
-    { id: 'US', name: 'Estados Unidos', path: 'M 100 150 L 300 150 L 300 200 L 100 200 Z', visited: false },
-    { id: 'CA', name: 'Canadá', path: 'M 100 100 L 300 100 L 300 150 L 100 150 Z', visited: false },
-    { id: 'MX', name: 'México', path: 'M 100 200 L 200 200 L 200 250 L 100 250 Z', visited: false },
+    { id: 'US', name: 'Estados Unidos', coordinates: [-98.5795, 39.8283], visited: false },
+    { id: 'CA', name: 'Canadá', coordinates: [-106.3468, 56.1304], visited: false },
+    { id: 'MX', name: 'México', coordinates: [-102.5528, 23.6345], visited: false },
     
     // América do Sul
-    { id: 'BR', name: 'Brasil', path: 'M 200 250 L 300 250 L 300 350 L 200 350 Z', visited: false },
-    { id: 'AR', name: 'Argentina', path: 'M 250 300 L 300 300 L 300 380 L 250 380 Z', visited: false },
-    { id: 'CL', name: 'Chile', path: 'M 280 300 L 320 300 L 320 380 L 280 380 Z', visited: false },
-    { id: 'PE', name: 'Peru', path: 'M 200 250 L 250 250 L 250 300 L 200 300 Z', visited: false },
-    { id: 'CO', name: 'Colômbia', path: 'M 180 250 L 220 250 L 220 280 L 180 280 Z', visited: false },
-    { id: 'VE', name: 'Venezuela', path: 'M 180 230 L 200 230 L 200 250 L 180 250 Z', visited: false },
+    { id: 'BR', name: 'Brasil', coordinates: [-51.9253, -14.2350], visited: false },
+    { id: 'AR', name: 'Argentina', coordinates: [-63.6167, -38.4161], visited: false },
+    { id: 'CL', name: 'Chile', coordinates: [-71.5430, -35.6751], visited: false },
+    { id: 'PE', name: 'Peru', coordinates: [-75.0152, -9.1900], visited: false },
+    { id: 'CO', name: 'Colômbia', coordinates: [-74.2973, 4.5709], visited: false },
+    { id: 'VE', name: 'Venezuela', coordinates: [-66.5897, 6.4238], visited: false },
+    { id: 'EC', name: 'Equador', coordinates: [-78.1834, -1.8312], visited: false },
+    { id: 'BO', name: 'Bolívia', coordinates: [-63.5887, -16.2902], visited: false },
+    { id: 'PY', name: 'Paraguai', coordinates: [-58.4438, -23.4425], visited: false },
+    { id: 'UY', name: 'Uruguai', coordinates: [-55.7658, -32.5228], visited: false },
     
     // Europa
-    { id: 'FR', name: 'França', path: 'M 450 150 L 480 150 L 480 170 L 450 170 Z', visited: false },
-    { id: 'DE', name: 'Alemanha', path: 'M 470 140 L 500 140 L 500 160 L 470 160 Z', visited: false },
-    { id: 'IT', name: 'Itália', path: 'M 470 160 L 500 160 L 500 180 L 470 180 Z', visited: false },
-    { id: 'ES', name: 'Espanha', path: 'M 430 160 L 450 160 L 450 180 L 430 180 Z', visited: false },
-    { id: 'GB', name: 'Reino Unido', path: 'M 440 140 L 450 140 L 450 150 L 440 150 Z', visited: false },
-    { id: 'PT', name: 'Portugal', path: 'M 420 160 L 430 160 L 430 170 L 420 170 Z', visited: false },
-    
-    // África
-    { id: 'ZA', name: 'África do Sul', path: 'M 480 300 L 520 300 L 520 350 L 480 350 Z', visited: false },
-    { id: 'EG', name: 'Egito', path: 'M 500 200 L 540 200 L 540 230 L 500 230 Z', visited: false },
-    { id: 'NG', name: 'Nigéria', path: 'M 470 250 L 490 250 L 490 270 L 470 270 Z', visited: false },
-    { id: 'KE', name: 'Quênia', path: 'M 520 270 L 540 270 L 540 290 L 520 290 Z', visited: false },
+    { id: 'FR', name: 'França', coordinates: [2.2137, 46.2276], visited: false },
+    { id: 'DE', name: 'Alemanha', coordinates: [10.4515, 51.1657], visited: false },
+    { id: 'IT', name: 'Itália', coordinates: [12.5674, 41.8719], visited: false },
+    { id: 'ES', name: 'Espanha', coordinates: [-3.7492, 40.4637], visited: false },
+    { id: 'GB', name: 'Reino Unido', coordinates: [-3.4360, 55.3781], visited: false },
+    { id: 'PT', name: 'Portugal', coordinates: [-8.2245, 39.3999], visited: false },
+    { id: 'NL', name: 'Países Baixos', coordinates: [5.2913, 52.1326], visited: false },
+    { id: 'BE', name: 'Bélgica', coordinates: [4.3517, 50.8503], visited: false },
+    { id: 'CH', name: 'Suíça', coordinates: [8.2275, 46.8182], visited: false },
+    { id: 'AT', name: 'Áustria', coordinates: [14.5501, 47.5162], visited: false },
+    { id: 'SE', name: 'Suécia', coordinates: [18.6435, 60.1282], visited: false },
+    { id: 'NO', name: 'Noruega', coordinates: [8.4689, 60.4720], visited: false },
+    { id: 'DK', name: 'Dinamarca', coordinates: [9.5018, 56.2639], visited: false },
+    { id: 'FI', name: 'Finlândia', coordinates: [25.7482, 61.9241], visited: false },
+    { id: 'PL', name: 'Polônia', coordinates: [19.1451, 51.9194], visited: false },
+    { id: 'CZ', name: 'República Tcheca', coordinates: [15.4730, 49.8175], visited: false },
+    { id: 'HU', name: 'Hungria', coordinates: [19.5033, 47.1625], visited: false },
+    { id: 'RO', name: 'Romênia', coordinates: [24.9668, 45.9432], visited: false },
+    { id: 'BG', name: 'Bulgária', coordinates: [25.4858, 42.7339], visited: false },
+    { id: 'GR', name: 'Grécia', coordinates: [21.8243, 39.0742], visited: false },
+    { id: 'HR', name: 'Croácia', coordinates: [15.2000, 45.1000], visited: false },
+    { id: 'RS', name: 'Sérvia', coordinates: [21.0059, 44.0165], visited: false },
+    { id: 'SI', name: 'Eslovênia', coordinates: [14.9955, 46.1512], visited: false },
+    { id: 'SK', name: 'Eslováquia', coordinates: [19.6990, 48.6690], visited: false },
+    { id: 'LT', name: 'Lituânia', coordinates: [23.8813, 55.1694], visited: false },
+    { id: 'LV', name: 'Letônia', coordinates: [24.6032, 56.8796], visited: false },
+    { id: 'EE', name: 'Estônia', coordinates: [25.0136, 58.5953], visited: false },
+    { id: 'IE', name: 'Irlanda', coordinates: [-8.2439, 53.4129], visited: false },
+    { id: 'IS', name: 'Islândia', coordinates: [-19.0208, 64.9631], visited: false },
     
     // Ásia
-    { id: 'CN', name: 'China', path: 'M 650 150 L 750 150 L 750 200 L 650 200 Z', visited: false },
-    { id: 'JP', name: 'Japão', path: 'M 780 160 L 800 160 L 800 180 L 780 180 Z', visited: false },
-    { id: 'IN', name: 'Índia', path: 'M 600 200 L 650 200 L 650 250 L 600 250 Z', visited: false },
-    { id: 'KR', name: 'Coreia do Sul', path: 'M 750 160 L 770 160 L 770 180 L 750 180 Z', visited: false },
-    { id: 'TH', name: 'Tailândia', path: 'M 680 220 L 700 220 L 700 240 L 680 240 Z', visited: false },
-    { id: 'VN', name: 'Vietnã', path: 'M 700 220 L 720 220 L 720 240 L 700 240 Z', visited: false },
+    { id: 'CN', name: 'China', coordinates: [104.1954, 35.8617], visited: false },
+    { id: 'JP', name: 'Japão', coordinates: [138.2529, 36.2048], visited: false },
+    { id: 'IN', name: 'Índia', coordinates: [78.9629, 20.5937], visited: false },
+    { id: 'KR', name: 'Coreia do Sul', coordinates: [127.7669, 35.9078], visited: false },
+    { id: 'TH', name: 'Tailândia', coordinates: [100.9925, 15.8700], visited: false },
+    { id: 'VN', name: 'Vietnã', coordinates: [108.2772, 14.0583], visited: false },
+    { id: 'MY', name: 'Malásia', coordinates: [108.9758, 4.2105], visited: false },
+    { id: 'SG', name: 'Singapura', coordinates: [103.8198, 1.3521], visited: false },
+    { id: 'ID', name: 'Indonésia', coordinates: [113.9213, -0.7893], visited: false },
+    { id: 'PH', name: 'Filipinas', coordinates: [121.7740, 12.8797], visited: false },
+    { id: 'TW', name: 'Taiwan', coordinates: [120.9605, 23.6978], visited: false },
+    { id: 'HK', name: 'Hong Kong', coordinates: [114.1694, 22.3193], visited: false },
+    { id: 'MO', name: 'Macau', coordinates: [113.5439, 22.1987], visited: false },
+    { id: 'MM', name: 'Mianmar', coordinates: [95.9560, 21.9162], visited: false },
+    { id: 'LA', name: 'Laos', coordinates: [102.4955, 19.8563], visited: false },
+    { id: 'KH', name: 'Camboja', coordinates: [104.9910, 12.5657], visited: false },
+    { id: 'BD', name: 'Bangladesh', coordinates: [90.3563, 23.6850], visited: false },
+    { id: 'LK', name: 'Sri Lanka', coordinates: [80.7718, 7.8731], visited: false },
+    { id: 'NP', name: 'Nepal', coordinates: [84.1240, 28.3949], visited: false },
+    { id: 'BT', name: 'Butão', coordinates: [90.4336, 27.5142], visited: false },
+    { id: 'MN', name: 'Mongólia', coordinates: [103.8467, 46.8625], visited: false },
+    { id: 'KZ', name: 'Cazaquistão', coordinates: [66.9237, 48.0196], visited: false },
+    { id: 'UZ', name: 'Uzbequistão', coordinates: [64.5853, 41.3775], visited: false },
+    { id: 'KG', name: 'Quirguistão', coordinates: [74.7661, 41.2044], visited: false },
+    { id: 'TJ', name: 'Tajiquistão', coordinates: [71.3645, 38.5358], visited: false },
+    { id: 'TM', name: 'Turcomenistão', coordinates: [59.5563, 38.9697], visited: false },
+    { id: 'AF', name: 'Afeganistão', coordinates: [67.7100, 33.9391], visited: false },
+    { id: 'PK', name: 'Paquistão', coordinates: [69.3451, 30.3753], visited: false },
+    { id: 'IR', name: 'Irã', coordinates: [53.6880, 32.4279], visited: false },
+    { id: 'IQ', name: 'Iraque', coordinates: [43.6793, 33.2232], visited: false },
+    { id: 'SY', name: 'Síria', coordinates: [38.9968, 34.8021], visited: false },
+    { id: 'LB', name: 'Líbano', coordinates: [35.8623, 33.8547], visited: false },
+    { id: 'JO', name: 'Jordânia', coordinates: [36.2384, 30.5852], visited: false },
+    { id: 'IL', name: 'Israel', coordinates: [34.8516, 31.0461], visited: false },
+    { id: 'PS', name: 'Palestina', coordinates: [35.2332, 31.9522], visited: false },
+    { id: 'SA', name: 'Arábia Saudita', coordinates: [45.0792, 23.8859], visited: false },
+    { id: 'AE', name: 'Emirados Árabes Unidos', coordinates: [54.0000, 24.0000], visited: false },
+    { id: 'QA', name: 'Catar', coordinates: [51.1839, 25.3548], visited: false },
+    { id: 'KW', name: 'Kuwait', coordinates: [47.4818, 29.3117], visited: false },
+    { id: 'BH', name: 'Bahrain', coordinates: [50.5577, 26.0667], visited: false },
+    { id: 'OM', name: 'Omã', coordinates: [55.9754, 21.4735], visited: false },
+    { id: 'YE', name: 'Iêmen', coordinates: [48.5164, 15.5527], visited: false },
+    { id: 'TR', name: 'Turquia', coordinates: [35.2433, 38.9637], visited: false },
+    { id: 'CY', name: 'Chipre', coordinates: [33.4299, 35.1264], visited: false },
+    { id: 'GE', name: 'Geórgia', coordinates: [43.3569, 42.3154], visited: false },
+    { id: 'AM', name: 'Armênia', coordinates: [45.0382, 40.0691], visited: false },
+    { id: 'AZ', name: 'Azerbaijão', coordinates: [47.5769, 40.1431], visited: false },
+    
+    // África
+    { id: 'ZA', name: 'África do Sul', coordinates: [22.9375, -30.5595], visited: false },
+    { id: 'EG', name: 'Egito', coordinates: [30.8025, 26.8206], visited: false },
+    { id: 'NG', name: 'Nigéria', coordinates: [8.6753, 9.0820], visited: false },
+    { id: 'KE', name: 'Quênia', coordinates: [37.9062, -0.0236], visited: false },
+    { id: 'ET', name: 'Etiópia', coordinates: [40.4897, 9.1450], visited: false },
+    { id: 'TZ', name: 'Tanzânia', coordinates: [34.8888, -6.3690], visited: false },
+    { id: 'UG', name: 'Uganda', coordinates: [32.2903, 1.3733], visited: false },
+    { id: 'GH', name: 'Gana', coordinates: [-1.0232, 7.9465], visited: false },
+    { id: 'CI', name: 'Costa do Marfim', coordinates: [-5.5471, 7.5400], visited: false },
+    { id: 'SN', name: 'Senegal', coordinates: [-14.4524, 14.4974], visited: false },
+    { id: 'ML', name: 'Mali', coordinates: [-3.9962, 17.5707], visited: false },
+    { id: 'BF', name: 'Burkina Faso', coordinates: [-1.5616, 12.2383], visited: false },
+    { id: 'NE', name: 'Níger', coordinates: [8.0817, 17.6078], visited: false },
+    { id: 'TD', name: 'Chade', coordinates: [18.7322, 15.4542], visited: false },
+    { id: 'SD', name: 'Sudão', coordinates: [30.2176, 12.8628], visited: false },
+    { id: 'LY', name: 'Líbia', coordinates: [17.2283, 26.3351], visited: false },
+    { id: 'TN', name: 'Tunísia', coordinates: [9.5375, 33.8869], visited: false },
+    { id: 'DZ', name: 'Argélia', coordinates: [1.6596, 28.0339], visited: false },
+    { id: 'MA', name: 'Marrocos', coordinates: [-7.0926, 31.7917], visited: false },
+    { id: 'AO', name: 'Angola', coordinates: [17.8739, -11.2027], visited: false },
+    { id: 'CD', name: 'República Democrática do Congo', coordinates: [21.7587, -4.0383], visited: false },
+    { id: 'CG', name: 'República do Congo', coordinates: [15.8277, -0.2280], visited: false },
+    { id: 'GA', name: 'Gabão', coordinates: [11.6094, -0.8037], visited: false },
+    { id: 'CM', name: 'Camarões', coordinates: [12.3547, 7.3697], visited: false },
+    { id: 'CF', name: 'República Centro-Africana', coordinates: [20.9394, 6.6111], visited: false },
+    { id: 'GQ', name: 'Guiné Equatorial', coordinates: [10.2679, 1.6508], visited: false },
+    { id: 'ST', name: 'São Tomé e Príncipe', coordinates: [6.6131, 0.1864], visited: false },
+    { id: 'GW', name: 'Guiné-Bissau', coordinates: [-15.1804, 11.8037], visited: false },
+    { id: 'GN', name: 'Guiné', coordinates: [-9.6966, 9.9456], visited: false },
+    { id: 'SL', name: 'Serra Leoa', coordinates: [-11.7799, 8.4606], visited: false },
+    { id: 'LR', name: 'Libéria', coordinates: [-9.4295, 6.4281], visited: false },
+    { id: 'TG', name: 'Togo', coordinates: [0.8248, 8.6195], visited: false },
+    { id: 'BJ', name: 'Benin', coordinates: [2.3158, 9.3077], visited: false },
+    { id: 'MR', name: 'Mauritânia', coordinates: [-10.9408, 21.0079], visited: false },
+    { id: 'EH', name: 'Saara Ocidental', coordinates: [-12.8858, 24.2155], visited: false },
+    { id: 'CV', name: 'Cabo Verde', coordinates: [-23.0418, 16.5388], visited: false },
+    { id: 'GM', name: 'Gâmbia', coordinates: [-15.3101, 13.4432], visited: false },
+    { id: 'DJ', name: 'Djibouti', coordinates: [42.5903, 11.8251], visited: false },
+    { id: 'SO', name: 'Somália', coordinates: [46.1996, 5.1521], visited: false },
+    { id: 'ER', name: 'Eritreia', coordinates: [39.7823, 15.1794], visited: false },
+    { id: 'SS', name: 'Sudão do Sul', coordinates: [31.3070, 6.8770], visited: false },
+    { id: 'BI', name: 'Burundi', coordinates: [29.9189, -3.3731], visited: false },
+    { id: 'RW', name: 'Ruanda', coordinates: [30.0596, -1.9403], visited: false },
+    { id: 'MG', name: 'Madagascar', coordinates: [46.8691, -18.7669], visited: false },
+    { id: 'MU', name: 'Maurício', coordinates: [57.5522, -20.3484], visited: false },
+    { id: 'SC', name: 'Seychelles', coordinates: [55.4920, -4.6796], visited: false },
+    { id: 'KM', name: 'Comores', coordinates: [43.3333, -11.6455], visited: false },
+    { id: 'YT', name: 'Mayotte', coordinates: [45.1662, -12.8275], visited: false },
+    { id: 'RE', name: 'Reunião', coordinates: [55.5364, -21.1151], visited: false },
     
     // Oceania
-    { id: 'AU', name: 'Austrália', path: 'M 700 300 L 800 300 L 800 380 L 700 380 Z', visited: false },
-    { id: 'NZ', name: 'Nova Zelândia', path: 'M 780 380 L 800 380 L 800 390 L 780 390 Z', visited: false }
+    { id: 'AU', name: 'Austrália', coordinates: [133.7751, -25.2744], visited: false },
+    { id: 'NZ', name: 'Nova Zelândia', coordinates: [174.8860, -40.9006], visited: false },
+    { id: 'FJ', name: 'Fiji', coordinates: [178.0650, -17.7134], visited: false },
+    { id: 'PG', name: 'Papua Nova Guiné', coordinates: [143.9555, -6.3150], visited: false },
+    { id: 'NC', name: 'Nova Caledônia', coordinates: [165.6180, -20.9043], visited: false },
+    { id: 'VU', name: 'Vanuatu', coordinates: [166.9592, -15.3767], visited: false },
+    { id: 'SB', name: 'Ilhas Salomão', coordinates: [160.1562, -9.6457], visited: false },
+    { id: 'TO', name: 'Tonga', coordinates: [-175.1982, -21.1790], visited: false },
+    { id: 'WS', name: 'Samoa', coordinates: [-172.1046, -13.7590], visited: false },
+    { id: 'KI', name: 'Kiribati', coordinates: [-168.7340, -3.3704], visited: false },
+    { id: 'TV', name: 'Tuvalu', coordinates: [177.6493, -7.1095], visited: false },
+    { id: 'NR', name: 'Nauru', coordinates: [166.9315, -0.5228], visited: false },
+    { id: 'PW', name: 'Palau', coordinates: [134.5825, 7.5150], visited: false },
+    { id: 'MH', name: 'Ilhas Marshall', coordinates: [171.1845, 7.1315], visited: false },
+    { id: 'FM', name: 'Micronésia', coordinates: [150.5508, 7.4256], visited: false },
+    { id: 'CK', name: 'Ilhas Cook', coordinates: [-159.7777, -21.2368], visited: false },
+    { id: 'NU', name: 'Niue', coordinates: [-169.8672, -19.0544], visited: false },
+    { id: 'TK', name: 'Tokelau', coordinates: [-171.8559, -8.9674], visited: false },
+    { id: 'AS', name: 'Samoa Americana', coordinates: [-170.1322, -14.2710], visited: false },
+    { id: 'GU', name: 'Guam', coordinates: [144.7937, 13.4443], visited: false },
+    { id: 'MP', name: 'Ilhas Marianas do Norte', coordinates: [145.3847, 17.3308], visited: false },
+    { id: 'PF', name: 'Polinésia Francesa', coordinates: [-149.4068, -17.6797], visited: false },
+    { id: 'WF', name: 'Wallis e Futuna', coordinates: [-178.1165, -14.2938], visited: false }
   ]
 
   const updatedCountries = countries.map(country => ({
@@ -69,215 +227,117 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
     visited: visitedPlaces.includes(country.id)
   }))
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
-    setScale(prev => Math.max(0.5, Math.min(3, prev * delta)))
-  }
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true)
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
-  }
+  const handleCountryClick = useCallback((country: Country) => {
+    onPlaceToggle(country.id)
+  }, [onPlaceToggle])
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      })
-    }
-  }
+  const onMapClick = useCallback(() => {
+    setPopupInfo(null)
+  }, [])
 
-  const handleMouseUp = () => {
-    setIsDragging(false)
-  }
-
-  const handleCountryClick = (countryId: string) => {
-    onPlaceToggle(countryId)
-  }
-
-  const handleCountryHover = (country: Country, event: React.MouseEvent) => {
-    setTooltip({
-      show: true,
-      content: country.name,
-      x: event.clientX,
-      y: event.clientY
-    })
-  }
-
-  const handleCountryLeave = () => {
-    setTooltip({ show: false, content: '', x: 0, y: 0 })
-  }
-
-  const handleZoomIn = () => {
-    setScale(prev => Math.min(3, prev * 1.2))
-  }
-
-  const handleZoomOut = () => {
-    setScale(prev => Math.max(0.5, prev * 0.8))
-  }
-
-  const resetView = () => {
-    setScale(1)
-    setPosition({ x: 0, y: 0 })
+  if (!isClient) {
+    return (
+      <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">🌍</div>
+          <p className="text-gray-600">Carregando mapa...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="relative w-full h-96 bg-gray-100 rounded-lg overflow-hidden" ref={mapRef}>
-      {/* Controles de Zoom */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-        <button
-          onClick={handleZoomIn}
-          className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          +
-        </button>
-        <button
-          onClick={handleZoomOut}
-          className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          −
-        </button>
-        <button
-          onClick={resetView}
-          className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors text-xs"
-          title="Resetar visualização"
-        >
-          🏠
-        </button>
-      </div>
-
-      {/* Mapa */}
-      <div
-        className="w-full h-full cursor-grab active:cursor-grabbing"
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+    <div className="w-full h-96 bg-gray-100 rounded-lg overflow-hidden relative">
+      {/* Mapa Mapbox */}
+      <Map
+        {...viewState}
+        onMove={evt => setViewState(evt.viewState)}
+        onClick={onMapClick}
+        style={{ width: '100%', height: '100%' }}
+        mapStyle="mapbox://styles/mapbox/light-v11"
+        mapboxAccessToken="pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3NnAifQ.rJcFIG214AriISLbB6B5aw"
+        attributionControl={false}
       >
-        <svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 900 400"
-          style={{
-            transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
-          }}
-        >
-          {/* Fundo do mapa */}
-          <rect width="900" height="400" fill="#f3f4f6" />
-          
-          {/* Continentes base */}
-          <g className="continents">
-            {/* América do Norte */}
-            <path
-              d="M 50 100 L 350 100 L 350 200 L 50 200 Z"
-              fill="#e5e7eb"
-              stroke="#d1d5db"
-              strokeWidth="1"
+        {/* Marcadores dos países */}
+        {updatedCountries.map((country) => (
+          <Marker
+            key={country.id}
+            longitude={country.coordinates[0]}
+            latitude={country.coordinates[1]}
+            anchor="bottom"
+            onClick={e => {
+              e.originalEvent.stopPropagation()
+              setPopupInfo(country)
+            }}
+          >
+            <div
+              className={`w-4 h-4 rounded-full cursor-pointer transition-all duration-200 ${
+                country.visited 
+                  ? 'bg-green-500 shadow-lg shadow-green-500/50' 
+                  : 'bg-gray-500 hover:bg-gray-600'
+              }`}
+              onClick={() => handleCountryClick(country)}
+              title={country.name}
             />
-            
-            {/* América do Sul */}
-            <path
-              d="M 150 200 L 350 200 L 350 400 L 150 400 Z"
-              fill="#e5e7eb"
-              stroke="#d1d5db"
-              strokeWidth="1"
-            />
-            
-            {/* Europa */}
-            <path
-              d="M 400 100 L 500 100 L 500 200 L 400 200 Z"
-              fill="#e5e7eb"
-              stroke="#d1d5db"
-              strokeWidth="1"
-            />
-            
-            {/* África */}
-            <path
-              d="M 450 200 L 550 200 L 550 400 L 450 400 Z"
-              fill="#e5e7eb"
-              stroke="#d1d5db"
-              strokeWidth="1"
-            />
-            
-            {/* Ásia */}
-            <path
-              d="M 550 100 L 850 100 L 850 250 L 550 250 Z"
-              fill="#e5e7eb"
-              stroke="#d1d5db"
-              strokeWidth="1"
-            />
-            
-            {/* Oceania */}
-            <path
-              d="M 650 300 L 850 300 L 850 400 L 650 400 Z"
-              fill="#e5e7eb"
-              stroke="#d1d5db"
-              strokeWidth="1"
-            />
-          </g>
+          </Marker>
+        ))}
 
-          {/* Países */}
-          {updatedCountries.map((country) => (
-            <g key={country.id}>
-              <path
-                d={country.path}
-                fill={country.visited ? '#10b981' : '#6b7280'}
-                stroke={country.visited ? '#059669' : '#374151'}
-                strokeWidth={country.visited ? 2 : 1}
-                className="cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => handleCountryClick(country.id)}
-                onMouseEnter={(e) => handleCountryHover(country, e)}
-                onMouseLeave={handleCountryLeave}
-              />
-              {country.visited && (
-                <path
-                  d={country.path}
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="3"
-                  opacity="0.6"
-                />
-              )}
-            </g>
-          ))}
-        </svg>
-      </div>
-
-      {/* Tooltip */}
-      {tooltip.show && (
-        <div
-          className="absolute z-20 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm shadow-lg pointer-events-none"
-          style={{
-            left: tooltip.x + 10,
-            top: tooltip.y - 40
-          }}
-        >
-          {tooltip.content}
-        </div>
-      )}
+        {/* Popup com informações do país */}
+        {popupInfo && (
+          <Popup
+            anchor="top"
+            longitude={popupInfo.coordinates[0]}
+            latitude={popupInfo.coordinates[1]}
+            onClose={() => setPopupInfo(null)}
+            closeButton={true}
+            closeOnClick={false}
+            className="z-50"
+          >
+            <div className="text-center p-2">
+              <div className="font-bold text-lg">{popupInfo.name}</div>
+              <div className="text-sm text-gray-600 mb-2">
+                {popupInfo.visited ? '✅ Visitado' : '❌ Não visitado'}
+              </div>
+              <button
+                onClick={() => {
+                  handleCountryClick(popupInfo)
+                  setPopupInfo(null)
+                }}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  popupInfo.visited
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-green-500 text-white hover:bg-green-600'
+                }`}
+              >
+                {popupInfo.visited ? 'Marcar como não visitado' : 'Marcar como visitado'}
+              </button>
+            </div>
+          </Popup>
+        )}
+      </Map>
 
       {/* Legenda */}
-      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3">
+      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10">
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-gray-500 rounded"></div>
+            <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
             <span>Não visitado</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded"></div>
+            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             <span>Visitado</span>
           </div>
         </div>
       </div>
 
       {/* Instruções */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs">
+      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
         <p className="text-xs text-gray-600">
-          💡 <strong>Dica:</strong> Clique nos países para marcar como visitados. Use os botões de zoom para navegar.
+          💡 <strong>Dica:</strong> Clique nos marcadores dos países para marcar como visitados. Use o mouse para navegar no mapa.
         </p>
       </div>
     </div>
