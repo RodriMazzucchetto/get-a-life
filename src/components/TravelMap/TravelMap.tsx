@@ -221,27 +221,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
     // Adicionar controles de navegação
     map.current.addControl(new maplibregl.NavigationControl(), 'top-right')
 
-    // Adicionar marcadores para cada país
-    updatedCountries.forEach(country => {
-      // Criar elemento HTML para o marcador
-      const el = document.createElement('div')
-      el.className = `w-4 h-4 rounded-full cursor-pointer transition-all duration-200 ${
-        country.visited 
-          ? 'bg-green-500 shadow-lg shadow-green-500/50' 
-          : 'bg-gray-500 hover:bg-gray-600'
-      }`
-      el.title = country.name
-
-      // Adicionar evento de clique
-      el.addEventListener('click', () => {
-        onPlaceToggle(country.id)
-      })
-
-      // Criar e adicionar o marcador
-      new maplibregl.Marker(el)
-        .setLngLat(country.coordinates)
-        .addTo(map.current!)
-    })
+    // Mapa sem marcadores - apenas para visualização
 
     // Limpar o mapa quando o componente for desmontado
     return () => {
@@ -270,22 +250,15 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
 
       {/* Legenda */}
       <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10">
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-            <span>Não visitado</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span>Visitado</span>
-          </div>
+        <div className="text-sm text-gray-600">
+          <span>🌍 Mapa mundial interativo</span>
         </div>
       </div>
 
       {/* Instruções */}
       <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
         <p className="text-xs text-gray-600">
-          💡 <strong>Dica:</strong> Clique nos marcadores dos países para marcar como visitados. Use os controles para navegar no mapa.
+          💡 <strong>Dica:</strong> Use os controles para navegar no mapa mundial.
         </p>
       </div>
     </div>
