@@ -361,28 +361,51 @@ export default function TravelsPage() {
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">Lugares Visitados</h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Use o botão "Adicionar Local" no mapa para marcar onde você já esteve
+          </p>
         </div>
         <div className="p-6">
           {visitedPlaces.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">🗺️</div>
               <p className="text-gray-500">
-                Clique nos países no mapa para marcar como visitados!
+                Use o botão "Adicionar Local" no mapa para marcar seus destinos visitados!
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="space-y-3">
               {visitedPlaces.map(placeId => {
-                const country = countries.find(c => c.id === placeId)
+                const [type, name] = placeId.split('-')
+                const displayName = name?.split('-').map(word => 
+                  word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ') || placeId
+                
                 return (
                   <div
                     key={placeId}
-                    className="flex flex-col items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200"
+                    className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200"
                   >
-                    <span className="text-green-600 font-medium text-sm">{placeId}</span>
-                    {country && (
-                      <span className="text-xs text-green-500 mt-1">{country.name}</span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <span className="text-lg">
+                          {type === 'city' ? '🏙️' : type === 'state' ? '🏛️' : '🌍'}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-green-800">{displayName}</p>
+                        <p className="text-sm text-green-600 capitalize">
+                          {type === 'city' ? 'Cidade' : type === 'state' ? 'Estado' : 'País'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handlePlaceToggle(placeId)}
+                      className="text-red-500 hover:text-red-700 text-sm font-medium"
+                      title="Remover local"
+                    >
+                      Remover
+                    </button>
                   </div>
                 )
               })}

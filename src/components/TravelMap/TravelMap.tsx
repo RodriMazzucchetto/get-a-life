@@ -2,10 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
+import AddLocationModal from './AddLocationModal'
 
 interface TravelMapProps {
   visitedPlaces: string[]
   onPlaceToggle: (placeId: string) => void
+}
+
+interface VisitedLocation {
+  id: string
+  type: 'city' | 'state' | 'country'
+  name: string
+  coordinates: [number, number]
 }
 
 interface Country {
@@ -21,6 +29,8 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
   const [popupInfo, setPopupInfo] = useState<Country | null>(null)
   const [isClient, setIsClient] = useState(false)
   const [isTipClosed, setIsTipClosed] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [visitedLocations, setVisitedLocations] = useState<VisitedLocation[]>([])
 
   // Lista de países principais com coordenadas reais
   const countries: Country[] = [
@@ -203,6 +213,88 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
     visited: visitedPlaces.includes(country.id)
   }))
 
+  const handleAddLocation = (location: { type: 'city' | 'state' | 'country', name: string, id: string }) => {
+    // Para este exemplo, vamos usar coordenadas fixas baseadas no tipo
+    // Em uma implementação real, você teria um banco de dados com coordenadas precisas
+    let coordinates: [number, number] = [0, 0]
+    
+    if (location.type === 'city') {
+      // Coordenadas aproximadas para algumas cidades brasileiras
+      const cityCoords: Record<string, [number, number]> = {
+        'curitiba': [-25.4289, -49.2671],
+        'são paulo': [-23.5505, -46.6333],
+        'rio de janeiro': [-22.9068, -43.1729],
+        'belo horizonte': [-19.9167, -43.9345],
+        'brasília': [-15.7942, -47.8822],
+        'salvador': [-12.9714, -38.5011],
+        'fortaleza': [-3.7319, -38.5267],
+        'manaus': [-3.1190, -60.0217],
+        'recife': [-8.0476, -34.8770],
+        'porto alegre': [-30.0346, -51.2177],
+        'goiânia': [-16.6864, -49.2653],
+        'guarulhos': [-23.4543, -46.5339],
+        'campinas': [-22.9064, -47.0616],
+        'natal': [-5.7945, -35.2090]
+      }
+      coordinates = cityCoords[location.name.toLowerCase()] || [0, 0]
+    } else if (location.type === 'state') {
+      // Coordenadas aproximadas para centros dos estados
+      const stateCoords: Record<string, [number, number]> = {
+        'paraná': [-25.2521, -52.0215],
+        'são paulo': [-23.5505, -46.6333],
+        'rio de janeiro': [-22.9068, -43.1729],
+        'minas gerais': [-19.9167, -43.9345],
+        'bahia': [-12.9714, -38.5011],
+        'rio grande do sul': [-30.0346, -51.2177],
+        'pernambuco': [-8.0476, -34.8770],
+        'ceará': [-3.7319, -38.5267],
+        'pará': [-1.4554, -48.4898],
+        'santa catarina': [-27.2423, -50.2189],
+        'goiás': [-16.6864, -49.2653],
+        'maranhão': [-2.5297, -44.3028],
+        'amazonas': [-3.1190, -60.0217],
+        'mato grosso': [-15.6010, -56.0974],
+        'mato grosso do sul': [-20.4435, -54.6478]
+      }
+      coordinates = stateCoords[location.name.toLowerCase()] || [0, 0]
+    } else {
+      // Coordenadas aproximadas para países
+      const countryCoords: Record<string, [number, number]> = {
+        'brasil': [-14.2350, -51.9253],
+        'argentina': [-38.4161, -63.6167],
+        'chile': [-35.6751, -71.5430],
+        'uruguai': [-32.5228, -55.7658],
+        'paraguai': [-23.4425, -58.4438],
+        'bolívia': [-16.2902, -63.5887],
+        'peru': [-9.1900, -75.0152],
+        'colômbia': [4.5709, -74.2973],
+        'venezuela': [6.4238, -66.5897],
+        'equador': [-1.8312, -78.1834],
+        'estados unidos': [39.8283, -98.5795],
+        'canadá': [56.1304, -106.3468],
+        'méxico': [23.6345, -102.5528],
+        'frança': [46.2276, 2.2137],
+        'alemanha': [51.1657, 10.4515],
+        'itália': [41.8719, 12.5674],
+        'espanha': [40.4637, -3.7492],
+        'portugal': [39.3999, -8.2245],
+        'reino unido': [55.3781, -3.4360],
+        'japão': [36.2048, 138.2529]
+      }
+      coordinates = countryCoords[location.name.toLowerCase()] || [0, 0]
+    }
+
+    const newLocation: VisitedLocation = {
+      id: location.id,
+      type: location.type,
+      name: location.name,
+      coordinates
+    }
+
+    setVisitedLocations(prev => [...prev, newLocation])
+    onPlaceToggle(location.id)
+  }
+
   useEffect(() => {
     setIsClient(true)
   }, [])
@@ -254,23 +346,42 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
 
 
 
-      {/* Instruções */}
-      {!isTipClosed && (
-        <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-xs text-gray-600">
-              💡 <strong>Dica:</strong> Use os controles para zoom, clique e arraste para navegar.
-            </p>
-            <button
-              onClick={() => setIsTipClosed(true)}
-              className="text-gray-400 hover:text-gray-600 text-sm font-bold ml-2"
-              title="Fechar dica"
-            >
-              ×
-            </button>
-          </div>
+              {/* Botão Adicionar Local */}
+        <div className="absolute top-4 right-4 z-10">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
+            title="Adicionar local visitado"
+          >
+            <span className="text-lg">📍</span>
+            <span className="text-sm font-medium">Adicionar Local</span>
+          </button>
         </div>
-      )}
+
+        {/* Instruções */}
+        {!isTipClosed && (
+          <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs text-gray-600">
+                💡 <strong>Dica:</strong> Use os controles para zoom, clique e arraste para navegar.
+              </p>
+              <button
+                onClick={() => setIsTipClosed(true)}
+                className="text-gray-400 hover:text-gray-600 text-sm font-bold ml-2"
+                title="Fechar dica"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Adicionar Local */}
+        <AddLocationModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onAddLocation={handleAddLocation}
+        />
     </div>
   )
 }
