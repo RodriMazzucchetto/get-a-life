@@ -1,8 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { geoPath, geoMercator } from 'd3-geo'
-import { Feature, Geometry } from 'geojson'
+import { useState, useRef } from 'react'
 
 interface TravelMapProps {
   visitedPlaces: string[]
@@ -44,7 +42,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
     { id: 'AU', name: 'Austrália', coordinates: [135.0, -25.0], visited: false },
     { id: 'ZA', name: 'África do Sul', coordinates: [24.0, -29.0], visited: false },
     { id: 'EG', name: 'Egito', coordinates: [30.0, 27.0], visited: false },
-    { id: 'RU', name: 'Rússia', coordinates: [105.0, 60.0], visited: false },
+    { id: 'RU', name: 'Rússia', coordinates: [105.0, 60.0], visited: false }
   ]
 
   // Atualizar países visitados baseado na prop
@@ -56,7 +54,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault()
     const delta = e.deltaY > 0 ? 0.9 : 1.1
-    setScale(prev => Math.max(0.5, Math.min(3, prev * delta))
+    setScale(prev => Math.max(0.5, Math.min(3, prev * delta)))
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
