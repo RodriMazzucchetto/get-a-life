@@ -217,7 +217,7 @@ export default function TravelsPage() {
     // Simular carregamento
     setLoading(false)
     setCountries(allCountries)
-  }, [])
+  }, [allCountries])
 
   const handlePlaceToggle = (placeId: string) => {
     setVisitedPlaces(prev => 
@@ -362,7 +362,7 @@ export default function TravelsPage() {
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">Lugares Visitados</h3>
           <p className="text-sm text-gray-600 mt-1">
-            Use o botão "Adicionar Local" no mapa para marcar onde você já esteve
+            Use o botão &quot;Adicionar Local&quot; no mapa para marcar onde você já esteve
           </p>
         </div>
         <div className="p-6">
@@ -370,7 +370,7 @@ export default function TravelsPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-4">🗺️</div>
               <p className="text-gray-500">
-                Use o botão "Adicionar Local" no mapa para marcar seus destinos visitados!
+                Use o botão &quot;Adicionar Local&quot; no mapa para marcar seus destinos visitados!
               </p>
             </div>
           ) : (

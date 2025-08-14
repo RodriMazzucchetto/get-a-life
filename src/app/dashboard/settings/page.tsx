@@ -2,7 +2,7 @@
 
 import { useAuthContext } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import { OnboardingData } from '@/types'
 
@@ -28,7 +28,7 @@ export default function SettingsPage() {
     }
   }, [user, loading, router])
 
-  const loadOnboardingData = async () => {
+  const loadOnboardingData = useCallback(async () => {
     if (!user) return
 
         try {
@@ -75,7 +75,7 @@ export default function SettingsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, supabase])
 
   const handleEdit = () => {
     setIsEditing(true)
@@ -251,7 +251,6 @@ export default function SettingsPage() {
                     value={editedData.interests?.find(i => !['esportes', 'cultura', 'gastronomia', 'natureza', 'tecnologia', 'arte', 'viagem', 'social'].includes(i)) || ''}
                     onChange={(e) => {
                       const currentInterests = editedData.interests || []
-                      const otherInterests = currentInterests.filter(i => !['esportes', 'cultura', 'gastronomia', 'natureza', 'tecnologia', 'arte', 'viagem', 'social'].includes(i))
                       const newInterests = e.target.value ? [...currentInterests.filter(i => ['esportes', 'cultura', 'gastronomia', 'natureza', 'tecnologia', 'arte', 'viagem', 'social'].includes(i)), e.target.value] : currentInterests.filter(i => ['esportes', 'cultura', 'gastronomia', 'natureza', 'tecnologia', 'arte', 'viagem', 'social'].includes(i))
                       handleInputChange('interests', newInterests)
                     }}

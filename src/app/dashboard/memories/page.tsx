@@ -299,6 +299,7 @@ export default function MemoriesPage() {
                               src={url}
                               alt={`Preview ${index + 1}`}
                               className="w-full h-16 object-cover rounded-lg shadow-sm"
+                              loading="lazy"
                             />
                             {index === 2 && memory.media && memory.media.length > 3 && (
                               <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
