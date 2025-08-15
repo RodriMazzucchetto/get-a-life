@@ -212,14 +212,14 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
   )
 
   // Função debounce
-  function debounce<T extends (...args: any[]) => any>(
-    func: T,
+  function debounce(
+    func: (query: string) => Promise<void>,
     wait: number
-  ): (...args: Parameters<T>) => void {
+  ): (query: string) => void {
     let timeout: NodeJS.Timeout
-    return (...args: Parameters<T>) => {
+    return (query: string) => {
       clearTimeout(timeout)
-      timeout = setTimeout(() => func(...args), wait)
+      timeout = setTimeout(() => func(query), wait)
     }
   }
 
