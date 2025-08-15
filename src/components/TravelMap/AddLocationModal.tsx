@@ -6,7 +6,7 @@ import { searchLocations, SearchResult } from '@/lib/geocoding'
 interface AddLocationModalProps {
   isOpen: boolean
   onClose: () => void
-  onAddLocation: (location: { type: 'city' | 'state' | 'country', name: string, id: string, coordinates?: { lat: number, lon: number } }) => void
+  onAddLocation: (location: { type: 'city', name: string, id: string, coordinates: { lat: number, lon: number } }) => void
 }
 
 export default function AddLocationModal({ isOpen, onClose, onAddLocation }: AddLocationModalProps) {
@@ -68,7 +68,7 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
   const handleAddLocation = () => {
     if (selectedLocation) {
       onAddLocation({
-        type: selectedLocation.type,
+        type: 'city',
         name: selectedLocation.displayName,
         id: selectedLocation.id,
         coordinates: selectedLocation.coordinates
@@ -95,7 +95,7 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">📍 Adicionar Local Visitado</h3>
+          <h3 className="text-lg font-semibold">🏙️ Adicionar Cidade Visitada</h3>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 text-xl font-bold"
@@ -107,14 +107,14 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
         {/* Campo de Busca */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Buscar local
+            Buscar cidade
           </label>
           <div className="relative">
             <input
               type="text"
               value={searchTerm}
               onChange={handleSearchChange}
-              placeholder="Digite o nome da cidade, estado ou país..."
+              placeholder="Digite o nome da cidade..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
             />
             {isLoading && (
@@ -134,9 +134,7 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
                   className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">
-                      {result.type === 'city' ? '🏙️' : result.type === 'state' ? '🏛️' : '🌍'}
-                    </span>
+                    <span className="text-lg">🏙️</span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-900 truncate">
                         {result.name}
@@ -154,21 +152,17 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
           {/* Mensagem quando não há resultados */}
           {showResults && searchTerm.length >= 2 && !isLoading && searchResults.length === 0 && (
             <div className="mt-2 text-sm text-gray-500 text-center py-2">
-              Nenhum local encontrado. Tente uma busca diferente.
+              Nenhuma cidade encontrada. Tente uma busca diferente.
             </div>
           )}
         </div>
 
-        {/* Local Selecionado */}
+        {/* Cidade Selecionada */}
         {selectedLocation && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">
-                {selectedLocation.type === 'city' ? '🏙️' : selectedLocation.type === 'state' ? '🏛️' : '🌍'}
-              </span>
-              <span className="font-medium text-blue-900">
-                {selectedLocation.type === 'city' ? 'Cidade' : selectedLocation.type === 'state' ? 'Estado' : 'País'}
-              </span>
+              <span className="text-lg">🏙️</span>
+              <span className="font-medium text-blue-900">Cidade</span>
             </div>
             <div className="text-sm text-blue-800">
               <div className="font-medium">{selectedLocation.name}</div>
@@ -190,7 +184,7 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
             disabled={!selectedLocation}
             className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
-            Adicionar
+            Adicionar Cidade
           </button>
         </div>
       </div>

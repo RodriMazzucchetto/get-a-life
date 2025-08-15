@@ -9,11 +9,14 @@ interface TravelMapProps {
   onPlaceToggle: (placeId: string) => void
 }
 
-interface VisitedLocation {
+interface VisitedCity {
   id: string
-  type: 'city' | 'state' | 'country'
+  type: 'city'
   name: string
+  displayName: string
   coordinates: [number, number]
+  country: string
+  state?: string
 }
 
 export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapProps) {
@@ -22,90 +25,82 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
   const [isClient, setIsClient] = useState(false)
   const [isTipClosed, setIsTipClosed] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [visitedLocations, setVisitedLocations] = useState<VisitedLocation[]>([])
+  const [visitedCities, setVisitedCities] = useState<VisitedCity[]>([])
   const [mapError, setMapError] = useState<string | null>(null)
 
-  const handleAddLocation = (location: { type: 'city' | 'state' | 'country', name: string, id: string, coordinates?: { lat: number, lon: number } }) => {
-    let coordinates: [number, number] = [0, 0]
-    
-    // Se temos coordenadas da API, usamos elas
-    if (location.coordinates) {
-      coordinates = [location.coordinates.lon, location.coordinates.lat]
-    } else {
-      // Fallback para coordenadas hardcoded (caso a API falhe)
-      if (location.type === 'city') {
-        const cityCoords: Record<string, [number, number]> = {
-          'curitiba': [-49.2671, -25.4289],
-          'são paulo': [-46.6333, -23.5505],
-          'rio de janeiro': [-43.1729, -22.9068],
-          'belo horizonte': [-43.9345, -19.9167],
-          'brasília': [-47.8822, -15.7942],
-          'salvador': [-38.5011, -12.9714],
-          'fortaleza': [-38.5267, -3.7319],
-          'manaus': [-60.0217, -3.1190],
-          'recife': [-34.8770, -8.0476],
-          'porto alegre': [-51.2177, -30.0346],
-          'goiânia': [-49.2653, -16.6864],
-          'guarulhos': [-46.5339, -23.4543],
-          'campinas': [-47.0616, -22.9064],
-          'natal': [-35.2090, -5.7945]
-        }
-        coordinates = cityCoords[location.name.toLowerCase()] || [0, 0]
-      } else if (location.type === 'state') {
-        const stateCoords: Record<string, [number, number]> = {
-          'paraná': [-52.0215, -25.2521],
-          'são paulo': [-46.6333, -23.5505],
-          'rio de janeiro': [-43.1729, -22.9068],
-          'minas gerais': [-43.9345, -19.9167],
-          'bahia': [-38.5011, -12.9714],
-          'rio grande do sul': [-51.2177, -30.0346],
-          'pernambuco': [-34.8770, -8.0476],
-          'ceará': [-38.5267, -3.7319],
-          'pará': [-48.4898, -1.4554],
-          'santa catarina': [-50.2189, -27.2423],
-          'goiás': [-49.2653, -16.6864],
-          'maranhão': [-44.3028, -2.5297],
-          'amazonas': [-60.0217, -3.1190],
-          'mato grosso': [-56.0974, -15.6010],
-          'mato grosso do sul': [-54.6478, -20.4435]
-        }
-        coordinates = stateCoords[location.name.toLowerCase()] || [0, 0]
-      } else {
-        const countryCoords: Record<string, [number, number]> = {
-          'brasil': [-51.9253, -14.2350],
-          'argentina': [-63.6167, -38.4161],
-          'chile': [-71.5430, -35.6751],
-          'uruguai': [-55.7658, -32.5228],
-          'paraguai': [-58.4438, -23.4425],
-          'bolívia': [-63.5887, -16.2902],
-          'peru': [-75.0152, -9.1900],
-          'colômbia': [-74.2973, 4.5709],
-          'venezuela': [-66.5897, 6.4238],
-          'equador': [-78.1834, -1.8312],
-          'estados unidos': [-98.5795, 39.8283],
-          'canadá': [-106.3468, 56.1304],
-          'méxico': [-102.5528, 23.6345],
-          'frança': [2.2137, 46.2276],
-          'alemanha': [10.4515, 51.1657],
-          'itália': [12.5674, 41.8719],
-          'espanha': [-3.7492, 40.4637],
-          'portugal': [-8.2245, 39.3999],
-          'reino unido': [-3.4360, 55.3781],
-          'japão': [138.2529, 36.2048]
-        }
-        coordinates = countryCoords[location.name.toLowerCase()] || [0, 0]
+  // Carregar cidades visitadas do localStorage
+  useEffect(() => {
+    const savedCities = localStorage.getItem('visitedCities')
+    if (savedCities) {
+      try {
+        const cities = JSON.parse(savedCities)
+        setVisitedCities(cities)
+      } catch (error) {
+        console.error('Erro ao carregar cidades:', error)
       }
     }
+  }, [])
 
-    const newLocation: VisitedLocation = {
+  // Salvar cidades visitadas no localStorage
+  const saveCitiesToStorage = (cities: VisitedCity[]) => {
+    localStorage.setItem('visitedCities', JSON.stringify(cities))
+  }
+
+  const handleAddLocation = (location: { type: 'city', name: string, id: string, coordinates: { lat: number, lon: number } }) => {
+    const newCity: VisitedCity = {
       id: location.id,
-      type: location.type,
+      type: 'city',
       name: location.name,
-      coordinates
+      displayName: location.name,
+      coordinates: [location.coordinates.lon, location.coordinates.lat],
+      country: 'Unknown', // Será preenchido pela API
+      state: undefined
     }
 
-    setVisitedLocations(prev => [...prev, newLocation])
+    const updatedCities = [...visitedCities, newCity]
+    setVisitedCities(updatedCities)
+    saveCitiesToStorage(updatedCities)
     onPlaceToggle(location.id)
+
+    // Adicionar pin no mapa
+    if (map.current && map.current.isStyleLoaded()) {
+      addCityPin(newCity)
+    }
+  }
+
+  const addCityPin = (city: VisitedCity) => {
+    if (!map.current || !map.current.isStyleLoaded()) return
+
+    // Criar elemento HTML para o pin
+    const el = document.createElement('div')
+    el.className = 'city-pin'
+    el.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-icon">🏙️</div>
+        <div class="pin-label">${city.name}</div>
+      </div>
+    `
+
+    // Adicionar o pin ao mapa
+    new maplibregl.Marker(el)
+      .setLngLat(city.coordinates)
+      .addTo(map.current)
+
+    // Centralizar o mapa na nova cidade
+    map.current.flyTo({
+      center: city.coordinates,
+      zoom: Math.max(map.current.getZoom(), 8),
+      duration: 2000
+    })
+  }
+
+  // Adicionar todos os pins existentes quando o mapa carregar
+  const addAllCityPins = () => {
+    if (!map.current || !map.current.isStyleLoaded()) return
+    
+    visitedCities.forEach(city => {
+      addCityPin(city)
+    })
   }
 
   useEffect(() => {
@@ -120,11 +115,9 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
     console.log('MapLibre:', maplibregl)
 
     try {
-      // Verificar se o container tem dimensões
       const container = mapContainer.current
       console.log('Container dimensions:', container.offsetWidth, container.offsetHeight)
 
-      // Inicializar o mapa com configurações mais simples
       map.current = new maplibregl.Map({
         container: container,
         style: {
@@ -153,10 +146,12 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
         maxZoom: 18
       })
 
-      // Eventos do mapa
       map.current.on('load', () => {
         console.log('✅ Mapa carregado com sucesso!')
         setMapError(null)
+        
+        // Adicionar todos os pins existentes
+        addAllCityPins()
       })
 
       map.current.on('error', (e) => {
@@ -181,7 +176,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
         map.current = null
       }
     }
-  }, [isClient])
+  }, [isClient, visitedCities])
 
   if (!isClient) {
     return (
@@ -221,21 +216,31 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
         style={{ minHeight: '384px' }}
       />
 
-      {/* Botão Adicionar Local */}
+      {/* Botão Adicionar Cidade */}
       <div className="absolute top-4 right-4 z-10">
         <button
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
-          title="Adicionar local visitado"
+          title="Adicionar cidade visitada"
         >
-          <span className="text-lg">📍</span>
-          <span className="text-sm font-medium">Adicionar Local</span>
+          <span className="text-lg">🏙️</span>
+          <span className="text-sm font-medium">Adicionar Cidade</span>
         </button>
       </div>
 
+      {/* Contador de Cidades */}
+      {visitedCities.length > 0 && (
+        <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">{visitedCities.length}</div>
+            <div className="text-xs text-gray-600">Cidades visitadas</div>
+          </div>
+        </div>
+      )}
+
       {/* Instruções */}
       {!isTipClosed && (
-        <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
+        <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-3 max-w-xs z-10">
           <div className="flex items-start justify-between gap-2">
             <p className="text-xs text-gray-600">
               💡 <strong>Dica:</strong> Use os controles para zoom, clique e arraste para navegar.
@@ -251,12 +256,40 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
         </div>
       )}
 
-      {/* Modal de Adicionar Local */}
+      {/* Modal de Adicionar Cidade */}
       <AddLocationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddLocation={handleAddLocation}
       />
+
+      {/* Estilos CSS para os pins */}
+      <style jsx>{`
+        .city-pin {
+          cursor: pointer;
+        }
+        .pin-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+        .pin-icon {
+          font-size: 24px;
+          margin-bottom: 4px;
+        }
+        .pin-label {
+          background: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 10px;
+          white-space: nowrap;
+          max-width: 100px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      `}</style>
     </div>
   )
 }
