@@ -62,7 +62,7 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
     try {
       // Photon (Komoot) - API gratuita, sem rate limits, TODAS as cidades
       const photonResponse = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=pt&limit=25&layer=city`,
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=en&limit=25&layer=city`,
         {
           headers: {
             'Accept': 'application/json',
