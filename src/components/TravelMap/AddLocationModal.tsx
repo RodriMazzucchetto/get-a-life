@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react'
 import { X } from 'lucide-react'
 
-// Sistema de busca em múltiplas fontes para TODAS as cidades do mundo
+// Sistema de busca com Photon (Komoot) - TODAS as cidades do mundo
 interface CityResult {
   id: string
   name: string
@@ -14,39 +14,30 @@ interface CityResult {
     lon: number
   }
   country: string
+  countryCode: string
   state?: string
 }
 
-// Tipos para as APIs externas
-interface NominatimPlace {
-  place_id: string
-  name: string
-  display_name: string
-  lat: string
-  lon: string
-  address?: {
-    country?: string
+// Interface para resposta da API Photon
+interface PhotonFeature {
+  type: string
+  geometry: {
+    type: string
+    coordinates: [number, number] // [lon, lat]
+  }
+  properties: {
+    name: string
+    country: string
+    countrycode: string
     state?: string
-    province?: string
-    region?: string
+    city?: string
+    osm_type: string
+    osm_id: string
   }
 }
 
-interface GeonamesPlace {
-  geonameId: string
-  name: string
-  lat: string
-  lng: string
-  adminName1?: string
-  countryName: string
-}
-
-interface ApiNinjasCity {
-  name: string
-  latitude: string
-  longitude: string
-  country: string
-  state?: string
+interface PhotonResponse {
+  features: PhotonFeature[]
 }
 
 interface AddLocationModalProps {
@@ -61,132 +52,62 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
   const [selectedLocation, setSelectedLocation] = useState<CityResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Sistema de busca em múltiplas fontes
+  // Busca com Photon (Komoot) - TODAS as cidades do mundo
   const searchCities = useCallback(async (query: string): Promise<CityResult[]> => {
     if (!query.trim() || query.length < 2) return []
     
     const searchTerm = query.toLowerCase().trim()
-    console.log('🔍 Buscando TODAS as cidades:', searchTerm)
-    
-    const results: CityResult[] = []
+    console.log('🔍 Buscando TODAS as cidades com Photon:', searchTerm)
     
     try {
-      // 1. PRIMEIRA FONTE: Nominatim (OpenStreetMap) - 100+ milhões de lugares
-      const nominatimResponse = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&featuretype=city&limit=20&accept-language=pt,en`,
+      // Photon (Komoot) - API gratuita, sem rate limits, TODAS as cidades
+      const photonResponse = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=pt&limit=25&layer=city`,
         {
           headers: {
+            'Accept': 'application/json',
             'User-Agent': 'GetALifeApp/1.0'
           }
         }
       )
       
-      if (nominatimResponse.ok) {
-        const nominatimData: NominatimPlace[] = await nominatimResponse.json()
-        nominatimData.forEach((place: NominatimPlace) => {
-          if (place.lat && place.lon) {
-            results.push({
-              id: `nominatim-${place.place_id}`,
-              name: place.name || place.display_name.split(',')[0],
+      if (photonResponse.ok) {
+        const photonData: PhotonResponse = await photonResponse.json()
+        
+        const results: CityResult[] = photonData.features
+          .filter(feature => 
+            feature.geometry?.coordinates && 
+            feature.properties?.name &&
+            feature.properties?.country
+          )
+          .map(feature => {
+            const [lon, lat] = feature.geometry.coordinates
+            const cityName = feature.properties.city || feature.properties.name
+            
+            return {
+              id: `${feature.properties.osm_type}-${feature.properties.osm_id}`,
+              name: cityName,
               type: 'city',
-              displayName: place.display_name,
+              displayName: `${cityName}, ${feature.properties.state || ''}, ${feature.properties.country}`.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, ''),
               coordinates: {
-                lat: parseFloat(place.lat),
-                lon: parseFloat(place.lon)
+                lat: lat,
+                lon: lon
               },
-              country: place.address?.country || 'Desconhecido',
-              state: place.address?.state || place.address?.province || place.address?.region
-            })
-          }
-        })
-      }
-      
-      // 2. SEGUNDA FONTE: GeoNames - Base oficial com 11 milhões de cidades
-      const geonamesResponse = await fetch(
-        `https://secure.geonames.org/searchJSON?q=${encodeURIComponent(query)}&maxRows=20&featureClass=P&featureCode=PPL&featureCode=PPLA&featureCode=PPLA2&featureCode=PPLA3&featureCode=PPLA4&username=demo`,
-        {
-          headers: {
-            'Accept': 'application/json'
-          }
-        }
-      )
-      
-      if (geonamesResponse.ok) {
-        const geonamesData: { geonames?: GeonamesPlace[] } = await geonamesResponse.json()
-        if (geonamesData.geonames) {
-          geonamesData.geonames.forEach((place: GeonamesPlace) => {
-            if (place.lat && place.lng) {
-              results.push({
-                id: `geonames-${place.geonameId}`,
-                name: place.name,
-                type: 'city',
-                displayName: `${place.name}, ${place.adminName1 || ''}, ${place.countryName}`.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, ''),
-                coordinates: {
-                  lat: parseFloat(place.lat),
-                  lon: parseFloat(place.lng)
-                },
-                country: place.countryName,
-                state: place.adminName1
-              })
+              country: feature.properties.country,
+              countryCode: feature.properties.countrycode?.toLowerCase() || '',
+              state: feature.properties.state
             }
           })
-        }
-      }
-      
-      // 3. TERCEIRA FONTE: API de cidades do mundo (fallback)
-      const citiesResponse = await fetch(
-        `https://api.api-ninjas.com/v1/city?name=${encodeURIComponent(query)}&limit=20`,
-        {
-          headers: {
-            'X-Api-Key': 'demo' // Usar chave real em produção
-          }
-        }
-      )
-      
-      if (citiesResponse.ok) {
-        const citiesData: ApiNinjasCity[] = await citiesResponse.json()
-        citiesData.forEach((city: ApiNinjasCity) => {
-          if (city.latitude && city.longitude) {
-            results.push({
-              id: `cities-${city.name}-${city.country}`,
-              name: city.name,
-              type: 'city',
-              displayName: `${city.name}, ${city.state || ''}, ${city.country}`.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, ''),
-              coordinates: {
-                lat: parseFloat(city.latitude),
-                lon: parseFloat(city.longitude)
-              },
-              country: city.country,
-              state: city.state
-            })
-          }
-        })
+        
+        console.log('📍 Cidades encontradas com Photon:', results.length)
+        return results
       }
       
     } catch (error) {
-      console.error('❌ Erro ao buscar cidades:', error)
+      console.error('❌ Erro ao buscar cidades com Photon:', error)
     }
     
-    // Remover duplicatas e ordenar por relevância
-    const uniqueResults = results.filter((result, index, self) => 
-      index === self.findIndex(r => 
-        r.name.toLowerCase() === result.name.toLowerCase() && 
-        r.country.toLowerCase() === result.country.toLowerCase()
-      )
-    )
-    
-    // Ordenar por relevância (nome exato primeiro)
-    uniqueResults.sort((a, b) => {
-      const aExact = a.name.toLowerCase() === searchTerm
-      const bExact = b.name.toLowerCase() === searchTerm
-      if (aExact && !bExact) return -1
-      if (!aExact && bExact) return 1
-      return a.name.localeCompare(b.name)
-    })
-    
-    console.log('📍 Resultados encontrados:', uniqueResults.length)
-    return uniqueResults.slice(0, 25) // Retornar até 25 resultados
-    
+    return []
   }, [])
 
   // Busca com debounce
@@ -305,8 +226,19 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
                   selectedLocation?.id === location.id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
-                <div className="font-medium text-gray-900">{location.name}</div>
-                <div className="text-sm text-gray-600">{location.displayName}</div>
+                <div className="flex items-center gap-3">
+                  {location.countryCode && (
+                    <img 
+                      src={`https://flagcdn.com/${location.countryCode}.svg`}
+                      alt={location.country}
+                      className="w-6 h-4 rounded"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{location.name}</div>
+                    <div className="text-sm text-gray-600">{location.displayName}</div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -335,7 +267,7 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
         </div>
 
         <div className="mt-4 text-xs text-gray-500 text-center">
-          🔍 Buscando em <strong>MÚLTIPLAS BASES</strong> com <strong>TODAS as cidades do mundo</strong>
+          🔍 Powered by <strong>Photon (Komoot)</strong> - <strong>TODAS as cidades do mundo</strong>
         </div>
       </div>
     </div>
