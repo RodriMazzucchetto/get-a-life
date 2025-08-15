@@ -25,70 +25,76 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
   const [visitedLocations, setVisitedLocations] = useState<VisitedLocation[]>([])
   const [mapError, setMapError] = useState<string | null>(null)
 
-  const handleAddLocation = (location: { type: 'city' | 'state' | 'country', name: string, id: string }) => {
+  const handleAddLocation = (location: { type: 'city' | 'state' | 'country', name: string, id: string, coordinates?: { lat: number, lon: number } }) => {
     let coordinates: [number, number] = [0, 0]
     
-    if (location.type === 'city') {
-      const cityCoords: Record<string, [number, number]> = {
-        'curitiba': [-49.2671, -25.4289],
-        'são paulo': [-46.6333, -23.5505],
-        'rio de janeiro': [-43.1729, -22.9068],
-        'belo horizonte': [-43.9345, -19.9167],
-        'brasília': [-47.8822, -15.7942],
-        'salvador': [-38.5011, -12.9714],
-        'fortaleza': [-38.5267, -3.7319],
-        'manaus': [-60.0217, -3.1190],
-        'recife': [-34.8770, -8.0476],
-        'porto alegre': [-51.2177, -30.0346],
-        'goiânia': [-49.2653, -16.6864],
-        'guarulhos': [-46.5339, -23.4543],
-        'campinas': [-47.0616, -22.9064],
-        'natal': [-35.2090, -5.7945]
-      }
-      coordinates = cityCoords[location.name.toLowerCase()] || [0, 0]
-    } else if (location.type === 'state') {
-      const stateCoords: Record<string, [number, number]> = {
-        'paraná': [-52.0215, -25.2521],
-        'são paulo': [-46.6333, -23.5505],
-        'rio de janeiro': [-43.1729, -22.9068],
-        'minas gerais': [-43.9345, -19.9167],
-        'bahia': [-38.5011, -12.9714],
-        'rio grande do sul': [-51.2177, -30.0346],
-        'pernambuco': [-34.8770, -8.0476],
-        'ceará': [-38.5267, -3.7319],
-        'pará': [-48.4898, -1.4554],
-        'santa catarina': [-50.2189, -27.2423],
-        'goiás': [-49.2653, -16.6864],
-        'maranhão': [-44.3028, -2.5297],
-        'amazonas': [-60.0217, -3.1190],
-        'mato grosso': [-56.0974, -15.6010],
-        'mato grosso do sul': [-54.6478, -20.4435]
-      }
-      coordinates = stateCoords[location.name.toLowerCase()] || [0, 0]
+    // Se temos coordenadas da API, usamos elas
+    if (location.coordinates) {
+      coordinates = [location.coordinates.lon, location.coordinates.lat]
     } else {
-      const countryCoords: Record<string, [number, number]> = {
-        'brasil': [-51.9253, -14.2350],
-        'argentina': [-63.6167, -38.4161],
-        'chile': [-71.5430, -35.6751],
-        'uruguai': [-55.7658, -32.5228],
-        'paraguai': [-58.4438, -23.4425],
-        'bolívia': [-63.5887, -16.2902],
-        'peru': [-75.0152, -9.1900],
-        'colômbia': [-74.2973, 4.5709],
-        'venezuela': [-66.5897, 6.4238],
-        'equador': [-78.1834, -1.8312],
-        'estados unidos': [-98.5795, 39.8283],
-        'canadá': [-106.3468, 56.1304],
-        'méxico': [-102.5528, 23.6345],
-        'frança': [2.2137, 46.2276],
-        'alemanha': [10.4515, 51.1657],
-        'itália': [12.5674, 41.8719],
-        'espanha': [-3.7492, 40.4637],
-        'portugal': [-8.2245, 39.3999],
-        'reino unido': [-3.4360, 55.3781],
-        'japão': [138.2529, 36.2048]
+      // Fallback para coordenadas hardcoded (caso a API falhe)
+      if (location.type === 'city') {
+        const cityCoords: Record<string, [number, number]> = {
+          'curitiba': [-49.2671, -25.4289],
+          'são paulo': [-46.6333, -23.5505],
+          'rio de janeiro': [-43.1729, -22.9068],
+          'belo horizonte': [-43.9345, -19.9167],
+          'brasília': [-47.8822, -15.7942],
+          'salvador': [-38.5011, -12.9714],
+          'fortaleza': [-38.5267, -3.7319],
+          'manaus': [-60.0217, -3.1190],
+          'recife': [-34.8770, -8.0476],
+          'porto alegre': [-51.2177, -30.0346],
+          'goiânia': [-49.2653, -16.6864],
+          'guarulhos': [-46.5339, -23.4543],
+          'campinas': [-47.0616, -22.9064],
+          'natal': [-35.2090, -5.7945]
+        }
+        coordinates = cityCoords[location.name.toLowerCase()] || [0, 0]
+      } else if (location.type === 'state') {
+        const stateCoords: Record<string, [number, number]> = {
+          'paraná': [-52.0215, -25.2521],
+          'são paulo': [-46.6333, -23.5505],
+          'rio de janeiro': [-43.1729, -22.9068],
+          'minas gerais': [-43.9345, -19.9167],
+          'bahia': [-38.5011, -12.9714],
+          'rio grande do sul': [-51.2177, -30.0346],
+          'pernambuco': [-34.8770, -8.0476],
+          'ceará': [-38.5267, -3.7319],
+          'pará': [-48.4898, -1.4554],
+          'santa catarina': [-50.2189, -27.2423],
+          'goiás': [-49.2653, -16.6864],
+          'maranhão': [-44.3028, -2.5297],
+          'amazonas': [-60.0217, -3.1190],
+          'mato grosso': [-56.0974, -15.6010],
+          'mato grosso do sul': [-54.6478, -20.4435]
+        }
+        coordinates = stateCoords[location.name.toLowerCase()] || [0, 0]
+      } else {
+        const countryCoords: Record<string, [number, number]> = {
+          'brasil': [-51.9253, -14.2350],
+          'argentina': [-63.6167, -38.4161],
+          'chile': [-71.5430, -35.6751],
+          'uruguai': [-55.7658, -32.5228],
+          'paraguai': [-58.4438, -23.4425],
+          'bolívia': [-63.5887, -16.2902],
+          'peru': [-75.0152, -9.1900],
+          'colômbia': [-74.2973, 4.5709],
+          'venezuela': [-66.5897, 6.4238],
+          'equador': [-78.1834, -1.8312],
+          'estados unidos': [-98.5795, 39.8283],
+          'canadá': [-106.3468, 56.1304],
+          'méxico': [-102.5528, 23.6345],
+          'frança': [2.2137, 46.2276],
+          'alemanha': [10.4515, 51.1657],
+          'itália': [12.5674, 41.8719],
+          'espanha': [-3.7492, 40.4637],
+          'portugal': [-8.2245, 39.3999],
+          'reino unido': [-3.4360, 55.3781],
+          'japão': [138.2529, 36.2048]
+        }
+        coordinates = countryCoords[location.name.toLowerCase()] || [0, 0]
       }
-      coordinates = countryCoords[location.name.toLowerCase()] || [0, 0]
     }
 
     const newLocation: VisitedLocation = {
