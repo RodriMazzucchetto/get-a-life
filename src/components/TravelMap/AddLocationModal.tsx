@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { X } from 'lucide-react'
 
 // Sistema de busca em múltiplas fontes para TODAS as cidades do mundo
@@ -13,6 +13,38 @@ interface CityResult {
     lat: number
     lon: number
   }
+  country: string
+  state?: string
+}
+
+// Tipos para as APIs externas
+interface NominatimPlace {
+  place_id: string
+  name: string
+  display_name: string
+  lat: string
+  lon: string
+  address?: {
+    country?: string
+    state?: string
+    province?: string
+    region?: string
+  }
+}
+
+interface GeonamesPlace {
+  geonameId: string
+  name: string
+  lat: string
+  lng: string
+  adminName1?: string
+  countryName: string
+}
+
+interface ApiNinjasCity {
+  name: string
+  latitude: string
+  longitude: string
   country: string
   state?: string
 }
@@ -50,8 +82,8 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
       )
       
       if (nominatimResponse.ok) {
-        const nominatimData = await nominatimResponse.json()
-        nominatimData.forEach((place: any) => {
+        const nominatimData: NominatimPlace[] = await nominatimResponse.json()
+        nominatimData.forEach((place: NominatimPlace) => {
           if (place.lat && place.lon) {
             results.push({
               id: `nominatim-${place.place_id}`,
@@ -80,9 +112,9 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
       )
       
       if (geonamesResponse.ok) {
-        const geonamesData = await geonamesResponse.json()
+        const geonamesData: { geonames?: GeonamesPlace[] } = await geonamesResponse.json()
         if (geonamesData.geonames) {
-          geonamesData.geonames.forEach((place: any) => {
+          geonamesData.geonames.forEach((place: GeonamesPlace) => {
             if (place.lat && place.lng) {
               results.push({
                 id: `geonames-${place.geonameId}`,
@@ -112,8 +144,8 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
       )
       
       if (citiesResponse.ok) {
-        const citiesData = await citiesResponse.json()
-        citiesData.forEach((city: any) => {
+        const citiesData: ApiNinjasCity[] = await citiesResponse.json()
+        citiesData.forEach((city: ApiNinjasCity) => {
           if (city.latitude && city.longitude) {
             results.push({
               id: `cities-${city.name}-${city.country}`,
@@ -269,7 +301,7 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
               <div
                 key={location.id}
                 onClick={() => handleLocationSelect(location)}
-                className={`p-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
+                className={`p-3 cursor-pointer hover:bg-gray-100 border-b border-gray-200 last:border-b-0 ${
                   selectedLocation?.id === location.id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
