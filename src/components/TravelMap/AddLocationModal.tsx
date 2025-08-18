@@ -91,10 +91,10 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
             const [lon, lat] = feature.geometry.coordinates
             const cityName = feature.properties.city || feature.properties.name
             
-            return {
+            const result: CityResult = {
               id: `${feature.properties.osm_type}-${feature.properties.osm_id}`,
               name: cityName,
-              type: 'city',
+              type: 'city' as const,
               displayName: `${cityName}, ${feature.properties.state || ''}, ${feature.properties.country}`.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, ''),
               coordinates: {
                 lat: lat,
@@ -104,6 +104,15 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
               countryCode: feature.properties.countrycode?.toLowerCase() || '',
               state: feature.properties.state
             }
+            
+            console.log('🏙️ Cidade processada:', {
+              name: result.name,
+              country: result.country,
+              state: result.state,
+              rawCountry: feature.properties.country
+            })
+            
+            return result
           })
         
         console.log('📍 Cidades encontradas com Photon:', results.length)

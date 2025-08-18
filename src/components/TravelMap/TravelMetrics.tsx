@@ -28,6 +28,13 @@ export default function TravelMetrics({ visitedCities }: TravelMetricsProps) {
   const uniqueCountries = new Set(visitedCities.map(city => city.country))
   const visitedCountriesCount = uniqueCountries.size
   
+  // Debug temporário
+  console.log('🔍 DEBUG TravelMetrics:')
+  console.log('📊 Total de cidades:', visitedCities.length)
+  console.log('🏙️ Cidades:', visitedCities.map(c => ({ name: c.name, country: c.country, state: c.state })))
+  console.log('🌍 Países únicos:', Array.from(uniqueCountries))
+  console.log('📈 Contagem de países:', visitedCountriesCount)
+  
 
 
   // Calcular porcentagem conhecida do mundo

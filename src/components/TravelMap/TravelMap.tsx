@@ -55,6 +55,8 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     country: string,
     state?: string
   }) => {
+    console.log('🔍 DEBUG TravelMap - Location recebida:', location)
+    
     const newCity: VisitedCity = {
       id: location.id,
       type: 'city',
@@ -64,6 +66,8 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       country: location.country,
       state: location.state
     }
+    
+    console.log('🏙️ DEBUG TravelMap - Nova cidade criada:', newCity)
 
     const updatedCities = [...visitedCities, newCity]
     setVisitedCities(updatedCities)

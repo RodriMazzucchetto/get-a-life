@@ -31,10 +31,13 @@ export default function TravelsPage() {
     if (savedCities) {
       try {
         const cities = JSON.parse(savedCities)
+        console.log('🔍 DEBUG TravelsPage - Cidades carregadas do localStorage:', cities)
         setVisitedCities(cities)
       } catch (error) {
         console.error('Erro ao carregar cidades:', error)
       }
+    } else {
+      console.log('🔍 DEBUG TravelsPage - Nenhuma cidade encontrada no localStorage')
     }
   }, [])
 
