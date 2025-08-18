@@ -7,6 +7,7 @@ import AddLocationModal from './AddLocationModal'
 interface TravelMapProps {
   visitedPlaces: string[]
   onPlaceToggle: (placeId: string) => void
+  onCitiesUpdate?: (cities: VisitedCity[]) => void
 }
 
 interface VisitedCity {
@@ -19,7 +20,7 @@ interface VisitedCity {
   state?: string
 }
 
-export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapProps) {
+export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate }: TravelMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
   const [isClient, setIsClient] = useState(false)
@@ -62,9 +63,37 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle }: TravelMapPro
     saveCitiesToStorage(updatedCities)
     onPlaceToggle(location.id)
 
+    // Notificar a página principal sobre a atualização das cidades
+    if (onCitiesUpdate) {
+      onCitiesUpdate(updatedCities)
+    }
+
     // Adicionar pin no mapa
     if (map.current && map.current.isStyleLoaded()) {
       addCityPin(newCity)
+    }
+  }
+
+  const handleRemoveCity = (cityId: string) => {
+    const updatedCities = visitedCities.filter(city => city.id !== cityId)
+    setVisitedCities(updatedCities)
+    saveCitiesToStorage(updatedCities)
+    
+    // Notificar a página principal sobre a atualização das cidades
+    if (onCitiesUpdate) {
+      onCitiesUpdate(updatedCities)
+    }
+
+    // Remover pin do mapa (será recriado quando o mapa for recarregado)
+    if (map.current && map.current.isStyleLoaded()) {
+      // Limpar todos os pins e recriar
+      const markers = document.querySelectorAll('.city-pin')
+      markers.forEach(marker => marker.remove())
+      
+      // Recriar pins restantes
+      updatedCities.forEach(city => {
+        addCityPin(city)
+      })
     }
   }
 
