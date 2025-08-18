@@ -3,21 +3,11 @@
 import { useState, useEffect } from 'react'
 import TravelMap from '@/components/TravelMap/TravelMap'
 import TravelMetrics from '@/components/TravelMap/TravelMetrics'
+import { VisitedCity } from '@/types/travel'
 
 export default function TravelsPage() {
   const [loading, setLoading] = useState(true)
   const [visitedCities, setVisitedCities] = useState<VisitedCity[]>([])
-
-  // Interface para cidades visitadas
-  interface VisitedCity {
-    id: string
-    type: 'city'
-    name: string
-    displayName: string
-    coordinates: [number, number]
-    country: string
-    state?: string
-  }
 
   // Total de países no mundo (padrão reconhecido)
   const TOTAL_WORLD_COUNTRIES = 195

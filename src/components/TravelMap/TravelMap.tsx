@@ -3,21 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import AddLocationModal from './AddLocationModal'
+import { VisitedCity, CityLocation } from '@/types/travel'
 
 interface TravelMapProps {
   visitedPlaces: string[]
   onPlaceToggle: (placeId: string) => void
   onCitiesUpdate?: (cities: VisitedCity[]) => void
-}
-
-interface VisitedCity {
-  id: string
-  type: 'city'
-  name: string
-  displayName: string
-  coordinates: [number, number]
-  country: string
-  state?: string
 }
 
 export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate }: TravelMapProps) {
@@ -47,14 +38,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     localStorage.setItem('visitedCities', JSON.stringify(cities))
   }
 
-  const handleAddLocation = (location: { 
-    type: 'city', 
-    name: string, 
-    id: string, 
-    coordinates: { lat: number, lon: number },
-    country: string,
-    state?: string
-  }) => {
+  const handleAddLocation = (location: CityLocation) => {
     console.log('🔍 DEBUG TravelMap - Location recebida:', location)
     
     const newCity: VisitedCity = {

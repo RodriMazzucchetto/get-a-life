@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { X } from 'lucide-react'
+import { CityLocation } from '@/types/travel'
 
 // Sistema de busca com Photon (Komoot) - TODAS as cidades do mundo
 interface CityResult {
@@ -43,14 +44,7 @@ interface PhotonResponse {
 interface AddLocationModalProps {
   isOpen: boolean
   onClose: () => void
-  onAddLocation: (location: { 
-    type: 'city', 
-    name: string, 
-    id: string, 
-    coordinates: { lat: number, lon: number },
-    country: string,
-    state?: string
-  }) => void
+  onAddLocation: (location: CityLocation) => void
 }
 
 export default function AddLocationModal({ isOpen, onClose, onAddLocation }: AddLocationModalProps) {

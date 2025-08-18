@@ -1,16 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-
-interface VisitedCity {
-  id: string
-  type: 'city'
-  name: string
-  displayName: string
-  coordinates: [number, number]
-  country: string
-  state?: string
-}
+import { VisitedCity } from '@/types/travel'
 
 interface TravelMetricsProps {
   visitedCities: VisitedCity[]
