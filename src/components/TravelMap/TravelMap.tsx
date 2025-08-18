@@ -146,6 +146,13 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
   }
 
   const handleRemoveCity = (cityId: string) => {
+    console.log(`🗑️ Removendo cidade com ID: ${cityId}`)
+    
+    const cityToRemove = visitedCities.find(city => city.id === cityId)
+    if (cityToRemove) {
+      console.log(`🗑️ Removendo cidade: ${cityToRemove.name}`)
+    }
+    
     const updatedCities = visitedCities.filter(city => city.id !== cityId)
     setVisitedCities(updatedCities)
     saveCitiesToStorage(updatedCities)
@@ -155,9 +162,9 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       onCitiesUpdate(updatedCities)
     }
 
-    // Remover pin do mapa (será recriado quando o mapa for recarregado)
+    // Remover pin do mapa e recriar todos os pins restantes
     if (map.current && map.current.isStyleLoaded()) {
-      // Limpar todos os pins e recriar
+      // Limpar todos os pins existentes
       const markers = document.querySelectorAll('.city-pin')
       markers.forEach(marker => marker.remove())
       
@@ -165,6 +172,8 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       updatedCities.forEach(city => {
         addCityPin(city)
       })
+      
+      console.log(`✅ Cidade removida. Total de cidades restantes: ${updatedCities.length}`)
     }
   }
 
@@ -181,6 +190,11 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       </div>
     `
 
+    // Adicionar evento de clique para deletar cidade
+    el.addEventListener('click', () => {
+      showDeleteConfirmation(city)
+    })
+
     // Adicionar o pin ao mapa
     new maplibregl.Marker(el)
       .setLngLat(city.coordinates)
@@ -192,6 +206,139 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       zoom: Math.max(map.current.getZoom(), 8),
       duration: 2000
     })
+  }
+
+  // Função para mostrar confirmação de exclusão
+  const showDeleteConfirmation = (city: VisitedCity) => {
+    // Remover confirmação anterior se existir
+    const existingConfirmation = document.querySelector('.delete-confirmation')
+    if (existingConfirmation) {
+      existingConfirmation.remove()
+    }
+
+    // Criar elemento de confirmação
+    const confirmation = document.createElement('div')
+    confirmation.className = 'delete-confirmation'
+    confirmation.innerHTML = `
+      <div class="delete-confirmation-content">
+        <div class="delete-confirmation-header">
+          <span class="text-lg">🗑️</span>
+          <h3 class="text-lg font-semibold">Remover cidade?</h3>
+        </div>
+        <p class="text-gray-600 mb-4">
+          Tem certeza que deseja remover <strong>${city.name}</strong> da lista de cidades visitadas?
+        </p>
+        <div class="delete-confirmation-actions">
+          <button class="delete-confirm-btn" data-city-id="${city.id}">
+            Sim, remover
+          </button>
+          <button class="delete-cancel-btn">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    `
+
+    // Adicionar estilos CSS inline
+    confirmation.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      padding: 24px;
+      z-index: 1000;
+      min-width: 320px;
+      border: 1px solid #e5e7eb;
+    `
+
+    // Adicionar ao body
+    document.body.appendChild(confirmation)
+
+    // Adicionar estilos para os botões
+    const style = document.createElement('style')
+    style.textContent = `
+      .delete-confirmation-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      
+      .delete-confirmation-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+      
+      .delete-confirm-btn {
+        background: #dc2626;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      
+      .delete-confirm-btn:hover {
+        background: #b91c1c;
+      }
+      
+      .delete-cancel-btn {
+        background: #6b7280;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      
+      .delete-cancel-btn:hover {
+        background: #4b5563;
+      }
+    `
+    document.head.appendChild(style)
+
+    // Adicionar overlay de fundo
+    const overlay = document.createElement('div')
+    overlay.className = 'delete-confirmation-overlay'
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    `
+    document.body.appendChild(overlay)
+
+    // Event listeners para os botões
+    const confirmBtn = confirmation.querySelector('.delete-confirm-btn')
+    const cancelBtn = confirmation.querySelector('.delete-cancel-btn')
+
+    confirmBtn?.addEventListener('click', () => {
+      const cityId = confirmBtn.getAttribute('data-city-id')
+      if (cityId) {
+        handleRemoveCity(cityId)
+      }
+      removeConfirmation()
+    })
+
+    cancelBtn?.addEventListener('click', removeConfirmation)
+    overlay.addEventListener('click', removeConfirmation)
+
+    // Função para remover confirmação
+    function removeConfirmation() {
+      confirmation.remove()
+      overlay.remove()
+    }
   }
 
   // Adicionar todos os pins existentes quando o mapa carregar
