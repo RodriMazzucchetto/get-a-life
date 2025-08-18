@@ -20,18 +20,103 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
   const [visitedCities, setVisitedCities] = useState<VisitedCity[]>([])
   const [mapError, setMapError] = useState<string | null>(null)
 
+  // Função para buscar informações atualizadas de uma cidade
+  const fetchCityInfo = async (cityName: string, coordinates: [number, number]): Promise<{ country: string, state?: string } | null> => {
+    try {
+      // Usar a API Photon para buscar informações da cidade
+      const [lon, lat] = coordinates
+      const response = await fetch(
+        `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}&limit=1`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'GetALifeApp/1.0'
+          }
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.features && data.features.length > 0) {
+          const feature = data.features[0]
+          return {
+            country: feature.properties?.country || 'Unknown',
+            state: feature.properties?.state
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar informações da cidade:', error)
+    }
+    return null
+  }
+
+  // Função para atualizar cidades antigas
+  const updateOldCities = async (cities: VisitedCity[]): Promise<VisitedCity[]> => {
+    const updatedCities: VisitedCity[] = []
+    let hasUpdates = false
+
+    for (const city of cities) {
+      // Se a cidade não tem país ou tem país "Unknown", buscar informações atualizadas
+      if (!city.country || city.country === 'Unknown') {
+        console.log(`🔄 Atualizando cidade antiga: ${city.name}`)
+        
+        const cityInfo = await fetchCityInfo(city.name, city.coordinates)
+        if (cityInfo) {
+          const updatedCity: VisitedCity = {
+            ...city,
+            country: cityInfo.country,
+            state: cityInfo.state
+          }
+          updatedCities.push(updatedCity)
+          hasUpdates = true
+          console.log(`✅ Cidade atualizada: ${city.name} → ${cityInfo.country}`)
+        } else {
+          // Se não conseguir buscar, manter como está
+          updatedCities.push(city)
+        }
+      } else {
+        updatedCities.push(city)
+      }
+    }
+
+    if (hasUpdates) {
+      console.log('🔄 Cidades antigas atualizadas com sucesso!')
+      // Salvar no localStorage
+      localStorage.setItem('visitedCities', JSON.stringify(updatedCities))
+      // Notificar a página principal
+      if (onCitiesUpdate) {
+        onCitiesUpdate(updatedCities)
+      }
+    }
+
+    return updatedCities
+  }
+
   // Carregar cidades visitadas do localStorage
   useEffect(() => {
     const savedCities = localStorage.getItem('visitedCities')
     if (savedCities) {
       try {
         const cities = JSON.parse(savedCities)
-        setVisitedCities(cities)
+        console.log('🔍 DEBUG TravelMap - Cidades carregadas do localStorage:', cities)
+        
+        // Verificar se há cidades antigas que precisam ser atualizadas
+        const hasOldCities = cities.some((city: VisitedCity) => !city.country || city.country === 'Unknown')
+        
+        if (hasOldCities) {
+          console.log('🔄 Detectadas cidades antigas, atualizando...')
+          updateOldCities(cities).then(updatedCities => {
+            setVisitedCities(updatedCities)
+          })
+        } else {
+          setVisitedCities(cities)
+        }
       } catch (error) {
         console.error('Erro ao carregar cidades:', error)
       }
     }
-  }, [])
+  }, [onCitiesUpdate])
 
   // Salvar cidades visitadas no localStorage
   const saveCitiesToStorage = (cities: VisitedCity[]) => {
@@ -240,16 +325,30 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
         style={{ minHeight: '384px' }}
       />
 
-      {/* Botão Adicionar Cidade */}
+      {/* Botão para adicionar cidade */}
       <div className="absolute top-4 right-4 z-10">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
-          title="Adicionar cidade visitada"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-colors"
         >
-          <span className="text-lg">🏙️</span>
-          <span className="text-sm font-medium">Adicionar Cidade</span>
+          <span className="text-lg">➕</span>
+          Adicionar Cidade
         </button>
+        
+        {/* Botão para atualizar cidades antigas */}
+        {visitedCities.some(city => !city.country || city.country === 'Unknown') && (
+          <button
+            onClick={async () => {
+              console.log('🔄 Atualizando cidades antigas manualmente...')
+              const updatedCities = await updateOldCities(visitedCities)
+              setVisitedCities(updatedCities)
+            }}
+            className="mt-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-colors w-full"
+          >
+            <span className="text-lg">🔄</span>
+            Atualizar Cidades Antigas
+          </button>
+        )}
       </div>
 
       {/* Contador de Cidades */}
