@@ -43,7 +43,14 @@ interface PhotonResponse {
 interface AddLocationModalProps {
   isOpen: boolean
   onClose: () => void
-  onAddLocation: (location: { type: 'city', name: string, id: string, coordinates: { lat: number, lon: number } }) => void
+  onAddLocation: (location: { 
+    type: 'city', 
+    name: string, 
+    id: string, 
+    coordinates: { lat: number, lon: number },
+    country: string,
+    state?: string
+  }) => void
 }
 
 export default function AddLocationModal({ isOpen, onClose, onAddLocation }: AddLocationModalProps) {
@@ -167,7 +174,9 @@ export default function AddLocationModal({ isOpen, onClose, onAddLocation }: Add
         type: 'city',
         name: selectedLocation.name,
         id: selectedLocation.id,
-        coordinates: selectedLocation.coordinates
+        coordinates: selectedLocation.coordinates,
+        country: selectedLocation.country,
+        state: selectedLocation.state
       })
       onClose()
       setSearchTerm('')

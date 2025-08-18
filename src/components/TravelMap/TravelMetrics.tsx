@@ -27,9 +27,11 @@ export default function TravelMetrics({ visitedCities }: TravelMetricsProps) {
   // Calcular países únicos visitados
   const uniqueCountries = new Set(visitedCities.map(city => city.country))
   const visitedCountriesCount = uniqueCountries.size
+  
+
 
   // Calcular porcentagem conhecida do mundo
-  const worldPercentage = Math.round((visitedCountriesCount / TOTAL_WORLD_COUNTRIES) * 100)
+  const worldPercentage = (visitedCountriesCount / TOTAL_WORLD_COUNTRIES) * 100
 
   // Carregar meta do usuário do localStorage
   useEffect(() => {
@@ -97,7 +99,9 @@ export default function TravelMetrics({ visitedCities }: TravelMetricsProps) {
           </div>
           <div className="ml-4">
             <p className="text-sm font-medium text-gray-600">% Conhecida do Mundo</p>
-            <p className="text-2xl font-bold text-gray-900">{worldPercentage}%</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {worldPercentage < 1 ? worldPercentage.toFixed(2) : worldPercentage.toFixed(1)}%
+            </p>
             <p className="text-xs text-gray-500">
               {visitedCountriesCount} de {TOTAL_WORLD_COUNTRIES} países
             </p>

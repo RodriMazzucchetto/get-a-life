@@ -47,15 +47,22 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     localStorage.setItem('visitedCities', JSON.stringify(cities))
   }
 
-  const handleAddLocation = (location: { type: 'city', name: string, id: string, coordinates: { lat: number, lon: number } }) => {
+  const handleAddLocation = (location: { 
+    type: 'city', 
+    name: string, 
+    id: string, 
+    coordinates: { lat: number, lon: number },
+    country: string,
+    state?: string
+  }) => {
     const newCity: VisitedCity = {
       id: location.id,
       type: 'city',
       name: location.name,
       displayName: location.name,
       coordinates: [location.coordinates.lon, location.coordinates.lat],
-      country: 'Unknown', // Será preenchido pela API
-      state: undefined
+      country: location.country,
+      state: location.state
     }
 
     const updatedCities = [...visitedCities, newCity]
