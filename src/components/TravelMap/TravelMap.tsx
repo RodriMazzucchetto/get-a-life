@@ -76,18 +76,17 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           updatedCities.push(city)
         }
       } else {
+        // Manter cidade que já tem informações completas
         updatedCities.push(city)
       }
     }
 
     if (hasUpdates) {
       console.log('🔄 Cidades antigas atualizadas com sucesso!')
+      console.log('📊 Total de cidades mantidas:', updatedCities.length)
       // Salvar no localStorage
       localStorage.setItem('visitedCities', JSON.stringify(updatedCities))
-      // Notificar a página principal
-      if (onCitiesUpdate) {
-        onCitiesUpdate(updatedCities)
-      }
+      // NÃO notificar aqui para evitar loop infinito
     }
 
     return updatedCities
@@ -100,23 +99,15 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       try {
         const cities = JSON.parse(savedCities)
         console.log('🔍 DEBUG TravelMap - Cidades carregadas do localStorage:', cities)
+        console.log('📊 Total de cidades encontradas:', cities.length)
         
-        // Verificar se há cidades antigas que precisam ser atualizadas
-        const hasOldCities = cities.some((city: VisitedCity) => !city.country || city.country === 'Unknown')
-        
-        if (hasOldCities) {
-          console.log('🔄 Detectadas cidades antigas, atualizando...')
-          updateOldCities(cities).then(updatedCities => {
-            setVisitedCities(updatedCities)
-          })
-        } else {
-          setVisitedCities(cities)
-        }
+        // Apenas carregar as cidades, sem atualização automática
+        setVisitedCities(cities)
       } catch (error) {
         console.error('Erro ao carregar cidades:', error)
       }
     }
-  }, [onCitiesUpdate])
+  }, [])
 
   // Salvar cidades visitadas no localStorage
   const saveCitiesToStorage = (cities: VisitedCity[]) => {
@@ -340,8 +331,20 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           <button
             onClick={async () => {
               console.log('🔄 Atualizando cidades antigas manualmente...')
+              console.log('📊 Cidades antes da atualização:', visitedCities.length)
+              
               const updatedCities = await updateOldCities(visitedCities)
+              console.log('📊 Cidades após atualização:', updatedCities.length)
+              
+              // Atualizar o estado local
               setVisitedCities(updatedCities)
+              
+              // Notificar a página principal sobre a atualização
+              if (onCitiesUpdate) {
+                onCitiesUpdate(updatedCities)
+              }
+              
+              console.log('✅ Atualização concluída!')
             }}
             className="mt-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-colors w-full"
           >
