@@ -42,7 +42,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Preparar dados para inserção
-    const citiesToInsert = cities.map((city: any) => ({
+    const citiesToInsert = cities.map((city: { 
+      name: string; 
+      displayName?: string; 
+      country: string; 
+      state?: string; 
+      coordinates: [number, number]; 
+    }) => ({
       user_id: user.id,
       city_name: city.name,
       display_name: city.displayName || city.name,
@@ -53,10 +59,9 @@ export async function POST(request: NextRequest) {
     }))
 
     // Inserir novas cidades
-    const { data: insertedCities, error: insertError } = await supabase
+    const { error: insertError } = await supabase
       .from('visited_cities')
       .insert(citiesToInsert)
-      .select()
 
     if (insertError) {
       console.error('❌ Erro ao inserir cidades:', insertError)
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calcular países únicos
-    const uniqueCountries = new Set(cities.map((city: any) => city.country))
+    const uniqueCountries = new Set(cities.map((city: { country: string }) => city.country))
     const countriesCount = uniqueCountries.size
 
     console.log(`✅ Sincronização concluída: ${cities.length} cidades em ${countriesCount} países`)
@@ -90,7 +95,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
     
