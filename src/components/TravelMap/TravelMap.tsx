@@ -162,13 +162,19 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     console.log(`🌍 DEBUG: Países antes da remoção: ${countriesBefore.size} - ${Array.from(countriesBefore)}`)
     console.log(`🌍 DEBUG: Países depois da remoção: ${countriesAfter.size} - ${Array.from(countriesAfter)}`)
     
+    // Atualizar estado local primeiro
     setVisitedCities(updatedCities)
+    
+    // Salvar no localStorage
     saveCitiesToStorage(updatedCities)
     
     // Notificar a página principal sobre a atualização das cidades
     if (onCitiesUpdate) {
       console.log(`📤 DEBUG: Notificando página principal sobre atualização de cidades`)
-      onCitiesUpdate(updatedCities)
+      // Usar setTimeout para garantir que o estado local seja atualizado primeiro
+      setTimeout(() => {
+        onCitiesUpdate(updatedCities)
+      }, 0)
     }
 
     // Remover pin do mapa e recriar todos os pins restantes
@@ -187,12 +193,6 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
 
     // Mostrar notificação de sucesso
     showSuccessNotification(cityToRemove?.name || 'Cidade')
-    
-    // Forçar limpeza e recálculo das métricas após um pequeno delay
-    setTimeout(() => {
-      console.log('⏰ DEBUG: Executando limpeza automática após remoção...')
-      cleanupOrphanCountries()
-    }, 100)
   }
 
   const addCityPin = (city: VisitedCity, isNewCity: boolean = false) => {
@@ -251,52 +251,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     }
   }
 
-  // Função para limpar países órfãos e recalcular métricas
-  const cleanupOrphanCountries = () => {
-    console.log('🧹 DEBUG: Iniciando limpeza de países órfãos...')
-    
-    // Recarregar cidades do localStorage para garantir sincronia
-    const savedCities = localStorage.getItem('visitedCities')
-    if (savedCities) {
-      try {
-        const cities = JSON.parse(savedCities)
-        console.log(`🔍 DEBUG: Cidades encontradas no localStorage: ${cities.length}`)
-        
-        // Calcular países únicos
-        const uniqueCountries = new Set(cities.map((city: VisitedCity) => city.country))
-        console.log(`🌍 DEBUG: Países únicos encontrados: ${uniqueCountries.size} - ${Array.from(uniqueCountries)}`)
-        
-        // Atualizar estado local
-        setVisitedCities(cities)
-        
-        // Notificar página principal
-        if (onCitiesUpdate) {
-          console.log('📤 DEBUG: Notificando página principal sobre limpeza')
-          onCitiesUpdate(cities)
-        }
-        
-        // Recriar pins no mapa
-        if (map.current && map.current.isStyleLoaded()) {
-          // Limpar todos os pins existentes
-          const markers = document.querySelectorAll('.city-pin')
-          markers.forEach(marker => marker.remove())
-          
-          // Recriar pins restantes
-          cities.forEach((city: VisitedCity) => {
-            addCityPin(city, false)
-          })
-          
-          console.log(`✅ DEBUG: Pins recriados após limpeza: ${cities.length}`)
-        }
-        
-        return cities
-      } catch (error) {
-        console.error('❌ Erro ao limpar países órfãos:', error)
-        return []
-      }
-    }
-    return []
-  }
+
 
   // Função para mostrar notificação de sucesso
   const showSuccessNotification = (cityName: string) => {
@@ -652,17 +607,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           </button>
         )}
 
-        {/* Botão para limpar países órfãos */}
-        <button
-          onClick={() => {
-            console.log('🧹 Forçando limpeza de países órfãos...')
-            cleanupOrphanCountries()
-          }}
-          className="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-colors w-full"
-        >
-          <span className="text-lg">🧹</span>
-          Limpar Países Órfãos
-        </button>
+
       </div>
 
 

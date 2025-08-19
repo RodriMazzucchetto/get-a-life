@@ -134,6 +134,11 @@ export default function TravelsPage() {
                       // Forçar re-render das métricas
                       console.log(`📊 DEBUG: Cidades após remoção da lista: ${updatedCities.length}`)
                       console.log(`🌍 DEBUG: Países únicos após remoção: ${new Set(updatedCities.map(c => c.country)).size}`)
+                      
+                      // Forçar atualização das métricas
+                      setTimeout(() => {
+                        setVisitedCities([...updatedCities])
+                      }, 0)
                     }}
                     className="text-red-500 hover:text-red-700 text-sm font-medium"
                     title="Remover cidade"

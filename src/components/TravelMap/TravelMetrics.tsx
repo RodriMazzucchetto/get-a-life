@@ -26,6 +26,12 @@ export default function TravelMetrics({ visitedCities }: TravelMetricsProps) {
   console.log('🌍 Países únicos:', Array.from(uniqueCountries))
   console.log('📈 Contagem de países:', visitedCountriesCount)
   
+  // Verificar se há países undefined ou vazios
+  const invalidCountries = visitedCities.filter(city => !city.country || city.country === 'Unknown')
+  if (invalidCountries.length > 0) {
+    console.log('⚠️ DEBUG: Cidades com países inválidos:', invalidCountries)
+  }
+  
 
 
   // Calcular porcentagem conhecida do mundo
