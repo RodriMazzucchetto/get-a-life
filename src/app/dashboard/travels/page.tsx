@@ -68,52 +68,84 @@ export default function TravelsPage() {
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">💡 Inspiração para Viagens</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Viagens Bate e Volta (1 dia) */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-center">
-              <div className="text-3xl mb-2">🚗</div>
-              <h3 className="font-medium text-gray-900 mb-1">Bate e Volta</h3>
-              <p className="text-xs text-gray-600 mb-2">1 dia</p>
-              <p className="text-xs text-gray-500">
-                Em breve: Sugestões de destinos próximos
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Sugestões de Destinos com IA */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-3">🤖</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Destinos Interessantes</h3>
+              <p className="text-sm text-gray-600">
+                Sugestões personalizadas baseadas na sua localização e preferências
               </p>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="bg-blue-50 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <span className="text-blue-600">📍</span>
+                  <span className="text-sm text-blue-800">Baseado na sua cidade: São Paulo</span>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <span className="text-green-600">🎯</span>
+                  <span className="text-sm text-green-800">Considerando seus interesses do onboarding</span>
+                </div>
+              </div>
+              
+              <div className="bg-purple-50 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <span className="text-purple-600">🌍</span>
+                  <span className="text-sm text-purple-800">Sugestões de IA personalizadas</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 text-center">
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                Gerar Sugestões
+              </button>
             </div>
           </div>
 
-          {/* Viagens de Fim de Semana (3 dias) */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-center">
-              <div className="text-3xl mb-2">🏖️</div>
-              <h3 className="font-medium text-gray-900 mb-1">Fim de Semana</h3>
-              <p className="text-xs text-gray-600 mb-2">3 dias</p>
-              <p className="text-xs text-gray-500">
-                Em breve: Destinos para aventuras curtas
+          {/* Wishlist de Viagens */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-3">⭐</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Wishlist de Viagens</h3>
+              <p className="text-sm text-gray-600">
+                Lugares que você gostaria de visitar um dia
               </p>
             </div>
-          </div>
-
-          {/* Viagens Longas (Férias) */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-center">
-              <div className="text-3xl mb-2">✈️</div>
-              <h3 className="font-medium text-gray-900 mb-1">Viagens Longas</h3>
-              <p className="text-xs text-gray-600 mb-2">Férias</p>
-              <p className="text-xs text-gray-500">
-                Em breve: Planejamento completo com IA
-              </p>
+            
+            <div className="space-y-3 mb-4">
+              <div className="bg-yellow-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-yellow-800">Japão - Tóquio</span>
+                  <button className="text-yellow-600 hover:text-yellow-800">🗑️</button>
+                </div>
+              </div>
+              
+              <div className="bg-yellow-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-yellow-800">Itália - Roma</span>
+                  <button className="text-yellow-600 hover:text-yellow-800">🗑️</button>
+                </div>
+              </div>
+              
+              <div className="bg-yellow-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-yellow-800">Nova Zelândia</span>
+                  <button className="text-yellow-600 hover:text-yellow-800">🗑️</button>
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* Preferências */}
-          <div className="bg-white rounded-lg shadow p-4">
+            
             <div className="text-center">
-              <div className="text-3xl mb-2">⚙️</div>
-              <h3 className="font-medium text-gray-900 mb-1">Preferências</h3>
-              <p className="text-xs text-gray-600 mb-2">Configurar</p>
-              <p className="text-xs text-gray-500">
-                Em breve: Personalize suas sugestões
-              </p>
+              <button className="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700 transition-colors">
+                + Adicionar Destino
+              </button>
             </div>
           </div>
         </div>
