@@ -373,8 +373,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
             'osm': {
               type: 'raster',
               tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-              tileSize: 256,
-              attribution: '© OpenStreetMap contributors'
+              tileSize: 256
             }
           },
           layers: [
@@ -501,15 +500,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
         )}
       </div>
 
-      {/* Contador de Cidades */}
-      {visitedCities.length > 0 && (
-        <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 z-10">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{visitedCities.length}</div>
-            <div className="text-xs text-gray-600">Cidades visitadas</div>
-          </div>
-        </div>
-      )}
+
 
       {/* Instruções */}
       {!isTipClosed && (
