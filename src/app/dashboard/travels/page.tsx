@@ -125,10 +125,15 @@ export default function TravelsPage() {
                   </div>
                   <button
                     onClick={() => {
+                      console.log(`🗑️ DEBUG: Removendo cidade ${city.name} da lista principal`)
                       // Remover cidade da lista e do localStorage
                       const updatedCities = visitedCities.filter(c => c.id !== city.id)
                       setVisitedCities(updatedCities)
                       localStorage.setItem('visitedCities', JSON.stringify(updatedCities))
+                      
+                      // Forçar re-render das métricas
+                      console.log(`📊 DEBUG: Cidades após remoção da lista: ${updatedCities.length}`)
+                      console.log(`🌍 DEBUG: Países únicos após remoção: ${new Set(updatedCities.map(c => c.country)).size}`)
                     }}
                     className="text-red-500 hover:text-red-700 text-sm font-medium"
                     title="Remover cidade"
