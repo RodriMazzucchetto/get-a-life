@@ -183,6 +183,8 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
   const addCityPin = (city: VisitedCity, isNewCity: boolean = false) => {
     if (!map.current || !map.current.isStyleLoaded()) return
 
+    console.log(`🔍 DEBUG: Criando pin para cidade: ${city.name}`)
+
     // Criar elemento HTML para o pin
     const el = document.createElement('div')
     el.className = 'city-pin'
@@ -194,15 +196,35 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       </div>
     `
 
-    // Adicionar evento de clique para deletar cidade
-    el.addEventListener('click', () => {
-      showDeleteConfirmation(city)
-    })
-
     // Adicionar o pin ao mapa
-    new maplibregl.Marker(el)
+    const marker = new maplibregl.Marker(el)
       .setLngLat(city.coordinates)
       .addTo(map.current)
+
+    // Adicionar evento de clique diretamente no elemento do marker
+    const markerElement = marker.getElement()
+    console.log(`🔍 DEBUG: Elemento do marker para ${city.name}:`, markerElement)
+
+    // Função para lidar com o clique
+    const handleClick = (e: Event) => {
+      console.log(`🖱️ DEBUG: Clique detectado no pin de ${city.name}`)
+      e.preventDefault()
+      e.stopPropagation()
+      showDeleteConfirmation(city)
+    }
+
+    // Adicionar evento de clique
+    markerElement.addEventListener('click', handleClick)
+    
+    // Também adicionar no elemento original para garantir
+    el.addEventListener('click', handleClick)
+
+    // Adicionar evento de mousedown para debug
+    markerElement.addEventListener('mousedown', (e) => {
+      console.log(`🖱️ DEBUG: Mousedown detectado no pin de ${city.name}`)
+    })
+
+    console.log(`✅ DEBUG: Pin criado e adicionado ao mapa para ${city.name}`)
 
     // Centralizar o mapa apenas para cidades novas (não para pins recriados)
     if (isNewCity) {
@@ -599,21 +621,29 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       {/* Estilos CSS para os pins */}
       <style jsx>{`
         .city-pin {
-          cursor: pointer;
+          cursor: pointer !important;
           transition: transform 0.2s ease;
+          pointer-events: auto !important;
+          z-index: 1000 !important;
+          position: relative;
         }
         .city-pin:hover {
           transform: scale(1.1);
+        }
+        .city-pin * {
+          pointer-events: none;
         }
         .pin-container {
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
+          pointer-events: none;
         }
         .pin-icon {
           font-size: 24px;
           margin-bottom: 4px;
+          pointer-events: none;
         }
         .pin-label {
           background: rgba(0, 0, 0, 0.8);
@@ -626,6 +656,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           overflow: hidden;
           text-overflow: ellipsis;
           margin-bottom: 2px;
+          pointer-events: none;
         }
         .pin-hint {
           background: rgba(59, 130, 246, 0.9);
@@ -636,6 +667,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           white-space: nowrap;
           opacity: 0;
           transition: opacity 0.3s ease;
+          pointer-events: none;
         }
         .city-pin:hover .pin-hint {
           opacity: 1;
