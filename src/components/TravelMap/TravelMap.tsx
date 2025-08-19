@@ -141,7 +141,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
 
     // Adicionar pin no mapa
     if (map.current && map.current.isStyleLoaded()) {
-      addCityPin(newCity)
+      addCityPin(newCity, true) // true = é cidade nova
     }
   }
 
@@ -168,16 +168,19 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       const markers = document.querySelectorAll('.city-pin')
       markers.forEach(marker => marker.remove())
       
-      // Recriar pins restantes
+      // Recriar pins restantes (sem centralizar o mapa)
       updatedCities.forEach(city => {
-        addCityPin(city)
+        addCityPin(city, false)
       })
       
       console.log(`✅ Cidade removida. Total de cidades restantes: ${updatedCities.length}`)
     }
+
+    // Mostrar notificação de sucesso
+    showSuccessNotification(cityToRemove?.name || 'Cidade')
   }
 
-  const addCityPin = (city: VisitedCity) => {
+  const addCityPin = (city: VisitedCity, isNewCity: boolean = false) => {
     if (!map.current || !map.current.isStyleLoaded()) return
 
     // Criar elemento HTML para o pin
@@ -187,6 +190,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       <div class="pin-container">
         <div class="pin-icon">🏙️</div>
         <div class="pin-label">${city.name}</div>
+        <div class="pin-hint">Clique para remover</div>
       </div>
     `
 
@@ -200,12 +204,77 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       .setLngLat(city.coordinates)
       .addTo(map.current)
 
-    // Centralizar o mapa na nova cidade
-    map.current.flyTo({
-      center: city.coordinates,
-      zoom: Math.max(map.current.getZoom(), 8),
-      duration: 2000
-    })
+    // Centralizar o mapa apenas para cidades novas (não para pins recriados)
+    if (isNewCity) {
+      map.current.flyTo({
+        center: city.coordinates,
+        zoom: Math.max(map.current.getZoom(), 8),
+        duration: 2000
+      })
+    }
+  }
+
+  // Função para mostrar notificação de sucesso
+  const showSuccessNotification = (cityName: string) => {
+    // Remover notificação anterior se existir
+    const existingNotification = document.querySelector('.success-notification')
+    if (existingNotification) {
+      existingNotification.remove()
+    }
+
+    // Criar notificação
+    const notification = document.createElement('div')
+    notification.className = 'success-notification'
+    notification.innerHTML = `
+      <div class="success-notification-content">
+        <span class="text-lg">✅</span>
+        <span class="text-sm">${cityName} removida com sucesso!</span>
+      </div>
+    `
+
+    // Adicionar estilos CSS inline
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #10b981;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      z-index: 1001;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      animation: slideIn 0.3s ease;
+    `
+
+    // Adicionar animação CSS
+    const style = document.createElement('style')
+    style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    `
+    document.head.appendChild(style)
+
+    // Adicionar ao body
+    document.body.appendChild(notification)
+
+    // Remover automaticamente após 3 segundos
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove()
+      }
+    }, 3000)
   }
 
   // Função para mostrar confirmação de exclusão
@@ -346,7 +415,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     if (!map.current || !map.current.isStyleLoaded()) return
     
     visitedCities.forEach(city => {
-      addCityPin(city)
+      addCityPin(city, false) // false = não é cidade nova
     })
   }
 
@@ -531,6 +600,10 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
       <style jsx>{`
         .city-pin {
           cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+        .city-pin:hover {
+          transform: scale(1.1);
         }
         .pin-container {
           display: flex;
@@ -552,6 +625,20 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           max-width: 100px;
           overflow: hidden;
           text-overflow: ellipsis;
+          margin-bottom: 2px;
+        }
+        .pin-hint {
+          background: rgba(59, 130, 246, 0.9);
+          color: white;
+          padding: 1px 4px;
+          border-radius: 3px;
+          font-size: 8px;
+          white-space: nowrap;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+        .city-pin:hover .pin-hint {
+          opacity: 1;
         }
       `}</style>
     </div>
