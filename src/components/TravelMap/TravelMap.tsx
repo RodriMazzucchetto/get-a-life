@@ -589,6 +589,14 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     }
   }, [isClient, visitedCities])
 
+  // useEffect para reagir às mudanças em plannedTrips
+  useEffect(() => {
+    if (map.current && map.current.isStyleLoaded()) {
+      console.log('🔄 DEBUG: plannedTrips mudou, adicionando pins roxos...')
+      addAllPlannedTripPins()
+    }
+  }, [plannedTrips])
+
   if (!isClient) {
     return (
       <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">
