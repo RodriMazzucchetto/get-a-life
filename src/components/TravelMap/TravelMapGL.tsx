@@ -48,9 +48,10 @@ interface TravelMapProps {
   onPlaceToggle: (placeId: string) => void
   onCitiesUpdate?: (cities: VisitedCity[]) => void
   plannedTrips?: PlannedTrip[]
+  onPlannedTripsUpdate?: (trips: PlannedTrip[]) => void
 }
 
-export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpdate, plannedTrips = [] }: TravelMapProps) {
+export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpdate, plannedTrips = [], onPlannedTripsUpdate }: TravelMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
   const [isClient, setIsClient] = useState(false)
@@ -58,6 +59,7 @@ export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpda
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [visitedCities, setVisitedCities] = useState<VisitedCity[]>([])
   const [mapError, setMapError] = useState<string | null>(null)
+  const [selectedTrip, setSelectedTrip] = useState<PlannedTrip | null>(null)
 
   // 🎯 FUNÇÃO PARA CRIAR SOURCE GEOJSON ÚNICO
   const createMapSource = useCallback(() => {
@@ -208,9 +210,18 @@ export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpda
     if (!e.features || e.features.length === 0) return
     
     const feature = e.features[0]
+    const tripId = feature.properties?.id
+    
     console.log('🖱️ GL: Clique em viagem planejada:', feature.properties?.name)
-    // TODO: Implementar modal de detalhes da viagem
-  }, [])
+    
+    if (tripId) {
+      const trip = plannedTrips.find(t => t.id === tripId)
+      if (trip) {
+        setSelectedTrip(trip)
+        console.log('📋 GL: Abrindo modal para viagem:', trip.title)
+      }
+    }
+  }, [plannedTrips])
 
   // 🎯 FUNÇÃO PARA CONFIGURAR EVENT LISTENERS
   const setupEventListeners = useCallback(() => {
@@ -300,6 +311,58 @@ export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpda
       handleRemoveCity(city.id)
     }
   }, [handleRemoveCity])
+
+  // Função para remover viagem planejada
+  const handleRemovePlannedTrip = useCallback((tripId: string) => {
+    console.log('🗑️ GL: Removendo viagem planejada:', tripId)
+    
+    const updatedTrips = plannedTrips.filter(trip => trip.id !== tripId)
+    
+    if (onPlannedTripsUpdate) {
+      onPlannedTripsUpdate(updatedTrips)
+    }
+    
+    // Atualizar localStorage
+    localStorage.setItem('plannedTrips', JSON.stringify(updatedTrips))
+    
+    console.log('✅ GL: Viagem planejada removida')
+  }, [plannedTrips, onPlannedTripsUpdate])
+
+  // Função para marcar viagem como concluída (mover para visitadas)
+  const handleMarkTripAsCompleted = useCallback((trip: PlannedTrip) => {
+    console.log('✅ GL: Marcando viagem como concluída:', trip.title)
+    
+    // Criar nova cidade visitada
+    const newCity: VisitedCity = {
+      id: trip.cityData.id,
+      type: 'city',
+      name: trip.cityData.name,
+      displayName: trip.cityData.displayName,
+      coordinates: [trip.cityData.coordinates.lon, trip.cityData.coordinates.lat],
+      country: trip.cityData.country,
+      state: trip.cityData.state
+    }
+    
+    // Adicionar às cidades visitadas
+    const updatedCities = [...visitedCities, newCity]
+    setVisitedCities(updatedCities)
+    localStorage.setItem('visitedCities', JSON.stringify(updatedCities))
+    
+    if (onCitiesUpdate) {
+      onCitiesUpdate(updatedCities)
+    }
+    
+    // Remover das viagens planejadas
+    const updatedTrips = plannedTrips.filter(t => t.id !== trip.id)
+    
+    if (onPlannedTripsUpdate) {
+      onPlannedTripsUpdate(updatedTrips)
+    }
+    
+    localStorage.setItem('plannedTrips', JSON.stringify(updatedTrips))
+    
+    console.log('🎉 GL: Viagem concluída e movida para visitadas!')
+  }, [visitedCities, plannedTrips, onCitiesUpdate, onPlannedTripsUpdate])
 
   // Initialize client
   useEffect(() => {
@@ -456,6 +519,86 @@ export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpda
         onClose={() => setIsModalOpen(false)}
         onAddLocation={handleAddLocation}
       />
+
+      {/* Modal de Viagem Planejada */}
+      {selectedTrip && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">
+                🟣 {selectedTrip.title}
+              </h2>
+              <button
+                onClick={() => setSelectedTrip(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              <div>
+                <span className="text-sm font-medium text-gray-600">Destino:</span>
+                <p className="text-gray-900">{selectedTrip.cityData.name}</p>
+              </div>
+              
+              <div>
+                <span className="text-sm font-medium text-gray-600">Data:</span>
+                <p className="text-gray-900">{selectedTrip.date || 'Não definida'}</p>
+              </div>
+              
+              <div>
+                <span className="text-sm font-medium text-gray-600">Tipo:</span>
+                <p className="text-gray-900 capitalize">{selectedTrip.type}</p>
+              </div>
+              
+              {selectedTrip.description && (
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Descrição:</span>
+                  <p className="text-gray-900">{selectedTrip.description}</p>
+                </div>
+              )}
+              
+              {selectedTrip.todos && selectedTrip.todos.length > 0 && (
+                <div>
+                  <span className="text-sm font-medium text-gray-600">To-do:</span>
+                  <ul className="mt-1 space-y-1">
+                    {selectedTrip.todos.map((todo, index) => (
+                      <li key={index} className="text-sm text-gray-700">
+                        • {todo}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  handleMarkTripAsCompleted(selectedTrip)
+                  setSelectedTrip(null)
+                }}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                ✅ Marcar como Concluída
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (window.confirm(`Remover a viagem para ${selectedTrip.cityData.name}?`)) {
+                    handleRemovePlannedTrip(selectedTrip.id)
+                    setSelectedTrip(null)
+                  }
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                🗑️ Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

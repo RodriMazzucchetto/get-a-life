@@ -110,6 +110,7 @@ export default function TravelsPage() {
           onPlaceToggle={() => {}}
           onCitiesUpdate={setVisitedCities}
           plannedTrips={plannedTrips}
+          onPlannedTripsUpdate={setPlannedTrips}
         />
       </div>
 
