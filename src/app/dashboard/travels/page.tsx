@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import TravelMap from '@/components/TravelMap/TravelMap'
+import TravelMapGL from '@/components/TravelMap/TravelMapGL'
 import TravelMetrics from '@/components/TravelMap/TravelMetrics'
 import TripDetailsModal from '@/components/TravelMap/TripDetailsModal'
 import { VisitedCity } from '@/types/travel'
@@ -105,7 +105,7 @@ export default function TravelsPage() {
       {/* Mapa Interativo */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">🌍 Mapa de Viagens</h2>
-        <TravelMap 
+        <TravelMapGL 
           visitedPlaces={[]}
           onPlaceToggle={() => {}}
           onCitiesUpdate={setVisitedCities}

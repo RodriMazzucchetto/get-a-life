@@ -36,6 +36,7 @@ interface TravelMapProps {
 export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate, plannedTrips = [] }: TravelMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
+  const plannedTripElements = useRef<Map<string, { element: HTMLElement; trip: PlannedTrip }>>(new Map())
   const [isClient, setIsClient] = useState(false)
   const [isTipClosed, setIsTipClosed] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -224,40 +225,98 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
 
     console.log(`🔍 DEBUG: Criando pin roxo para viagem planejada: ${trip.cityData.name}`)
 
-    // Criar elemento HTML para o pin roxo com estilos inline
+    // Criar elemento HTML para o pin roxo - SEM usar Marker do MapLibre
     const el = document.createElement('div')
     el.className = 'planned-trip-pin'
+    el.id = `planned-trip-${trip.id}`
     
-    // Aplicar estilos diretamente no elemento
+    // Estilos COMPLETAMENTE inline para evitar sobrescrita
     el.style.cssText = `
+      position: absolute !important;
       cursor: pointer !important;
-      transition: transform 0.2s ease;
+      transition: transform 0.2s ease !important;
       pointer-events: auto !important;
-      z-index: 999 !important;
-      position: relative;
+      z-index: 9999 !important;
+      transform: translate(-50%, -100%) !important;
+      user-select: none !important;
     `
     
+    // HTML interno com TODOS os estilos inline
     el.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; background-color: rgba(147, 51, 234, 0.95) !important; border: 2px solid #9333ea !important; border-radius: 12px; padding: 8px; min-width: 80px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);">
-        <div style="font-size: 20px; margin-bottom: 4px; background-color: #9333ea !important; color: white !important; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">📍</div>
-        <div style="font-size: 12px; font-weight: 600; color: white !important; text-align: center; margin-bottom: 2px;">${trip.cityData.name}</div>
-        <div style="font-size: 10px; color: rgba(255, 255, 255, 0.8) !important; text-align: center; opacity: 0; transition: opacity 0.2s ease;">Viagem planejada: ${trip.title}</div>
+      <div style="
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        background-color: #9333ea !important;
+        border: 3px solid #7c3aed !important;
+        border-radius: 12px !important;
+        padding: 8px !important;
+        min-width: 80px !important;
+        box-shadow: 0 4px 20px rgba(147, 51, 234, 0.4) !important;
+        position: relative !important;
+      ">
+        <div style="
+          font-size: 20px !important;
+          margin-bottom: 4px !important;
+          background-color: #7c3aed !important;
+          color: white !important;
+          width: 32px !important;
+          height: 32px !important;
+          border-radius: 50% !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border: 2px solid white !important;
+        ">📍</div>
+        <div style="
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          color: white !important;
+          text-align: center !important;
+          margin-bottom: 2px !important;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+        ">${trip.cityData.name}</div>
+        <div style="
+          font-size: 10px !important;
+          color: rgba(255, 255, 255, 0.9) !important;
+          text-align: center !important;
+          opacity: 0 !important;
+          transition: opacity 0.2s ease !important;
+        ">Viagem planejada: ${trip.title}</div>
       </div>
     `
 
-    // Adicionar o pin ao mapa
-    const marker = new maplibregl.Marker(el)
-      .setLngLat([trip.cityData.coordinates.lon, trip.cityData.coordinates.lat])
-      .addTo(map.current)
+    // Converter coordenadas para pixels
+    const point = map.current.project([trip.cityData.coordinates.lon, trip.cityData.coordinates.lat])
+    
+    // Posicionar o elemento
+    el.style.left = `${point.x}px`
+    el.style.top = `${point.y}px`
+    
+    // Adicionar ao container do mapa (não como marker)
+    const mapContainer = map.current.getContainer()
+    mapContainer.appendChild(el)
+    
+    // Adicionar hover effect
+    el.addEventListener('mouseenter', () => {
+      const hint = el.querySelector('div > div:last-child') as HTMLElement
+      if (hint) hint.style.opacity = '1'
+      el.style.transform = 'translate(-50%, -100%) scale(1.05)'
+    })
+    
+    el.addEventListener('mouseleave', () => {
+      const hint = el.querySelector('div > div:last-child') as HTMLElement
+      if (hint) hint.style.opacity = '0'
+      el.style.transform = 'translate(-50%, -100%) scale(1)'
+    })
 
-    // Debug: verificar se as classes foram aplicadas
-    console.log(`🔍 DEBUG: Elemento criado:`, el)
-    console.log(`🔍 DEBUG: Classes aplicadas:`, el.className)
-    console.log(`🔍 DEBUG: HTML interno:`, el.innerHTML)
-    console.log(`🔍 DEBUG: Marker criado:`, marker)
-    console.log(`🔍 DEBUG: Estilos aplicados:`, el.style.cssText)
+    // Armazenar referência para atualização de posição
+    if (!plannedTripElements.current) plannedTripElements.current = new Map()
+    plannedTripElements.current.set(trip.id, { element: el, trip })
 
     console.log(`✅ DEBUG: Pin roxo criado para viagem planejada: ${trip.cityData.name}`)
+    console.log(`🔍 DEBUG: Elemento criado:`, el)
+    console.log(`🔍 DEBUG: Posição:`, point)
   }
 
   const addCityPin = (city: VisitedCity, isNewCity: boolean = false) => {
@@ -531,6 +590,9 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     existingPlannedPins.forEach(pin => {
       pin.remove()
     })
+    
+    // Limpar referências
+    plannedTripElements.current.clear()
     
     console.log(`🧹 DEBUG: Limpos ${existingPlannedPins.length} pins antigos de viagens planejadas`)
     
