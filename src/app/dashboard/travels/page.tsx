@@ -14,6 +14,17 @@ interface PlannedTrip {
   location: string
   description: string
   todos: string[]
+  cityData: {
+    id: string
+    name: string
+    displayName: string
+    coordinates: {
+      lat: number
+      lon: number
+    }
+    country: string
+    state?: string
+  }
 }
 
 export default function TravelsPage() {
@@ -33,8 +44,11 @@ export default function TravelsPage() {
     }
     setPlannedTrips(prev => [...prev, newTrip])
     
-    // TODO: Adicionar pin roxo no mapa
-    // TODO: Salvar no localStorage
+    // Salvar no localStorage
+    const updatedTrips = [...plannedTrips, newTrip]
+    localStorage.setItem('plannedTrips', JSON.stringify(updatedTrips))
+    
+    console.log('✅ Viagem planejada adicionada:', newTrip)
   }
 
   useEffect(() => {
@@ -53,6 +67,18 @@ export default function TravelsPage() {
       }
     } else {
       console.log('🔍 DEBUG TravelsPage - Nenhuma cidade encontrada no localStorage')
+    }
+    
+    // Carregar viagens planejadas do localStorage
+    const savedTrips = localStorage.getItem('plannedTrips')
+    if (savedTrips) {
+      try {
+        const trips = JSON.parse(savedTrips)
+        console.log('🔍 DEBUG TravelsPage - Viagens planejadas carregadas:', trips)
+        setPlannedTrips(trips)
+      } catch (error) {
+        console.error('Erro ao carregar viagens planejadas:', error)
+      }
     }
   }, [])
 
@@ -83,6 +109,7 @@ export default function TravelsPage() {
           visitedPlaces={[]}
           onPlaceToggle={() => {}}
           onCitiesUpdate={setVisitedCities}
+          plannedTrips={plannedTrips}
         />
       </div>
 

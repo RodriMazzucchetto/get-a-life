@@ -5,13 +5,35 @@ import maplibregl from 'maplibre-gl'
 import AddLocationModal from './AddLocationModal'
 import { VisitedCity, CityLocation } from '@/types/travel'
 
+interface PlannedTrip {
+  id: string
+  type: string
+  title: string
+  date: string
+  location: string
+  description: string
+  todos: string[]
+  cityData: {
+    id: string
+    name: string
+    displayName: string
+    coordinates: {
+      lat: number
+      lon: number
+    }
+    country: string
+    state?: string
+  }
+}
+
 interface TravelMapProps {
   visitedPlaces: string[]
   onPlaceToggle: (placeId: string) => void
   onCitiesUpdate?: (cities: VisitedCity[]) => void
+  plannedTrips?: PlannedTrip[]
 }
 
-export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate }: TravelMapProps) {
+export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate, plannedTrips = [] }: TravelMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
   const [isClient, setIsClient] = useState(false)
@@ -195,6 +217,30 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
 
     // Mostrar notificação de sucesso
     showSuccessNotification(cityToRemove?.name || 'Cidade')
+  }
+
+  const addPlannedTripPin = (trip: PlannedTrip) => {
+    if (!map.current || !map.current.isStyleLoaded()) return
+
+    console.log(`🔍 DEBUG: Criando pin roxo para viagem planejada: ${trip.cityData.name}`)
+
+    // Criar elemento HTML para o pin roxo
+    const el = document.createElement('div')
+    el.className = 'planned-trip-pin'
+    el.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-icon" style="background-color: #9333ea; color: white;">📍</div>
+        <div class="pin-label">${trip.cityData.name}</div>
+        <div class="pin-hint">Viagem planejada: ${trip.title}</div>
+      </div>
+    `
+
+    // Adicionar o pin ao mapa
+    const marker = new maplibregl.Marker(el)
+      .setLngLat([trip.cityData.coordinates.lon, trip.cityData.coordinates.lat])
+      .addTo(map.current)
+
+    console.log(`✅ DEBUG: Pin roxo criado para viagem planejada: ${trip.cityData.name}`)
   }
 
   const addCityPin = (city: VisitedCity, isNewCity: boolean = false) => {
@@ -460,6 +506,14 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     })
   }
 
+  const addAllPlannedTripPins = () => {
+    if (!map.current || !map.current.isStyleLoaded()) return
+    
+    plannedTrips.forEach(trip => {
+      addPlannedTripPin(trip)
+    })
+  }
+
   useEffect(() => {
     setIsClient(true)
   }, [])
@@ -508,6 +562,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
         
         // Adicionar todos os pins existentes
         addAllCityPins()
+        addAllPlannedTripPins()
       })
 
       map.current.on('error', (e) => {
@@ -643,6 +698,63 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
 
       {/* Estilos CSS para os pins */}
       <style jsx>{`
+        .planned-trip-pin {
+          cursor: pointer !important;
+          transition: transform 0.2s ease;
+          pointer-events: auto !important;
+          z-index: 999 !important;
+          position: relative;
+        }
+        
+        .planned-trip-pin .pin-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          background-color: rgba(147, 51, 234, 0.95);
+          border: 2px solid #9333ea;
+          border-radius: 12px;
+          padding: 8px;
+          min-width: 80px;
+          box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
+        }
+        
+        .planned-trip-pin .pin-icon {
+          font-size: 20px;
+          margin-bottom: 4px;
+          background-color: #9333ea;
+          color: white;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .planned-trip-pin .pin-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: white;
+          text-align: center;
+          margin-bottom: 2px;
+        }
+        
+        .planned-trip-pin .pin-hint {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.8);
+          text-align: center;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+        }
+        
+        .planned-trip-pin:hover {
+          transform: scale(1.1);
+        }
+        
+        .planned-trip-pin:hover .pin-hint {
+          opacity: 1;
+        }
+        
         .city-pin {
           cursor: pointer !important;
           transition: transform 0.2s ease;

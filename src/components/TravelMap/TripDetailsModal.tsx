@@ -1,12 +1,50 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { CityLocation } from '@/types/travel'
+
+// Sistema de busca com Photon (Komoot) - TODAS as cidades do mundo
+interface CityResult {
+  id: string
+  name: string
+  type: 'city'
+  displayName: string
+  coordinates: {
+    lat: number
+    lon: number
+  }
+  country: string
+  countryCode: string
+  state?: string
+}
+
+// Interface para resposta da API Photon
+interface PhotonFeature {
+  type: string
+  geometry: {
+    type: string
+    coordinates: [number, number] // [lon, lat]
+  }
+  properties: {
+    name: string
+    country: string
+    countrycode: string
+    state?: string
+    city?: string
+    osm_type: string
+    osm_id: string
+  }
+}
+
+interface PhotonResponse {
+  features: PhotonFeature[]
+}
 
 interface TripDetailsModalProps {
   isOpen: boolean
   onClose: () => void
   trip: { type: string; title: string } | null
-  onAddPlannedTrip: (tripData: { type: string; title: string; date: string; location: string; description: string; todos: string[] }) => void
+  onAddPlannedTrip: (tripData: { type: string; title: string; date: string; location: string; description: string; todos: string[]; cityData: CityResult }) => void
 }
 
 export default function TripDetailsModal({ isOpen, onClose, trip, onAddPlannedTrip }: TripDetailsModalProps) {
@@ -16,12 +54,112 @@ export default function TripDetailsModal({ isOpen, onClose, trip, onAddPlannedTr
     description: '',
     todos: ['', '', '']
   })
+  
+  // Estados para busca de cidades
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState<CityResult[]>([])
+  const [selectedLocation, setSelectedLocation] = useState<CityResult | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Busca com Photon (Komoot) - TODAS as cidades do mundo
+  const searchCities = useCallback(async (query: string): Promise<CityResult[]> => {
+    if (!query.trim() || query.length < 2) return []
+    
+    try {
+      const photonResponse = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=en&limit=25&layer=city`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'GetALifeApp/1.0'
+          }
+        }
+      )
+      
+      if (photonResponse.ok) {
+        const photonData: PhotonResponse = await photonResponse.json()
+        
+        const results: CityResult[] = photonData.features
+          .filter(feature => 
+            feature.geometry?.coordinates && 
+            feature.properties?.name &&
+            feature.properties?.country
+          )
+          .map(feature => {
+            const [lon, lat] = feature.geometry.coordinates
+            const cityName = feature.properties.city || feature.properties.name
+            
+            return {
+              id: `${feature.properties.osm_type}-${feature.properties.osm_id}`,
+              name: cityName,
+              type: 'city' as const,
+              displayName: `${cityName}, ${feature.properties.state || ''}, ${feature.properties.country}`.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, ''),
+              coordinates: {
+                lat: lat,
+                lon: lon
+              },
+              country: feature.properties.country,
+              countryCode: feature.properties.countrycode?.toLowerCase() || '',
+              state: feature.properties.state
+            }
+          })
+        
+        return results
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao buscar cidades:', error)
+    }
+    
+    return []
+  }, [])
+
+  // Busca com debounce
+  const debouncedSearch = useCallback(
+    debounce(async (query: string) => {
+      if (!query.trim() || query.length < 2) {
+        setSearchResults([])
+        return
+      }
+      
+      setIsLoading(true)
+      try {
+        const results = await searchCities(query)
+        setSearchResults(results)
+      } catch (error) {
+        console.error('Erro na busca:', error)
+        setSearchResults([])
+      } finally {
+        setIsLoading(false)
+      }
+    }, 300),
+    [searchCities]
+  )
+
+  // Função debounce
+  function debounce(
+    func: (query: string) => Promise<void>,
+    wait: number
+  ): (query: string) => void {
+    let timeout: NodeJS.Timeout | null = null
+    return (query: string) => {
+      if (timeout) clearTimeout(timeout)
+      timeout = setTimeout(() => func(query), wait)
+    }
+  }
+
+  const handleCitySelect = (city: CityResult) => {
+    setSelectedLocation(city)
+    setTripData(prev => ({ ...prev, location: city.displayName }))
+    setSearchResults([])
+    setSearchTerm('')
+  }
 
   if (!isOpen || !trip) return null
 
   const handleSave = () => {
-    if (!tripData.location.trim()) {
-      alert('Por favor, insira uma localização para a viagem')
+    if (!selectedLocation) {
+      alert('Por favor, selecione uma cidade válida')
       return
     }
     
@@ -31,7 +169,8 @@ export default function TripDetailsModal({ isOpen, onClose, trip, onAddPlannedTr
       date: tripData.date,
       location: tripData.location,
       description: tripData.description,
-      todos: tripData.todos.filter(todo => todo.trim() !== '')
+      todos: tripData.todos.filter(todo => todo.trim() !== ''),
+      cityData: selectedLocation // Incluir dados completos da cidade
     }
     
     onAddPlannedTrip(tripToSave)
@@ -91,27 +230,57 @@ export default function TripDetailsModal({ isOpen, onClose, trip, onAddPlannedTr
           {/* Localização */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Localização
+              Localização da Viagem
             </label>
-            <div className="space-y-2">
+            <div className="relative">
               <input
                 type="text"
-                placeholder="Digite a cidade ou país"
-                value={tripData.location}
-                onChange={(e) => setTripData(prev => ({ ...prev, location: e.target.value }))}
+                placeholder="Digite o nome da cidade..."
+                value={searchTerm}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setSearchTerm(value)
+                  debouncedSearch(value)
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              {tripData.location && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                    <span className="text-sm text-purple-800">
-                      Pin roxo será adicionado no mapa para: {tripData.location}
-                    </span>
-                  </div>
+              
+              {isLoading && (
+                <div className="absolute right-3 top-2.5">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                </div>
+              )}
+              
+              {/* Resultados da busca */}
+              {searchResults.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {searchResults.map((city) => (
+                    <button
+                      key={city.id}
+                      onClick={() => handleCitySelect(city)}
+                      className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                    >
+                      <div className="font-medium text-gray-900">{city.name}</div>
+                      <div className="text-sm text-gray-500">{city.displayName}</div>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
+            
+            {/* Cidade selecionada */}
+            {selectedLocation && (
+              <div className="mt-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <div>
+                    <div className="text-sm font-medium text-purple-800">{selectedLocation.name}</div>
+                    <div className="text-xs text-purple-600">{selectedLocation.displayName}</div>
+                    <div className="text-xs text-purple-500 mt-1">Pin roxo será adicionado no mapa</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Descrição */}
