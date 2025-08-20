@@ -228,10 +228,10 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     const el = document.createElement('div')
     el.className = 'planned-trip-pin'
     el.innerHTML = `
-      <div class="pin-container planned-trip-container">
-        <div class="pin-icon planned-trip-icon">📍</div>
-        <div class="pin-label planned-trip-label">${trip.cityData.name}</div>
-        <div class="pin-hint planned-trip-hint">Viagem planejada: ${trip.title}</div>
+      <div class="pin-container planned-trip-container" style="display: flex; flex-direction: column; align-items: center; background-color: rgba(147, 51, 234, 0.95) !important; border: 2px solid #9333ea !important; border-radius: 12px; padding: 8px; min-width: 80px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);">
+        <div class="pin-icon planned-trip-icon" style="font-size: 20px; margin-bottom: 4px; background-color: #9333ea !important; color: white !important; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">📍</div>
+        <div class="pin-label planned-trip-label" style="font-size: 12px; font-weight: 600; color: white !important; text-align: center; margin-bottom: 2px;">${trip.cityData.name}</div>
+        <div class="pin-hint planned-trip-hint" style="font-size: 10px; color: rgba(255, 255, 255, 0.8) !important; text-align: center; opacity: 0; transition: opacity 0.2s ease;">Viagem planejada: ${trip.title}</div>
       </div>
     `
 
@@ -239,6 +239,12 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     const marker = new maplibregl.Marker(el)
       .setLngLat([trip.cityData.coordinates.lon, trip.cityData.coordinates.lat])
       .addTo(map.current)
+
+    // Debug: verificar se as classes foram aplicadas
+    console.log(`🔍 DEBUG: Elemento criado:`, el)
+    console.log(`🔍 DEBUG: Classes aplicadas:`, el.className)
+    console.log(`🔍 DEBUG: HTML interno:`, el.innerHTML)
+    console.log(`🔍 DEBUG: Marker criado:`, marker)
 
     console.log(`✅ DEBUG: Pin roxo criado para viagem planejada: ${trip.cityData.name}`)
   }
