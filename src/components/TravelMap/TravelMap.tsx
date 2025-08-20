@@ -224,14 +224,24 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
 
     console.log(`🔍 DEBUG: Criando pin roxo para viagem planejada: ${trip.cityData.name}`)
 
-    // Criar elemento HTML para o pin roxo
+    // Criar elemento HTML para o pin roxo com estilos inline
     const el = document.createElement('div')
     el.className = 'planned-trip-pin'
+    
+    // Aplicar estilos diretamente no elemento
+    el.style.cssText = `
+      cursor: pointer !important;
+      transition: transform 0.2s ease;
+      pointer-events: auto !important;
+      z-index: 999 !important;
+      position: relative;
+    `
+    
     el.innerHTML = `
-      <div class="pin-container planned-trip-container" style="display: flex; flex-direction: column; align-items: center; background-color: rgba(147, 51, 234, 0.95) !important; border: 2px solid #9333ea !important; border-radius: 12px; padding: 8px; min-width: 80px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);">
-        <div class="pin-icon planned-trip-icon" style="font-size: 20px; margin-bottom: 4px; background-color: #9333ea !important; color: white !important; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">📍</div>
-        <div class="pin-label planned-trip-label" style="font-size: 12px; font-weight: 600; color: white !important; text-align: center; margin-bottom: 2px;">${trip.cityData.name}</div>
-        <div class="pin-hint planned-trip-hint" style="font-size: 10px; color: rgba(255, 255, 255, 0.8) !important; text-align: center; opacity: 0; transition: opacity 0.2s ease;">Viagem planejada: ${trip.title}</div>
+      <div style="display: flex; flex-direction: column; align-items: center; background-color: rgba(147, 51, 234, 0.95) !important; border: 2px solid #9333ea !important; border-radius: 12px; padding: 8px; min-width: 80px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);">
+        <div style="font-size: 20px; margin-bottom: 4px; background-color: #9333ea !important; color: white !important; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">📍</div>
+        <div style="font-size: 12px; font-weight: 600; color: white !important; text-align: center; margin-bottom: 2px;">${trip.cityData.name}</div>
+        <div style="font-size: 10px; color: rgba(255, 255, 255, 0.8) !important; text-align: center; opacity: 0; transition: opacity 0.2s ease;">Viagem planejada: ${trip.title}</div>
       </div>
     `
 
@@ -245,6 +255,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     console.log(`🔍 DEBUG: Classes aplicadas:`, el.className)
     console.log(`🔍 DEBUG: HTML interno:`, el.innerHTML)
     console.log(`🔍 DEBUG: Marker criado:`, marker)
+    console.log(`🔍 DEBUG: Estilos aplicados:`, el.style.cssText)
 
     console.log(`✅ DEBUG: Pin roxo criado para viagem planejada: ${trip.cityData.name}`)
   }
@@ -515,9 +526,20 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
   const addAllPlannedTripPins = () => {
     if (!map.current || !map.current.isStyleLoaded()) return
     
+    // Limpar todos os pins de viagens planejadas existentes
+    const existingPlannedPins = document.querySelectorAll('.planned-trip-pin')
+    existingPlannedPins.forEach(pin => {
+      pin.remove()
+    })
+    
+    console.log(`🧹 DEBUG: Limpos ${existingPlannedPins.length} pins antigos de viagens planejadas`)
+    
+    // Adicionar novos pins
     plannedTrips.forEach(trip => {
       addPlannedTripPin(trip)
     })
+    
+    console.log(`✅ DEBUG: Adicionados ${plannedTrips.length} novos pins de viagens planejadas`)
   }
 
   useEffect(() => {
