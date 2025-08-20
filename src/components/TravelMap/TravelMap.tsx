@@ -228,10 +228,10 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
     const el = document.createElement('div')
     el.className = 'planned-trip-pin'
     el.innerHTML = `
-      <div class="pin-container">
-        <div class="pin-icon" style="background-color: #9333ea; color: white;">📍</div>
-        <div class="pin-label">${trip.cityData.name}</div>
-        <div class="pin-hint">Viagem planejada: ${trip.title}</div>
+      <div class="pin-container planned-trip-container">
+        <div class="pin-icon planned-trip-icon">📍</div>
+        <div class="pin-label planned-trip-label">${trip.cityData.name}</div>
+        <div class="pin-hint planned-trip-hint">Viagem planejada: ${trip.title}</div>
       </div>
     `
 
@@ -714,23 +714,23 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           position: relative;
         }
         
-        .planned-trip-pin .pin-container {
+        .planned-trip-pin .planned-trip-container {
           display: flex;
           flex-direction: column;
           align-items: center;
-          background-color: rgba(147, 51, 234, 0.95);
-          border: 2px solid #9333ea;
+          background-color: rgba(147, 51, 234, 0.95) !important;
+          border: 2px solid #9333ea !important;
           border-radius: 12px;
           padding: 8px;
           min-width: 80px;
           box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
         }
         
-        .planned-trip-pin .pin-icon {
+        .planned-trip-pin .planned-trip-icon {
           font-size: 20px;
           margin-bottom: 4px;
-          background-color: #9333ea;
-          color: white;
+          background-color: #9333ea !important;
+          color: white !important;
           width: 32px;
           height: 32px;
           border-radius: 50%;
@@ -739,17 +739,17 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           justify-content: center;
         }
         
-        .planned-trip-pin .pin-label {
+        .planned-trip-pin .planned-trip-label {
           font-size: 12px;
           font-weight: 600;
-          color: white;
+          color: white !important;
           text-align: center;
           margin-bottom: 2px;
         }
         
-        .planned-trip-pin .pin-hint {
+        .planned-trip-pin .planned-trip-hint {
           font-size: 10px;
-          color: rgba(255, 255, 255, 0.8);
+          color: rgba(255, 255, 255, 0.8) !important;
           text-align: center;
           opacity: 0;
           transition: opacity 0.2s ease;
@@ -759,7 +759,7 @@ export default function TravelMap({ visitedPlaces, onPlaceToggle, onCitiesUpdate
           transform: scale(1.1);
         }
         
-        .planned-trip-pin:hover .pin-hint {
+        .planned-trip-pin:hover .planned-trip-hint {
           opacity: 1;
         }
         
