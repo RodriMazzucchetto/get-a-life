@@ -126,11 +126,6 @@ export default function TravelsPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-6 cursor-pointer hover:border-purple-300 hover:shadow-lg transition-all duration-200 group" onClick={() => setSelectedTrip({ type: 'international', title: 'Viagem Internacional' })}>
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                {/* Tag do tipo de viagem */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium mb-3">
-                  🌍 Viagem Internacional
-                </div>
-                
                 {/* Destino - DESTAQUE PRINCIPAL */}
                 {plannedTrips.find(t => t.type === 'international') ? (
                   <div className="mb-2">
@@ -149,21 +144,23 @@ export default function TravelsPage() {
                 )}
               </div>
               
-              {/* Data - DESTAQUE SECUNDÁRIO */}
-              <div className="text-right ml-6">
-                <div className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-1">Data da Viagem</div>
-                <div className="text-lg font-bold text-gray-900">
-                  {plannedTrips.find(t => t.type === 'international')?.date || '--/--/----'}
+              {/* Data e Tag - LADO DIREITO */}
+              <div className="text-right ml-6 flex flex-col items-end">
+                {/* Data - DESIGN MODERNO */}
+                <div className="mb-3">
+                  <div className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-1">Data da Viagem</div>
+                  <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg px-4 py-2 border border-purple-200">
+                    <div className="text-lg font-bold text-purple-800">
+                      {plannedTrips.find(t => t.type === 'international')?.date || '--/--/----'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Tag do tipo de viagem */}
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
+                  🌍 Viagem Internacional
                 </div>
               </div>
-            </div>
-            
-            {/* Indicador visual de hover */}
-            <div className="mt-4 flex items-center text-purple-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <span>Clique para gerenciar</span>
-              <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
             </div>
           </div>
 
@@ -171,11 +168,6 @@ export default function TravelsPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-6 cursor-pointer hover:border-blue-300 hover:shadow-lg transition-all duration-200 group" onClick={() => setSelectedTrip({ type: 'short', title: 'Curta Duração' })}>
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                {/* Tag do tipo de viagem */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium mb-3">
-                  ⏰ Curta Duração
-                </div>
-                
                 {/* Destino - DESTAQUE PRINCIPAL */}
                 {plannedTrips.find(t => t.type === 'short') ? (
                   <div className="mb-2">
@@ -194,21 +186,23 @@ export default function TravelsPage() {
                 )}
               </div>
               
-              {/* Data - DESTAQUE SECUNDÁRIO */}
-              <div className="text-right ml-6">
-                <div className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">Data da Viagem</div>
-                <div className="text-lg font-bold text-gray-900">
-                  {plannedTrips.find(t => t.type === 'short')?.date || '--/--/----'}
+              {/* Data e Tag - LADO DIREITO */}
+              <div className="text-right ml-6 flex flex-col items-end">
+                {/* Data - DESIGN MODERNO */}
+                <div className="mb-3">
+                  <div className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">Data da Viagem</div>
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg px-4 py-2 border border-blue-200">
+                    <div className="text-lg font-bold text-blue-800">
+                      {plannedTrips.find(t => t.type === 'short')?.date || '--/--/----'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Tag do tipo de viagem */}
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
+                  ⏰ Curta Duração
                 </div>
               </div>
-            </div>
-            
-            {/* Indicador visual de hover */}
-            <div className="mt-4 flex items-center text-blue-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <span>Clique para gerenciar</span>
-              <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
             </div>
           </div>
 
@@ -216,11 +210,6 @@ export default function TravelsPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-6 cursor-pointer hover:border-green-300 hover:shadow-lg transition-all duration-200 group" onClick={() => setSelectedTrip({ type: 'thematic', title: 'Temática' })}>
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                {/* Tag do tipo de viagem */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium mb-3">
-                  🎯 Temática
-                </div>
-                
                 {/* Destino - DESTAQUE PRINCIPAL */}
                 {plannedTrips.find(t => t.type === 'thematic') ? (
                   <div className="mb-2">
@@ -239,21 +228,23 @@ export default function TravelsPage() {
                 )}
               </div>
               
-              {/* Data - DESTAQUE SECUNDÁRIO */}
-              <div className="text-right ml-6">
-                <div className="text-xs font-medium text-green-600 uppercase tracking-wide mb-1">Data da Viagem</div>
-                <div className="text-lg font-bold text-gray-900">
-                  {plannedTrips.find(t => t.type === 'thematic')?.date || '--/--/----'}
+              {/* Data e Tag - LADO DIREITO */}
+              <div className="text-right ml-6 flex flex-col items-end">
+                {/* Data - DESIGN MODERNO */}
+                <div className="mb-3">
+                  <div className="text-xs font-medium text-green-600 uppercase tracking-wide mb-1">Data da Viagem</div>
+                  <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg px-4 py-2 border border-green-200">
+                    <div className="text-lg font-bold text-green-800">
+                      {plannedTrips.find(t => t.type === 'thematic')?.date || '--/--/----'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Tag do tipo de viagem */}
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                  🎯 Temática
                 </div>
               </div>
-            </div>
-            
-            {/* Indicador visual de hover */}
-            <div className="mt-4 flex items-center text-green-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <span>Clique para gerenciar</span>
-              <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
             </div>
           </div>
 
@@ -261,11 +252,6 @@ export default function TravelsPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-6 cursor-pointer hover:border-orange-300 hover:shadow-lg transition-all duration-200 group" onClick={() => setSelectedTrip({ type: 'daytrip', title: 'Bate-Volta' })}>
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                {/* Tag do tipo de viagem */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium mb-3">
-                  🚗 Bate-Volta
-                </div>
-                
                 {/* Destino - DESTAQUE PRINCIPAL */}
                 {plannedTrips.find(t => t.type === 'daytrip') ? (
                   <div className="mb-2">
@@ -284,21 +270,23 @@ export default function TravelsPage() {
                 )}
               </div>
               
-              {/* Data - DESTAQUE SECUNDÁRIO */}
-              <div className="text-right ml-6">
-                <div className="text-xs font-medium text-orange-600 uppercase tracking-wide mb-1">Data da Viagem</div>
-                <div className="text-lg font-bold text-gray-900">
-                  {plannedTrips.find(t => t.type === 'daytrip')?.date || '--/--/----'}
+              {/* Data e Tag - LADO DIREITO */}
+              <div className="text-right ml-6 flex flex-col items-end">
+                {/* Data - DESIGN MODERNO */}
+                <div className="mb-3">
+                  <div className="text-xs font-medium text-orange-600 uppercase tracking-wide mb-1">Data da Viagem</div>
+                  <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg px-4 py-2 border border-orange-200">
+                    <div className="text-lg font-bold text-orange-800">
+                      {plannedTrips.find(t => t.type === 'daytrip')?.date || '--/--/----'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Tag do tipo de viagem */}
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium">
+                  🚗 Bate-Volta
                 </div>
               </div>
-            </div>
-            
-            {/* Indicador visual de hover */}
-            <div className="mt-4 flex items-center text-orange-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <span>Clique para gerenciar</span>
-              <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
             </div>
           </div>
         </div>
