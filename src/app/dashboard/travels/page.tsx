@@ -6,13 +6,36 @@ import TravelMetrics from '@/components/TravelMap/TravelMetrics'
 import TripDetailsModal from '@/components/TravelMap/TripDetailsModal'
 import { VisitedCity } from '@/types/travel'
 
+interface PlannedTrip {
+  id: string
+  type: string
+  title: string
+  date: string
+  location: string
+  description: string
+  todos: string[]
+}
+
 export default function TravelsPage() {
   const [loading, setLoading] = useState(true)
   const [visitedCities, setVisitedCities] = useState<VisitedCity[]>([])
   const [selectedTrip, setSelectedTrip] = useState<{ type: string; title: string } | null>(null)
+  const [plannedTrips, setPlannedTrips] = useState<PlannedTrip[]>([])
 
   // Total de países no mundo (padrão reconhecido)
   const TOTAL_WORLD_COUNTRIES = 195
+
+  const handleAddPlannedTrip = (tripData: Omit<PlannedTrip, 'id'>) => {
+    console.log('Adicionando viagem planejada:', tripData)
+    const newTrip: PlannedTrip = {
+      ...tripData,
+      id: Date.now().toString()
+    }
+    setPlannedTrips(prev => [...prev, newTrip])
+    
+    // TODO: Adicionar pin roxo no mapa
+    // TODO: Salvar no localStorage
+  }
 
   useEffect(() => {
     // Simular carregamento
@@ -68,74 +91,92 @@ export default function TravelsPage() {
 
       {/* Seção de Próximas Viagens */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">✈️ Próximas Viagens</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Próximas Viagens</h2>
         
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Viagem Internacional */}
-          <div className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedTrip({ type: 'international', title: 'Viagem Internacional' })}>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all" onClick={() => setSelectedTrip({ type: 'international', title: 'Viagem Internacional' })}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="text-2xl">🌍</div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Viagem Internacional</h3>
-                  <p className="text-sm text-gray-600">Clique para ver detalhes</p>
-                </div>
+              <div>
+                <h3 className="font-medium text-gray-900 text-sm">Viagem Internacional</h3>
+                {plannedTrips.find(t => t.type === 'international') ? (
+                  <p className="text-xs text-purple-600 mt-1">
+                    {plannedTrips.find(t => t.type === 'international')?.location}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">Clique para planejar</p>
+                )}
               </div>
               <div className="text-right">
-                <div className="text-sm text-gray-500">Data</div>
-                <div className="text-sm font-medium text-gray-900">--/--/----</div>
+                <div className="text-xs text-gray-400">Data</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {plannedTrips.find(t => t.type === 'international')?.date || '--/--/----'}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Curta Duração */}
-          <div className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedTrip({ type: 'short', title: 'Curta Duração' })}>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all" onClick={() => setSelectedTrip({ type: 'short', title: 'Curta Duração' })}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="text-2xl">🏖️</div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Curta Duração</h3>
-                  <p className="text-sm text-gray-600">Clique para ver detalhes</p>
-                </div>
+              <div>
+                <h3 className="font-medium text-gray-900 text-sm">Curta Duração</h3>
+                {plannedTrips.find(t => t.type === 'short') ? (
+                  <p className="text-xs text-purple-600 mt-1">
+                    {plannedTrips.find(t => t.type === 'short')?.location}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">Clique para planejar</p>
+                )}
               </div>
               <div className="text-right">
-                <div className="text-sm text-gray-500">Data</div>
-                <div className="text-sm font-medium text-gray-900">--/--/----</div>
+                <div className="text-xs text-gray-400">Data</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {plannedTrips.find(t => t.type === 'short')?.date || '--/--/----'}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Temática */}
-          <div className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedTrip({ type: 'thematic', title: 'Temática' })}>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all" onClick={() => setSelectedTrip({ type: 'thematic', title: 'Temática' })}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="text-2xl">🎯</div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Temática</h3>
-                  <p className="text-sm text-gray-600">Clique para ver detalhes</p>
-                </div>
+              <div>
+                <h3 className="font-medium text-gray-900 text-sm">Temática</h3>
+                {plannedTrips.find(t => t.type === 'thematic') ? (
+                  <p className="text-xs text-purple-600 mt-1">
+                    {plannedTrips.find(t => t.type === 'thematic')?.location}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">Clique para planejar</p>
+                )}
               </div>
               <div className="text-right">
-                <div className="text-sm text-gray-500">Data</div>
-                <div className="text-sm font-medium text-gray-900">--/--/----</div>
+                <div className="text-xs text-gray-400">Data</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {plannedTrips.find(t => t.type === 'thematic')?.date || '--/--/----'}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Bate-Volta */}
-          <div className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedTrip({ type: 'daytrip', title: 'Bate-Volta' })}>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all" onClick={() => setSelectedTrip({ type: 'daytrip', title: 'Bate-Volta' })}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="text-2xl">🚗</div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Bate-Volta</h3>
-                  <p className="text-sm text-gray-600">Clique para ver detalhes</p>
-                </div>
+              <div>
+                <h3 className="font-medium text-gray-900 text-sm">Bate-Volta</h3>
+                {plannedTrips.find(t => t.type === 'daytrip') ? (
+                  <p className="text-xs text-purple-600 mt-1">
+                    {plannedTrips.find(t => t.type === 'daytrip')?.location}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">Clique para planejar</p>
+                )}
               </div>
               <div className="text-right">
-                <div className="text-right">
-                  <div className="text-sm text-gray-500">Data</div>
-                  <div className="text-sm font-medium text-gray-900">--/--/----</div>
+                <div className="text-xs text-gray-400">Data</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {plannedTrips.find(t => t.type === 'daytrip')?.date || '--/--/----'}
                 </div>
               </div>
             </div>
@@ -148,6 +189,7 @@ export default function TravelsPage() {
         isOpen={!!selectedTrip}
         onClose={() => setSelectedTrip(null)}
         trip={selectedTrip}
+        onAddPlannedTrip={handleAddPlannedTrip}
       />
 
     </div>

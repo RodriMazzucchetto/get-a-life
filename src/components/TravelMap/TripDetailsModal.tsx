@@ -1,15 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { VisitedCity } from '@/types/travel'
 
 interface TripDetailsModalProps {
   isOpen: boolean
   onClose: () => void
   trip: { type: string; title: string } | null
+  onAddPlannedTrip: (tripData: { type: string; title: string; date: string; location: string; description: string; todos: string[] }) => void
 }
 
-export default function TripDetailsModal({ isOpen, onClose, trip }: TripDetailsModalProps) {
+export default function TripDetailsModal({ isOpen, onClose, trip, onAddPlannedTrip }: TripDetailsModalProps) {
   const [tripData, setTripData] = useState({
     date: '',
     location: '',
@@ -20,8 +20,21 @@ export default function TripDetailsModal({ isOpen, onClose, trip }: TripDetailsM
   if (!isOpen || !trip) return null
 
   const handleSave = () => {
-    // TODO: Implementar salvamento da viagem
-    console.log('Salvando viagem:', tripData)
+    if (!tripData.location.trim()) {
+      alert('Por favor, insira uma localização para a viagem')
+      return
+    }
+    
+    const tripToSave = {
+      type: trip?.type || '',
+      title: trip?.title || '',
+      date: tripData.date,
+      location: tripData.location,
+      description: tripData.description,
+      todos: tripData.todos.filter(todo => todo.trim() !== '')
+    }
+    
+    onAddPlannedTrip(tripToSave)
     onClose()
   }
 
@@ -80,13 +93,25 @@ export default function TripDetailsModal({ isOpen, onClose, trip }: TripDetailsM
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Localização
             </label>
-            <input
-              type="text"
-              placeholder="Digite a cidade ou país"
-              value={tripData.location}
-              onChange={(e) => setTripData(prev => ({ ...prev, location: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="Digite a cidade ou país"
+                value={tripData.location}
+                onChange={(e) => setTripData(prev => ({ ...prev, location: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {tripData.location && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                    <span className="text-sm text-purple-800">
+                      Pin roxo será adicionado no mapa para: {tripData.location}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Descrição */}
