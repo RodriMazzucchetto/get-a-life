@@ -134,24 +134,6 @@ export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpda
       console.log('✅ GL: Layer upcoming-trips criado (roxo) - POR CIMA')
     }
 
-    // Adicionar event listeners para clique
-    map.current.on('click', 'visited-cities', handleCityClick)
-    map.current.on('click', 'upcoming-trips', handleTripClick)
-    
-    // Cursor pointer nos pins
-    map.current.on('mouseenter', 'visited-cities', () => {
-      if (map.current) map.current.getCanvas().style.cursor = 'pointer'
-    })
-    map.current.on('mouseleave', 'visited-cities', () => {
-      if (map.current) map.current.getCanvas().style.cursor = ''
-    })
-    map.current.on('mouseenter', 'upcoming-trips', () => {
-      if (map.current) map.current.getCanvas().style.cursor = 'pointer'
-    })
-    map.current.on('mouseleave', 'upcoming-trips', () => {
-      if (map.current) map.current.getCanvas().style.cursor = ''
-    })
-
     console.log('🎯 GL: 2 layers criados com sucesso - sem Marker!')
   }, [])
 
@@ -229,6 +211,33 @@ export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpda
     console.log('🖱️ GL: Clique em viagem planejada:', feature.properties?.name)
     // TODO: Implementar modal de detalhes da viagem
   }, [])
+
+  // 🎯 FUNÇÃO PARA CONFIGURAR EVENT LISTENERS
+  const setupEventListeners = useCallback(() => {
+    if (!map.current) return
+
+    console.log('🎯 GL: Configurando event listeners para cliques')
+
+    // Adicionar event listeners para clique
+    map.current.on('click', 'visited-cities', handleCityClick)
+    map.current.on('click', 'upcoming-trips', handleTripClick)
+    
+    // Cursor pointer nos pins
+    map.current.on('mouseenter', 'visited-cities', () => {
+      if (map.current) map.current.getCanvas().style.cursor = 'pointer'
+    })
+    map.current.on('mouseleave', 'visited-cities', () => {
+      if (map.current) map.current.getCanvas().style.cursor = ''
+    })
+    map.current.on('mouseenter', 'upcoming-trips', () => {
+      if (map.current) map.current.getCanvas().style.cursor = 'pointer'
+    })
+    map.current.on('mouseleave', 'upcoming-trips', () => {
+      if (map.current) map.current.getCanvas().style.cursor = ''
+    })
+
+    console.log('✅ GL: Event listeners configurados com sucesso')
+  }, [handleCityClick, handleTripClick])
 
   // Carregar cidades visitadas do localStorage
   useEffect(() => {
@@ -337,6 +346,11 @@ export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpda
         createMapSource()
         createMapLayers()
         updateMapData(visitedCities, plannedTrips)
+        
+        // Configurar event listeners após os layers serem criados
+        setTimeout(() => {
+          setupEventListeners()
+        }, 100)
       }
 
       map.current.on('load', handleStyleLoad)
@@ -360,7 +374,7 @@ export default function TravelMapGL({ visitedPlaces, onPlaceToggle, onCitiesUpda
         map.current = null
       }
     }
-  }, [isClient, createMapSource, createMapLayers, visitedCities, plannedTrips, updateMapData])
+  }, [isClient, createMapSource, createMapLayers, visitedCities, plannedTrips, updateMapData, setupEventListeners])
 
   // Update data when cities or trips change
   useEffect(() => {
