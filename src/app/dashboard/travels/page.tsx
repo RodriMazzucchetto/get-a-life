@@ -32,7 +32,6 @@ export default function TravelsPage() {
   const [visitedCities, setVisitedCities] = useState<VisitedCity[]>([])
   const [selectedTrip, setSelectedTrip] = useState<{ type: string; title: string } | null>(null)
   const [plannedTrips, setPlannedTrips] = useState<PlannedTrip[]>([])
-  const [shortTrips, setShortTrips] = useState<PlannedTrip[]>([])
 
   // Total de países no mundo (padrão reconhecido)
   const TOTAL_WORLD_COUNTRIES = 195
@@ -44,23 +43,74 @@ export default function TravelsPage() {
       id: Date.now().toString()
     }
     
-    if (tripData.type === 'short') {
-      // Para viagens de curta duração, adiciona à lista de múltiplas viagens
-      setShortTrips(prev => [...prev, newTrip])
-      
-      // Salvar no localStorage
-      const updatedShortTrips = [...shortTrips, newTrip]
-      localStorage.setItem('shortTrips', JSON.stringify(updatedShortTrips))
-    } else {
-      // Para outros tipos, substitui a viagem existente
-      setPlannedTrips(prev => [...prev.filter(t => t.type !== tripData.type), newTrip])
-      
-      // Salvar no localStorage
-      const updatedTrips = [...plannedTrips.filter(t => t.type !== tripData.type), newTrip]
-      localStorage.setItem('plannedTrips', JSON.stringify(updatedTrips))
-    }
+    // Adiciona à lista de próximas viagens
+    setPlannedTrips(prev => [...prev, newTrip])
+    
+    // Salvar no localStorage
+    const updatedTrips = [...plannedTrips, newTrip]
+    localStorage.setItem('plannedTrips', JSON.stringify(updatedTrips))
     
     console.log('✅ Viagem planejada adicionada:', newTrip)
+  }
+
+  // Funções auxiliares para tipos de viagem
+  const getTripTypeTitle = (type: string) => {
+    switch (type) {
+      case 'international': return 'Viagem Internacional'
+      case 'short': return 'Curta Duração'
+      case 'thematic': return 'Temática'
+      case 'daytrip': return 'Bate-Volta'
+      default: return 'Viagem'
+    }
+  }
+
+  const getTripTypeIcon = (type: string) => {
+    switch (type) {
+      case 'international': return '🌍'
+      case 'short': return '⏰'
+      case 'thematic': return '🎯'
+      case 'daytrip': return '🚗'
+      default: return '✈️'
+    }
+  }
+
+  const getTripTypeColors = (type: string) => {
+    switch (type) {
+      case 'international': return 'bg-purple-100 text-purple-700'
+      case 'short': return 'bg-blue-100 text-blue-700'
+      case 'thematic': return 'bg-green-100 text-green-700'
+      case 'daytrip': return 'bg-orange-100 text-orange-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  // Funções para manipular viagens
+  const removeTrip = (tripId: string) => {
+    setPlannedTrips(prev => prev.filter(t => t.id !== tripId))
+    const updatedTrips = plannedTrips.filter(t => t.id !== tripId)
+    localStorage.setItem('plannedTrips', JSON.stringify(updatedTrips))
+  }
+
+  const moveTripUp = (tripId: string) => {
+    setPlannedTrips(prev => {
+      const newTrips = [...prev]
+      const index = newTrips.findIndex(t => t.id === tripId)
+      if (index > 0) {
+        [newTrips[index], newTrips[index - 1]] = [newTrips[index - 1], newTrips[index]]
+      }
+      return newTrips
+    })
+  }
+
+  const moveTripDown = (tripId: string) => {
+    setPlannedTrips(prev => {
+      const newTrips = [...prev]
+      const index = newTrips.findIndex(t => t.id === tripId)
+      if (index < newTrips.length - 1) {
+        [newTrips[index], newTrips[index + 1]] = [newTrips[index + 1], newTrips[index]]
+      }
+      return newTrips
+    })
   }
 
   useEffect(() => {
@@ -93,17 +143,7 @@ export default function TravelsPage() {
       }
     }
     
-    // Carregar viagens de curta duração do localStorage
-    const savedShortTrips = localStorage.getItem('shortTrips')
-    if (savedShortTrips) {
-      try {
-        const shortTrips = JSON.parse(savedShortTrips)
-        console.log('🔍 DEBUG TravelsPage - Viagens de curta duração carregadas:', shortTrips)
-        setShortTrips(shortTrips)
-      } catch (error) {
-        console.error('Erro ao carregar viagens de curta duração:', error)
-      }
-    }
+
   }, [])
 
   if (loading) {
@@ -143,214 +183,154 @@ export default function TravelsPage() {
 
       {/* Seção de Próximas Viagens */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Próximas Viagens</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Próximas Viagens</h2>
+          <button
+            onClick={() => setSelectedTrip({ type: 'new', title: 'Nova Viagem' })}
+            className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+          >
+            <span className="mr-2">+</span>
+            Adicionar Viagem
+          </button>
+        </div>
         
-        <div className="space-y-4">
-          {/* Viagem Internacional */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-purple-300 hover:shadow-lg transition-all duration-200 group" onClick={() => setSelectedTrip({ type: 'international', title: 'Viagem Internacional' })}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                {/* Destino - DESTAQUE PRINCIPAL */}
-                {plannedTrips.find(t => t.type === 'international') ? (
-                  <div className="mb-1.5">
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">
-                      {plannedTrips.find(t => t.type === 'international')?.cityData?.displayName || plannedTrips.find(t => t.type === 'international')?.location}
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {plannedTrips.find(t => t.type === 'international')?.cityData?.country}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mb-1.5">
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">Clique para planejar</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">Sua próxima aventura internacional</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Data e Tag - LADO DIREITO */}
-              <div className="text-right ml-6 flex items-center gap-4">
-                {/* Tag do tipo de viagem */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
-                  🌍 Viagem Internacional
-                </div>
-                
-                {/* Data - DESIGN MODERNO */}
-                <div>
-                  <div className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-1">Data da Viagem</div>
-                  <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg px-3 py-1.5 border border-purple-200">
-                    <div className="text-base font-bold text-purple-800">
-                      {plannedTrips.find(t => t.type === 'international')?.date || '--/--/----'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Curta Duração */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-blue-300 hover:shadow-lg transition-all duration-200 group" onClick={() => setSelectedTrip({ type: 'short', title: 'Curta Duração' })}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                {/* Destino - DESTAQUE PRINCIPAL */}
-                {shortTrips.length > 0 ? (
-                  <div className="space-y-2">
-                    {/* Viagem Principal - DESTAQUE */}
-                    <div className="mb-1.5">
-                      <h3 className="text-lg font-bold text-blue-900 leading-tight">
-                        {shortTrips[0]?.cityData?.displayName || shortTrips[0]?.location}
-                      </h3>
-                      <p className="text-sm text-blue-700 mt-0.5 font-medium">
-                        {shortTrips[0]?.cityData?.country} • Próxima
-                      </p>
+        <div className="space-y-3">
+          {plannedTrips.length > 0 ? (
+            plannedTrips
+              .sort((a, b) => {
+                // Ordenar por data (mais próxima primeiro)
+                if (!a.date && !b.date) return 0
+                if (!a.date) return 1
+                if (!b.date) return -1
+                return new Date(a.date).getTime() - new Date(b.date).getTime()
+              })
+              .map((trip, index) => (
+                <div
+                  key={trip.id}
+                  className={`bg-white border rounded-xl p-4 cursor-pointer transition-all duration-200 group ${
+                    index === 0 
+                      ? 'border-purple-300 hover:border-purple-400 hover:shadow-lg' 
+                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  }`}
+                  onClick={() => setSelectedTrip({ type: trip.type, title: getTripTypeTitle(trip.type) })}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      {/* Destino */}
+                      <div className="mb-1.5">
+                        <h3 className={`font-bold leading-tight ${
+                          index === 0 ? 'text-lg text-purple-900' : 'text-base text-gray-900'
+                        }`}>
+                          {trip.cityData?.displayName || trip.location}
+                        </h3>
+                        <p className={`mt-0.5 ${
+                          index === 0 ? 'text-sm text-purple-700 font-medium' : 'text-sm text-gray-600'
+                        }`}>
+                          {trip.cityData?.country}
+                          {index === 0 && <span className="ml-2 text-purple-600 font-semibold">• Próxima</span>}
+                        </p>
+                      </div>
+                      
+                      {/* Descrição se existir */}
+                      {trip.description && (
+                        <p className="text-sm text-gray-500 mt-1">{trip.description}</p>
+                      )}
                     </div>
                     
-                    {/* Outras Viagens - MENOR DESTAQUE */}
-                    {shortTrips.slice(1).map((trip, index) => (
-                      <div key={trip.id} className="flex items-center justify-between py-1 border-l-2 border-blue-200 pl-3">
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700">
-                            {trip.cityData?.displayName || trip.location}
-                          </h4>
-                          <p className="text-xs text-gray-500">
-                            {trip.cityData?.country} • {trip.date || 'Data não definida'}
-                          </p>
+                    {/* Lado direito: Data, Tag e Ações */}
+                    <div className="text-right ml-6 flex items-center gap-4">
+                      {/* Tag do tipo de viagem */}
+                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                        getTripTypeColors(trip.type)
+                      }`}>
+                        {getTripTypeIcon(trip.type)} {getTripTypeTitle(trip.type)}
+                      </div>
+                      
+                      {/* Data */}
+                      <div>
+                        <div className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Data</div>
+                        <div className={`rounded-lg px-3 py-1.5 border ${
+                          index === 0 
+                            ? 'bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200' 
+                            : 'bg-gray-50 border-gray-200'
+                        }`}>
+                          <div className={`font-bold ${
+                            index === 0 ? 'text-purple-800' : 'text-gray-700'
+                          }`}>
+                            {trip.date || '--/--/----'}
+                          </div>
                         </div>
+                      </div>
+                      
+                      {/* Botões de ação */}
+                      <div className="flex items-center gap-2">
+                        {index > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              moveTripUp(trip.id)
+                            }}
+                            className="text-gray-400 hover:text-gray-600 p-1"
+                            title="Mover para cima"
+                          >
+                            ↑
+                          </button>
+                        )}
+                        {index < plannedTrips.length - 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              moveTripDown(trip.id)
+                            }}
+                            className="text-gray-400 hover:text-gray-600 p-1"
+                            title="Mover para baixo"
+                          >
+                            ↓
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             if (window.confirm(`Remover viagem para ${trip.cityData?.displayName || trip.location}?`)) {
-                              setShortTrips(prev => prev.filter(t => t.id !== trip.id))
+                              removeTrip(trip.id)
                             }
                           }}
-                          className="text-red-500 hover:text-red-700 text-xs p-1"
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Remover viagem"
                         >
                           ✕
                         </button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mb-1.5">
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">Clique para planejar</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">Fim de semana ou 3 dias</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Data e Tag - LADO DIREITO */}
-              <div className="text-right ml-6 flex items-center gap-4">
-                {/* Tag do tipo de viagem */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                  ⏰ Curta Duração
-                </div>
-                
-                {/* Data - DESIGN MODERNO */}
-                <div>
-                  <div className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">Data da Viagem</div>
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg px-3 py-1.5 border border-blue-200">
-                    <div className="text-base font-bold text-blue-800">
-                      {shortTrips.length > 0 ? shortTrips[0]?.date || '--/--/----' : '--/--/----'}
                     </div>
                   </div>
                 </div>
-              </div>
+              ))
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+              <div className="text-4xl mb-3">✈️</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma viagem planejada</h3>
+              <p className="text-gray-500 mb-4">Clique no botão acima para adicionar sua primeira viagem</p>
+              <button
+                onClick={() => setSelectedTrip({ type: 'new', title: 'Nova Viagem' })}
+                className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+              >
+                <span className="mr-2">+</span>
+                Planejar Primeira Viagem
+              </button>
             </div>
-          </div>
-
-          {/* Temática */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-green-300 hover:shadow-lg transition-all duration-200 group" onClick={() => setSelectedTrip({ type: 'thematic', title: 'Temática' })}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                {/* Destino - DESTAQUE PRINCIPAL */}
-                {plannedTrips.find(t => t.type === 'thematic') ? (
-                  <div className="mb-1.5">
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">
-                      {plannedTrips.find(t => t.type === 'thematic')?.cityData?.displayName || plannedTrips.find(t => t.type === 'thematic')?.location}
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {plannedTrips.find(t => t.type === 'thematic')?.cityData?.country}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mb-1.5">
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">Clique para planejar</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">Viagem com propósito específico</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Data e Tag - LADO DIREITO */}
-              <div className="text-right ml-6 flex items-center gap-4">
-                {/* Tag do tipo de viagem */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-                  🎯 Temática
-                </div>
-                
-                {/* Data - DESIGN MODERNO */}
-                <div>
-                  <div className="text-xs font-medium text-green-600 uppercase tracking-wide mb-1">Data da Viagem</div>
-                  <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg px-3 py-1.5 border border-green-200">
-                    <div className="text-base font-bold text-green-800">
-                      {plannedTrips.find(t => t.type === 'thematic')?.date || '--/--/----'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bate-Volta */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-orange-300 hover:shadow-lg transition-all duration-200 group" onClick={() => setSelectedTrip({ type: 'daytrip', title: 'Bate-Volta' })}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                {/* Destino - DESTAQUE PRINCIPAL */}
-                {plannedTrips.find(t => t.type === 'daytrip') ? (
-                  <div className="mb-1.5">
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">
-                      {plannedTrips.find(t => t.type === 'daytrip')?.cityData?.displayName || plannedTrips.find(t => t.type === 'daytrip')?.location}
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {plannedTrips.find(t => t.type === 'daytrip')?.cityData?.country}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mb-1.5">
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">Clique para planejar</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">Viagem de 1 dia</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Data e Tag - LADO DIREITO */}
-              <div className="text-right ml-6 flex items-center gap-4">
-                {/* Tag do tipo de viagem */}
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium">
-                  🚗 Bate-Volta
-                </div>
-                
-                {/* Data - DESIGN MODERNO */}
-                <div>
-                  <div className="text-xs font-medium text-orange-600 uppercase tracking-wide mb-1">Data da Viagem</div>
-                  <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg px-3 py-1.5 border border-orange-200">
-                    <div className="text-base font-bold text-orange-800">
-                      {plannedTrips.find(t => t.type === 'daytrip')?.date || '--/--/----'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Modal de Detalhes da Viagem */}
-      <TripDetailsModal
-        isOpen={!!selectedTrip}
-        onClose={() => setSelectedTrip(null)}
-        trip={selectedTrip}
-        onAddPlannedTrip={handleAddPlannedTrip}
-      />
+      {selectedTrip && (
+        <TripDetailsModal
+          isOpen={!!selectedTrip}
+          onClose={() => setSelectedTrip(null)}
+          trip={selectedTrip}
+          onAddPlannedTrip={handleAddPlannedTrip}
+        />
+      )}
 
     </div>
   )
