@@ -25,12 +25,21 @@ interface Reminder {
 export default function PlanningPage() {
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
+  const [showProjectsModal, setShowProjectsModal] = useState(false)
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
     dueDate: ''
   })
+
+  // Mock data para projetos
+  const projects = [
+    { id: '1', name: 'Pessoal', color: 'bg-blue-500' },
+    { id: '2', name: 'ExitLag', color: 'bg-gray-500' },
+    { id: '3', name: 'KimonoLab', color: 'bg-red-500' },
+    { id: '4', name: 'Zentrix', color: 'bg-purple-500' }
+  ]
 
   // Mock data - depois será integrado com o banco
   const taskStats = {
@@ -191,7 +200,10 @@ export default function PlanningPage() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+              <button 
+                onClick={() => setShowProjectsModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
                 <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -209,6 +221,51 @@ export default function PlanningPage() {
           </div>
         </div>
       </div>
+
+      {/* Projects Management Modal */}
+      {showProjectsModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Gerenciar Projetos</h3>
+              <button
+                onClick={() => setShowProjectsModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="text-sm font-medium text-gray-700">Projetos Existentes</h4>
+                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                  Novo Projeto
+                </button>
+              </div>
+              
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {projects.map((project) => (
+                  <div key={project.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${project.color}`}></div>
+                      <span className="text-sm text-gray-900">{project.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button className="text-gray-600 hover:text-gray-800">
+                        ✏️
+                      </button>
+                      <button className="text-red-600 hover:text-red-800">
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Task Creation Modal */}
       {showTaskModal && (
