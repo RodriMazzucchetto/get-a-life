@@ -28,7 +28,7 @@ export default function PlanningPage() {
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    priority: 'medium' as const,
+    priority: 'medium' as 'low' | 'medium' | 'high',
     dueDate: ''
   })
 
