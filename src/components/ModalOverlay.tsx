@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ModalOverlayProps {
   isOpen: boolean
@@ -7,20 +8,36 @@ interface ModalOverlayProps {
 }
 
 export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlayProps) {
-  if (!isOpen) return null
+  const [mounted, setMounted] = useState(false)
 
-  return (
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  if (!isOpen || !mounted) return null
+
+  // Portal para document.body para evitar herdar estilos do container
+  return createPortal(
     <div className="fixed inset-0 z-50">
-      {/* Overlay extremamente sutil - apenas para interceptar cliques */}
+      {/* Overlay completamente transparente - apenas para interceptar cliques */}
       <div 
-        className="absolute inset-0 bg-gray-100 bg-opacity-10"
+        className="absolute inset-0 cursor-pointer"
         onClick={onClose}
+        style={{ 
+          backgroundColor: 'transparent',
+          backdropFilter: 'none',
+          filter: 'none',
+          WebkitBackdropFilter: 'none',
+          mixBlendMode: 'normal'
+        }}
       />
       
       {/* Conteúdo da modal */}
-      <div className="relative z-10">
+      <div className="relative z-10 pointer-events-auto">
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
