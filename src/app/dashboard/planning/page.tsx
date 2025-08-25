@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { PlusIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import ModalOverlay from '@/components/ModalOverlay'
 
 interface Task {
   id: string
@@ -85,6 +86,28 @@ export default function PlanningPage() {
   const handleDeleteProject = (projectId: string) => {
     if (confirm('Tem certeza que deseja deletar este projeto? Esta ação não pode ser desfeita.')) {
       setProjects(projects.filter(p => p.id !== projectId))
+    }
+  }
+
+  const handleCreateTask = () => {
+    if (newTask.title.trim()) {
+      // Aqui você pode adicionar a lógica para salvar a tarefa
+      console.log('Nova tarefa:', newTask)
+      setNewTask({ title: '', description: '', priority: 'medium' as 'low' | 'medium' | 'high', dueDate: '' })
+      setShowTaskModal(false)
+    }
+  }
+
+  const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-100 text-red-800 border-red-200'
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'low':
+        return 'bg-green-100 text-green-800 border-green-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
@@ -270,9 +293,8 @@ export default function PlanningPage() {
       </div>
 
       {/* Projects Management Modal */}
-      {showProjectsModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-25 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-6 border w-96 shadow-2xl rounded-lg bg-white/95 backdrop-blur-md">
+      <ModalOverlay isOpen={showProjectsModal} onClose={() => setShowProjectsModal(false)}>
+        <div className="relative top-20 mx-auto p-6 border w-96 shadow-2xl rounded-lg bg-white border-gray-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Gerenciar Projetos</h3>
               <button
@@ -421,13 +443,11 @@ export default function PlanningPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </ModalOverlay>
 
       {/* Task Creation Modal */}
-      {showTaskModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-25 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-2xl rounded-lg bg-white/95 backdrop-blur-md">
+      <ModalOverlay isOpen={showTaskModal} onClose={() => setShowTaskModal(false)}>
+        <div className="relative top-20 mx-auto p-5 border w-96 shadow-2xl rounded-lg bg-white border-gray-200">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Nova Tarefa</h3>
               
@@ -502,13 +522,11 @@ export default function PlanningPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </ModalOverlay>
 
       {/* Reminders Modal */}
-      {showRemindersModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-25 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-2xl rounded-lg bg-white/95 backdrop-blur-md">
+      <ModalOverlay isOpen={showRemindersModal} onClose={() => setShowRemindersModal(false)}>
+        <div className="relative top-20 mx-auto p-5 border w-96 shadow-2xl rounded-lg bg-white border-gray-200">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Lembretes</h3>
               
@@ -545,8 +563,7 @@ export default function PlanningPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </ModalOverlay>
     </div>
   )
 }
