@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PlusIcon, Cog6ToothIcon, ChevronUpIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, Cog6ToothIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline'
 
 interface Project {
   id: string
