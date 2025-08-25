@@ -278,7 +278,7 @@ export default function PlanningPage() {
 
       {/* Projects Management Modal */}
       <ModalOverlay isOpen={showProjectsModal} onClose={() => setShowProjectsModal(false)}>
-        <div className="relative top-20 mx-auto p-6 border w-96 shadow-2xl rounded-lg bg-white border-gray-200">
+        <div className="relative top-20 mx-auto p-6 w-96 shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Gerenciar Projetos</h3>
               <button
@@ -431,7 +431,7 @@ export default function PlanningPage() {
 
       {/* Task Creation Modal */}
       <ModalOverlay isOpen={showTaskModal} onClose={() => setShowTaskModal(false)}>
-        <div className="relative top-20 mx-auto p-5 border w-96 shadow-2xl rounded-lg bg-white border-gray-200">
+        <div className="relative top-20 mx-auto p-5 w-96 shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Nova Tarefa</h3>
               
@@ -510,7 +510,7 @@ export default function PlanningPage() {
 
       {/* Reminders Modal */}
       <ModalOverlay isOpen={showRemindersModal} onClose={() => setShowRemindersModal(false)}>
-        <div className="relative top-20 mx-auto p-5 border w-96 shadow-2xl rounded-lg bg-white border-gray-200">
+        <div className="relative top-20 mx-auto p-5 w-96 shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Lembretes</h3>
               

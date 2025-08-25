@@ -20,12 +20,12 @@ export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlay
   // Portal para document.body para evitar herdar estilos do container
   return createPortal(
     <div className="fixed inset-0 z-50">
-      {/* Overlay completamente transparente - apenas para interceptar cliques */}
+      {/* Scrim neutro sutil - preto bem fraco para atenuar levemente o fundo */}
       <div 
         className="absolute inset-0 cursor-pointer"
         onClick={onClose}
         style={{ 
-          backgroundColor: 'transparent',
+          backgroundColor: 'rgba(0, 0, 0, 0.08)', // Preto 8% opacidade - quase imperceptível
           backdropFilter: 'none',
           filter: 'none',
           WebkitBackdropFilter: 'none',
