@@ -139,6 +139,36 @@ export default function PlanningPage() {
       initiatives: 2,
       totalInitiatives: 6,
       created_at: new Date().toISOString()
+    },
+    {
+      id: '5',
+      title: 'CRM Integrado e Automatizado com Atendimento de IA',
+      description: 'Implementar CRM completo com inteligência artificial para atendimento',
+      projectId: '3',
+      subProject: '',
+      whatIsMissing: '',
+      dueDate: undefined,
+      status: 'active',
+      progress: 5,
+      nextStep: 'Finalizar o KimonoBot na Lovable (Integrado, funcional e 24h)',
+      initiatives: 0,
+      totalInitiatives: 4,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '6',
+      title: 'Primeira Venda Zentrix Business Solutions',
+      description: 'Conquistar a primeira venda do produto Zentrix',
+      projectId: '4',
+      subProject: 'Zentrix OS',
+      whatIsMissing: '',
+      dueDate: '2025-09-30',
+      status: 'active',
+      progress: 50,
+      nextStep: 'Estruturar um fluxo de desenvolvimento e definir um DoD para o produto estar pronto para venda',
+      initiatives: 0,
+      totalInitiatives: 2,
+      created_at: new Date().toISOString()
     }
   ])
 
