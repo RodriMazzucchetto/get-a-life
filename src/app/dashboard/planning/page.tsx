@@ -27,6 +27,7 @@ export default function PlanningPage() {
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showProjectsModal, setShowProjectsModal] = useState(false)
   const [showNewProjectForm, setShowNewProjectForm] = useState(false)
+  const [editingProject, setEditingProject] = useState<{ id: string; name: string; color: string } | null>(null)
   const [newProject, setNewProject] = useState({
     name: '',
     color: '#3B82F6'
@@ -62,6 +63,28 @@ export default function PlanningPage() {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleCreateProject()
+    }
+  }
+
+  const handleEditProject = (project: { id: string; name: string; color: string }) => {
+    setEditingProject(project)
+    setShowNewProjectForm(false)
+  }
+
+  const handleUpdateProject = () => {
+    if (editingProject && editingProject.name.trim()) {
+      setProjects(projects.map(p => 
+        p.id === editingProject.id 
+          ? { ...p, name: editingProject.name.trim(), color: editingProject.color }
+          : p
+      ))
+      setEditingProject(null)
+    }
+  }
+
+  const handleDeleteProject = (projectId: string) => {
+    if (confirm('Tem certeza que deseja deletar este projeto? Esta ação não pode ser desfeita.')) {
+      setProjects(projects.filter(p => p.id !== projectId))
     }
   }
 
@@ -273,8 +296,8 @@ export default function PlanningPage() {
                 </button>
               </div>
 
-              {/* Formulário de Novo Projeto */}
-              {showNewProjectForm && (
+              {/* Formulário de Novo Projeto ou Edição */}
+              {(showNewProjectForm || editingProject) && (
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
                   <div className="space-y-3">
                     <div>
@@ -283,9 +306,23 @@ export default function PlanningPage() {
                       </label>
                       <input
                         type="text"
-                        value={newProject.name}
-                        onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                        onKeyPress={handleKeyPress}
+                        value={editingProject ? editingProject.name : newProject.name}
+                        onChange={(e) => {
+                          if (editingProject) {
+                            setEditingProject({ ...editingProject, name: e.target.value })
+                          } else {
+                            setNewProject({ ...newProject, name: e.target.value })
+                          }
+                        }}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            if (editingProject) {
+                              handleUpdateProject()
+                            } else {
+                              handleCreateProject()
+                            }
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Digite o nome do projeto"
                         autoFocus
@@ -299,14 +336,26 @@ export default function PlanningPage() {
                       <div className="flex items-center gap-3">
                         <input
                           type="color"
-                          value={newProject.color}
-                          onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
+                          value={editingProject ? editingProject.color : newProject.color}
+                          onChange={(e) => {
+                            if (editingProject) {
+                              setEditingProject({ ...editingProject, color: e.target.value })
+                            } else {
+                              setNewProject({ ...newProject, color: e.target.value })
+                            }
+                          }}
                           className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
                         />
                         <input
                           type="text"
-                          value={newProject.color}
-                          onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
+                          value={editingProject ? editingProject.color : newProject.color}
+                          onChange={(e) => {
+                            if (editingProject) {
+                              setEditingProject({ ...editingProject, color: e.target.value })
+                            } else {
+                              setNewProject({ ...newProject, color: e.target.value })
+                            }
+                          }}
                           placeholder="#000000"
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
@@ -316,19 +365,23 @@ export default function PlanningPage() {
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => {
-                          setShowNewProjectForm(false)
-                          setNewProject({ name: '', color: '#3B82F6' })
+                          if (editingProject) {
+                            setEditingProject(null)
+                          } else {
+                            setShowNewProjectForm(false)
+                            setNewProject({ name: '', color: '#3B82F6' })
+                          }
                         }}
                         className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
                       >
                         Cancelar
                       </button>
                       <button
-                        onClick={handleCreateProject}
-                        disabled={!newProject.name.trim()}
+                        onClick={editingProject ? handleUpdateProject : handleCreateProject}
+                        disabled={!editingProject?.name.trim() && !newProject.name.trim()}
                         className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Salvar
+                        {editingProject ? 'Atualizar' : 'Salvar'}
                       </button>
                     </div>
                   </div>
@@ -346,11 +399,21 @@ export default function PlanningPage() {
                       <span className="text-sm text-gray-900">{project.name}</span>
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <button className="text-gray-600 hover:text-gray-800">
-                        ✏️
+                      <button 
+                        onClick={() => handleEditProject(project)}
+                        className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </button>
-                      <button className="text-red-600 hover:text-red-800">
-                        🗑️
+                      <button 
+                        onClick={() => handleDeleteProject(project.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors duration-200"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   </div>
