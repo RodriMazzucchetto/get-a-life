@@ -13,6 +13,7 @@ const navigation = [
   { name: 'Home', href: '/dashboard', active: true },
   { name: 'Minhas Memórias', href: '/dashboard/memories', active: true },
   { name: 'Viagens', href: '/dashboard/travels', active: true },
+  { name: 'Planejamento', href: '/dashboard/planning', active: true },
   { name: 'Radar da Vida', href: '/dashboard/radar', active: false, comingSoon: true },
   { name: 'Mini-desafios', href: '/dashboard/challenges', active: false, comingSoon: true },
   { name: 'Relatórios', href: '/dashboard/reports', active: false, comingSoon: true },
