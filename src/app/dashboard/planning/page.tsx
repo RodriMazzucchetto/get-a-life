@@ -26,6 +26,11 @@ export default function PlanningPage() {
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showProjectsModal, setShowProjectsModal] = useState(false)
+  const [showNewProjectForm, setShowNewProjectForm] = useState(false)
+  const [newProject, setNewProject] = useState({
+    name: '',
+    color: 'bg-blue-500'
+  })
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -34,12 +39,37 @@ export default function PlanningPage() {
   })
 
   // Mock data para projetos
-  const projects = [
+  const [projects, setProjects] = useState([
     { id: '1', name: 'Pessoal', color: 'bg-blue-500' },
     { id: '2', name: 'ExitLag', color: 'bg-gray-500' },
     { id: '3', name: 'KimonoLab', color: 'bg-red-500' },
     { id: '4', name: 'Zentrix', color: 'bg-purple-500' }
+  ])
+
+  // Cores disponíveis para projetos
+  const availableColors = [
+    'bg-blue-500', 'bg-gray-500', 'bg-red-500', 'bg-purple-500',
+    'bg-green-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'
   ]
+
+  const handleCreateProject = () => {
+    if (newProject.name.trim()) {
+      const newProjectData = {
+        id: Date.now().toString(),
+        name: newProject.name.trim(),
+        color: newProject.color
+      }
+      setProjects([...projects, newProjectData])
+      setNewProject({ name: '', color: 'bg-blue-500' })
+      setShowNewProjectForm(false)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCreateProject()
+    }
+  }
 
   // Mock data - depois será integrado com o banco
   const taskStats = {
@@ -239,10 +269,75 @@ export default function PlanningPage() {
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <h4 className="text-sm font-medium text-gray-700">Projetos Existentes</h4>
-                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                  Novo Projeto
+                <button 
+                  onClick={() => setShowNewProjectForm(!showNewProjectForm)}
+                  className="w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition-colors duration-200"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
                 </button>
               </div>
+
+              {/* Formulário de Novo Projeto */}
+              {showNewProjectForm && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nome do Projeto
+                      </label>
+                      <input
+                        type="text"
+                        value={newProject.name}
+                        onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                        onKeyPress={handleKeyPress}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Digite o nome do projeto"
+                        autoFocus
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Cor do Projeto
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {availableColors.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => setNewProject({ ...newProject, color })}
+                            className={`w-6 h-6 rounded-full border-2 transition-all duration-200 ${
+                              newProject.color === color 
+                                ? 'border-gray-800 scale-110' 
+                                : 'border-gray-300 hover:scale-105'
+                            } ${color}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setShowNewProjectForm(false)
+                          setNewProject({ name: '', color: 'bg-blue-500' })
+                        }}
+                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleCreateProject}
+                        disabled={!newProject.name.trim()}
+                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Salvar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {projects.map((project) => (
