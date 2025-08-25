@@ -25,7 +25,7 @@ export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlay
         className="absolute inset-0 cursor-pointer"
         onClick={onClose}
         style={{ 
-          backgroundColor: 'rgba(0, 0, 0, 0.08)', // Preto 8% opacidade - quase imperceptível
+          backgroundColor: 'rgba(0, 0, 0, 0.22)', // Preto 22% opacidade - um degrau acima do anterior
           backdropFilter: 'none',
           filter: 'none',
           WebkitBackdropFilter: 'none',
