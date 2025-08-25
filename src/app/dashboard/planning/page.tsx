@@ -490,10 +490,18 @@ export default function PlanningPage() {
                         </button>
                       </div>
                       
-                      {/* Grid de metas - 3 por linha */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Grid de metas - adaptativo baseado na quantidade */}
+                      <div className={`grid gap-4 ${
+                        goals.length === 1 
+                          ? 'grid-cols-1' // 1 meta = ocupa toda a largura
+                          : goals.length === 2 
+                            ? 'grid-cols-1 md:grid-cols-2' // 2 metas = 2 colunas em desktop
+                            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' // 3+ metas = 3 colunas em desktop
+                      }`}>
                         {goals.map((goal) => (
-                          <div key={goal.id} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                          <div key={goal.id} className={`p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${
+                            goals.length === 1 ? 'max-w-none' : '' // 1 meta = sem limite de largura
+                          }`}>
                             <div className="space-y-3">
                               {/* Cabeçalho da meta */}
                               <div className="flex items-start justify-between">
