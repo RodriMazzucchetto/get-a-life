@@ -28,9 +28,14 @@ interface Goal {
   title: string
   description?: string
   projectId: string
-  priority: 'low' | 'medium' | 'high'
+  subProject?: string
+  whatIsMissing?: string
   dueDate?: string
   status: 'active' | 'completed'
+  progress: number
+  nextStep?: string
+  initiatives: number
+  totalInitiatives: number
   created_at: string
 }
 
@@ -58,7 +63,8 @@ export default function PlanningPage() {
     title: '',
     description: '',
     projectId: '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
+    subProject: '',
+    whatIsMissing: '',
     dueDate: ''
   })
 
@@ -121,13 +127,18 @@ export default function PlanningPage() {
         title: newGoal.title.trim(),
         description: newGoal.description.trim(),
         projectId: newGoal.projectId,
-        priority: newGoal.priority,
+        subProject: newGoal.subProject.trim(),
+        whatIsMissing: newGoal.whatIsMissing.trim(),
         dueDate: newGoal.dueDate,
         status: 'active',
+        progress: 0,
+        nextStep: '',
+        initiatives: 0,
+        totalInitiatives: 0,
         created_at: new Date().toISOString()
       }
       setGoals([...goals, newGoalData])
-      setNewGoal({ title: '', description: '', projectId: '', priority: 'medium' as 'low' | 'medium' | 'high', dueDate: '' })
+      setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: '' })
       setShowCreateGoalModal(false)
     }
   }
@@ -368,16 +379,29 @@ export default function PlanningPage() {
                             <div className="flex items-center gap-2 mb-1">
                               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project?.color || '#6B7280' }}></div>
                               <h5 className="text-sm font-medium text-gray-900">{goal.title}</h5>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(goal.priority)}`}>
-                                {goal.priority === 'high' ? 'Alta' : goal.priority === 'medium' ? 'Média' : 'Baixa'}
-                              </span>
+                              {goal.subProject && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                  {goal.subProject}
+                                </span>
+                              )}
                             </div>
                             {goal.description && (
                               <p className="text-sm text-gray-600">{goal.description}</p>
                             )}
+                            {goal.nextStep && (
+                              <p className="text-sm text-gray-700 mt-1">
+                                <span className="font-medium">Próximo Passo:</span> {goal.nextStep}
+                              </p>
+                            )}
                             {project && (
                               <p className="text-xs text-gray-500 mt-1">Projeto: {project.name}</p>
                             )}
+                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
+                              <span>Iniciativas: {goal.initiatives}/{goal.totalInitiatives}</span>
+                              {goal.dueDate && (
+                                <span>Meta: {new Date(goal.dueDate).toLocaleDateString('pt-BR')}</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -665,9 +689,17 @@ export default function PlanningPage() {
 
       {/* Create Goal Modal */}
       <ModalOverlay isOpen={showCreateGoalModal} onClose={() => setShowCreateGoalModal(false)}>
-        <div className="relative top-20 mx-auto p-6 w-96 shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+        <div className="relative top-20 mx-auto p-6 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
           <div className="mt-3">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Nova Meta</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Nova Meta</h3>
+              <button
+                onClick={() => setShowCreateGoalModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
             
             <div className="space-y-4">
               <div>
@@ -679,7 +711,7 @@ export default function PlanningPage() {
                   value={newGoal.title}
                   onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Digite o título da meta"
+                  placeholder="Ex: Aumentar vendas em 20%"
                 />
               </div>
 
@@ -692,7 +724,7 @@ export default function PlanningPage() {
                   onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Digite a descrição da meta"
+                  placeholder="Descreva os detalhes da meta"
                 />
               </div>
 
@@ -700,46 +732,80 @@ export default function PlanningPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Projeto *
                 </label>
-                <select
-                  value={newGoal.projectId}
-                  onChange={(e) => setNewGoal({ ...newGoal, projectId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Selecione um projeto</option>
+                <div className="space-y-2">
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
+                    <label
+                      key={project.id}
+                      className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                        newGoal.projectId === project.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="projectId"
+                        value={project.id}
+                        checked={newGoal.projectId === project.id}
+                        onChange={(e) => setNewGoal({ ...newGoal, projectId: e.target.value })}
+                        className="sr-only"
+                      />
+                      <div className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: project.color }}></div>
+                      <span className="text-sm font-medium text-gray-900">{project.name}</span>
+                    </label>
                   ))}
-                </select>
+                </div>
+                {newGoal.projectId && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Projeto selecionado: <span className="font-medium">{projects.find(p => p.id === newGoal.projectId)?.name}</span>
+                  </p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prioridade
-                </label>
-                <select
-                  value={newGoal.priority}
-                  onChange={(e) => setNewGoal({ ...newGoal, priority: e.target.value as 'low' | 'medium' | 'high' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="low">Baixa</option>
-                  <option value="medium">Média</option>
-                  <option value="high">Alta</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Data de Vencimento (opcional)
+                  Sub-projeto (opcional)
                 </label>
                 <input
-                  type="date"
-                  value={newGoal.dueDate}
-                  onChange={(e) => setNewGoal({ ...newGoal, dueDate: e.target.value })}
+                  type="text"
+                  value={newGoal.subProject}
+                  onChange={(e) => setNewGoal({ ...newGoal, subProject: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: SDK, CN, Marketing..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  O que falta (opcional)
+                </label>
+                <textarea
+                  value={newGoal.whatIsMissing}
+                  onChange={(e) => setNewGoal({ ...newGoal, whatIsMissing: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="O que está faltando para entregar esse projeto..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Data Meta (opcional)
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={newGoal.dueDate}
+                    onChange={(e) => setNewGoal({ ...newGoal, dueDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                    placeholder="Selecionar data"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </div>
 
