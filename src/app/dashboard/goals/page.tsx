@@ -142,7 +142,7 @@ export default function GoalsPage() {
       <div className="border-b border-gray-200 pb-4">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Metas</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Metas 🎯</h1>
             <p className="mt-2 text-gray-600">
               {totalGoals} ativas • {completedGoals} concluídas
             </p>
