@@ -29,7 +29,7 @@ export default function PlanningPage() {
   const [showNewProjectForm, setShowNewProjectForm] = useState(false)
   const [newProject, setNewProject] = useState({
     name: '',
-    color: 'bg-blue-500'
+    color: '#3B82F6'
   })
   const [newTask, setNewTask] = useState({
     title: '',
@@ -40,17 +40,11 @@ export default function PlanningPage() {
 
   // Mock data para projetos
   const [projects, setProjects] = useState([
-    { id: '1', name: 'Pessoal', color: 'bg-blue-500' },
-    { id: '2', name: 'ExitLag', color: 'bg-gray-500' },
-    { id: '3', name: 'KimonoLab', color: 'bg-red-500' },
-    { id: '4', name: 'Zentrix', color: 'bg-purple-500' }
+    { id: '1', name: 'Pessoal', color: '#3B82F6' },
+    { id: '2', name: 'ExitLag', color: '#6B7280' },
+    { id: '3', name: 'KimonoLab', color: '#EF4444' },
+    { id: '4', name: 'Zentrix', color: '#8B5CF6' }
   ])
-
-  // Cores disponíveis para projetos
-  const availableColors = [
-    'bg-blue-500', 'bg-gray-500', 'bg-red-500', 'bg-purple-500',
-    'bg-green-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'
-  ]
 
   const handleCreateProject = () => {
     if (newProject.name.trim()) {
@@ -60,7 +54,7 @@ export default function PlanningPage() {
         color: newProject.color
       }
       setProjects([...projects, newProjectData])
-      setNewProject({ name: '', color: 'bg-blue-500' })
+      setNewProject({ name: '', color: '#3B82F6' })
       setShowNewProjectForm(false)
     }
   }
@@ -271,7 +265,7 @@ export default function PlanningPage() {
                 <h4 className="text-sm font-medium text-gray-700">Projetos Existentes</h4>
                 <button 
                   onClick={() => setShowNewProjectForm(!showNewProjectForm)}
-                  className="w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition-colors duration-200"
+                  className="w-8 h-8 border-2 border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-700 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -302,18 +296,20 @@ export default function PlanningPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Cor do Projeto
                       </label>
-                      <div className="flex flex-wrap gap-2">
-                        {availableColors.map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setNewProject({ ...newProject, color })}
-                            className={`w-6 h-6 rounded-full border-2 transition-all duration-200 ${
-                              newProject.color === color 
-                                ? 'border-gray-800 scale-110' 
-                                : 'border-gray-300 hover:scale-105'
-                            } ${color}`}
-                          />
-                        ))}
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={newProject.color}
+                          onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
+                          className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={newProject.color}
+                          onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
+                          placeholder="#000000"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                     </div>
 
@@ -321,7 +317,7 @@ export default function PlanningPage() {
                       <button
                         onClick={() => {
                           setShowNewProjectForm(false)
-                          setNewProject({ name: '', color: 'bg-blue-500' })
+                          setNewProject({ name: '', color: '#3B82F6' })
                         }}
                         className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
                       >
@@ -341,12 +337,15 @@ export default function PlanningPage() {
               
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {projects.map((project) => (
-                  <div key={project.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                  <div key={project.id} className="group flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors duration-200">
                     <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${project.color}`}></div>
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: project.color }}
+                      ></div>
                       <span className="text-sm text-gray-900">{project.name}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button className="text-gray-600 hover:text-gray-800">
                         ✏️
                       </button>
