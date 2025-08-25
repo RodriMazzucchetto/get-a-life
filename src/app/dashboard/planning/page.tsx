@@ -271,7 +271,7 @@ export default function PlanningPage() {
 
       {/* Projects Management Modal */}
       {showProjectsModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-5 overflow-y-auto h-full w-full z-50">
+        <div className="fixed inset-0 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-6 border w-96 shadow-2xl rounded-lg bg-white/95 backdrop-blur-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Gerenciar Projetos</h3>
@@ -426,7 +426,7 @@ export default function PlanningPage() {
 
       {/* Task Creation Modal */}
       {showTaskModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-5 overflow-y-auto h-full w-full z-50">
+        <div className="fixed inset-0 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-2xl rounded-lg bg-white/95 backdrop-blur-md">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Nova Tarefa</h3>
@@ -507,7 +507,7 @@ export default function PlanningPage() {
 
       {/* Reminders Modal */}
       {showRemindersModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-5 overflow-y-auto h-full w-full z-50">
+        <div className="fixed inset-0 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-2xl rounded-lg bg-white/95 backdrop-blur-md">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Lembretes</h3>
