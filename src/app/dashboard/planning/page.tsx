@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { PlusIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 
 interface Task {
   id: string
@@ -65,7 +67,7 @@ export default function PlanningPage() {
     projectId: '',
     subProject: '',
     whatIsMissing: '',
-    dueDate: ''
+    dueDate: null as Date | null
   })
 
   // Mock data para projetos
@@ -129,7 +131,7 @@ export default function PlanningPage() {
         projectId: newGoal.projectId,
         subProject: newGoal.subProject.trim(),
         whatIsMissing: newGoal.whatIsMissing.trim(),
-        dueDate: newGoal.dueDate,
+        dueDate: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
         status: 'active',
         progress: 0,
         nextStep: '',
@@ -138,7 +140,7 @@ export default function PlanningPage() {
         created_at: new Date().toISOString()
       }
       setGoals([...goals, newGoalData])
-      setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: '' })
+      setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
       setShowCreateGoalModal(false)
     }
   }
@@ -732,33 +734,26 @@ export default function PlanningPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Projeto *
                 </label>
-                <div className="space-y-2">
+                <select
+                  value={newGoal.projectId}
+                  onChange={(e) => setNewGoal({ ...newGoal, projectId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Selecione um projeto</option>
                   {projects.map((project) => (
-                    <label
-                      key={project.id}
-                      className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
-                        newGoal.projectId === project.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="projectId"
-                        value={project.id}
-                        checked={newGoal.projectId === project.id}
-                        onChange={(e) => setNewGoal({ ...newGoal, projectId: e.target.value })}
-                        className="sr-only"
-                      />
-                      <div className="w-4 h-4 rounded-full mr-3" style={{ backgroundColor: project.color }}></div>
-                      <span className="text-sm font-medium text-gray-900">{project.name}</span>
-                    </label>
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
                   ))}
-                </div>
+                </select>
                 {newGoal.projectId && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Projeto selecionado: <span className="font-medium">{projects.find(p => p.id === newGoal.projectId)?.name}</span>
-                  </p>
+                  <div className="flex items-center gap-2 mt-2 p-2 bg-gray-50 rounded-md">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: projects.find(p => p.id === newGoal.projectId)?.color || '#6B7280' }}></div>
+                    <span className="text-sm text-gray-700">
+                      Projeto selecionado: <span className="font-medium">{projects.find(p => p.id === newGoal.projectId)?.name}</span>
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -792,20 +787,18 @@ export default function PlanningPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Data Meta (opcional)
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={newGoal.dueDate}
-                    onChange={(e) => setNewGoal({ ...newGoal, dueDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
-                    placeholder="Selecionar data"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                </div>
+                <DatePicker
+                  selected={newGoal.dueDate}
+                  onChange={(date: Date | null) => setNewGoal({ ...newGoal, dueDate: date })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholderText="Selecionar data"
+                  dateFormat="dd/MM/yyyy"
+                  isClearable
+                  showYearDropdown
+                  scrollableYearDropdown
+                  yearDropdownItemNumber={15}
+                  locale="pt-BR"
+                />
               </div>
             </div>
 
