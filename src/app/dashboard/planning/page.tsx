@@ -79,7 +79,68 @@ export default function PlanningPage() {
   ])
 
   // Mock data para metas
-  const [goals, setGoals] = useState<Goal[]>([])
+  const [goals, setGoals] = useState<Goal[]>([
+    {
+      id: '1',
+      title: 'Get a life off work',
+      description: 'Meta pessoal para equilibrar trabalho e vida pessoal',
+      projectId: '1',
+      subProject: '',
+      whatIsMissing: '',
+      dueDate: undefined,
+      status: 'active',
+      progress: 45,
+      nextStep: 'Alocar um app dentro do nosso planejador semanal',
+      initiatives: 0,
+      totalInitiatives: 1,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '2',
+      title: 'SDK Comercialmente Operacional',
+      description: 'Tornar o SDK operacional para vendas',
+      projectId: '2',
+      subProject: 'SDK',
+      whatIsMissing: '',
+      dueDate: '2025-09-30',
+      status: 'active',
+      progress: 75,
+      nextStep: 'Fazer a estruturação do go to market do SDK (Quais eventos vamos, de que forma vamos, quais ferramentas vamos usar, o que precisamos aprovar, o que não precisamos aprovar, etc)',
+      initiatives: 0,
+      totalInitiatives: 2,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '3',
+      title: 'CN automatizado e escalável',
+      description: 'Automatizar e escalar o sistema CN',
+      projectId: '2',
+      subProject: 'CN',
+      whatIsMissing: '',
+      dueDate: '2025-09-30',
+      status: 'active',
+      progress: 50,
+      nextStep: 'Avançar com Plugin e LP traduzida no ar',
+      initiatives: 0,
+      totalInitiatives: 2,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '4',
+      title: 'Tornar o produto do SDK tecnicamente operacional',
+      description: 'Implementar funcionalidades técnicas do SDK',
+      projectId: '2',
+      subProject: 'SDK',
+      whatIsMissing: '',
+      dueDate: '2025-09-30',
+      status: 'active',
+      progress: 90,
+      nextStep: 'Avançar com front do Sentinel + Lançar nova season do Imperianic',
+      initiatives: 2,
+      totalInitiatives: 6,
+      created_at: new Date().toISOString()
+    }
+  ])
 
   const handleCreateProject = () => {
     if (newProject.name.trim()) {
@@ -358,7 +419,7 @@ export default function PlanningPage() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h4 className="text-sm font-medium text-gray-700">Suas Metas</h4>
                   <button
@@ -371,45 +432,106 @@ export default function PlanningPage() {
                     Nova Meta
                   </button>
                 </div>
-                <div className="space-y-3">
-                  {goals.map((goal) => {
-                    const project = projects.find(p => p.id === goal.projectId)
-                    return (
-                      <div key={goal.id} className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project?.color || '#6B7280' }}></div>
-                              <h5 className="text-sm font-medium text-gray-900">{goal.title}</h5>
+                
+                {/* Agrupamento de metas por projeto */}
+                {(() => {
+                  const goalsByProject = projects.map(project => {
+                    const projectGoals = goals.filter(goal => goal.projectId === project.id)
+                    return { project, goals: projectGoals }
+                  }).filter(item => item.goals.length > 0)
+
+                  return goalsByProject.map(({ project, goals }) => (
+                    <div key={project.id} className="space-y-3">
+                      {/* Header do projeto */}
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full" style={{ backgroundColor: project.color }}></div>
+                          <h5 className="text-sm font-medium text-gray-900">{project.name}</h5>
+                          <span className="text-xs text-gray-600">{goals.length} meta{goals.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        <button
+                          onClick={() => setShowCreateGoalModal(true)}
+                          className="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700"
+                        >
+                          <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          + Meta
+                        </button>
+                      </div>
+                      
+                      {/* Grid de metas - 3 por linha */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {goals.map((goal) => (
+                          <div key={goal.id} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="space-y-3">
+                              {/* Cabeçalho da meta */}
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }}></div>
+                                  <h6 className="text-sm font-medium text-gray-900">{goal.title}</h6>
+                                </div>
+                                <button className="text-gray-400 hover:text-gray-600">
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm6 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                                  </svg>
+                                </button>
+                              </div>
+                              
+                              {/* Tag de sub-projeto */}
                               {goal.subProject && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                                   {goal.subProject}
                                 </span>
                               )}
-                            </div>
-                            {goal.description && (
-                              <p className="text-sm text-gray-600">{goal.description}</p>
-                            )}
-                            {goal.nextStep && (
-                              <p className="text-sm text-gray-700 mt-1">
-                                <span className="font-medium">Próximo Passo:</span> {goal.nextStep}
-                              </p>
-                            )}
-                            {project && (
-                              <p className="text-xs text-gray-500 mt-1">Projeto: {project.name}</p>
-                            )}
-                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
-                              <span>Iniciativas: {goal.initiatives}/{goal.totalInitiatives}</span>
-                              {goal.dueDate && (
-                                <span>Meta: {new Date(goal.dueDate).toLocaleDateString('pt-BR')}</span>
+                              
+                              {/* Barra de progresso */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-gray-600">Progresso</span>
+                                  <span className="text-xs font-medium text-gray-900">{goal.progress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                      goal.progress >= 80 ? 'bg-green-500' : 
+                                      goal.progress >= 50 ? 'bg-yellow-500' : 'bg-orange-500'
+                                    }`}
+                                    style={{ width: `${goal.progress}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                              
+                              {/* Próximo passo */}
+                              {goal.nextStep && (
+                                <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                                  <p className="text-xs text-yellow-800">
+                                    <span className="font-medium">Próximo Passo:</span> {goal.nextStep}
+                                  </p>
+                                </div>
                               )}
+                              
+                              {/* Informações adicionais */}
+                              <div className="space-y-2 text-xs text-gray-600">
+                                <div className="flex items-center gap-4">
+                                  <span>Iniciativas: {goal.initiatives}/{goal.totalInitiatives}</span>
+                                  {goal.dueDate && (
+                                    <span className="flex items-center gap-1">
+                                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                      {new Date(goal.dueDate).toLocaleDateString('pt-BR')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    )
-                  })}
-                </div>
+                    </div>
+                  ))
+                })()}
               </div>
             )}
           </div>
