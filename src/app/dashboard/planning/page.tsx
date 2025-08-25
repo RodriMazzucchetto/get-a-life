@@ -23,6 +23,17 @@ interface Reminder {
   created_at: string
 }
 
+interface Goal {
+  id: string
+  title: string
+  description?: string
+  projectId: string
+  priority: 'low' | 'medium' | 'high'
+  dueDate?: string
+  status: 'active' | 'completed'
+  created_at: string
+}
+
 export default function PlanningPage() {
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
@@ -40,6 +51,17 @@ export default function PlanningPage() {
     dueDate: ''
   })
 
+  // Estados para metas
+  const [goalsExpanded, setGoalsExpanded] = useState(false)
+  const [showCreateGoalModal, setShowCreateGoalModal] = useState(false)
+  const [newGoal, setNewGoal] = useState({
+    title: '',
+    description: '',
+    projectId: '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    dueDate: ''
+  })
+
   // Mock data para projetos
   const [projects, setProjects] = useState([
     { id: '1', name: 'Pessoal', color: '#3B82F6' },
@@ -47,6 +69,9 @@ export default function PlanningPage() {
     { id: '3', name: 'KimonoLab', color: '#EF4444' },
     { id: '4', name: 'Zentrix', color: '#8B5CF6' }
   ])
+
+  // Mock data para metas
+  const [goals, setGoals] = useState<Goal[]>([])
 
   const handleCreateProject = () => {
     if (newProject.name.trim()) {
@@ -86,6 +111,24 @@ export default function PlanningPage() {
   const handleDeleteProject = (projectId: string) => {
     if (confirm('Tem certeza que deseja deletar este projeto? Esta ação não pode ser desfeita.')) {
       setProjects(projects.filter(p => p.id !== projectId))
+    }
+  }
+
+  const handleCreateGoal = () => {
+    if (newGoal.title.trim() && newGoal.projectId) {
+      const newGoalData: Goal = {
+        id: Date.now().toString(),
+        title: newGoal.title.trim(),
+        description: newGoal.description.trim(),
+        projectId: newGoal.projectId,
+        priority: newGoal.priority,
+        dueDate: newGoal.dueDate,
+        status: 'active',
+        created_at: new Date().toISOString()
+      }
+      setGoals([...goals, newGoalData])
+      setNewGoal({ title: '', description: '', projectId: '', priority: 'medium' as 'low' | 'medium' | 'high', dueDate: '' })
+      setShowCreateGoalModal(false)
     }
   }
 
@@ -239,7 +282,10 @@ export default function PlanningPage() {
 
       {/* Elemento de Metas */}
       <div className="bg-white rounded-lg shadow border border-gray-200">
-        <div className="p-6">
+        <div 
+          className="p-6 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+          onClick={() => setGoalsExpanded(!goalsExpanded)}
+        >
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -249,13 +295,16 @@ export default function PlanningPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Metas</h2>
-                <p className="text-sm text-gray-600">6 ativas • 0 concluídas</p>
+                <p className="text-sm text-gray-600">{goals.filter(g => g.status === 'active').length} ativas • {goals.filter(g => g.status === 'completed').length} concluídas</p>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
               <button 
-                onClick={() => setShowProjectsModal(true)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowProjectsModal(true)
+                }}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
                 <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -266,14 +315,79 @@ export default function PlanningPage() {
               </button>
               
               <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
-                <span className="text-sm font-medium text-gray-700">53% média</span>
-                <svg className="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span className="text-sm font-medium text-gray-700">
+                  {goals.length > 0 ? `${Math.round((goals.filter(g => g.status === 'completed').length / goals.length) * 100)}% média` : '0% média'}
+                </span>
+                <svg className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${goalsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Conteúdo expandido */}
+        {goalsExpanded && (
+          <div className="px-6 pb-6 border-t border-gray-100">
+            {goals.length === 0 ? (
+              <div className="py-8 text-center">
+                <div className="text-gray-400 text-4xl mb-4">🎯</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma meta criada</h3>
+                <p className="text-gray-600 mb-4">Você ainda não tem metas definidas. Use o botão abaixo para criar sua primeira meta.</p>
+                <button
+                  onClick={() => setShowCreateGoalModal(true)}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Criar Primeira Meta
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-medium text-gray-700">Suas Metas</h4>
+                  <button
+                    onClick={() => setShowCreateGoalModal(true)}
+                    className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700"
+                  >
+                    <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Nova Meta
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {goals.map((goal) => {
+                    const project = projects.find(p => p.id === goal.projectId)
+                    return (
+                      <div key={goal.id} className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project?.color || '#6B7280' }}></div>
+                              <h5 className="text-sm font-medium text-gray-900">{goal.title}</h5>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(goal.priority)}`}>
+                                {goal.priority === 'high' ? 'Alta' : goal.priority === 'medium' ? 'Média' : 'Baixa'}
+                              </span>
+                            </div>
+                            {goal.description && (
+                              <p className="text-sm text-gray-600">{goal.description}</p>
+                            )}
+                            {project && (
+                              <p className="text-xs text-gray-500 mt-1">Projeto: {project.name}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Projects Management Modal */}
@@ -548,6 +662,105 @@ export default function PlanningPage() {
             </div>
           </div>
         </ModalOverlay>
+
+      {/* Create Goal Modal */}
+      <ModalOverlay isOpen={showCreateGoalModal} onClose={() => setShowCreateGoalModal(false)}>
+        <div className="relative top-20 mx-auto p-6 w-96 shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+          <div className="mt-3">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Nova Meta</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Título da Meta *
+                </label>
+                <input
+                  type="text"
+                  value={newGoal.title}
+                  onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Digite o título da meta"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição (opcional)
+                </label>
+                <textarea
+                  value={newGoal.description}
+                  onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Digite a descrição da meta"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Projeto *
+                </label>
+                <select
+                  value={newGoal.projectId}
+                  onChange={(e) => setNewGoal({ ...newGoal, projectId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Selecione um projeto</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Prioridade
+                </label>
+                <select
+                  value={newGoal.priority}
+                  onChange={(e) => setNewGoal({ ...newGoal, priority: e.target.value as 'low' | 'medium' | 'high' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="low">Baixa</option>
+                  <option value="medium">Média</option>
+                  <option value="high">Alta</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Data de Vencimento (opcional)
+                </label>
+                <input
+                  type="date"
+                  value={newGoal.dueDate}
+                  onChange={(e) => setNewGoal({ ...newGoal, dueDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateGoalModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateGoal}
+                disabled={!newGoal.title.trim() || !newGoal.projectId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Criar Meta
+              </button>
+            </div>
+          </div>
+        </div>
+      </ModalOverlay>
     </div>
   )
 }
