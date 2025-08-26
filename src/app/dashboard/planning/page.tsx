@@ -61,6 +61,8 @@ export default function PlanningPage() {
   // Estados para metas
   const [goalsExpanded, setGoalsExpanded] = useState(false)
   const [showCreateGoalModal, setShowCreateGoalModal] = useState(false)
+  const [showEditGoalModal, setShowEditGoalModal] = useState(false)
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -233,6 +235,29 @@ export default function PlanningPage() {
       setGoals([...goals, newGoalData])
       setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
       setShowCreateGoalModal(false)
+    }
+  }
+
+  const handleEditGoal = (goal: Goal) => {
+    setEditingGoal(goal)
+    setShowEditGoalModal(true)
+  }
+
+  const handleUpdateGoal = () => {
+    if (editingGoal && editingGoal.title.trim() && editingGoal.projectId) {
+      setGoals(goals.map(g => 
+        g.id === editingGoal.id ? editingGoal : g
+      ))
+      setEditingGoal(null)
+      setShowEditGoalModal(false)
+    }
+  }
+
+  const handleDeleteGoal = (goalId: string) => {
+    if (confirm('Tem certeza que deseja deletar esta meta? Esta ação não pode ser desfeita.')) {
+      setGoals(goals.filter(g => g.id !== goalId))
+      setShowEditGoalModal(false)
+      setEditingGoal(null)
     }
   }
 
@@ -499,9 +524,13 @@ export default function PlanningPage() {
                             : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' // 3+ metas = 3 colunas em desktop
                       }`}>
                         {goals.map((goal) => (
-                          <div key={goal.id} className={`p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${
-                            goals.length === 1 ? 'max-w-none' : '' // 1 meta = sem limite de largura
-                          }`}>
+                          <div 
+                            key={goal.id} 
+                            className={`p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+                              goals.length === 1 ? 'max-w-none' : '' // 1 meta = sem limite de largura
+                            }`}
+                            onClick={() => handleEditGoal(goal)}
+                          >
                             <div className="space-y-3">
                               {/* Cabeçalho da meta */}
                               <div className="flex items-start justify-between">
@@ -509,9 +538,15 @@ export default function PlanningPage() {
                                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }}></div>
                                   <h6 className="text-sm font-medium text-gray-900">{goal.title}</h6>
                                 </div>
-                                <button className="text-gray-400 hover:text-gray-600">
+                                <button 
+                                  className="text-gray-400 hover:text-gray-600"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleEditGoal(goal)
+                                  }}
+                                >
                                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm6 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm6 0a.75.75 0 011.5 0zm6 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
                                   </svg>
                                 </button>
                               </div>
@@ -977,6 +1012,151 @@ export default function PlanningPage() {
                 Criar Meta
               </button>
             </div>
+          </div>
+        </div>
+      </ModalOverlay>
+
+      {/* Edit Goal Modal */}
+      <ModalOverlay isOpen={showEditGoalModal} onClose={() => setShowEditGoalModal(false)}>
+        <div className="relative top-20 mx-auto p-6 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+          <div className="mt-3">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Editar Meta</h3>
+              <button
+                onClick={() => setShowEditGoalModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {editingGoal && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Título da Meta *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingGoal.title}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, title: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: Aumentar vendas em 20%"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Descrição (opcional)
+                  </label>
+                  <textarea
+                    value={editingGoal.description || ''}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Descreva os detalhes da meta"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Projeto *
+                  </label>
+                  <select
+                    value={editingGoal.projectId}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, projectId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                  {editingGoal.projectId && (
+                    <div className="flex items-center gap-2 mt-2 p-2 bg-gray-50 rounded-md">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: projects.find(p => p.id === editingGoal.projectId)?.color || '#6B7280' }}></div>
+                      <span className="text-sm text-gray-700">
+                        Projeto selecionado: <span className="font-medium">{projects.find(p => p.id === editingGoal.projectId)?.name}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sub-projeto (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingGoal.subProject || ''}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, subProject: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: SDK, CN, Marketing..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    O que falta (opcional)
+                  </label>
+                  <textarea
+                    value={editingGoal.whatIsMissing || ''}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, whatIsMissing: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="O que está faltando para entregar esse projeto..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Data Meta (opcional)
+                  </label>
+                  <DatePicker
+                    selected={editingGoal.dueDate ? new Date(editingGoal.dueDate) : null}
+                    onChange={(date: Date | null) => setEditingGoal({ ...editingGoal, dueDate: date ? date.toISOString() : undefined })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholderText="Selecionar data"
+                    dateFormat="dd/MM/yyyy"
+                    isClearable
+                    showYearDropdown
+                    scrollableYearDropdown
+                    yearDropdownItemNumber={15}
+                    locale="pt-BR"
+                  />
+                </div>
+
+                <div className="flex justify-between gap-3 mt-6">
+                  <button
+                    onClick={() => handleDeleteGoal(editingGoal.id)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
+                  >
+                    <svg className="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Excluir
+                  </button>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowEditGoalModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleUpdateGoal}
+                      disabled={!editingGoal.title.trim() || !editingGoal.projectId}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Atualizar Meta
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </ModalOverlay>
