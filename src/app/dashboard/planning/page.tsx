@@ -468,7 +468,7 @@ export default function PlanningPage() {
               
               <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
                 <span className="text-sm font-medium text-gray-700">
-                  {goals.length > 0 ? `${Math.round((goals.filter(g => g.status === 'completed').length / goals.length) * 100)}% média` : '0% média'}
+                  {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}% média` : '0% média'}
                 </span>
                 <svg className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${goalsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
