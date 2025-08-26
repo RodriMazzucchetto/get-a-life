@@ -389,6 +389,9 @@ export default function PlanningPage() {
     }
   }
 
+  // Estado para controlar a aba ativa dos lembretes
+  const [activeReminderTab, setActiveReminderTab] = useState('compras')
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -911,44 +914,118 @@ export default function PlanningPage() {
 
       {/* Reminders Modal */}
       <ModalOverlay isOpen={showRemindersModal} onClose={() => setShowRemindersModal(false)}>
-        <div className="relative top-20 mx-auto p-5 w-96 shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Lembretes</h3>
-              
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {mockReminders.map((reminder) => (
-                  <div key={reminder.id} className="p-3 border border-gray-200 rounded-md">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-gray-900">{reminder.title}</h4>
-                        {reminder.description && (
-                          <p className="text-sm text-gray-600 mt-1">{reminder.description}</p>
-                        )}
-                        {reminder.dueDate && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Vencimento: {new Date(reminder.dueDate).toLocaleDateString('pt-BR')}
-                          </p>
-                        )}
-                      </div>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(reminder.priority)}`}>
-                        {reminder.priority === 'high' ? 'Alta' : reminder.priority === 'medium' ? 'Média' : 'Baixa'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <div className="relative top-20 mx-auto p-5 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+          <div className="mt-3">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Lembretes (6)</h3>
+              <button
+                onClick={() => setShowRemindersModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
 
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowRemindersModal(false)}
-                  className="w-full px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700"
-                >
-                  Fechar
-                </button>
+            {/* Tabs */}
+            <div className="flex space-x-1 mb-4">
+              <button
+                onClick={() => setActiveReminderTab('compras')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeReminderTab === 'compras'
+                    ? 'text-blue-600 bg-green-100 border-2 border-green-500'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Compras
+              </button>
+              <button
+                onClick={() => setActiveReminderTab('followups')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeReminderTab === 'followups'
+                    ? 'text-blue-600 bg-green-100 border-2 border-green-500'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Follow Ups
+              </button>
+              <button
+                onClick={() => setActiveReminderTab('lembretes')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeReminderTab === 'lembretes'
+                    ? 'text-blue-600 bg-green-100 border-2 border-green-500'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Lembretes
+              </button>
+            </div>
+
+            {/* Add Reminder Section */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4 text-center cursor-pointer hover:border-gray-400 transition-colors">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl text-gray-400">+</span>
+                <span className="text-gray-600 font-medium">Adicionar lembrete</span>
               </div>
             </div>
+
+            {/* Reminders List */}
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {activeReminderTab === 'compras' && (
+                <>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Comprar licenças do software para equipe de desenvolvimento</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Renovar assinatura do serviço de hospedagem</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Adquirir equipamentos para novo escritório</span>
+                  </div>
+                </>
+              )}
+
+              {activeReminderTab === 'followups' && (
+                <>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Follow up com cliente sobre proposta enviada</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Verificar status da integração com parceiro</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Acompanhar desenvolvimento do projeto piloto</span>
+                  </div>
+                </>
+              )}
+
+              {activeReminderTab === 'lembretes' && (
+                <>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Quando a LP ficar pronta, precisamos avançar com botão no software + mensagem via bot</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Falar com Day de afiliados: Bot de servidores como afiliado... Permite colocar o bot no server... Nós fazemos as divulgações, quem fechar via bot, o servidor ganha também</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-3">
+                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <span className="text-sm text-gray-700">Quando terminarem a integração do whmcs com Sentinel, precisamos configurar e testar o pricing funcionando bem</span>
+                    <button className="ml-auto text-gray-400 hover:text-gray-600">✕</button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </ModalOverlay>
+        </div>
+      </ModalOverlay>
 
       {/* Create Goal Modal */}
       <ModalOverlay isOpen={showCreateGoalModal} onClose={() => setShowCreateGoalModal(false)}>
