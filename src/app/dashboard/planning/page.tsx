@@ -716,7 +716,7 @@ export default function PlanningPage() {
         )}
       </div>
 
-      {/* Seção Em Progresso - Metas Ativas */}
+      {/* Seção Em Progresso - Vazia */}
       <div className="bg-white rounded-lg shadow border border-gray-200">
         <div className="p-6">
           <div className="flex justify-between items-start">
@@ -730,195 +730,19 @@ export default function PlanningPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Em Progresso</h2>
-                <p className="text-sm text-gray-600">Metas ativas e suas iniciativas em execução</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">{goals.filter(g => g.status === 'active').length}</span> metas ativas
+                <p className="text-sm text-gray-600">Itens que estão sendo executados atualmente</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Conteúdo das metas em progresso */}
+        {/* Conteúdo vazio */}
         <div className="px-6 pb-6 border-t border-gray-100">
-          {goals.filter(g => g.status === 'active').length === 0 ? (
-            <div className="py-8 text-center">
-              <div className="text-gray-400 text-4xl mb-4">🚀</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma meta em progresso</h3>
-              <p className="text-gray-600 mb-4">Crie metas para começar a trabalhar em seus objetivos.</p>
-              <button
-                onClick={() => setShowCreateGoalModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Criar Meta
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {goals.filter(g => g.status === 'active').map((goal) => {
-                const project = projects.find(p => p.id === goal.projectId)
-                return (
-                  <div key={goal.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    {/* Header da meta */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project?.color || '#6B7280' }}></div>
-                          <h6 className="text-sm font-medium text-gray-900">{goal.title}</h6>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                            {project?.name || 'Sem projeto'}
-                          </span>
-                          {goal.subProject && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                              {goal.subProject}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {goal.description && (
-                          <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
-                        )}
-                        
-                        {/* Barra de progresso */}
-                        <div className="mb-3">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-gray-600">Progresso</span>
-                            <span className="text-xs font-medium text-gray-900">{goal.progress}%</span>
-                          </div>
-                          <InteractiveProgressBar
-                            progress={goal.progress}
-                            onProgressChange={(newProgress) => {
-                              handleUpdateGoalProgress(goal.id, newProgress)
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={() => handleEditGoal(goal)}
-                        className="text-gray-400 hover:text-gray-600 p-1"
-                        title="Editar meta"
-                      >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    {/* Próximo passo */}
-                    {goal.nextStep && (
-                      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                        <p className="text-sm text-yellow-800">
-                          <span className="font-medium">Próximo Passo:</span> {goal.nextStep}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Iniciativas */}
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <h6 className="text-sm font-medium text-gray-700">Iniciativas</h6>
-                        <button
-                          onClick={() => {
-                            setEditingGoal(goal)
-                            setShowAddInitiativeForm(true)
-                          }}
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
-                        >
-                          <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          + Iniciativa
-                        </button>
-                      </div>
-                      
-                      {goal.initiativesList && goal.initiativesList.length > 0 ? (
-                        <div className="space-y-2">
-                          {goal.initiativesList.map((initiative) => (
-                            <div key={initiative.id} className="p-3 bg-white rounded-md border border-gray-200">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  {editingInitiative?.id === initiative.id ? (
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="text"
-                                        value={editingInitiative.description}
-                                        onChange={(e) => setEditingInitiative({ ...editingInitiative, description: e.target.value })}
-                                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        onKeyPress={(e) => {
-                                          if (e.key === 'Enter') {
-                                            handleUpdateInitiative()
-                                          }
-                                        }}
-                                      />
-                                      <button
-                                        onClick={handleUpdateInitiative}
-                                        className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                                      >
-                                        Salvar
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-gray-900">{initiative.description}</p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 ml-2">
-                                  <button
-                                    onClick={() => handleEditInitiative(initiative)}
-                                    className="text-gray-400 hover:text-gray-600 p-1"
-                                    title="Editar"
-                                  >
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteInitiative(initiative.id)}
-                                    className="text-red-400 hover:text-red-600 p-1"
-                                    title="Excluir"
-                                  >
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="p-3 bg-gray-50 rounded-md border border-gray-200 text-center">
-                          <p className="text-sm text-gray-500">Nenhuma iniciativa criada</p>
-                          <p className="text-xs text-gray-400 mt-1">Clique em &quot;+ Iniciativa&quot; para adicionar</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Informações adicionais */}
-                    <div className="mt-4 pt-3 border-t border-gray-200">
-                      <div className="flex items-center justify-between text-xs text-gray-600">
-                        <span>Iniciativas: {goal.initiatives}/{goal.totalInitiatives}</span>
-                        {goal.dueDate && (
-                          <span className="flex items-center gap-1">
-                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            {new Date(goal.dueDate).toLocaleDateString('pt-BR')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          <div className="py-8 text-center">
+            <div className="text-gray-400 text-4xl mb-4">🚀</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum item em progresso</h3>
+            <p className="text-gray-600 mb-4">Esta seção será preenchida conforme você adicionar itens em progresso.</p>
+          </div>
         </div>
       </div>
 
