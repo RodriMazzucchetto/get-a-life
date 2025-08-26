@@ -5,6 +5,7 @@ import { PlusIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/re
 import ModalOverlay from '@/components/ModalOverlay'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
+import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 
 interface Task {
   id: string
@@ -569,22 +570,17 @@ export default function PlanningPage() {
                                 </span>
                               )}
                               
-                              {/* Barra de progresso */}
-                              <div className="space-y-1">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-xs text-gray-600">Progresso</span>
-                                  <span className="text-xs font-medium text-gray-900">{goal.progress}%</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className={`h-2 rounded-full transition-all duration-300 ${
-                                      goal.progress >= 80 ? 'bg-green-500' : 
-                                      goal.progress >= 50 ? 'bg-yellow-500' : 'bg-orange-500'
-                                    }`}
-                                    style={{ width: `${goal.progress}%` }}
-                                  ></div>
-                                </div>
-                              </div>
+                              {/* Barra de progresso interativa */}
+                              <InteractiveProgressBar
+                                progress={goal.progress}
+                                onProgressChange={(newProgress) => {
+                                  // Atualizar o progresso da meta
+                                  const updatedGoals = goals.map(g => 
+                                    g.id === goal.id ? { ...g, progress: newProgress } : g
+                                  )
+                                  setGoals(updatedGoals)
+                                }}
+                              />
                               
                               {/* Próximo passo */}
                               {goal.nextStep && (
@@ -1118,6 +1114,16 @@ export default function PlanningPage() {
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                     placeholder="Descreva o próximo passo para esta meta..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Progresso
+                  </label>
+                  <InteractiveProgressBar
+                    progress={editingGoal.progress}
+                    onProgressChange={(newProgress) => setEditingGoal({ ...editingGoal, progress: newProgress })}
                   />
                 </div>
 
