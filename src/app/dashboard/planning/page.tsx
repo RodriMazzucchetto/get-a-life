@@ -40,6 +40,7 @@ interface Goal {
   initiatives: number
   totalInitiatives: number
   created_at: string
+  initiativesList?: { id: string; description: string }[] // Adicionado para armazenar a lista de iniciativas
 }
 
 export default function PlanningPage() {
@@ -73,6 +74,11 @@ export default function PlanningPage() {
     dueDate: null as Date | null
   })
 
+  // Estados para iniciativas
+  const [showAddInitiativeForm, setShowAddInitiativeForm] = useState(false)
+  const [editingInitiative, setEditingInitiative] = useState<{ id: string; description: string } | null>(null)
+  const [newInitiative, setNewInitiative] = useState('')
+
   // Mock data para projetos
   const [projects, setProjects] = useState([
     { id: '1', name: 'Pessoal', color: '#3B82F6' },
@@ -96,7 +102,8 @@ export default function PlanningPage() {
       nextStep: 'Alocar um app dentro do nosso planejador semanal',
       initiatives: 0,
       totalInitiatives: 1,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      initiativesList: [{ id: '1', description: 'Criar um app de meditação' }]
     },
     {
       id: '2',
@@ -111,7 +118,8 @@ export default function PlanningPage() {
       nextStep: 'Fazer a estruturação do go to market do SDK (Quais eventos vamos, de que forma vamos, quais ferramentas vamos usar, o que precisamos aprovar, o que não precisamos aprovar, etc)',
       initiatives: 0,
       totalInitiatives: 2,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      initiativesList: [{ id: '2', description: 'Definir roadmap do SDK' }, { id: '3', description: 'Criar documentação' }]
     },
     {
       id: '3',
@@ -126,7 +134,8 @@ export default function PlanningPage() {
       nextStep: 'Avançar com Plugin e LP traduzida no ar',
       initiatives: 0,
       totalInitiatives: 2,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      initiativesList: [{ id: '4', description: 'Desenvolver Plugin CN' }, { id: '5', description: 'Traduzir LP' }]
     },
     {
       id: '4',
@@ -141,7 +150,8 @@ export default function PlanningPage() {
       nextStep: 'Avançar com front do Sentinel + Lançar nova season do Imperianic',
       initiatives: 2,
       totalInitiatives: 6,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      initiativesList: [{ id: '6', description: 'Desenvolver front do Sentinel' }, { id: '7', description: 'Lançar nova season do Imperianic' }]
     },
     {
       id: '5',
@@ -156,7 +166,8 @@ export default function PlanningPage() {
       nextStep: 'Finalizar o KimonoBot na Lovable (Integrado, funcional e 24h)',
       initiatives: 0,
       totalInitiatives: 4,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      initiativesList: [{ id: '8', description: 'Integrar KimonoBot na Lovable' }, { id: '9', description: 'Desenvolver IA para atendimento' }]
     },
     {
       id: '6',
@@ -171,7 +182,8 @@ export default function PlanningPage() {
       nextStep: 'Estruturar um fluxo de desenvolvimento e definir um DoD para o produto estar pronto para venda',
       initiatives: 0,
       totalInitiatives: 2,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      initiativesList: [{ id: '10', description: 'Definir fluxo de desenvolvimento' }, { id: '11', description: 'Definir DoD' }]
     }
   ])
 
@@ -231,7 +243,8 @@ export default function PlanningPage() {
         nextStep: newGoal.whatIsMissing.trim(), // Usar o campo "Próximo Passo" da modal
         initiatives: 0,
         totalInitiatives: 0,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        initiativesList: [] // Inicializa a lista de iniciativas para uma nova meta
       }
       setGoals([...goals, newGoalData])
       setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
@@ -334,9 +347,47 @@ export default function PlanningPage() {
     }
   ]
 
+  // Funções para iniciativas
+  const handleAddInitiative = () => {
+    if (newInitiative.trim() && editingGoal) {
+      const newInitiativeData = {
+        id: Date.now().toString(),
+        description: newInitiative.trim()
+      }
+      setEditingGoal(prevGoal => ({
+        ...prevGoal!,
+        initiativesList: [...(prevGoal!.initiativesList || []), newInitiativeData]
+      }))
+      setNewInitiative('')
+      setShowAddInitiativeForm(false)
+    }
+  }
 
+  const handleEditInitiative = (initiative: { id: string; description: string }) => {
+    setEditingInitiative(initiative)
+  }
 
+  const handleUpdateInitiative = () => {
+    if (editingInitiative && editingInitiative.description.trim() && editingGoal) {
+      setEditingGoal(prevGoal => ({
+        ...prevGoal!,
+        initiativesList: (prevGoal!.initiativesList || []).map(i =>
+          i.id === editingInitiative.id ? { ...i, description: editingInitiative.description.trim() } : i
+        )
+      }))
+      setEditingInitiative(null)
+    }
+  }
 
+  const handleDeleteInitiative = (initiativeId: string) => {
+    if (confirm('Tem certeza que deseja deletar esta iniciativa? Esta ação não pode ser desfeita.')) {
+      setEditingGoal(prevGoal => ({
+        ...prevGoal!,
+        initiativesList: (prevGoal!.initiativesList || []).filter(i => i.id !== initiativeId)
+      }))
+      setEditingInitiative(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -1151,6 +1202,112 @@ export default function PlanningPage() {
                     yearDropdownItemNumber={15}
                     locale="pt-BR"
                   />
+                </div>
+
+                {/* Seção de Iniciativas */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Iniciativas
+                    </label>
+                    <button
+                      onClick={() => setShowAddInitiativeForm(!showAddInitiativeForm)}
+                      className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 border border-gray-300"
+                    >
+                      <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Adicionar Iniciativa
+                    </button>
+                  </div>
+
+                  {/* Formulário para adicionar nova iniciativa */}
+                  {showAddInitiativeForm && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newInitiative}
+                          onChange={(e) => setNewInitiative(e.target.value)}
+                          placeholder="Digite a descrição da iniciativa..."
+                          className="flex-1 px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              handleAddInitiative()
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={handleAddInitiative}
+                          disabled={!newInitiative.trim()}
+                          className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Adicionar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista de iniciativas existentes */}
+                  <div className="space-y-2">
+                    {editingGoal.initiativesList && editingGoal.initiativesList.length > 0 ? (
+                      editingGoal.initiativesList.map((initiative) => (
+                        <div key={initiative.id} className="p-3 bg-white rounded-md border border-gray-200">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              {editingInitiative?.id === initiative.id ? (
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={editingInitiative.description}
+                                    onChange={(e) => setEditingInitiative({ ...editingInitiative, description: e.target.value })}
+                                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onKeyPress={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleUpdateInitiative()
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    onClick={handleUpdateInitiative}
+                                    className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                                  >
+                                    Salvar
+                                  </button>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-900">{initiative.description}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 ml-2">
+                              <button
+                                onClick={() => handleEditInitiative(initiative)}
+                                className="text-gray-400 hover:text-gray-600 p-1"
+                                title="Editar"
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteInitiative(initiative.id)}
+                                className="text-red-400 hover:text-red-600 p-1"
+                                title="Excluir"
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 bg-gray-50 rounded-md border border-gray-200 text-center">
+                        <p className="text-sm text-gray-500">Nenhuma iniciativa criada</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-between gap-3 mt-6">
