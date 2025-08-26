@@ -1213,8 +1213,7 @@ export default function PlanningPage() {
               </button>
             </div>
           </div>
-        </div>
-      </ModalOverlay>
+        </ModalOverlay>
 
       {/* Edit Goal Modal */}
       <ModalOverlay isOpen={showEditGoalModal} onClose={() => setShowEditGoalModal(false)}>
