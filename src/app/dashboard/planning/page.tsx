@@ -227,7 +227,7 @@ export default function PlanningPage() {
         dueDate: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
         status: 'active',
         progress: 0,
-        nextStep: '',
+        nextStep: newGoal.whatIsMissing.trim(), // Usar o campo "Próximo Passo" da modal
         initiatives: 0,
         totalInitiatives: 0,
         created_at: new Date().toISOString()
@@ -245,8 +245,14 @@ export default function PlanningPage() {
 
   const handleUpdateGoal = () => {
     if (editingGoal && editingGoal.title.trim() && editingGoal.projectId) {
+      // Atualizar o campo nextStep com o valor de whatIsMissing
+      const updatedGoal = {
+        ...editingGoal,
+        nextStep: editingGoal.whatIsMissing || ''
+      }
+      
       setGoals(goals.map(g => 
-        g.id === editingGoal.id ? editingGoal : g
+        g.id === editingGoal.id ? updatedGoal : g
       ))
       setEditingGoal(null)
       setShowEditGoalModal(false)
@@ -967,14 +973,14 @@ export default function PlanningPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  O que falta (opcional)
+                  Próximo Passo (opcional)
                 </label>
                 <textarea
                   value={newGoal.whatIsMissing}
                   onChange={(e) => setNewGoal({ ...newGoal, whatIsMissing: e.target.value })}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="O que está faltando para entregar esse projeto..."
+                  placeholder="Descreva o próximo passo para esta meta..."
                 />
               </div>
 
@@ -1099,14 +1105,14 @@ export default function PlanningPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    O que falta (opcional)
+                    Próximo Passo (opcional)
                   </label>
                   <textarea
                     value={editingGoal.whatIsMissing || ''}
                     onChange={(e) => setEditingGoal({ ...editingGoal, whatIsMissing: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="O que está faltando para entregar esse projeto..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="Descreva o próximo passo para esta meta..."
                   />
                 </div>
 
