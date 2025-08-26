@@ -88,7 +88,7 @@ export default function PlanningPage() {
       description: 'Meta pessoal para equilibrar trabalho e vida pessoal',
       projectId: '1',
       subProject: '',
-      whatIsMissing: '',
+      whatIsMissing: 'Alocar um app dentro do nosso planejador semanal',
       dueDate: undefined,
       status: 'active',
       progress: 45,
@@ -103,7 +103,7 @@ export default function PlanningPage() {
       description: 'Tornar o SDK operacional para vendas',
       projectId: '2',
       subProject: 'SDK',
-      whatIsMissing: '',
+      whatIsMissing: 'Fazer a estruturação do go to market do SDK (Quais eventos vamos, de que forma vamos, quais ferramentas vamos usar, o que precisamos aprovar, o que não precisamos aprovar, etc)',
       dueDate: '2025-09-30',
       status: 'active',
       progress: 75,
@@ -118,7 +118,7 @@ export default function PlanningPage() {
       description: 'Automatizar e escalar o sistema CN',
       projectId: '2',
       subProject: 'CN',
-      whatIsMissing: '',
+      whatIsMissing: 'Avançar com Plugin e LP traduzida no ar',
       dueDate: '2025-09-30',
       status: 'active',
       progress: 50,
@@ -133,7 +133,7 @@ export default function PlanningPage() {
       description: 'Implementar funcionalidades técnicas do SDK',
       projectId: '2',
       subProject: 'SDK',
-      whatIsMissing: '',
+      whatIsMissing: 'Avançar com front do Sentinel + Lançar nova season do Imperianic',
       dueDate: '2025-09-30',
       status: 'active',
       progress: 90,
@@ -148,7 +148,7 @@ export default function PlanningPage() {
       description: 'Implementar CRM completo com inteligência artificial para atendimento',
       projectId: '3',
       subProject: '',
-      whatIsMissing: '',
+      whatIsMissing: 'Finalizar o KimonoBot na Lovable (Integrado, funcional e 24h)',
       dueDate: undefined,
       status: 'active',
       progress: 5,
@@ -163,7 +163,7 @@ export default function PlanningPage() {
       description: 'Conquistar a primeira venda do produto Zentrix',
       projectId: '4',
       subProject: 'Zentrix OS',
-      whatIsMissing: '',
+      whatIsMissing: 'Estruturar um fluxo de desenvolvimento e definir um DoD para o produto estar pronto para venda',
       dueDate: '2025-09-30',
       status: 'active',
       progress: 50,
@@ -239,7 +239,12 @@ export default function PlanningPage() {
   }
 
   const handleEditGoal = (goal: Goal) => {
-    setEditingGoal(goal)
+    // Sincronizar o nextStep com whatIsMissing para edição
+    const goalForEditing = {
+      ...goal,
+      whatIsMissing: goal.nextStep || ''
+    }
+    setEditingGoal(goalForEditing)
     setShowEditGoalModal(true)
   }
 
