@@ -273,6 +273,17 @@ export default function PlanningPage() {
     }
   }
 
+  // Função para atualizar apenas o progresso de uma meta
+  const handleUpdateGoalProgress = (goalId: string, newProgress: number) => {
+    setGoals(prevGoals => 
+      prevGoals.map(goal => 
+        goal.id === goalId 
+          ? { ...goal, progress: newProgress }
+          : goal
+      )
+    )
+  }
+
   const handleCreateTask = () => {
     if (newTask.title.trim()) {
       // Aqui você pode adicionar a lógica para salvar a tarefa
@@ -575,10 +586,7 @@ export default function PlanningPage() {
                                 progress={goal.progress}
                                 onProgressChange={(newProgress) => {
                                   // Atualizar o progresso da meta
-                                  const updatedGoals = goals.map(g => 
-                                    g.id === goal.id ? { ...g, progress: newProgress } : g
-                                  )
-                                  setGoals(updatedGoals)
+                                  handleUpdateGoalProgress(goal.id, newProgress)
                                 }}
                               />
                               
