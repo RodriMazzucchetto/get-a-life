@@ -392,6 +392,27 @@ export default function PlanningPage() {
   // Estado para controlar a aba ativa dos lembretes
   const [activeReminderTab, setActiveReminderTab] = useState('compras')
 
+  // Estado para adicionar novo lembrete
+  const [showAddReminderForm, setShowAddReminderForm] = useState(false)
+  const [newReminder, setNewReminder] = useState('')
+
+  const handleAddReminder = () => {
+    if (newReminder.trim() && activeReminderTab) {
+      const newReminderData: Reminder = {
+        id: Date.now().toString(),
+        title: newReminder.trim(),
+        description: '', // Descrição opcional
+        dueDate: undefined, // Data de vencimento opcional
+        priority: 'medium', // Prioridade padrão
+        created_at: new Date().toISOString()
+      }
+      // Adicionar lógica para salvar o lembrete no estado mock
+      console.log('Novo lembrete:', newReminderData)
+      setNewReminder('')
+      setShowAddReminderForm(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -962,11 +983,47 @@ export default function PlanningPage() {
             </div>
 
             {/* Add Reminder Section */}
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4 text-center cursor-pointer hover:border-gray-400 transition-colors">
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-2xl text-gray-400">+</span>
-                <span className="text-gray-600 font-medium">Adicionar lembrete</span>
-              </div>
+            <div className="mb-4">
+              {!showAddReminderForm ? (
+                <button
+                  onClick={() => setShowAddReminderForm(true)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  <span className="text-lg text-gray-400">+</span>
+                  <span>
+                    {activeReminderTab === 'compras' && 'Adicionar compra'}
+                    {activeReminderTab === 'followups' && 'Adicionar follow up'}
+                    {activeReminderTab === 'lembretes' && 'Adicionar lembrete'}
+                  </span>
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newReminder}
+                    onChange={(e) => setNewReminder(e.target.value)}
+                    placeholder={`Digite o ${activeReminderTab === 'compras' ? 'item de compra' : activeReminderTab === 'followups' ? 'follow up' : 'lembrete'}...`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddReminder()}
+                  />
+                  <button
+                    onClick={handleAddReminder}
+                    disabled={!newReminder.trim()}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Adicionar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddReminderForm(false)
+                      setNewReminder('')
+                    }}
+                    className="px-3 py-2 text-gray-600 hover:text-gray-800 text-sm"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Reminders List */}
@@ -1156,8 +1213,7 @@ export default function PlanningPage() {
               </button>
             </div>
           </div>
-        </div>
-      </ModalOverlay>
+        </ModalOverlay>
 
       {/* Edit Goal Modal */}
       <ModalOverlay isOpen={showEditGoalModal} onClose={() => setShowEditGoalModal(false)}>
