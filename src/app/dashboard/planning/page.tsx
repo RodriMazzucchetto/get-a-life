@@ -716,35 +716,7 @@ export default function PlanningPage() {
         )}
       </div>
 
-      {/* Seção Em Progresso - Vazia */}
-      <div className="bg-white rounded-lg shadow border border-gray-200">
-        <div className="p-6">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Em Progresso</h2>
-                <p className="text-sm text-gray-600">Itens que estão sendo executados atualmente</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Conteúdo vazio */}
-        <div className="px-6 pb-6 border-t border-gray-100">
-          <div className="py-8 text-center">
-            <div className="text-gray-400 text-4xl mb-4">🚀</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum item em progresso</h3>
-            <p className="text-gray-600 mb-4">Esta seção será preenchida conforme você adicionar itens em progresso.</p>
-          </div>
-        </div>
-      </div>
 
       {/* Elemento de Itens Em Progresso */}
       <div className="bg-white rounded-lg shadow border border-gray-200">
