@@ -52,9 +52,10 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
     <div
       ref={setNodeRef}
       style={style}
-      className="space-y-2"
+      className="group flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200"
     >
-      <div className="group flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
+      {/* Linha principal da atividade */}
+      <div className="group flex items-center gap-3 p-3">
       {/* Drag handle */}
       <div
         {...attributes}
@@ -133,17 +134,19 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
       </div>
       </div>
       
-      {/* Data de vencimento - aparece abaixo da atividade quando timeSensitive é true */}
+      {/* Data de vencimento - aparece dentro do elemento quando timeSensitive é true */}
       {todo.timeSensitive && todo.dueDate && (
-        <div className="ml-16">
-          <span
-            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white bg-orange-500"
-          >
-            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            Vence em {todo.dueDate ? new Date(todo.dueDate).toLocaleDateString('pt-BR') : ''}
-          </span>
+        <div className="px-3 pb-3 border-t border-gray-100">
+          <div className="pt-2 ml-16">
+            <span
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white bg-orange-500"
+            >
+              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              Vence em {todo.dueDate ? new Date(todo.dueDate).toLocaleDateString('pt-BR') : ''}
+            </span>
+          </div>
         </div>
       )}
     </div>
