@@ -43,6 +43,17 @@ interface Goal {
   initiativesList?: { id: string; description: string }[] // Adicionado para armazenar a lista de iniciativas
 }
 
+interface Todo {
+  id: string
+  title: string
+  description?: string
+  priority: 'low' | 'medium' | 'high'
+  category?: string
+  dueDate?: string
+  completed: boolean
+  created_at: string
+}
+
 export default function PlanningPage() {
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
@@ -78,6 +89,18 @@ export default function PlanningPage() {
   const [showAddInitiativeForm, setShowAddInitiativeForm] = useState(false)
   const [editingInitiative, setEditingInitiative] = useState<{ id: string; description: string } | null>(null)
   const [newInitiative, setNewInitiative] = useState('')
+
+  // Estados para to-dos
+  const [showCreateTodoModal, setShowCreateTodoModal] = useState(false)
+  const [showEditTodoModal, setShowEditTodoModal] = useState(false)
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
+  const [newTodo, setNewTodo] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    category: '',
+    dueDate: null as Date | null
+  })
 
   // Mock data para projetos
   const [projects, setProjects] = useState([
@@ -184,6 +207,30 @@ export default function PlanningPage() {
       totalInitiatives: 2,
       created_at: new Date().toISOString(),
       initiativesList: [{ id: '10', description: 'Definir fluxo de desenvolvimento' }, { id: '11', description: 'Definir DoD' }]
+    }
+  ])
+
+  // Mock data para to-dos
+  const [todos, setTodos] = useState<Todo[]>([
+    {
+      id: '1',
+      title: 'Fazer compras do mês',
+      description: 'Comprar alimentos, produtos de limpeza e itens pessoais',
+      priority: 'medium',
+      category: 'Pessoal',
+      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 dias
+      completed: false,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '2',
+      title: 'Agendar consulta médica',
+      description: 'Marcar checkup anual com o cardiologista',
+      priority: 'high',
+      category: 'Saúde',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 semana
+      completed: false,
+      created_at: new Date().toISOString()
     }
   ])
 
@@ -410,6 +457,52 @@ export default function PlanningPage() {
       console.log('Novo lembrete:', newReminderData)
       setNewReminder('')
       setShowAddReminderForm(false)
+    }
+  }
+
+  // Funções para to-dos
+  const handleCreateTodo = () => {
+    if (newTodo.title.trim()) {
+      const newTodoData: Todo = {
+        id: Date.now().toString(),
+        title: newTodo.title.trim(),
+        description: newTodo.description.trim(),
+        priority: newTodo.priority,
+        category: newTodo.category.trim(),
+        dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
+        completed: false,
+        created_at: new Date().toISOString()
+      }
+      setTodos([...todos, newTodoData])
+      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null })
+      setShowCreateTodoModal(false)
+    }
+  }
+
+  const handleEditTodo = (todo: Todo) => {
+    setEditingTodo(todo)
+    setShowEditTodoModal(true)
+  }
+
+  const handleUpdateTodo = () => {
+    if (editingTodo && editingTodo.title.trim()) {
+      setTodos(todos.map(t => 
+        t.id === editingTodo.id ? editingTodo : t
+      ))
+      setEditingTodo(null)
+      setShowEditTodoModal(false)
+    }
+  }
+
+  const handleToggleTodoComplete = (todoId: string) => {
+    setTodos(todos.map(t => 
+      t.id === todoId ? { ...t, completed: !t.completed } : t
+    ))
+  }
+
+  const handleDeleteTodo = (todoId: string) => {
+    if (confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) {
+      setTodos(todos.filter(t => t.id !== todoId))
     }
   }
 
@@ -714,6 +807,138 @@ export default function PlanningPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Seção de To-do */}
+      <div className="bg-white rounded-lg shadow border border-gray-200">
+        <div className="p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">To-do</h2>
+                <p className="text-sm text-gray-600">Tarefas e lembretes pessoais</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCreateTodoModal(true)}
+                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+              >
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                + To-do
+              </button>
+            </div>
+          </div>
+
+          {/* Conteúdo dos to-dos */}
+          <div className="space-y-4">
+            {todos.length === 0 ? (
+              <div className="py-8 text-center">
+                <div className="text-gray-400 text-4xl mb-4">📝</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum to-do criado</h3>
+                <p className="text-gray-600 mb-4">Crie seu primeiro to-do para começar a organizar suas tarefas.</p>
+                <button
+                  onClick={() => setShowCreateTodoModal(true)}
+                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Criar To-do
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {todos.map((todo) => (
+                  <div key={todo.id} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="space-y-3">
+                      {/* Cabeçalho do to-do */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${
+                            todo.priority === 'high' ? 'bg-red-500' :
+                            todo.priority === 'medium' ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}></div>
+                          <h6 className="text-sm font-medium text-gray-900">{todo.title}</h6>
+                        </div>
+                        <button 
+                          className="text-gray-400 hover:text-gray-600"
+                          onClick={() => handleEditTodo(todo)}
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      {/* Descrição */}
+                      {todo.description && (
+                        <p className="text-sm text-gray-600">{todo.description}</p>
+                      )}
+                      
+                      {/* Tags de prioridade e categoria */}
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          todo.priority === 'high' ? 'bg-red-100 text-red-800 border border-red-200' :
+                          todo.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                          'bg-green-100 text-green-800 border border-green-200'
+                        }`}>
+                          {todo.priority === 'high' ? 'Alta' : todo.priority === 'medium' ? 'Média' : 'Baixa'}
+                        </span>
+                        {todo.category && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                            {todo.category}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Data de vencimento */}
+                      {todo.dueDate && (
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span>Vence em: {new Date(todo.dueDate).toLocaleDateString('pt-BR')}</span>
+                        </div>
+                      )}
+                      
+                      {/* Botões de ação */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                        <button
+                          onClick={() => handleToggleTodoComplete(todo.id)}
+                          className={`flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                            todo.completed
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {todo.completed ? '✓ Concluído' : 'Marcar como concluído'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTodo(todo.id)}
+                          className="px-3 py-2 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Projects Management Modal */}
@@ -1375,6 +1600,233 @@ export default function PlanningPage() {
                       className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Atualizar Meta
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </ModalOverlay>
+
+      {/* Create Todo Modal */}
+      <ModalOverlay isOpen={showCreateTodoModal} onClose={() => setShowCreateTodoModal(false)}>
+        <div className="relative top-20 mx-auto p-6 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+          <div className="mt-3">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Novo To-do</h3>
+              <button
+                onClick={() => setShowCreateTodoModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Título do To-do *
+                </label>
+                <input
+                  type="text"
+                  value={newTodo.title}
+                  onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Ex: Fazer compras do mês"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição (opcional)
+                </label>
+                <textarea
+                  value={newTodo.description}
+                  onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Descreva os detalhes do to-do"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Prioridade
+                </label>
+                <select
+                  value={newTodo.priority}
+                  onChange={(e) => setNewTodo({ ...newTodo, priority: e.target.value as 'low' | 'medium' | 'high' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="low">Baixa</option>
+                  <option value="medium">Média</option>
+                  <option value="high">Alta</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Categoria (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newTodo.category}
+                  onChange={(e) => setNewTodo({ ...newTodo, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Ex: Pessoal, Trabalho, Saúde..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Data de Vencimento (opcional)
+                </label>
+                <DatePicker
+                  selected={newTodo.dueDate}
+                  onChange={(date: Date | null) => setNewTodo({ ...newTodo, dueDate: date })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholderText="Selecionar data..."
+                  dateFormat="dd/MM/yyyy"
+                  isClearable
+                  showYearDropdown
+                  scrollableYearDropdown
+                  yearDropdownItemNumber={15}
+                  locale="pt-BR"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateTodoModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateTodo}
+                disabled={!newTodo.title.trim()}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Criar To-do
+              </button>
+            </div>
+          </div>
+        </div>
+      </ModalOverlay>
+
+      {/* Edit Todo Modal */}
+      <ModalOverlay isOpen={showEditTodoModal} onClose={() => setShowEditTodoModal(false)}>
+        <div className="relative top-20 mx-auto p-6 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+          <div className="mt-3">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Editar To-do</h3>
+              <button
+                onClick={() => setShowEditTodoModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {editingTodo && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Título do To-do *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingTodo.title}
+                    onChange={(e) => setEditingTodo({ ...editingTodo, title: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Ex: Fazer compras do mês"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Descrição (opcional)
+                  </label>
+                  <textarea
+                    value={editingTodo.description || ''}
+                    onChange={(e) => setEditingTodo({ ...editingTodo, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Descreva os detalhes do to-do"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prioridade
+                  </label>
+                  <select
+                    value={editingTodo.priority}
+                    onChange={(e) => setEditingTodo({ ...editingTodo, priority: e.target.value as 'low' | 'medium' | 'high' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="low">Baixa</option>
+                    <option value="medium">Média</option>
+                    <option value="high">Alta</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Categoria (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingTodo.category || ''}
+                    onChange={(e) => setEditingTodo({ ...editingTodo, category: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Data de Vencimento (opcional)
+                  </label>
+                  <DatePicker
+                    selected={editingTodo.dueDate ? new Date(editingTodo.dueDate) : null}
+                    onChange={(date: Date | null) => setEditingTodo({ ...editingTodo, dueDate: date ? date.toISOString() : undefined })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholderText="Selecionar data"
+                    dateFormat="dd/MM/yyyy"
+                    isClearable
+                    showYearDropdown
+                    scrollableYearDropdown
+                    yearDropdownItemNumber={15}
+                    locale="pt-BR"
+                  />
+                </div>
+
+                <div className="flex justify-between gap-3 mt-6">
+                  <button
+                    onClick={() => handleDeleteTodo(editingTodo.id)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
+                  >
+                    <svg className="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Excluir
+                  </button>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowEditTodoModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleUpdateTodo}
+                      disabled={!editingTodo.title.trim()}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Atualizar To-do
                     </button>
                   </div>
                 </div>
