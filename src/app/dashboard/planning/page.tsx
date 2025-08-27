@@ -409,6 +409,52 @@ export default function PlanningPage() {
     }
   ])
 
+  // Estados para backlog
+  const [showBacklogCreateForm, setShowBacklogCreateForm] = useState(false)
+  const [newBacklogTodo, setNewBacklogTodo] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    category: '',
+    dueDate: null as Date | null,
+    timeSensitive: false,
+    tags: [] as { name: string; color: string }[]
+  })
+  const [backlogTodos, setBacklogTodos] = useState<Todo[]>([
+    {
+      id: '3',
+      title: 'Estudar React avançado',
+      description: 'Aprofundar conhecimentos em hooks customizados e context API',
+      priority: 'medium',
+      category: 'Estudo',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      tags: [
+        { name: 'Estudo', color: '#8B5CF6' },
+        { name: 'React', color: '#06B6D4' }
+      ],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '4',
+      title: 'Planejar viagem para Europa',
+      description: 'Definir roteiro, orçamento e datas para viagem em 2025',
+      priority: 'low',
+      category: 'Pessoal',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      tags: [
+        { name: 'Viagem', color: '#F59E0B' },
+        { name: 'Europa', color: '#10B981' }
+      ],
+      created_at: new Date().toISOString()
+    }
+  ])
+
   const handleCreateProject = () => {
     if (newProject.name.trim()) {
       const newProjectData = {
@@ -669,9 +715,19 @@ export default function PlanningPage() {
 
   const handleUpdateTodo = () => {
     if (editingTodo && editingTodo.title.trim()) {
-      setTodos(todos.map(t => 
-        t.id === editingTodo.id ? editingTodo : t
-      ))
+      // Atualizar no bloco correto baseado no ID
+      const isBacklogTodo = backlogTodos.some(t => t.id === editingTodo.id)
+      
+      if (isBacklogTodo) {
+        setBacklogTodos(backlogTodos.map(t => 
+          t.id === editingTodo.id ? editingTodo : t
+        ))
+      } else {
+        setTodos(todos.map(t => 
+          t.id === editingTodo.id ? editingTodo : t
+        ))
+      }
+      
       setEditingTodo(null)
       setShowEditTodoModal(false)
     }
@@ -714,7 +770,139 @@ export default function PlanningPage() {
   const handleAddTagToTodo = (todoId: string, tagName: string) => {
     const tag = availableTags.find(t => t.name === tagName)
     if (tag) {
+      // Verificar em qual bloco está a tarefa
+      const isBacklogTodo = backlogTodos.some(t => t.id === todoId)
+      
+      if (isBacklogTodo) {
+        setBacklogTodos(backlogTodos.map(t => 
+          t.id === todoId 
+            ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+            : t
+        ))
+      } else {
+        setTodos(todos.map(t => 
+          t.id === todoId 
+            ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+            : t
+        ))
+      }
+      
+      // Atualizar também o editingTodo se estiver editando a mesma tarefa
+      if (editingTodo && editingTodo.id === todoId) {
+        setEditingTodo({
+          ...editingTodo,
+          tags: editingTodo.tags.some(existingTag => existingTag.name === tagName) 
+            ? editingTodo.tags 
+            : [...editingTodo.tags, tag]
+        })
+      }
+    }
+  }
+
+  const handleRemoveTagFromTodo = (todoId: string, tagName: string) => {
+    // Verificar em qual bloco está a tarefa
+    const isBacklogTodo = backlogTodos.some(t => t.id === todoId)
+    
+    if (isBacklogTodo) {
+      setBacklogTodos(backlogTodos.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
+          : t
+      ))
+    } else {
       setTodos(todos.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
+          : t
+      ))
+    }
+    
+    // Atualizar também o editingTodo se estiver editando a mesma tarefa
+    if (editingTodo && editingTodo.id === todoId) {
+      setEditingTodo({
+        ...editingTodo,
+        tags: editingTodo.tags.filter(tag => tag.name !== tagName)
+      })
+    }
+  }
+
+  // Funções para backlog
+  const handleCreateBacklogTodo = () => {
+    if (newBacklogTodo.title.trim()) {
+      const newTodoData: Todo = {
+        id: Date.now().toString(),
+        title: newBacklogTodo.title.trim(),
+        description: newBacklogTodo.description.trim(),
+        priority: newBacklogTodo.priority,
+        category: newBacklogTodo.category.trim(),
+        dueDate: newBacklogTodo.dueDate ? newBacklogTodo.dueDate.toISOString() : undefined,
+        completed: false,
+        isHighPriority: false,
+        timeSensitive: newBacklogTodo.timeSensitive,
+        tags: [],
+        created_at: new Date().toISOString()
+      }
+      setBacklogTodos([...backlogTodos, newTodoData])
+      setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+      setShowBacklogCreateForm(false)
+    }
+  }
+
+  const handleCancelBacklogCreate = () => {
+    setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+    setShowBacklogCreateForm(false)
+  }
+
+  const handleEditBacklogTodo = (todo: Todo) => {
+    setEditingTodo(todo)
+    setShowEditTodoModal(true)
+  }
+
+  const handleUpdateBacklogTodo = () => {
+    if (editingTodo && editingTodo.title.trim()) {
+      setBacklogTodos(backlogTodos.map(t => 
+        t.id === editingTodo.id ? editingTodo : t
+      ))
+      setEditingTodo(null)
+      setShowEditTodoModal(false)
+    }
+  }
+
+  const handleToggleBacklogTodoComplete = (todoId: string) => {
+    setBacklogTodos(backlogTodos.map(t => 
+      t.id === todoId ? { ...t, completed: !t.completed } : t
+    ))
+  }
+
+  const handleDeleteBacklogTodo = (todoId: string) => {
+    if (confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) {
+      setBacklogTodos(backlogTodos.filter(t => t.id !== todoId))
+    }
+  }
+
+  const handleToggleBacklogPriority = (todoId: string) => {
+    setBacklogTodos(backlogTodos.map(t => 
+      t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
+    ))
+  }
+
+  const handleDragEndBacklog = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      setBacklogTodos((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over?.id)
+
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
+  const handleAddTagToBacklogTodo = (todoId: string, tagName: string) => {
+    const tag = availableTags.find(t => t.name === tagName)
+    if (tag) {
+      setBacklogTodos(backlogTodos.map(t => 
         t.id === todoId 
           ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
           : t
@@ -732,8 +920,8 @@ export default function PlanningPage() {
     }
   }
 
-  const handleRemoveTagFromTodo = (todoId: string, tagName: string) => {
-    setTodos(todos.map(t => 
+  const handleRemoveTagFromBacklogTodo = (todoId: string, tagName: string) => {
+    setBacklogTodos(backlogTodos.map(t => 
       t.id === todoId 
         ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
         : t
@@ -1209,6 +1397,139 @@ export default function PlanningPage() {
                         onEdit={handleEditTodo}
                       />
                     ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Seção de Backlog */}
+      <div className="bg-white rounded-lg shadow border border-gray-200">
+        <div className="p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Backlog ({backlogTodos.filter(t => !t.completed).length})</h2>
+                <p className="text-sm text-gray-600">Tarefas para o futuro</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Botão de adicionar nova tarefa */}
+          {!showBacklogCreateForm && (
+            <button
+              onClick={() => setShowBacklogCreateForm(true)}
+              className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar nova tarefa
+            </button>
+          )}
+
+          {/* Formulário inline para criar nova tarefa */}
+          {showBacklogCreateForm && (
+            <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+              <div className="flex items-center gap-3">
+                {/* Drag handle */}
+                <div className="flex gap-1 cursor-move">
+                  <div className="flex flex-col gap-1">
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  </div>
+                </div>
+                
+                {/* Checkbox */}
+                <input
+                  type="checkbox"
+                  disabled
+                  className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+                />
+                
+                {/* Input do título */}
+                <input
+                  type="text"
+                  value={newBacklogTodo.title}
+                  onChange={(e) => setNewBacklogTodo({ ...newBacklogTodo, title: e.target.value })}
+                  placeholder="Título da tarefa..."
+                  className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCreateBacklogTodo()
+                    }
+                  }}
+                  autoFocus
+                />
+                
+                {/* Botão de fechar */}
+                <button
+                  onClick={handleCancelBacklogCreate}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                  title="Cancelar"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Conteúdo dos to-dos */}
+          <div className="space-y-4">
+            {backlogTodos.filter(t => !t.completed).length === 0 ? (
+              <div className="py-8 text-center">
+                <div className="text-gray-400 text-4xl mb-4">📋</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa no backlog</h3>
+                <p className="text-gray-600 mb-4">Adicione tarefas para o futuro para manter tudo organizado.</p>
+                <button
+                  onClick={() => setShowBacklogCreateForm(true)}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Adicionar Tarefa
+                </button>
+              </div>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEndBacklog}
+              >
+                <SortableContext
+                  items={backlogTodos.filter(t => !t.completed).map(todo => todo.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {backlogTodos
+                      .filter(t => !t.completed)
+                      .map((todo) => (
+                        <SortableTodoItem
+                          key={todo.id}
+                          todo={todo}
+                          onToggleComplete={handleToggleBacklogTodoComplete}
+                          onTogglePriority={handleToggleBacklogPriority}
+                          onEdit={handleEditBacklogTodo}
+                        />
+                      ))}
                   </div>
                 </SortableContext>
               </DndContext>
