@@ -696,6 +696,16 @@ export default function PlanningPage() {
           ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
           : t
       ))
+      
+      // Atualizar também o editingTodo se estiver editando a mesma tarefa
+      if (editingTodo && editingTodo.id === todoId) {
+        setEditingTodo({
+          ...editingTodo,
+          tags: editingTodo.tags.some(existingTag => existingTag.name === tagName) 
+            ? editingTodo.tags 
+            : [...editingTodo.tags, tag]
+        })
+      }
     }
   }
 
@@ -705,6 +715,14 @@ export default function PlanningPage() {
         ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
         : t
     ))
+    
+    // Atualizar também o editingTodo se estiver editando a mesma tarefa
+    if (editingTodo && editingTodo.id === todoId) {
+      setEditingTodo({
+        ...editingTodo,
+        tags: editingTodo.tags.filter(tag => tag.name !== tagName)
+      })
+    }
   }
 
   const handleCreateNewTag = () => {
