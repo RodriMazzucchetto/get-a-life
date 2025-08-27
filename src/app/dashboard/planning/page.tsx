@@ -52,8 +52,9 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200"
+      className="space-y-2"
     >
+      <div className="group flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
       {/* Drag handle */}
       <div
         {...attributes}
@@ -130,6 +131,21 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
           </svg>
         </button>
       </div>
+      </div>
+      
+      {/* Data de vencimento - aparece abaixo da atividade quando timeSensitive é true */}
+      {todo.timeSensitive && todo.dueDate && (
+        <div className="ml-16">
+          <span
+            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white bg-orange-500"
+          >
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            Vence em {todo.dueDate ? new Date(todo.dueDate).toLocaleDateString('pt-BR') : ''}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -179,6 +195,7 @@ interface Todo {
   dueDate?: string
   completed: boolean
   isHighPriority: boolean
+  timeSensitive: boolean
   tags: { name: string; color: string }[]
   created_at: string
 }
@@ -241,6 +258,7 @@ export default function PlanningPage() {
     priority: 'medium' as 'low' | 'medium' | 'high',
     category: '',
     dueDate: null as Date | null,
+    timeSensitive: false,
     tags: [] as { name: string; color: string }[]
   })
 
@@ -363,6 +381,7 @@ export default function PlanningPage() {
       dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 dias
       completed: false,
       isHighPriority: false,
+      timeSensitive: true,
       tags: [
         { name: 'Pessoal', color: '#3B82F6' },
         { name: 'Compras', color: '#10B981' }
@@ -378,6 +397,7 @@ export default function PlanningPage() {
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 semana
       completed: false,
       isHighPriority: true,
+      timeSensitive: false,
       tags: [
         { name: 'Saúde', color: '#EF4444' },
         { name: 'Médico', color: '#8B5CF6' }
@@ -624,17 +644,18 @@ export default function PlanningPage() {
         dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
+        timeSensitive: false,
         tags: [],
         created_at: new Date().toISOString()
       }
       setTodos([...todos, newTodoData])
-      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, tags: [] })
+      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
       setShowInlineCreateForm(false)
     }
   }
 
   const handleCancelCreate = () => {
-    setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, tags: [] })
+    setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
     setShowInlineCreateForm(false)
   }
 
@@ -2056,15 +2077,41 @@ export default function PlanningPage() {
                 </div>
 
                 {/* Time Sensitive */}
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="timeSensitive"
-                    className="w-4 h-4 text-blue-600 border border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor="timeSensitive" className="ml-2 text-sm text-gray-700">
-                    Esta tarefa é time sensitive
-                  </label>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="timeSensitive"
+                      checked={editingTodo.timeSensitive}
+                      onChange={(e) => setEditingTodo({ ...editingTodo, timeSensitive: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="timeSensitive" className="ml-2 text-sm text-gray-700">
+                      Esta tarefa é time sensitive
+                    </label>
+                  </div>
+                  
+                  {/* Date Picker - aparece apenas quando timeSensitive é marcado */}
+                  {editingTodo.timeSensitive && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Data de Vencimento *
+                      </label>
+                      <DatePicker
+                        selected={editingTodo.dueDate ? new Date(editingTodo.dueDate) : null}
+                        onChange={(date: Date | null) => setEditingTodo({ ...editingTodo, dueDate: date ? date.toISOString() : undefined })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholderText="Selecionar data"
+                        dateFormat="dd/MM/yyyy"
+                        isClearable
+                        showYearDropdown
+                        scrollableYearDropdown
+                        yearDropdownItemNumber={15}
+                        locale="pt-BR"
+                        minDate={new Date()}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Tags */}
