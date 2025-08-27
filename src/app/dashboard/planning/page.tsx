@@ -192,6 +192,7 @@ export default function PlanningPage() {
   const [showCreateTodoModal, setShowCreateTodoModal] = useState(false)
   const [showEditTodoModal, setShowEditTodoModal] = useState(false)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
+  const [showInlineCreateForm, setShowInlineCreateForm] = useState(false)
   const [newTodo, setNewTodo] = useState({
     title: '',
     description: '',
@@ -576,8 +577,13 @@ export default function PlanningPage() {
       }
       setTodos([...todos, newTodoData])
       setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null })
-      setShowCreateTodoModal(false)
+      setShowInlineCreateForm(false)
     }
+  }
+
+  const handleCancelCreate = () => {
+    setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null })
+    setShowInlineCreateForm(false)
   }
 
   const handleEditTodo = (todo: Todo) => {
@@ -968,15 +974,71 @@ export default function PlanningPage() {
           </div>
 
           {/* Botão de adicionar nova tarefa */}
-          <button
-            onClick={() => setShowCreateTodoModal(true)}
-            className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Adicionar nova tarefa
-          </button>
+          {!showInlineCreateForm && (
+            <button
+              onClick={() => setShowInlineCreateForm(true)}
+              className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar nova tarefa
+            </button>
+          )}
+
+          {/* Formulário inline para criar nova tarefa */}
+          {showInlineCreateForm && (
+            <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+              <div className="flex items-center gap-3">
+                {/* Drag handle */}
+                <div className="flex gap-1 cursor-move">
+                  <div className="flex flex-col gap-1">
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  </div>
+                </div>
+                
+                {/* Checkbox */}
+                <input
+                  type="checkbox"
+                  disabled
+                  className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+                />
+                
+                {/* Input do título */}
+                <input
+                  type="text"
+                  value={newTodo.title}
+                  onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
+                  placeholder="Título da tarefa..."
+                  className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCreateTodo()
+                    }
+                  }}
+                  autoFocus
+                />
+                
+                {/* Botão de fechar */}
+                <button
+                  onClick={handleCancelCreate}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                  title="Cancelar"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Conteúdo dos to-dos */}
           <div className="space-y-4">
