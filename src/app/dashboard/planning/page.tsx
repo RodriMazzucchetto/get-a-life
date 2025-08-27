@@ -57,14 +57,20 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority }: {
       <div
         {...attributes}
         {...listeners}
-        className="flex flex-col gap-1 cursor-move hover:cursor-grab active:cursor-grabbing"
+        className="flex gap-1 cursor-move hover:cursor-grab active:cursor-grabbing"
       >
-        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+        {/* Coluna esquerda de 3 pontos */}
+        <div className="flex flex-col gap-1">
+          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+        </div>
+        {/* Coluna direita de 3 pontos */}
+        <div className="flex flex-col gap-1">
+          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+        </div>
       </div>
       
       {/* Checkbox */}
@@ -78,11 +84,19 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority }: {
       {/* Indicador de prioridade */}
       <div
         onClick={() => onTogglePriority(todo.id)}
-        className={`w-3 h-3 rounded-full cursor-pointer transition-colors ${
-          todo.isHighPriority ? 'bg-red-500' : 'bg-gray-300'
-        }`}
+        className="cursor-pointer transition-colors"
         title={todo.isHighPriority ? 'Clique para remover prioridade' : 'Clique para marcar como prioridade'}
-      />
+      >
+        <svg 
+          className={`w-4 h-4 ${
+            todo.isHighPriority ? 'text-red-500' : 'text-gray-400'
+          }`}
+          fill="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z"/>
+        </svg>
+      </div>
       
       {/* Título do to-do */}
       <span className="flex-1 text-sm text-gray-900">{todo.title}</span>
