@@ -1475,72 +1475,7 @@ export default function PlanningPage() {
             </div>
           </div>
 
-          {/* Botão de adicionar nova tarefa */}
-          {!showInProgressCreateForm && (
-            <button
-              onClick={() => setShowInProgressCreateForm(true)}
-              className="w-full mb-4 px-4 py-3 bg-white/80 backdrop-blur-sm border border-dashed border-blue-300 rounded-lg hover:bg-white transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Adicionar nova tarefa
-            </button>
-          )}
 
-          {/* Formulário inline para criar nova tarefa */}
-          {showInProgressCreateForm && (
-            <div className="mb-4 p-4 bg-white/90 backdrop-blur-sm border border-blue-200 rounded-lg shadow-sm">
-              <div className="flex items-center gap-3">
-                {/* Drag handle */}
-                <div className="flex gap-1 cursor-move">
-                  <div className="flex flex-col gap-1">
-                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                  </div>
-                </div>
-                
-                {/* Checkbox */}
-                <input
-                  type="checkbox"
-                  disabled
-                  className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
-                />
-                
-                {/* Input do título */}
-                <input
-                  type="text"
-                  value={newInProgressTodo.title}
-                  onChange={(e) => setNewInProgressTodo({ ...newInProgressTodo, title: e.target.value })}
-                  placeholder="Título da tarefa..."
-                  className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleCreateInProgressTodo()
-                    }
-                  }}
-                  autoFocus
-                />
-                
-                {/* Botão de fechar */}
-                <button
-                  onClick={handleCancelInProgressCreate}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-                  title="Cancelar"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Conteúdo dos to-dos */}
           <div className="space-y-4">
@@ -1548,16 +1483,7 @@ export default function PlanningPage() {
               <div className="py-8 text-center">
                 <div className="text-gray-400 text-4xl mb-4">🚀</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa em progresso</h3>
-                <p className="text-gray-600 mb-4">Mova tarefas da Semana Atual ou Backlog para começar a trabalhar nelas.</p>
-                <button
-                  onClick={() => setShowInProgressCreateForm(true)}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Adicionar Tarefa
-                </button>
+                <p className="text-gray-600 mb-4">Arraste tarefas da Semana Atual ou Backlog para começar a trabalhar nelas.</p>
               </div>
             ) : (
               <SortableContext
