@@ -948,7 +948,7 @@ export default function PlanningPage() {
         )}
       </div>
 
-      {/* Seção de To-do */}
+      {/* Seção de Semana Atual */}
       <div className="bg-white rounded-lg shadow border border-gray-200">
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
@@ -961,31 +961,30 @@ export default function PlanningPage() {
                 </div>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">To-do</h2>
+                <h2 className="text-xl font-bold text-gray-900">Semana Atual ({sortedTodos.length})</h2>
                 <p className="text-sm text-gray-600">Tarefas e lembretes pessoais</p>
               </div>
             </div>
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowCreateTodoModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-              >
-                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                + To-do
-              </button>
-            </div>
           </div>
+
+          {/* Botão de adicionar nova tarefa */}
+          <button
+            onClick={() => setShowCreateTodoModal(true)}
+            className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Adicionar nova tarefa
+          </button>
 
           {/* Conteúdo dos to-dos */}
           <div className="space-y-4">
-            {todos.length === 0 ? (
+            {sortedTodos.length === 0 ? (
               <div className="py-8 text-center">
                 <div className="text-gray-400 text-4xl mb-4">📝</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum to-do criado</h3>
-                <p className="text-gray-600 mb-4">Crie seu primeiro to-do para começar a organizar suas tarefas.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa criada</h3>
+                <p className="text-gray-600 mb-4">Crie sua primeira tarefa para começar a organizar sua semana.</p>
                 <button
                   onClick={() => setShowCreateTodoModal(true)}
                   className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
@@ -993,7 +992,7 @@ export default function PlanningPage() {
                   <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Criar To-do
+                  Criar Tarefa
                 </button>
               </div>
             ) : (
