@@ -1456,65 +1456,66 @@ export default function PlanningPage() {
         )}
       </div>
 
-      {/* Bloco Em Progresso */}
-      <div className="bg-gradient-to-br from-blue-50 to-purple-100 rounded-lg shadow border border-blue-200">
-        <div className="p-6">
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Em Progresso ({inProgressTodos.filter(t => !t.completed).length})</h2>
-                <p className="text-sm text-gray-600">Tarefas que estão sendo trabalhadas</p>
-              </div>
-            </div>
-          </div>
-
-
-
-          {/* Conteúdo dos to-dos */}
-          <div className="space-y-4">
-            {inProgressTodos.filter(t => !t.completed).length === 0 ? (
-              <div className="py-8 text-center">
-                <div className="text-gray-400 text-4xl mb-4">🚀</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa em progresso</h3>
-                <p className="text-gray-600 mb-4">Arraste tarefas da Semana Atual ou Backlog para começar a trabalhar nelas.</p>
-              </div>
-            ) : (
-              <SortableContext
-                items={inProgressTodos.filter(t => !t.completed).map(todo => todo.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-2">
-                  {inProgressTodos
-                    .filter(t => !t.completed)
-                    .map((todo) => (
-                      <SortableTodoItem
-                        key={todo.id}
-                        todo={todo}
-                        onToggleComplete={handleToggleInProgressTodoComplete}
-                        onTogglePriority={handleToggleInProgressPriority}
-                        onEdit={handleEditInProgressTodo}
-                      />
-                    ))}
-                </div>
-              </SortableContext>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Container para os blocos lado a lado com DndContext unificado */}
+      {/* Container para os blocos com DndContext unificado */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEndBetweenBlocks}
       >
+        {/* Bloco Em Progresso - Full Width */}
+        <div className="mb-6">
+          <div className="bg-gradient-to-br from-blue-50 to-purple-100 rounded-lg shadow border border-blue-200">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Em Progresso ({inProgressTodos.filter(t => !t.completed).length})</h2>
+                    <p className="text-sm text-gray-600">Tarefas que estão sendo trabalhadas</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Conteúdo dos to-dos */}
+              <div className="space-y-4">
+                {inProgressTodos.filter(t => !t.completed).length === 0 ? (
+                  <div className="py-8 text-center">
+                    <div className="text-gray-400 text-4xl mb-4">🚀</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa em progresso</h3>
+                    <p className="text-gray-600 mb-4">Arraste tarefas da Semana Atual ou Backlog para começar a trabalhar nelas.</p>
+                  </div>
+                ) : (
+                  <SortableContext
+                    items={inProgressTodos.filter(t => !t.completed).map(todo => todo.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {inProgressTodos
+                        .filter(t => !t.completed)
+                        .map((todo) => (
+                          <SortableTodoItem
+                            key={todo.id}
+                            todo={todo}
+                            onToggleComplete={handleToggleInProgressTodoComplete}
+                            onTogglePriority={handleToggleInProgressPriority}
+                            onEdit={handleEditInProgressTodo}
+                          />
+                        ))}
+                    </div>
+                  </SortableContext>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Container para os blocos lado a lado */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Seção de Semana Atual */}
           <div className="bg-white rounded-lg shadow border border-gray-200">
