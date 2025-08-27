@@ -858,81 +858,29 @@ export default function PlanningPage() {
                 </button>
               </div>
             ) : (
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {todos.map((todo) => (
-                  <div key={todo.id} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="space-y-3">
-                      {/* Cabeçalho do to-do */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${
-                            todo.priority === 'high' ? 'bg-red-500' :
-                            todo.priority === 'medium' ? 'bg-yellow-500' :
-                            'bg-green-500'
-                          }`}></div>
-                          <h6 className="text-sm font-medium text-gray-900">{todo.title}</h6>
-                        </div>
-                        <button 
-                          className="text-gray-400 hover:text-gray-600"
-                          onClick={() => handleEditTodo(todo)}
-                        >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                      </div>
-                      
-                      {/* Descrição */}
-                      {todo.description && (
-                        <p className="text-sm text-gray-600">{todo.description}</p>
-                      )}
-                      
-                      {/* Tags de prioridade e categoria */}
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          todo.priority === 'high' ? 'bg-red-100 text-red-800 border border-red-200' :
-                          todo.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                          'bg-green-100 text-green-800 border border-green-200'
-                        }`}>
-                          {todo.priority === 'high' ? 'Alta' : todo.priority === 'medium' ? 'Média' : 'Baixa'}
-                        </span>
-                        {todo.category && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                            {todo.category}
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Data de vencimento */}
-                      {todo.dueDate && (
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <span>Vence em: {new Date(todo.dueDate).toLocaleDateString('pt-BR')}</span>
-                        </div>
-                      )}
-                      
-                      {/* Botões de ação */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <button
-                          onClick={() => handleToggleTodoComplete(todo.id)}
-                          className={`flex-1 px-3 py-2 text-xs font-medium rounded-md transition-colors ${
-                            todo.completed
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {todo.completed ? '✓ Concluído' : 'Marcar como concluído'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTodo(todo.id)}
-                          className="px-3 py-2 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
-                        >
-                          Excluir
-                        </button>
-                      </div>
+              <div className="space-y-2">
+                {todos.filter(todo => !todo.completed).map((todo) => (
+                  <div key={todo.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    {/* Drag handle */}
+                    <div className="flex flex-col gap-1 cursor-move">
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
                     </div>
+                    
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={todo.completed}
+                      onChange={() => handleToggleTodoComplete(todo.id)}
+                      className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+                    />
+                    
+                    {/* Título do to-do */}
+                    <span className="flex-1 text-sm text-gray-900">{todo.title}</span>
                   </div>
                 ))}
               </div>
