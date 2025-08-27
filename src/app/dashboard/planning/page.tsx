@@ -99,24 +99,23 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
         </svg>
       </div>
       
-      {/* Título e tags */}
-      <div className="flex-1">
-        <span className="text-sm text-gray-900">{todo.title}</span>
-        {/* Tags */}
-        {todo.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {todo.tags.map((tag, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
-                style={{ backgroundColor: tag.color }}
-              >
-                {tag.name}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Título do to-do */}
+      <span className="flex-1 text-sm text-gray-900">{todo.title}</span>
+
+      {/* Tags no canto direito */}
+      {todo.tags.length > 0 && (
+        <div className="flex items-center gap-1 mr-2">
+          {todo.tags.map((tag, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+              style={{ backgroundColor: tag.color }}
+            >
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Botões de ação (visíveis apenas no hover) */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2">
