@@ -409,6 +409,35 @@ export default function PlanningPage() {
     }
   ])
 
+  // Estados para itens em progresso
+  const [showInProgressCreateForm, setShowInProgressCreateForm] = useState(false)
+  const [newInProgressTodo, setNewInProgressTodo] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    category: '',
+    dueDate: null as Date | null,
+    timeSensitive: false,
+    tags: [] as { name: string; color: string }[]
+  })
+  const [inProgressTodos, setInProgressTodos] = useState<Todo[]>([
+    {
+      id: '5',
+      title: 'Trazer o Ripl para o Cursor',
+      description: 'Implementar integração do Ripl no Cursor',
+      priority: 'medium',
+      category: 'Pessoal',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      tags: [
+        { name: 'Pessoal', color: '#8B5CF6' }
+      ],
+      created_at: new Date().toISOString()
+    }
+  ])
+
   // Estados para backlog
   const [showBacklogCreateForm, setShowBacklogCreateForm] = useState(false)
   const [newBacklogTodo, setNewBacklogTodo] = useState({
@@ -717,9 +746,14 @@ export default function PlanningPage() {
     if (editingTodo && editingTodo.title.trim()) {
       // Atualizar no bloco correto baseado no ID
       const isBacklogTodo = backlogTodos.some(t => t.id === editingTodo.id)
+      const isInProgressTodo = inProgressTodos.some(t => t.id === editingTodo.id)
       
       if (isBacklogTodo) {
         setBacklogTodos(backlogTodos.map(t => 
+          t.id === editingTodo.id ? editingTodo : t
+        ))
+      } else if (isInProgressTodo) {
+        setInProgressTodos(inProgressTodos.map(t => 
           t.id === editingTodo.id ? editingTodo : t
         ))
       } else {
@@ -764,28 +798,53 @@ export default function PlanningPage() {
     // Verificar se o item está sendo movido para uma posição diferente
     if (activeId === overId) return
 
-    // Encontrar o item ativo em ambos os arrays
+    // Encontrar o item ativo em todos os arrays
     const activeTodoInTodos = todos.find(t => t.id === activeId)
     const activeTodoInBacklog = backlogTodos.find(t => t.id === activeId)
+    const activeTodoInProgress = inProgressTodos.find(t => t.id === activeId)
 
     // Se o item não foi encontrado, não fazer nada
-    if (!activeTodoInTodos && !activeTodoInBacklog) return
+    if (!activeTodoInTodos && !activeTodoInBacklog && !activeTodoInProgress) return
 
     // Verificar se o item está sendo movido para o backlog
     const overTodoInBacklog = backlogTodos.find(t => t.id === overId)
-    if (overTodoInBacklog && activeTodoInTodos) {
-      // Mover da Semana Atual para o Backlog
-      setTodos(todos.filter(t => t.id !== activeId))
-      setBacklogTodos([...backlogTodos, activeTodoInTodos])
+    if (overTodoInBacklog && (activeTodoInTodos || activeTodoInProgress)) {
+      // Mover da Semana Atual ou Em Progresso para o Backlog
+      if (activeTodoInTodos) {
+        setTodos(todos.filter(t => t.id !== activeId))
+        setBacklogTodos([...backlogTodos, activeTodoInTodos])
+      } else if (activeTodoInProgress) {
+        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        setBacklogTodos([...backlogTodos, activeTodoInProgress])
+      }
       return
     }
 
     // Verificar se o item está sendo movido para a semana atual
     const overTodoInTodos = todos.find(t => t.id === overId)
-    if (overTodoInTodos && activeTodoInBacklog) {
-      // Mover do Backlog para a Semana Atual
-      setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-      setTodos([...todos, activeTodoInBacklog])
+    if (overTodoInTodos && (activeTodoInBacklog || activeTodoInProgress)) {
+      // Mover do Backlog ou Em Progresso para a Semana Atual
+      if (activeTodoInBacklog) {
+        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        setTodos([...todos, activeTodoInBacklog])
+      } else if (activeTodoInProgress) {
+        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        setTodos([...todos, activeTodoInProgress])
+      }
+      return
+    }
+
+    // Verificar se o item está sendo movido para em progresso
+    const overTodoInProgress = inProgressTodos.find(t => t.id === overId)
+    if (overTodoInProgress && (activeTodoInTodos || activeTodoInBacklog)) {
+      // Mover da Semana Atual ou Backlog para Em Progresso
+      if (activeTodoInTodos) {
+        setTodos(todos.filter(t => t.id !== activeId))
+        setInProgressTodos([...inProgressTodos, activeTodoInTodos])
+      } else if (activeTodoInBacklog) {
+        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        setInProgressTodos([...inProgressTodos, activeTodoInBacklog])
+      }
       return
     }
 
@@ -801,6 +860,14 @@ export default function PlanningPage() {
     } else if (activeTodoInBacklog) {
       // Reordenação dentro do Backlog
       setBacklogTodos((items) => {
+        const oldIndex = items.findIndex((item) => item.id === activeId)
+        const newIndex = items.findIndex((item) => item.id === overId)
+
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    } else if (activeTodoInProgress) {
+      // Reordenação dentro de Em Progresso
+      setInProgressTodos((items) => {
         const oldIndex = items.findIndex((item) => item.id === activeId)
         const newIndex = items.findIndex((item) => item.id === overId)
 
@@ -829,9 +896,16 @@ export default function PlanningPage() {
     if (tag) {
       // Verificar em qual bloco está a tarefa
       const isBacklogTodo = backlogTodos.some(t => t.id === todoId)
+      const isInProgressTodo = inProgressTodos.some(t => t.id === todoId)
       
       if (isBacklogTodo) {
         setBacklogTodos(backlogTodos.map(t => 
+          t.id === todoId 
+            ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+            : t
+        ))
+      } else if (isInProgressTodo) {
+        setInProgressTodos(inProgressTodos.map(t => 
           t.id === todoId 
             ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
             : t
@@ -859,9 +933,16 @@ export default function PlanningPage() {
   const handleRemoveTagFromTodo = (todoId: string, tagName: string) => {
     // Verificar em qual bloco está a tarefa
     const isBacklogTodo = backlogTodos.some(t => t.id === todoId)
+    const isInProgressTodo = inProgressTodos.some(t => t.id === todoId)
     
     if (isBacklogTodo) {
       setBacklogTodos(backlogTodos.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
+          : t
+      ))
+    } else if (isInProgressTodo) {
+      setInProgressTodos(inProgressTodos.map(t => 
         t.id === todoId 
           ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
           : t
@@ -881,6 +962,50 @@ export default function PlanningPage() {
         tags: editingTodo.tags.filter(tag => tag.name !== tagName)
       })
     }
+  }
+
+  // Funções para itens em progresso
+  const handleCreateInProgressTodo = () => {
+    if (newInProgressTodo.title.trim()) {
+      const newTodoData: Todo = {
+        id: Date.now().toString(),
+        title: newInProgressTodo.title.trim(),
+        description: newInProgressTodo.description.trim(),
+        priority: newInProgressTodo.priority,
+        category: newInProgressTodo.category.trim(),
+        dueDate: newInProgressTodo.dueDate ? newInProgressTodo.dueDate.toISOString() : undefined,
+        completed: false,
+        isHighPriority: false,
+        timeSensitive: newInProgressTodo.timeSensitive,
+        tags: [],
+        created_at: new Date().toISOString()
+      }
+      setInProgressTodos([...inProgressTodos, newTodoData])
+      setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+      setShowInProgressCreateForm(false)
+    }
+  }
+
+  const handleCancelInProgressCreate = () => {
+    setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+    setShowInProgressCreateForm(false)
+  }
+
+  const handleEditInProgressTodo = (todo: Todo) => {
+    setEditingTodo(todo)
+    setShowEditTodoModal(true)
+  }
+
+  const handleToggleInProgressTodoComplete = (todoId: string) => {
+    setInProgressTodos(inProgressTodos.map(t => 
+      t.id === todoId ? { ...t, completed: !t.completed } : t
+    ))
+  }
+
+  const handleToggleInProgressPriority = (todoId: string) => {
+    setInProgressTodos(inProgressTodos.map(t => 
+      t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
+    ))
   }
 
   // Funções para backlog
@@ -1331,7 +1456,134 @@ export default function PlanningPage() {
         )}
       </div>
 
-            {/* Container para os blocos lado a lado com DndContext unificado */}
+      {/* Bloco Em Progresso */}
+      <div className="bg-gradient-to-br from-blue-50 to-purple-100 rounded-lg shadow border border-blue-200">
+        <div className="p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Em Progresso ({inProgressTodos.filter(t => !t.completed).length})</h2>
+                <p className="text-sm text-gray-600">Tarefas que estão sendo trabalhadas</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Botão de adicionar nova tarefa */}
+          {!showInProgressCreateForm && (
+            <button
+              onClick={() => setShowInProgressCreateForm(true)}
+              className="w-full mb-4 px-4 py-3 bg-white/80 backdrop-blur-sm border border-dashed border-blue-300 rounded-lg hover:bg-white transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar nova tarefa
+            </button>
+          )}
+
+          {/* Formulário inline para criar nova tarefa */}
+          {showInProgressCreateForm && (
+            <div className="mb-4 p-4 bg-white/90 backdrop-blur-sm border border-blue-200 rounded-lg shadow-sm">
+              <div className="flex items-center gap-3">
+                {/* Drag handle */}
+                <div className="flex gap-1 cursor-move">
+                  <div className="flex flex-col gap-1">
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  </div>
+                </div>
+                
+                {/* Checkbox */}
+                <input
+                  type="checkbox"
+                  disabled
+                  className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+                />
+                
+                {/* Input do título */}
+                <input
+                  type="text"
+                  value={newInProgressTodo.title}
+                  onChange={(e) => setNewInProgressTodo({ ...newInProgressTodo, title: e.target.value })}
+                  placeholder="Título da tarefa..."
+                  className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCreateInProgressTodo()
+                    }
+                  }}
+                  autoFocus
+                />
+                
+                {/* Botão de fechar */}
+                <button
+                  onClick={handleCancelInProgressCreate}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                  title="Cancelar"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Conteúdo dos to-dos */}
+          <div className="space-y-4">
+            {inProgressTodos.filter(t => !t.completed).length === 0 ? (
+              <div className="py-8 text-center">
+                <div className="text-gray-400 text-4xl mb-4">🚀</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa em progresso</h3>
+                <p className="text-gray-600 mb-4">Mova tarefas da Semana Atual ou Backlog para começar a trabalhar nelas.</p>
+                <button
+                  onClick={() => setShowInProgressCreateForm(true)}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Adicionar Tarefa
+                </button>
+              </div>
+            ) : (
+              <SortableContext
+                items={inProgressTodos.filter(t => !t.completed).map(todo => todo.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {inProgressTodos
+                    .filter(t => !t.completed)
+                    .map((todo) => (
+                      <SortableTodoItem
+                        key={todo.id}
+                        todo={todo}
+                        onToggleComplete={handleToggleInProgressTodoComplete}
+                        onTogglePriority={handleToggleInProgressPriority}
+                        onEdit={handleEditInProgressTodo}
+                      />
+                    ))}
+                </div>
+              </SortableContext>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Container para os blocos lado a lado com DndContext unificado */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
