@@ -108,9 +108,10 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
             {todo.tags.map((tag, index) => (
               <span
                 key={index}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+                style={{ backgroundColor: tag.color }}
               >
-                {tag}
+                {tag.name}
               </span>
             ))}
           </div>
@@ -179,7 +180,7 @@ interface Todo {
   dueDate?: string
   completed: boolean
   isHighPriority: boolean
-  tags: string[]
+  tags: { name: string; color: string }[]
   created_at: string
 }
 
@@ -224,8 +225,14 @@ export default function PlanningPage() {
   const [showEditTodoModal, setShowEditTodoModal] = useState(false)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [showInlineCreateForm, setShowInlineCreateForm] = useState(false)
-  const [availableTags, setAvailableTags] = useState<string[]>([
-    'KimonoLab', 'EXLG SDK', 'EXLG CN', 'Zentrix BS', 'Miscellaneous', 'QuickWin', 'Pessoal'
+  const [availableTags, setAvailableTags] = useState<{ name: string; color: string }[]>([
+    { name: 'KimonoLab', color: '#EF4444' },
+    { name: 'EXLG SDK', color: '#8B5CF6' },
+    { name: 'EXLG CN', color: '#EC4899' },
+    { name: 'Zentrix BS', color: '#8B5CF6' },
+    { name: 'Miscellaneous', color: '#10B981' },
+    { name: 'QuickWin', color: '#F59E0B' },
+    { name: 'Pessoal', color: '#3B82F6' }
   ])
   const [newTagName, setNewTagName] = useState('')
   const [newTagColor, setNewTagColor] = useState('#3B82F6')
@@ -235,7 +242,7 @@ export default function PlanningPage() {
     priority: 'medium' as 'low' | 'medium' | 'high',
     category: '',
     dueDate: null as Date | null,
-    tags: [] as string[]
+    tags: [] as { name: string; color: string }[]
   })
 
   // Mock data para projetos
@@ -357,7 +364,10 @@ export default function PlanningPage() {
       dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 dias
       completed: false,
       isHighPriority: false,
-      tags: ['Pessoal', 'Compras'],
+      tags: [
+        { name: 'Pessoal', color: '#3B82F6' },
+        { name: 'Compras', color: '#10B981' }
+      ],
       created_at: new Date().toISOString()
     },
     {
@@ -369,7 +379,10 @@ export default function PlanningPage() {
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 semana
       completed: false,
       isHighPriority: true,
-      tags: ['Saúde', 'Médico'],
+      tags: [
+        { name: 'Saúde', color: '#EF4444' },
+        { name: 'Médico', color: '#8B5CF6' }
+      ],
       created_at: new Date().toISOString()
     }
   ])
@@ -675,37 +688,41 @@ export default function PlanningPage() {
   }
 
   // Funções para gerenciar tags
-  const handleAddTagToTodo = (todoId: string, tag: string) => {
-    setTodos(todos.map(t => 
-      t.id === todoId 
-        ? { ...t, tags: t.tags.includes(tag) ? t.tags : [...t.tags, tag] }
-        : t
-    ))
+  const handleAddTagToTodo = (todoId: string, tagName: string) => {
+    const tag = availableTags.find(t => t.name === tagName)
+    if (tag) {
+      setTodos(todos.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+          : t
+      ))
+    }
   }
 
-  const handleRemoveTagFromTodo = (todoId: string, tag: string) => {
+  const handleRemoveTagFromTodo = (todoId: string, tagName: string) => {
     setTodos(todos.map(t => 
       t.id === todoId 
-        ? { ...t, tags: t.tags.filter(tagName => tagName !== tag) }
+        ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
         : t
     ))
   }
 
   const handleCreateNewTag = () => {
-    if (newTagName.trim() && !availableTags.includes(newTagName.trim())) {
-      setAvailableTags([...availableTags, newTagName.trim()])
+    if (newTagName.trim() && !availableTags.some(t => t.name === newTagName.trim())) {
+      const newTag = { name: newTagName.trim(), color: newTagColor }
+      setAvailableTags([...availableTags, newTag])
       setNewTagName('')
     }
   }
 
-  const handleRemoveTag = (tag: string) => {
+  const handleRemoveTag = (tagName: string) => {
     // Remove a tag de todos os todos que a possuem
     setTodos(todos.map(t => ({
       ...t,
-      tags: t.tags.filter(tagName => tagName !== tag)
+      tags: t.tags.filter(tag => tag.name !== tagName)
     })))
     // Remove a tag da lista de tags disponíveis
-    setAvailableTags(availableTags.filter(t => t !== tag))
+    setAvailableTags(availableTags.filter(t => t.name !== tagName))
   }
 
   // Configuração dos sensores para drag and drop
@@ -2045,12 +2062,13 @@ export default function PlanningPage() {
                       {editingTodo.tags.map((tag, index) => (
                         <span
                           key={index}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                          style={{ backgroundColor: tag.color }}
                         >
-                          {tag}
+                          {tag.name}
                           <button
-                            onClick={() => handleRemoveTagFromTodo(editingTodo.id, tag)}
-                            className="ml-2 text-blue-600 hover:text-blue-800"
+                            onClick={() => handleRemoveTagFromTodo(editingTodo.id, tag.name)}
+                            className="ml-2 text-white hover:text-gray-200"
                           >
                             ×
                           </button>
@@ -2096,14 +2114,14 @@ export default function PlanningPage() {
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {availableTags
-                        .filter(tag => !editingTodo.tags.includes(tag))
+                        .filter(tag => !editingTodo.tags.some(existingTag => existingTag.name === tag.name))
                         .map((tag, index) => (
                           <button
                             key={index}
-                            onClick={() => handleAddTagToTodo(editingTodo.id, tag)}
+                            onClick={() => handleAddTagToTodo(editingTodo.id, tag.name)}
                             className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                           >
-                            + {tag}
+                            + {tag.name}
                           </button>
                         ))}
                     </div>
