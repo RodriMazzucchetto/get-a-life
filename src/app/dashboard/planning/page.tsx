@@ -6,6 +6,89 @@ import ModalOverlay from '@/components/ModalOverlay'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import {
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+// Componente para item de to-do arrastável
+function SortableTodoItem({ todo, onToggleComplete, onTogglePriority }: {
+  todo: Todo
+  onToggleComplete: (id: string) => void
+  onTogglePriority: (id: string) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: todo.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm"
+    >
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex flex-col gap-1 cursor-move hover:cursor-grab active:cursor-grabbing"
+      >
+        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+      </div>
+      
+      {/* Checkbox */}
+      <input
+        type="checkbox"
+        checked={todo.completed}
+        onChange={() => onToggleComplete(todo.id)}
+        className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+      />
+      
+      {/* Indicador de prioridade */}
+      <div
+        onClick={() => onTogglePriority(todo.id)}
+        className={`w-3 h-3 rounded-full cursor-pointer transition-colors ${
+          todo.isHighPriority ? 'bg-red-500' : 'bg-gray-300'
+        }`}
+        title={todo.isHighPriority ? 'Clique para remover prioridade' : 'Clique para marcar como prioridade'}
+      />
+      
+      {/* Título do to-do */}
+      <span className="flex-1 text-sm text-gray-900">{todo.title}</span>
+    </div>
+  )
+}
 
 interface Task {
   id: string
@@ -51,6 +134,7 @@ interface Todo {
   category?: string
   dueDate?: string
   completed: boolean
+  isHighPriority: boolean
   created_at: string
 }
 
@@ -220,6 +304,7 @@ export default function PlanningPage() {
       category: 'Pessoal',
       dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 dias
       completed: false,
+      isHighPriority: false,
       created_at: new Date().toISOString()
     },
     {
@@ -230,6 +315,7 @@ export default function PlanningPage() {
       category: 'Saúde',
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 semana
       completed: false,
+      isHighPriority: true,
       created_at: new Date().toISOString()
     }
   ])
@@ -471,6 +557,7 @@ export default function PlanningPage() {
         category: newTodo.category.trim(),
         dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
+        isHighPriority: false,
         created_at: new Date().toISOString()
       }
       setTodos([...todos, newTodoData])
@@ -505,6 +592,44 @@ export default function PlanningPage() {
       setTodos(todos.filter(t => t.id !== todoId))
     }
   }
+
+  // Função para alternar prioridade
+  const handleTogglePriority = (todoId: string) => {
+    setTodos(todos.map(t => 
+      t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
+    ))
+  }
+
+  // Função para drag and drop
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      setTodos((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over?.id)
+
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
+  // Configuração dos sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Ordenar to-dos: prioridade alta primeiro, depois pela ordem manual
+  const sortedTodos = todos
+    .filter(todo => !todo.completed)
+    .sort((a, b) => {
+      if (a.isHighPriority && !b.isHighPriority) return -1
+      if (!a.isHighPriority && b.isHighPriority) return 1
+      return 0
+    })
 
   return (
     <div className="space-y-6">
@@ -858,32 +983,27 @@ export default function PlanningPage() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-2">
-                {todos.filter(todo => !todo.completed).map((todo) => (
-                  <div key={todo.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    {/* Drag handle */}
-                    <div className="flex flex-col gap-1 cursor-move">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                    </div>
-                    
-                    {/* Checkbox */}
-                    <input
-                      type="checkbox"
-                      checked={todo.completed}
-                      onChange={() => handleToggleTodoComplete(todo.id)}
-                      className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
-                    />
-                    
-                    {/* Título do to-do */}
-                    <span className="flex-1 text-sm text-gray-900">{todo.title}</span>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={sortedTodos.map(todo => todo.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {sortedTodos.map((todo) => (
+                      <SortableTodoItem
+                        key={todo.id}
+                        todo={todo}
+                        onToggleComplete={handleToggleTodoComplete}
+                        onTogglePriority={handleTogglePriority}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
         </div>
