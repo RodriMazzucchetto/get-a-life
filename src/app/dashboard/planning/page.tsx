@@ -752,7 +752,64 @@ export default function PlanningPage() {
     ))
   }
 
-  // Função para drag and drop
+  // Função para drag and drop entre blocos
+  const handleDragEndBetweenBlocks = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (!active || !over) return
+
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    // Verificar se o item está sendo movido para uma posição diferente
+    if (activeId === overId) return
+
+    // Encontrar o item ativo em ambos os arrays
+    const activeTodoInTodos = todos.find(t => t.id === activeId)
+    const activeTodoInBacklog = backlogTodos.find(t => t.id === activeId)
+
+    // Se o item não foi encontrado, não fazer nada
+    if (!activeTodoInTodos && !activeTodoInBacklog) return
+
+    // Verificar se o item está sendo movido para o backlog
+    const overTodoInBacklog = backlogTodos.find(t => t.id === overId)
+    if (overTodoInBacklog && activeTodoInTodos) {
+      // Mover da Semana Atual para o Backlog
+      setTodos(todos.filter(t => t.id !== activeId))
+      setBacklogTodos([...backlogTodos, activeTodoInTodos])
+      return
+    }
+
+    // Verificar se o item está sendo movido para a semana atual
+    const overTodoInTodos = todos.find(t => t.id === overId)
+    if (overTodoInTodos && activeTodoInBacklog) {
+      // Mover do Backlog para a Semana Atual
+      setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+      setTodos([...todos, activeTodoInBacklog])
+      return
+    }
+
+    // Se não estiver movendo entre blocos, fazer reordenação dentro do mesmo bloco
+    if (activeTodoInTodos) {
+      // Reordenação dentro da Semana Atual
+      setTodos((items) => {
+        const oldIndex = items.findIndex((item) => item.id === activeId)
+        const newIndex = items.findIndex((item) => item.id === overId)
+
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    } else if (activeTodoInBacklog) {
+      // Reordenação dentro do Backlog
+      setBacklogTodos((items) => {
+        const oldIndex = items.findIndex((item) => item.id === activeId)
+        const newIndex = items.findIndex((item) => item.id === overId)
+
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
+  // Função para drag and drop (mantida para compatibilidade)
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
 
@@ -1274,117 +1331,117 @@ export default function PlanningPage() {
         )}
       </div>
 
-      {/* Container para os blocos lado a lado */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Seção de Semana Atual */}
-        <div className="bg-white rounded-lg shadow border border-gray-200">
-          <div className="p-6">
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Semana Atual ({sortedTodos.length})</h2>
-                  <p className="text-sm text-gray-600">Tarefas e lembretes pessoais</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Botão de adicionar nova tarefa */}
-            {!showInlineCreateForm && (
-              <button
-                onClick={() => setShowInlineCreateForm(true)}
-                className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Adicionar nova tarefa
-              </button>
-            )}
-
-            {/* Formulário inline para criar nova tarefa */}
-            {showInlineCreateForm && (
-              <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+            {/* Container para os blocos lado a lado com DndContext unificado */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEndBetweenBlocks}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Seção de Semana Atual */}
+          <div className="bg-white rounded-lg shadow border border-gray-200">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                  {/* Drag handle */}
-                  <div className="flex gap-1 cursor-move">
-                    <div className="flex flex-col gap-1">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
                     </div>
                   </div>
-                  
-                  {/* Checkbox */}
-                  <input
-                    type="checkbox"
-                    disabled
-                    className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
-                  />
-                  
-                  {/* Input do título */}
-                  <input
-                    type="text"
-                    value={newTodo.title}
-                    onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
-                    placeholder="Título da tarefa..."
-                    className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleCreateTodo()
-                      }
-                    }}
-                    autoFocus
-                  />
-                  
-                  {/* Botão de fechar */}
-                  <button
-                    onClick={handleCancelCreate}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-                    title="Cancelar"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Semana Atual ({sortedTodos.length})</h2>
+                    <p className="text-sm text-gray-600">Tarefas e lembretes pessoais</p>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Conteúdo dos to-dos */}
-            <div className="space-y-4">
-              {sortedTodos.length === 0 ? (
-                <div className="py-8 text-center">
-                  <div className="text-gray-400 text-4xl mb-4">📝</div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa criada</h3>
-                  <p className="text-gray-600 mb-4">Crie sua primeira tarefa para começar a organizar sua semana.</p>
-                  <button
-                    onClick={() => setShowCreateTodoModal(true)}
-                    className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                  >
-                    <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Criar Tarefa
-                  </button>
-                </div>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+              {/* Botão de adicionar nova tarefa */}
+              {!showInlineCreateForm && (
+                <button
+                  onClick={() => setShowInlineCreateForm(true)}
+                  className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
                 >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Adicionar nova tarefa
+                </button>
+              )}
+
+              {/* Formulário inline para criar nova tarefa */}
+              {showInlineCreateForm && (
+                <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+                  <div className="flex items-center gap-3">
+                    {/* Drag handle */}
+                    <div className="flex gap-1 cursor-move">
+                      <div className="flex flex-col gap-1">
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      disabled
+                      className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+                    />
+                    
+                    {/* Input do título */}
+                    <input
+                      type="text"
+                      value={newTodo.title}
+                      onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
+                      placeholder="Título da tarefa..."
+                      className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateTodo()
+                        }
+                      }}
+                      autoFocus
+                    />
+                    
+                    {/* Botão de fechar */}
+                    <button
+                      onClick={handleCancelCreate}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                      title="Cancelar"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Conteúdo dos to-dos */}
+              <div className="space-y-4">
+                {sortedTodos.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <div className="text-gray-400 text-4xl mb-4">📝</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa criada</h3>
+                    <p className="text-gray-600 mb-4">Crie sua primeira tarefa para começar a organizar sua semana.</p>
+                    <button
+                      onClick={() => setShowCreateTodoModal(true)}
+                      className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                    >
+                      <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Criar Tarefa
+                    </button>
+                  </div>
+                ) : (
                   <SortableContext
                     items={sortedTodos.map(todo => todo.id)}
                     strategy={verticalListSortingStrategy}
@@ -1401,121 +1458,115 @@ export default function PlanningPage() {
                       ))}
                     </div>
                   </SortableContext>
-                </DndContext>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Seção de Backlog */}
-        <div className="bg-white rounded-lg shadow border border-gray-200">
-          <div className="p-6">
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Backlog ({backlogTodos.filter(t => !t.completed).length})</h2>
-                  <p className="text-sm text-gray-600">Tarefas para o futuro</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Botão de adicionar nova tarefa */}
-            {!showBacklogCreateForm && (
-              <button
-                onClick={() => setShowBacklogCreateForm(true)}
-                className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Adicionar nova tarefa
-              </button>
-            )}
-
-            {/* Formulário inline para criar nova tarefa */}
-            {showBacklogCreateForm && (
-              <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+          {/* Seção de Backlog */}
+          <div className="bg-white rounded-lg shadow border border-gray-200">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                  {/* Drag handle */}
-                  <div className="flex gap-1 cursor-move">
-                    <div className="flex flex-col gap-1">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
                     </div>
                   </div>
-                  
-                  {/* Checkbox */}
-                  <input
-                    type="checkbox"
-                    disabled
-                    className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
-                  />
-                  
-                  {/* Input do título */}
-                  <input
-                    type="text"
-                    value={newBacklogTodo.title}
-                    onChange={(e) => setNewBacklogTodo({ ...newBacklogTodo, title: e.target.value })}
-                    placeholder="Título da tarefa..."
-                    className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleCreateBacklogTodo()
-                      }
-                    }}
-                    autoFocus
-                  />
-                  
-                  {/* Botão de fechar */}
-                  <button
-                    onClick={handleCancelBacklogCreate}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-                    title="Cancelar"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Backlog ({backlogTodos.filter(t => !t.completed).length})</h2>
+                    <p className="text-sm text-gray-600">Tarefas para o futuro</p>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Conteúdo dos to-dos */}
-            <div className="space-y-4">
-              {backlogTodos.filter(t => !t.completed).length === 0 ? (
-                <div className="py-8 text-center">
-                  <div className="text-gray-400 text-4xl mb-4">📋</div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa no backlog</h3>
-                  <p className="text-gray-600 mb-4">Adicione tarefas para o futuro para manter tudo organizado.</p>
-                  <button
-                    onClick={() => setShowBacklogCreateForm(true)}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Adicionar Tarefa
-                  </button>
-                </div>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEndBacklog}
+              {/* Botão de adicionar nova tarefa */}
+              {!showBacklogCreateForm && (
+                <button
+                  onClick={() => setShowBacklogCreateForm(true)}
+                  className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
                 >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Adicionar nova tarefa
+                </button>
+              )}
+
+              {/* Formulário inline para criar nova tarefa */}
+              {showBacklogCreateForm && (
+                <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+                  <div className="flex items-center gap-3">
+                    {/* Drag handle */}
+                    <div className="flex gap-1 cursor-move">
+                      <div className="flex flex-col gap-1">
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      disabled
+                      className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+                    />
+                    
+                    {/* Input do título */}
+                    <input
+                      type="text"
+                      value={newBacklogTodo.title}
+                      onChange={(e) => setNewBacklogTodo({ ...newBacklogTodo, title: e.target.value })}
+                      placeholder="Título da tarefa..."
+                      className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateBacklogTodo()
+                        }
+                      }}
+                      autoFocus
+                    />
+                    
+                    {/* Botão de fechar */}
+                    <button
+                      onClick={handleCancelBacklogCreate}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                      title="Cancelar"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Conteúdo dos to-dos */}
+              <div className="space-y-4">
+                {backlogTodos.filter(t => !t.completed).length === 0 ? (
+                  <div className="py-8 text-center">
+                    <div className="text-gray-400 text-4xl mb-4">📋</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa no backlog</h3>
+                    <p className="text-gray-600 mb-4">Adicione tarefas para o futuro para manter tudo organizado.</p>
+                    <button
+                      onClick={() => setShowBacklogCreateForm(true)}
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Adicionar Tarefa
+                    </button>
+                  </div>
+                ) : (
                   <SortableContext
                     items={backlogTodos.filter(t => !t.completed).map(todo => todo.id)}
                     strategy={verticalListSortingStrategy}
@@ -1534,12 +1585,12 @@ export default function PlanningPage() {
                         ))}
                     </div>
                   </SortableContext>
-                </DndContext>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </DndContext>
 
       {/* Projects Management Modal */}
       <ModalOverlay isOpen={showProjectsModal} onClose={() => setShowProjectsModal(false)}>
