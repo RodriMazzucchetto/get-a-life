@@ -846,6 +846,29 @@ export default function PlanningPage() {
     ))
   }
 
+  // Função para agrupar todos por primeira tag
+  const groupTodosByFirstTag = (todoList: Todo[]) => {
+    const groups: { [key: string]: Todo[] } = {}
+    
+    todoList.forEach(todo => {
+      if (todo.tags.length > 0) {
+        const firstTag = todo.tags[0].name
+        if (!groups[firstTag]) {
+          groups[firstTag] = []
+        }
+        groups[firstTag].push(todo)
+      } else {
+        // Itens sem tags vão para um grupo "Sem Tags"
+        if (!groups['Sem Tags']) {
+          groups['Sem Tags'] = []
+        }
+        groups['Sem Tags'].push(todo)
+      }
+    })
+    
+    return groups
+  }
+
   // Função para drag and drop entre blocos
   const handleDragEndBetweenBlocks = (event: DragEndEvent) => {
     const { active, over } = event
@@ -1609,8 +1632,8 @@ export default function PlanningPage() {
                 </div>
               </div>
 
-              {/* Conteúdo dos to-dos */}
-              <div className="space-y-4">
+              {/* Conteúdo dos to-dos agrupados por primeira tag */}
+              <div className="space-y-6">
                 {inProgressTodos.filter(t => !t.completed).length === 0 ? (
                   <div className="py-8 text-center">
                     <div className="text-gray-400 text-4xl mb-4">🚀</div>
@@ -1618,25 +1641,39 @@ export default function PlanningPage() {
                     <p className="text-gray-600 mb-4">Arraste tarefas da Semana Atual ou Backlog para começar a trabalhar nelas.</p>
                   </div>
                 ) : (
-                  <SortableContext
-                    items={inProgressTodos.filter(t => !t.completed).map(todo => todo.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-2">
-                      {inProgressTodos
-                        .filter(t => !t.completed)
-                        .map((todo) => (
-                                                 <SortableTodoItem
-                         key={todo.id}
-                         todo={todo}
-                         onToggleComplete={handleToggleInProgressTodoComplete}
-                         onTogglePriority={handleToggleInProgressPriority}
-                         onEdit={handleEditInProgressTodo}
-                         onPutOnHold={handlePutTodoOnHold}
-                       />
-                        ))}
-                    </div>
-                  </SortableContext>
+                  (() => {
+                    const filteredInProgressTodos = inProgressTodos.filter(t => !t.completed)
+                    const groupedTodos = groupTodosByFirstTag(filteredInProgressTodos)
+                    return Object.entries(groupedTodos).map(([tagName, todos]) => (
+                      <div key={tagName} className="space-y-3">
+                        {/* Cabeçalho do grupo */}
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-gray-700">
+                            {tagName} ({todos.length})
+                          </h3>
+                        </div>
+                        
+                        {/* Itens do grupo */}
+                        <SortableContext
+                          items={todos.map(todo => todo.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-2">
+                            {todos.map((todo) => (
+                              <SortableTodoItem
+                                key={todo.id}
+                                todo={todo}
+                                onToggleComplete={handleToggleInProgressTodoComplete}
+                                onTogglePriority={handleToggleInProgressPriority}
+                                onEdit={handleEditInProgressTodo}
+                                onPutOnHold={handlePutTodoOnHold}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </div>
+                    ))
+                  })()
                 )}
               </div>
             </div>
@@ -1731,8 +1768,8 @@ export default function PlanningPage() {
                 </div>
               )}
 
-              {/* Conteúdo dos to-dos */}
-              <div className="space-y-4">
+              {/* Conteúdo dos to-dos agrupados por primeira tag */}
+              <div className="space-y-6">
                 {sortedTodos.length === 0 ? (
                   <div className="py-8 text-center">
                     <div className="text-gray-400 text-4xl mb-4">📝</div>
@@ -1749,23 +1786,38 @@ export default function PlanningPage() {
                     </button>
                   </div>
                 ) : (
-                  <SortableContext
-                    items={sortedTodos.map(todo => todo.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-2">
-                      {sortedTodos.map((todo) => (
-                                              <SortableTodoItem
-                        key={todo.id}
-                        todo={todo}
-                        onToggleComplete={handleToggleTodoComplete}
-                        onTogglePriority={handleTogglePriority}
-                        onEdit={handleEditTodo}
-                        onPutOnHold={handlePutTodoOnHold}
-                      />
-                      ))}
-                    </div>
-                  </SortableContext>
+                  (() => {
+                    const groupedTodos = groupTodosByFirstTag(sortedTodos)
+                    return Object.entries(groupedTodos).map(([tagName, todos]) => (
+                      <div key={tagName} className="space-y-3">
+                        {/* Cabeçalho do grupo */}
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-gray-700">
+                            {tagName} ({todos.length})
+                          </h3>
+                        </div>
+                        
+                        {/* Itens do grupo */}
+                        <SortableContext
+                          items={todos.map(todo => todo.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-2">
+                            {todos.map((todo) => (
+                              <SortableTodoItem
+                                key={todo.id}
+                                todo={todo}
+                                onToggleComplete={handleToggleTodoComplete}
+                                onTogglePriority={handleTogglePriority}
+                                onEdit={handleEditTodo}
+                                onPutOnHold={handlePutTodoOnHold}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </div>
+                    ))
+                  })()
                 )}
               </div>
             </div>
@@ -1857,8 +1909,8 @@ export default function PlanningPage() {
                 </div>
               )}
 
-              {/* Conteúdo dos to-dos */}
-              <div className="space-y-4">
+              {/* Conteúdo dos to-dos agrupados por primeira tag */}
+              <div className="space-y-6">
                 {backlogTodos.filter(t => !t.completed).length === 0 ? (
                   <div className="py-8 text-center">
                     <div className="text-gray-400 text-4xl mb-4">📋</div>
@@ -1875,25 +1927,39 @@ export default function PlanningPage() {
                     </button>
                   </div>
                 ) : (
-                  <SortableContext
-                    items={backlogTodos.filter(t => !t.completed).map(todo => todo.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-2">
-                      {backlogTodos
-                        .filter(t => !t.completed)
-                        .map((todo) => (
-                                                <SortableTodoItem
-                        key={todo.id}
-                        todo={todo}
-                        onToggleComplete={handleToggleBacklogTodoComplete}
-                        onTogglePriority={handleToggleBacklogPriority}
-                        onEdit={handleEditBacklogTodo}
-                        onPutOnHold={handlePutTodoOnHold}
-                      />
-                        ))}
-                    </div>
-                  </SortableContext>
+                  (() => {
+                    const filteredBacklogTodos = backlogTodos.filter(t => !t.completed)
+                    const groupedTodos = groupTodosByFirstTag(filteredBacklogTodos)
+                    return Object.entries(groupedTodos).map(([tagName, todos]) => (
+                      <div key={tagName} className="space-y-3">
+                        {/* Cabeçalho do grupo */}
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-gray-700">
+                            {tagName} ({todos.length})
+                          </h3>
+                        </div>
+                        
+                        {/* Itens do grupo */}
+                        <SortableContext
+                          items={todos.map(todo => todo.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-2">
+                            {todos.map((todo) => (
+                              <SortableTodoItem
+                                key={todo.id}
+                                todo={todo}
+                                onToggleComplete={handleToggleBacklogTodoComplete}
+                                onTogglePriority={handleToggleBacklogPriority}
+                                onEdit={handleEditBacklogTodo}
+                                onPutOnHold={handlePutTodoOnHold}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </div>
+                    ))
+                  })()
                 )}
               </div>
             </div>
