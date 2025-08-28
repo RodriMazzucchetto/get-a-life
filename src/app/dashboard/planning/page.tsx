@@ -1233,6 +1233,18 @@ export default function PlanningPage() {
       }
     })
     
+    // Ordenar itens dentro de cada grupo: itens ativos primeiro, itens em espera por último
+    Object.keys(groups).forEach(tagName => {
+      groups[tagName].sort((a, b) => {
+        // Se ambos estão em espera ou ambos não estão, mantém ordem original
+        if (a.onHold === b.onHold) return 0
+        // Se a não está em espera e b está, a vem primeiro
+        if (!a.onHold && b.onHold) return -1
+        // Se a está em espera e b não está, b vem primeiro
+        return 1
+      })
+    })
+    
     return groups
   }
 
