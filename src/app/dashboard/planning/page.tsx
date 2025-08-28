@@ -499,42 +499,306 @@ export default function PlanningPage() {
     }
   ])
 
-  // Mock data para to-dos
+  // Mock data para to-dos - Semana Atual (19 itens)
   const [todos, setTodos] = useState<Todo[]>([
+    // EXLG SDK (5 itens)
     {
       id: '1',
-      title: 'Fazer compras do mês',
-      description: 'Comprar alimentos, produtos de limpeza e itens pessoais',
-      priority: 'medium',
-      category: 'Pessoal',
-      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 dias
+      title: 'Trocar ideia com Sales sobre SDK',
+      description: 'Discutir estratégias de vendas e posicionamento do SDK',
+      priority: 'high',
+      category: 'EXLG SDK',
+      dueDate: undefined,
       completed: false,
       isHighPriority: false,
-      timeSensitive: true,
-      onHold: false,
-      onHoldReason: undefined,
-      tags: [
-        { name: 'Pessoal', color: '#3B82F6' },
-        { name: 'Compras', color: '#10B981' }
-      ],
+      timeSensitive: false,
+      onHold: true,
+      onHoldReason: 'Aguardando disponibilidade da equipe de Sales',
+      tags: [{ name: 'EXLG SDK', color: '#8B5CF6' }],
       created_at: new Date().toISOString()
     },
     {
       id: '2',
-      title: 'Agendar consulta médica',
-      description: 'Marcar checkup anual com o cardiologista',
-      priority: 'high',
-      category: 'Saúde',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 semana
+      title: 'Implementar autenticação OAuth2',
+      description: 'Desenvolver sistema de autenticação OAuth2 para o SDK',
+      priority: 'medium',
+      category: 'EXLG SDK',
+      dueDate: undefined,
       completed: false,
-      isHighPriority: true,
+      isHighPriority: false,
       timeSensitive: false,
       onHold: false,
       onHoldReason: undefined,
+      tags: [{ name: 'EXLG SDK', color: '#8B5CF6' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '3',
+      title: 'Criar documentação da API',
+      description: 'Desenvolver documentação completa da API do SDK',
+      priority: 'medium',
+      category: 'EXLG SDK',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'EXLG SDK', color: '#8B5CF6' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '4',
+      title: 'Testar integração com clientes',
+      description: 'Realizar testes de integração com clientes existentes',
+      priority: 'medium',
+      category: 'EXLG SDK',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'EXLG SDK', color: '#8B5CF6' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '5',
+      title: 'Refatorar código de validação',
+      description: 'Melhorar e otimizar o código de validação do SDK',
+      priority: 'low',
+      category: 'EXLG SDK',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'EXLG SDK', color: '#8B5CF6' }],
+      created_at: new Date().toISOString()
+    },
+    
+    // Pessoal (4 itens)
+    {
+      id: '6',
+      title: 'Pagar esquadrias Brasil',
+      description: 'Realizar pagamento das esquadrias para o Brasil',
+      priority: 'high',
+      category: 'Pessoal',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: true,
+      onHoldReason: 'Aguardando confirmação do valor final',
       tags: [
-        { name: 'Saúde', color: '#EF4444' },
-        { name: 'Médico', color: '#8B5CF6' }
+        { name: 'Pessoal', color: '#3B82F6' },
+        { name: 'QuickWin', color: '#F59E0B' }
       ],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '7',
+      title: 'Agendar consulta médica',
+      description: 'Marcar checkup anual com o cardiologista',
+      priority: 'high',
+      category: 'Pessoal',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'Pessoal', color: '#3B82F6' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '8',
+      title: 'Fazer compras do mês',
+      description: 'Comprar alimentos, produtos de limpeza e itens pessoais',
+      priority: 'medium',
+      category: 'Pessoal',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'Pessoal', color: '#3B82F6' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '9',
+      title: 'Organizar documentos pessoais',
+      description: 'Organizar e arquivar documentos pessoais importantes',
+      priority: 'low',
+      category: 'Pessoal',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'Pessoal', color: '#3B82F6' }],
+      created_at: new Date().toISOString()
+    },
+    
+    // Zentrix BS (1 item)
+    {
+      id: '10',
+      title: 'Análise de posicionamento de mercado',
+      description: 'Realizar análise completa do posicionamento no mercado',
+      priority: 'medium',
+      category: 'Zentrix BS',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'Zentrix BS', color: '#8B5CF6' }],
+      created_at: new Date().toISOString()
+    },
+    
+    // EXLG CN (5 itens)
+    {
+      id: '11',
+      title: 'Preparar teste do servidor Espanha',
+      description: 'Preparar e configurar testes no servidor da Espanha',
+      priority: 'high',
+      category: 'EXLG CN',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: true,
+      onHoldReason: 'Aguardando liberação do servidor',
+      tags: [{ name: 'EXLG CN', color: '#EC4899' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '12',
+      title: 'Definir datas de produção/entrega',
+      description: 'Definir cronograma de produção e entrega',
+      priority: 'medium',
+      category: 'EXLG CN',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: true,
+      onHoldReason: 'Aguardando confirmação da equipe',
+      tags: [{ name: 'EXLG CN', color: '#EC4899' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '13',
+      title: 'Puxar discussão de Pricing',
+      description: 'Retomar discussão sobre estratégia de preços',
+      priority: 'medium',
+      category: 'EXLG CN',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: true,
+      onHoldReason: 'Aguardando dados de mercado',
+      tags: [
+        { name: 'EXLG CN', color: '#EC4899' },
+        { name: 'QuickWin', color: '#F59E0B' }
+      ],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '14',
+      title: 'Configurar ambiente de desenvolvimento',
+      description: 'Configurar e preparar ambiente de desenvolvimento',
+      priority: 'medium',
+      category: 'EXLG CN',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'EXLG CN', color: '#EC4899' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '15',
+      title: 'Revisar código de produção',
+      description: 'Revisar e validar código antes de ir para produção',
+      priority: 'high',
+      category: 'EXLG CN',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'EXLG CN', color: '#EC4899' }],
+      created_at: new Date().toISOString()
+    },
+    
+    // KimonoLab (4 itens)
+    {
+      id: '16',
+      title: 'Desenvolver nova funcionalidade',
+      description: 'Desenvolver nova funcionalidade para o produto',
+      priority: 'medium',
+      category: 'KimonoLab',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'KimonoLab', color: '#EF4444' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '17',
+      title: 'Testar integração com APIs',
+      description: 'Realizar testes de integração com APIs externas',
+      priority: 'medium',
+      category: 'KimonoLab',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'KimonoLab', color: '#EF4444' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '18',
+      title: 'Otimizar performance',
+      description: 'Otimizar performance e velocidade do sistema',
+      priority: 'low',
+      category: 'KimonoLab',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'KimonoLab', color: '#EF4444' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '19',
+      title: 'Preparar demo para cliente',
+      description: 'Preparar demonstração do produto para cliente',
+      priority: 'high',
+      category: 'KimonoLab',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'KimonoLab', color: '#EF4444' }],
       created_at: new Date().toISOString()
     }
   ])
@@ -552,25 +816,7 @@ export default function PlanningPage() {
     onHoldReason: undefined,
     tags: [] as { name: string; color: string }[]
   })
-  const [inProgressTodos, setInProgressTodos] = useState<Todo[]>([
-    {
-      id: '5',
-      title: 'Trazer o Ripl para o Cursor',
-      description: 'Implementar integração do Ripl no Cursor',
-      priority: 'medium',
-      category: 'Pessoal',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      tags: [
-        { name: 'Pessoal', color: '#8B5CF6' }
-      ],
-      created_at: new Date().toISOString()
-    }
-  ])
+  const [inProgressTodos, setInProgressTodos] = useState<Todo[]>([])
 
   // Estados para backlog
   const [showBacklogCreateForm, setShowBacklogCreateForm] = useState(false)
@@ -587,39 +833,78 @@ export default function PlanningPage() {
   })
   const [backlogTodos, setBacklogTodos] = useState<Todo[]>([
     {
-      id: '3',
-      title: 'Estudar React avançado',
-      description: 'Aprofundar conhecimentos em hooks customizados e context API',
+      id: '20',
+      title: 'Criar uma ferramenta de auto orçamento',
+      description: 'Desenvolver ferramenta automatizada para criação de orçamentos',
       priority: 'medium',
-      category: 'Estudo',
+      category: 'KimonoLab',
       dueDate: undefined,
       completed: false,
       isHighPriority: false,
       timeSensitive: false,
       onHold: false,
       onHoldReason: undefined,
-      tags: [
-        { name: 'Estudo', color: '#8B5CF6' },
-        { name: 'React', color: '#06B6D4' }
-      ],
+      tags: [{ name: 'KimonoLab', color: '#EF4444' }],
       created_at: new Date().toISOString()
     },
     {
-      id: '4',
-      title: 'Planejar viagem para Europa',
-      description: 'Definir roteiro, orçamento e datas para viagem em 2025',
-      priority: 'low',
-      category: 'Pessoal',
+      id: '21',
+      title: 'Fazer uma análise de posicionamento',
+      description: 'Realizar análise completa de posicionamento no mercado',
+      priority: 'medium',
+      category: 'Zentrix BS',
       dueDate: undefined,
       completed: false,
       isHighPriority: false,
       timeSensitive: false,
       onHold: false,
       onHoldReason: undefined,
-      tags: [
-        { name: 'Viagem', color: '#F59E0B' },
-        { name: 'Europa', color: '#10B981' }
-      ],
+      tags: [{ name: 'Zentrix BS', color: '#8B5CF6' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '22',
+      title: 'Criar uma ferramenta de planejamento',
+      description: 'A IA sugere os ingredientes e cria receitas personalizadas',
+      priority: 'low',
+      category: 'Miscellaneous',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '23',
+      title: 'Criar uma ferramenta de previsão',
+      description: 'Ferramenta com IA que busca e analisa dados de mercado',
+      priority: 'low',
+      category: 'Miscellaneous',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '24',
+      title: 'Criar ferramenta para traçar melhor rota',
+      description: 'Você compartilha a simulação e a IA sugere melhorias',
+      priority: 'low',
+      category: 'Miscellaneous',
+      dueDate: undefined,
+      completed: false,
+      isHighPriority: false,
+      timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
       created_at: new Date().toISOString()
     }
   ])
