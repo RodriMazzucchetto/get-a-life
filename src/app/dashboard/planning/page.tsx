@@ -1119,7 +1119,7 @@ export default function PlanningPage() {
         timeSensitive: newTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
-        tags: [],
+        tags: newTodo.tags, // Incluir as tags selecionadas
         created_at: new Date().toISOString()
       }
       setTodos([...todos, newTodoData])
@@ -2175,7 +2175,8 @@ export default function PlanningPage() {
               {/* Formulário inline para criar nova tarefa */}
               {showInlineCreateForm && (
                 <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
-                  <div className="flex items-center gap-3">
+                  {/* Primeira linha: Título e botão fechar */}
+                  <div className="flex items-center gap-3 mb-3">
                     {/* Drag handle */}
                     <div className="flex gap-1 cursor-move">
                       <div className="flex flex-col gap-1">
@@ -2222,6 +2223,61 @@ export default function PlanningPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
+                  </div>
+
+                  {/* Segunda linha: Seleção de tags */}
+                  <div className="ml-16">
+                    {/* Tags selecionadas */}
+                    {newTodo.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {newTodo.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                            style={{ backgroundColor: tag.color }}
+                          >
+                            {tag.name}
+                            <button
+                              onClick={() => setNewTodo({ ...newTodo, tags: newTodo.tags.filter((_, i) => i !== index) })}
+                              className="ml-2 text-white hover:text-gray-200"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Seletor de tags */}
+                    <div className="flex items-center gap-2">
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const selectedTag = availableTags.find(tag => tag.name === e.target.value)
+                          if (selectedTag && !newTodo.tags.some(t => t.name === selectedTag.name)) {
+                            setNewTodo({ ...newTodo, tags: [...newTodo.tags, selectedTag] })
+                          }
+                        }}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      >
+                        <option value="">Selecionar tag...</option>
+                        {availableTags
+                          .filter(tag => !newTodo.tags.some(t => t.name === tag.name))
+                          .map((tag) => (
+                            <option key={tag.name} value={tag.name}>
+                              {tag.name}
+                            </option>
+                          ))}
+                      </select>
+                      
+                      <button
+                        onClick={handleCreateTodo}
+                        disabled={!newTodo.title.trim()}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Criar
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
