@@ -135,8 +135,8 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
         </div>
       )}
 
-      {/* Botões de ação (visíveis apenas no hover) - sobrepostos às tags */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 absolute right-0 top-0 bottom-0 bg-white bg-opacity-90 px-2">
+      {/* Botões de ação (visíveis apenas no hover da atividade específica) - sobrepostos às tags */}
+      <div className="opacity-0 hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 absolute right-0 top-0 bottom-0 bg-white bg-opacity-90 px-2">
         {/* Botão de editar */}
         <button
           onClick={() => onEdit(todo)}
