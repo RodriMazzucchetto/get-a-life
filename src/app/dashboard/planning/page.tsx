@@ -60,7 +60,7 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
       }`}
     >
       {/* Linha principal da atividade */}
-      <div className="group flex items-center gap-3 p-3">
+      <div className="group flex items-center gap-3 p-3 relative">
       {/* Drag handle */}
       <div
         {...attributes}
@@ -131,8 +131,8 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
         </div>
       )}
 
-      {/* Botões de ação (visíveis apenas no hover) */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2">
+      {/* Botões de ação (visíveis apenas no hover) - sobrepostos às tags */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 absolute right-0 top-0 bottom-0 bg-white bg-opacity-90 px-2">
         {/* Botão de editar */}
         <button
           onClick={() => onEdit(todo)}
@@ -144,16 +144,28 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
           </svg>
         </button>
         
-        {/* Botão de pause (colocar em espera) */}
-        {onPutOnHold && !todo.onHold && (
+        {/* Botão de pause/play (colocar ou remover da espera) */}
+        {onPutOnHold && (
           <button
             onClick={() => onPutOnHold(todo)}
-            className="p-2 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-md transition-colors"
-            title="Colocar em espera"
+            className={`p-2 rounded-md transition-colors ${
+              todo.onHold 
+                ? 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50' 
+                : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50'
+            }`}
+            title={todo.onHold ? 'Remover da espera' : 'Colocar em espera'}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            {todo.onHold ? (
+              // Ícone de play (remover da espera)
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ) : (
+              // Ícone de pause (colocar em espera)
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
           </button>
         )}
       </div>
@@ -1060,9 +1072,32 @@ export default function PlanningPage() {
 
   // Funções para gerenciar status "Em Espera"
   const handlePutTodoOnHold = (todo: Todo) => {
-    setTodoToPutOnHold(todo)
-    setOnHoldReason('')
-    setShowOnHoldModal(true)
+    if (todo.onHold) {
+      // Se já está em espera, remover da espera
+      const updatedTodo = {
+        ...todo,
+        onHold: false,
+        onHoldReason: undefined
+      }
+
+      // Atualizar no bloco correto
+      const isInTodos = todos.some(t => t.id === todo.id)
+      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
+      const isInProgress = inProgressTodos.some(t => t.id === todo.id)
+
+      if (isInTodos) {
+        setTodos(todos.map(t => t.id === todo.id ? updatedTodo : t))
+      } else if (isInBacklog) {
+        setBacklogTodos(backlogTodos.map(t => t.id === todo.id ? updatedTodo : t))
+      } else if (isInProgress) {
+        setInProgressTodos(inProgressTodos.map(t => t.id === todo.id ? updatedTodo : t))
+      }
+    } else {
+      // Se não está em espera, abrir modal para colocar em espera
+      setTodoToPutOnHold(todo)
+      setOnHoldReason('')
+      setShowOnHoldModal(true)
+    }
   }
 
   const handleConfirmOnHold = () => {
@@ -2884,7 +2919,9 @@ export default function PlanningPage() {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Colocar tarefa em espera</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {todoToPutOnHold?.onHold ? 'Remover tarefa da espera' : 'Colocar tarefa em espera'}
+              </h2>
               <button
                 onClick={handleCancelOnHold}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -2920,13 +2957,13 @@ export default function PlanningPage() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleConfirmOnHold}
-                disabled={!onHoldReason.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Confirmar
-              </button>
+                              <button
+                  onClick={handleConfirmOnHold}
+                  disabled={!onHoldReason.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {todoToPutOnHold?.onHold ? 'Remover da Espera' : 'Confirmar'}
+                </button>
             </div>
           </div>
         </ModalOverlay>
