@@ -756,13 +756,13 @@ export default function PlanningPage() {
     }
   }
 
-  // Mock data - depois será integrado com o banco
+  // Estatísticas calculadas dinamicamente baseadas nos dados reais
   const taskStats = {
-    inProgress: 1,
-    currentWeek: 21,
-    backlog: 5,
-    completed: 32,
-    reminders: 6
+    inProgress: inProgressTodos.filter(t => !t.completed).length,
+    currentWeek: todos.filter(t => !t.completed).length,
+    backlog: backlogTodos.filter(t => !t.completed).length,
+    completed: todos.filter(t => t.completed).length + backlogTodos.filter(t => t.completed).length + inProgressTodos.filter(t => t.completed).length,
+    reminders: 6 // Valor fixo - já está correto
   }
 
   const mockReminders: Reminder[] = [
