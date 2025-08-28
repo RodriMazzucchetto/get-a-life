@@ -33,7 +33,9 @@ function SortableTagGroup({
   onToggleComplete, 
   onTogglePriority, 
   onEdit, 
-  onPutOnHold 
+  onPutOnHold,
+  onMoveToProgress,
+  onDeleteFromAnyBlock
 }: {
   tagName: string
   todos: Todo[]
@@ -41,6 +43,8 @@ function SortableTagGroup({
   onTogglePriority: (id: string) => void
   onEdit: (todo: Todo) => void
   onPutOnHold?: (todo: Todo) => void
+  onMoveToProgress?: (todo: Todo) => void
+  onDeleteFromAnyBlock?: (todo: Todo) => void
 }) {
   const {
     attributes,
@@ -101,6 +105,8 @@ function SortableTagGroup({
             onTogglePriority={onTogglePriority}
             onEdit={onEdit}
             onPutOnHold={onPutOnHold}
+            onMoveToProgress={handleMoveToProgress}
+            onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
           />
         ))}
       </div>
@@ -109,12 +115,14 @@ function SortableTagGroup({
 }
 
 // Componente para item de to-do arrastável
-function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, onPutOnHold }: {
+function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, onPutOnHold, onMoveToProgress, onDeleteFromAnyBlock }: {
   todo: Todo
   onToggleComplete: (id: string) => void
   onTogglePriority: (id: string) => void
   onEdit: (todo: Todo) => void
   onPutOnHold?: (todo: Todo) => void
+  onMoveToProgress?: (todo: Todo) => void
+  onDeleteFromAnyBlock?: (todo: Todo) => void
 }) {
   const {
     attributes,
@@ -248,6 +256,50 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             )}
+          </button>
+        )}
+
+        {/* Botão de enviar para Em Progresso ou voltar */}
+        {onMoveToProgress && (
+          <button
+            onClick={() => onMoveToProgress(todo)}
+            className={`p-2 rounded-md transition-colors ${
+              // Verificar se o item está em progresso (está no array inProgressTodos)
+              // Por enquanto, vamos usar uma lógica simples baseada no título ou ID
+              todo.title.includes('progresso') || todo.id.includes('progress')
+                ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+            }`}
+            title={
+              todo.title.includes('progresso') || todo.id.includes('progress')
+                ? 'Voltar para Semana Atual'
+                : 'Enviar para Em Progresso'
+            }
+          >
+            {todo.title.includes('progresso') || todo.id.includes('progress') ? (
+              // Ícone de voltar (quando está em progresso)
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            ) : (
+              // Ícone de play (enviar para em progresso)
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l4 1L6 17H17l2-10L9 4l9-3z" />
+              </svg>
+            )}
+          </button>
+        )}
+
+        {/* Botão de deletar */}
+        {onDeleteFromAnyBlock && (
+          <button
+            onClick={() => onDeleteFromAnyBlock(todo)}
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+            title="Deletar tarefa"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
           </button>
         )}
       </div>
@@ -1614,6 +1666,49 @@ export default function PlanningPage() {
     setOnHoldReason('')
   }
 
+  // Função para mover item para Em Progresso ou voltar para Semana Atual
+  const handleMoveToProgress = (todo: Todo) => {
+    // Verificar se o item está em progresso
+    const isInProgress = inProgressTodos.some(t => t.id === todo.id)
+    
+    if (isInProgress) {
+      // Se está em progresso, voltar para Semana Atual
+      setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
+      setTodos([...todos, todo])
+    } else {
+      // Se não está em progresso, mover para Em Progresso
+      // Verificar de qual bloco está vindo
+      const isInTodos = todos.some(t => t.id === todo.id)
+      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
+      
+      if (isInTodos) {
+        setTodos(todos.filter(t => t.id !== todo.id))
+        setInProgressTodos([...inProgressTodos, todo])
+      } else if (isInBacklog) {
+        setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
+        setInProgressTodos([...inProgressTodos, todo])
+      }
+    }
+  }
+
+  // Função para deletar item com confirmação de qualquer bloco
+  const handleDeleteTodoFromAnyBlock = (todo: Todo) => {
+    if (confirm('Tem certeza que deseja deletar esta tarefa? Esta ação não pode ser desfeita.')) {
+      // Verificar de qual bloco está vindo
+      const isInTodos = todos.some(t => t.id === todo.id)
+      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
+      const isInProgress = inProgressTodos.some(t => t.id === todo.id)
+      
+      if (isInTodos) {
+        setTodos(todos.filter(t => t.id !== todo.id))
+      } else if (isInBacklog) {
+        setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
+      } else if (isInProgress) {
+        setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
+      }
+    }
+  }
+
   // Funções para backlog
   const handleCreateBacklogTodo = () => {
     if (newBacklogTodo.title.trim()) {
@@ -2114,6 +2209,8 @@ export default function PlanningPage() {
                             onTogglePriority={handleToggleInProgressPriority}
                             onEdit={handleEditInProgressTodo}
                             onPutOnHold={handlePutTodoOnHold}
+                            onMoveToProgress={handleMoveToProgress}
+                            onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
                           />
                         ))}
                     </div>
@@ -2249,6 +2346,8 @@ export default function PlanningPage() {
                               onTogglePriority={handleTogglePriority}
                               onEdit={handleEditTodo}
                               onPutOnHold={handlePutTodoOnHold}
+                              onMoveToProgress={handleMoveToProgress}
+                              onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
                             />
                           ))}
                         </div>
@@ -2379,6 +2478,8 @@ export default function PlanningPage() {
                             onTogglePriority={handleToggleBacklogPriority}
                             onEdit={handleEditBacklogTodo}
                             onPutOnHold={handlePutTodoOnHold}
+                            onMoveToProgress={handleMoveToProgress}
+                            onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
                           />
                         ))}
                     </div>
