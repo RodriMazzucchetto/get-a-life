@@ -27,11 +27,12 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 // Componente para item de to-do arrastável
-function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: {
+function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, onPutOnHold }: {
   todo: Todo
   onToggleComplete: (id: string) => void
   onTogglePriority: (id: string) => void
   onEdit: (todo: Todo) => void
+  onPutOnHold?: (todo: Todo) => void
 }) {
   const {
     attributes,
@@ -52,7 +53,11 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200"
+      className={`group flex flex-col bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ${
+        todo.onHold 
+          ? 'border-2 border-yellow-400' 
+          : 'border border-gray-200'
+      }`}
     >
       {/* Linha principal da atividade */}
       <div className="group flex items-center gap-3 p-3">
@@ -102,7 +107,14 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
       </div>
       
       {/* Título do to-do */}
-      <span className="flex-1 text-sm text-gray-900">{todo.title}</span>
+      <div className="flex-1 flex items-center gap-2">
+        <span className="text-sm text-gray-900">{todo.title}</span>
+        {todo.onHold && todo.onHoldReason && (
+          <span className="text-sm text-yellow-600 truncate max-w-32">
+            - Em espera: {todo.onHoldReason.length > 20 ? `${todo.onHoldReason.substring(0, 20)}...` : todo.onHoldReason}
+          </span>
+        )}
+      </div>
 
       {/* Tags no canto direito */}
       {todo.tags.length > 0 && (
@@ -131,6 +143,19 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit }: 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
         </button>
+        
+        {/* Botão de pause (colocar em espera) */}
+        {onPutOnHold && !todo.onHold && (
+          <button
+            onClick={() => onPutOnHold(todo)}
+            className="p-2 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-md transition-colors"
+            title="Colocar em espera"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        )}
       </div>
       </div>
       
@@ -199,6 +224,8 @@ interface Todo {
   completed: boolean
   isHighPriority: boolean
   timeSensitive: boolean
+  onHold: boolean
+  onHoldReason?: string
   tags: { name: string; color: string }[]
   created_at: string
 }
@@ -242,6 +269,9 @@ export default function PlanningPage() {
   // Estados para to-dos
   const [showCreateTodoModal, setShowCreateTodoModal] = useState(false)
   const [showEditTodoModal, setShowEditTodoModal] = useState(false)
+  const [showOnHoldModal, setShowOnHoldModal] = useState(false)
+  const [onHoldReason, setOnHoldReason] = useState('')
+  const [todoToPutOnHold, setTodoToPutOnHold] = useState<Todo | null>(null)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [showInlineCreateForm, setShowInlineCreateForm] = useState(false)
   const [availableTags, setAvailableTags] = useState<{ name: string; color: string }[]>([
@@ -262,6 +292,8 @@ export default function PlanningPage() {
     category: '',
     dueDate: null as Date | null,
     timeSensitive: false,
+    onHold: false,
+    onHoldReason: undefined,
     tags: [] as { name: string; color: string }[]
   })
 
@@ -385,6 +417,8 @@ export default function PlanningPage() {
       completed: false,
       isHighPriority: false,
       timeSensitive: true,
+      onHold: false,
+      onHoldReason: undefined,
       tags: [
         { name: 'Pessoal', color: '#3B82F6' },
         { name: 'Compras', color: '#10B981' }
@@ -401,6 +435,8 @@ export default function PlanningPage() {
       completed: false,
       isHighPriority: true,
       timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
       tags: [
         { name: 'Saúde', color: '#EF4444' },
         { name: 'Médico', color: '#8B5CF6' }
@@ -418,6 +454,8 @@ export default function PlanningPage() {
     category: '',
     dueDate: null as Date | null,
     timeSensitive: false,
+    onHold: false,
+    onHoldReason: undefined,
     tags: [] as { name: string; color: string }[]
   })
   const [inProgressTodos, setInProgressTodos] = useState<Todo[]>([
@@ -431,6 +469,8 @@ export default function PlanningPage() {
       completed: false,
       isHighPriority: false,
       timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
       tags: [
         { name: 'Pessoal', color: '#8B5CF6' }
       ],
@@ -447,6 +487,8 @@ export default function PlanningPage() {
     category: '',
     dueDate: null as Date | null,
     timeSensitive: false,
+    onHold: false,
+    onHoldReason: undefined,
     tags: [] as { name: string; color: string }[]
   })
   const [backlogTodos, setBacklogTodos] = useState<Todo[]>([
@@ -460,6 +502,8 @@ export default function PlanningPage() {
       completed: false,
       isHighPriority: false,
       timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
       tags: [
         { name: 'Estudo', color: '#8B5CF6' },
         { name: 'React', color: '#06B6D4' }
@@ -476,6 +520,8 @@ export default function PlanningPage() {
       completed: false,
       isHighPriority: false,
       timeSensitive: false,
+      onHold: false,
+      onHoldReason: undefined,
       tags: [
         { name: 'Viagem', color: '#F59E0B' },
         { name: 'Europa', color: '#10B981' }
@@ -722,18 +768,20 @@ export default function PlanningPage() {
         dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
-        timeSensitive: false,
+        timeSensitive: newTodo.timeSensitive,
+        onHold: false,
+        onHoldReason: undefined,
         tags: [],
         created_at: new Date().toISOString()
       }
       setTodos([...todos, newTodoData])
-      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
       setShowInlineCreateForm(false)
     }
   }
 
   const handleCancelCreate = () => {
-    setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+    setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
     setShowInlineCreateForm(false)
   }
 
@@ -977,17 +1025,19 @@ export default function PlanningPage() {
         completed: false,
         isHighPriority: false,
         timeSensitive: newInProgressTodo.timeSensitive,
+        onHold: false,
+        onHoldReason: undefined,
         tags: [],
         created_at: new Date().toISOString()
       }
       setInProgressTodos([...inProgressTodos, newTodoData])
-      setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+      setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
       setShowInProgressCreateForm(false)
     }
   }
 
   const handleCancelInProgressCreate = () => {
-    setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+    setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
     setShowInProgressCreateForm(false)
   }
 
@@ -1008,6 +1058,46 @@ export default function PlanningPage() {
     ))
   }
 
+  // Funções para gerenciar status "Em Espera"
+  const handlePutTodoOnHold = (todo: Todo) => {
+    setTodoToPutOnHold(todo)
+    setOnHoldReason('')
+    setShowOnHoldModal(true)
+  }
+
+  const handleConfirmOnHold = () => {
+    if (todoToPutOnHold && onHoldReason.trim()) {
+      const updatedTodo = {
+        ...todoToPutOnHold,
+        onHold: true,
+        onHoldReason: onHoldReason.trim()
+      }
+
+      // Atualizar no bloco correto
+      const isInTodos = todos.some(t => t.id === todoToPutOnHold.id)
+      const isInBacklog = backlogTodos.some(t => t.id === todoToPutOnHold.id)
+      const isInProgress = inProgressTodos.some(t => t.id === todoToPutOnHold.id)
+
+      if (isInTodos) {
+        setTodos(todos.map(t => t.id === todoToPutOnHold.id ? updatedTodo : t))
+      } else if (isInBacklog) {
+        setBacklogTodos(backlogTodos.map(t => t.id === todoToPutOnHold.id ? updatedTodo : t))
+      } else if (isInProgress) {
+        setInProgressTodos(inProgressTodos.map(t => t.id === todoToPutOnHold.id ? updatedTodo : t))
+      }
+
+      setShowOnHoldModal(false)
+      setTodoToPutOnHold(null)
+      setOnHoldReason('')
+    }
+  }
+
+  const handleCancelOnHold = () => {
+    setShowOnHoldModal(false)
+    setTodoToPutOnHold(null)
+    setOnHoldReason('')
+  }
+
   // Funções para backlog
   const handleCreateBacklogTodo = () => {
     if (newBacklogTodo.title.trim()) {
@@ -1021,17 +1111,19 @@ export default function PlanningPage() {
         completed: false,
         isHighPriority: false,
         timeSensitive: newBacklogTodo.timeSensitive,
+        onHold: false,
+        onHoldReason: undefined,
         tags: [],
         created_at: new Date().toISOString()
       }
       setBacklogTodos([...backlogTodos, newTodoData])
-      setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+      setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
       setShowBacklogCreateForm(false)
     }
   }
 
   const handleCancelBacklogCreate = () => {
-    setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, tags: [] })
+    setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
     setShowBacklogCreateForm(false)
   }
 
@@ -1499,13 +1591,14 @@ export default function PlanningPage() {
                       {inProgressTodos
                         .filter(t => !t.completed)
                         .map((todo) => (
-                          <SortableTodoItem
-                            key={todo.id}
-                            todo={todo}
-                            onToggleComplete={handleToggleInProgressTodoComplete}
-                            onTogglePriority={handleToggleInProgressPriority}
-                            onEdit={handleEditInProgressTodo}
-                          />
+                                                 <SortableTodoItem
+                         key={todo.id}
+                         todo={todo}
+                         onToggleComplete={handleToggleInProgressTodoComplete}
+                         onTogglePriority={handleToggleInProgressPriority}
+                         onEdit={handleEditInProgressTodo}
+                         onPutOnHold={handlePutTodoOnHold}
+                       />
                         ))}
                     </div>
                   </SortableContext>
@@ -1627,13 +1720,14 @@ export default function PlanningPage() {
                   >
                     <div className="space-y-2">
                       {sortedTodos.map((todo) => (
-                        <SortableTodoItem
-                          key={todo.id}
-                          todo={todo}
-                          onToggleComplete={handleToggleTodoComplete}
-                          onTogglePriority={handleTogglePriority}
-                          onEdit={handleEditTodo}
-                        />
+                                              <SortableTodoItem
+                        key={todo.id}
+                        todo={todo}
+                        onToggleComplete={handleToggleTodoComplete}
+                        onTogglePriority={handleTogglePriority}
+                        onEdit={handleEditTodo}
+                        onPutOnHold={handlePutTodoOnHold}
+                      />
                       ))}
                     </div>
                   </SortableContext>
@@ -1754,13 +1848,14 @@ export default function PlanningPage() {
                       {backlogTodos
                         .filter(t => !t.completed)
                         .map((todo) => (
-                          <SortableTodoItem
-                            key={todo.id}
-                            todo={todo}
-                            onToggleComplete={handleToggleBacklogTodoComplete}
-                            onTogglePriority={handleToggleBacklogPriority}
-                            onEdit={handleEditBacklogTodo}
-                          />
+                                                <SortableTodoItem
+                        key={todo.id}
+                        todo={todo}
+                        onToggleComplete={handleToggleBacklogTodoComplete}
+                        onTogglePriority={handleToggleBacklogPriority}
+                        onEdit={handleEditBacklogTodo}
+                        onPutOnHold={handlePutTodoOnHold}
+                      />
                         ))}
                     </div>
                   </SortableContext>
@@ -2782,6 +2877,60 @@ export default function PlanningPage() {
           </div>
         </div>
       </ModalOverlay>
+
+      {/* Modal para colocar tarefa em espera */}
+      {showOnHoldModal && (
+        <ModalOverlay isOpen={showOnHoldModal} onClose={handleCancelOnHold}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Colocar tarefa em espera</h2>
+              <button
+                onClick={handleCancelOnHold}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Conteúdo */}
+            <div className="p-6">
+              <div className="mb-4">
+                <label htmlFor="onHoldReason" className="block text-sm font-medium text-gray-700 mb-2">
+                  Motivo da espera
+                </label>
+                <textarea
+                  id="onHoldReason"
+                  value={onHoldReason}
+                  onChange={(e) => setOnHoldReason(e.target.value)}
+                  placeholder="Explique por que esta tarefa está aguardando..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  rows={4}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={handleCancelOnHold}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmOnHold}
+                disabled={!onHoldReason.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
     </div>
   )
 }
