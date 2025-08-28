@@ -26,93 +26,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-// Componente para grupo de tags arrastável
-function SortableTagGroup({ 
-  tagName, 
-  todos, 
-  onToggleComplete, 
-  onTogglePriority, 
-  onEdit, 
-  onPutOnHold,
-  onMoveToProgress,
-  onDeleteFromAnyBlock
-}: {
-  tagName: string
-  todos: Todo[]
-  onToggleComplete: (id: string) => void
-  onTogglePriority: (id: string) => void
-  onEdit: (todo: Todo) => void
-  onPutOnHold?: (todo: Todo) => void
-  onMoveToProgress?: (todo: Todo) => void
-  onDeleteFromAnyBlock?: (todo: Todo) => void
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: `group-${tagName}` })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="group bg-gray-50 rounded-lg border border-gray-200 p-4"
-    >
-      {/* Cabeçalho do grupo com drag handle */}
-      <div className="flex items-center gap-3 mb-3">
-        {/* Drag handle para mover o grupo inteiro */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="flex gap-1 cursor-move hover:cursor-grab active:cursor-grabbing"
-        >
-          {/* Coluna esquerda de 3 pontos */}
-          <div className="flex flex-col gap-1">
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-          </div>
-          {/* Coluna direita de 3 pontos */}
-          <div className="flex flex-col gap-1">
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-          </div>
-        </div>
-        
-        {/* Nome da tag e contador */}
-        <h3 className="text-sm font-semibold text-gray-700">
-          {tagName} ({todos.length})
-        </h3>
-      </div>
-      
-      {/* Itens do grupo */}
-      <div className="space-y-2">
-        {todos.map((todo) => (
-          <SortableTodoItem
-            key={todo.id}
-            todo={todo}
-            onToggleComplete={onToggleComplete}
-            onTogglePriority={onTogglePriority}
-            onEdit={onEdit}
-            onPutOnHold={onPutOnHold}
-            onMoveToProgress={handleMoveToProgress}
-            onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
+// Componente para grupo de tags arrastável - será definido depois das funções
 
 // Componente para item de to-do arrastável
 function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, onPutOnHold, onMoveToProgress, onDeleteFromAnyBlock }: {
@@ -3565,3 +3479,91 @@ export default function PlanningPage() {
 }
 // TESTE
 // FORCE VERCEL UPDATE
+
+// Componente para grupo de tags arrastável - definido DEPOIS das funções
+function SortableTagGroup({ 
+  tagName, 
+  todos, 
+  onToggleComplete, 
+  onTogglePriority, 
+  onEdit, 
+  onPutOnHold,
+  onMoveToProgress,
+  onDeleteFromAnyBlock
+}: {
+  tagName: string
+  todos: Todo[]
+  onToggleComplete: (id: string) => void
+  onTogglePriority: (id: string) => void
+  onEdit: (todo: Todo) => void
+  onPutOnHold?: (todo: Todo) => void
+  onMoveToProgress?: (todo: Todo) => void
+  onDeleteFromAnyBlock?: (todo: Todo) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `group-${tagName}` })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group bg-gray-50 rounded-lg border border-gray-200 p-4"
+    >
+      {/* Cabeçalho do grupo com drag handle */}
+      <div className="flex items-center gap-3 mb-3">
+        {/* Drag handle para mover o grupo inteiro */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="flex gap-1 cursor-move hover:cursor-grab active:cursor-grabbing"
+        >
+          {/* Coluna esquerda de 3 pontos */}
+          <div className="flex flex-col gap-1">
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+          </div>
+          {/* Coluna direita de 3 pontos */}
+          <div className="flex flex-col gap-1">
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+          </div>
+        </div>
+        
+        {/* Nome da tag e contador */}
+        <h3 className="text-sm font-semibold text-gray-700">
+          {tagName} ({todos.length})
+        </h3>
+      </div>
+      
+      {/* Itens do grupo */}
+      <div className="space-y-2">
+        {todos.map((todo) => (
+          <SortableTodoItem
+            key={todo.id}
+            todo={todo}
+            onToggleComplete={onToggleComplete}
+            onTogglePriority={onTogglePriority}
+            onEdit={onEdit}
+            onPutOnHold={onPutOnHold}
+            onMoveToProgress={onMoveToProgress}
+            onDeleteFromAnyBlock={onDeleteFromAnyBlock}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
