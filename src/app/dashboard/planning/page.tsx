@@ -114,7 +114,10 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
       <div className="flex-1 flex items-center gap-2">
         <span className="text-sm text-gray-900">{todo.title}</span>
         {todo.onHold && todo.onHoldReason && (
-          <span className="text-sm text-yellow-600 truncate max-w-32">
+          <span 
+            className="text-sm text-yellow-600 truncate max-w-32 cursor-help"
+            title={todo.onHoldReason}
+          >
             - Em espera: {todo.onHoldReason.length > 20 ? `${todo.onHoldReason.substring(0, 20)}...` : todo.onHoldReason}
           </span>
         )}
