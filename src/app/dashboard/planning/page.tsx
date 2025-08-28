@@ -337,6 +337,7 @@ export default function PlanningPage() {
   const [todoToPutOnHold, setTodoToPutOnHold] = useState<Todo | null>(null)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [showInlineCreateForm, setShowInlineCreateForm] = useState(false)
+  const [showTagSelector, setShowTagSelector] = useState(false)
   const [availableTags, setAvailableTags] = useState<{ name: string; color: string }[]>([
     { name: 'KimonoLab', color: '#EF4444' },
     { name: 'EXLG SDK', color: '#8B5CF6' },
@@ -2250,25 +2251,60 @@ export default function PlanningPage() {
 
                     {/* Seletor de tags */}
                     <div className="flex items-center gap-2">
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const selectedTag = availableTags.find(tag => tag.name === e.target.value)
-                          if (selectedTag && !newTodo.tags.some(t => t.name === selectedTag.name)) {
-                            setNewTodo({ ...newTodo, tags: [...newTodo.tags, selectedTag] })
-                          }
-                        }}
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      >
-                        <option value="">Selecionar tag...</option>
-                        {availableTags
-                          .filter(tag => !newTodo.tags.some(t => t.name === tag.name))
-                          .map((tag) => (
-                            <option key={tag.name} value={tag.name}>
-                              {tag.name}
-                            </option>
-                          ))}
-                      </select>
+                      {/* Dropdown customizado para tags com cores */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowTagSelector(!showTagSelector)}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white hover:bg-gray-50 transition-colors min-w-[200px] text-left flex items-center justify-between"
+                        >
+                          <span className="text-gray-500">Selecionar tag...</span>
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        
+                        {/* Dropdown de tags */}
+                        {showTagSelector && (
+                          <>
+                            {/* Overlay para fechar ao clicar fora */}
+                            <div 
+                              className="fixed inset-0 z-0" 
+                              onClick={() => setShowTagSelector(false)}
+                            />
+                            <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
+                              <div className="p-3">
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Tags disponíveis:</h4>
+                                <div className="space-y-2">
+                                  {availableTags
+                                    .filter(tag => !newTodo.tags.some(t => t.name === tag.name))
+                                    .map((tag) => (
+                                      <button
+                                        key={tag.name}
+                                        onClick={() => {
+                                          setNewTodo({ ...newTodo, tags: [...newTodo.tags, tag] })
+                                          setShowTagSelector(false)
+                                        }}
+                                        className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded-md transition-colors text-left"
+                                      >
+                                        <div 
+                                          className="w-4 h-4 rounded-full flex-shrink-0"
+                                          style={{ backgroundColor: tag.color }}
+                                        ></div>
+                                        <span className="text-sm text-gray-900">{tag.name}</span>
+                                      </button>
+                                    ))}
+                                </div>
+                                
+                                {availableTags.filter(tag => !newTodo.tags.some(t => t.name === tag.name)).length === 0 && (
+                                  <div className="text-center py-4 text-gray-500 text-sm">
+                                    Todas as tags já foram selecionadas
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
                       
                       <button
                         onClick={handleCreateTodo}
