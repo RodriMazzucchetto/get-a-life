@@ -1013,6 +1013,19 @@ export default function PlanningPage() {
       return
     }
 
+    // Verificar se o item está sendo movido para um grupo de tags na Semana Atual
+    if (overId.startsWith('group-') && (activeTodoInBacklog || activeTodoInProgress)) {
+      // Mover do Backlog ou Em Progresso para a Semana Atual
+      if (activeTodoInBacklog) {
+        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        setTodos([...todos, activeTodoInBacklog])
+      } else if (activeTodoInProgress) {
+        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        setTodos([...todos, activeTodoInProgress])
+      }
+      return
+    }
+
     // Se não estiver movendo entre blocos, fazer reordenação dentro do mesmo bloco
     if (activeTodoInTodos) {
       // Reordenação dentro da Semana Atual
