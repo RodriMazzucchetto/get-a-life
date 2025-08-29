@@ -583,27 +583,25 @@ export default function PlanningPage() {
     }
   }
 
-  const handleCreateGoal = () => {
+  const handleCreateGoal = async () => {
     if (newGoal.title.trim() && newGoal.projectId) {
-      const newGoalData: Goal = {
-        id: Date.now().toString(),
+      const newGoalData = await createGoal({
         title: newGoal.title.trim(),
         description: newGoal.description.trim(),
-        projectId: newGoal.projectId,
-        subProject: newGoal.subProject.trim(),
-        whatIsMissing: newGoal.whatIsMissing.trim(),
-        dueDate: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
+        project_id: newGoal.projectId,
+        sub_project: newGoal.subProject.trim(),
+        what_is_missing: newGoal.whatIsMissing.trim(),
+        due_date: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
         status: 'active',
         progress: 0,
-        nextStep: newGoal.whatIsMissing.trim(), // Usar o campo "Próximo Passo" da modal
+        next_step: newGoal.whatIsMissing.trim(),
         initiatives: 0,
-        totalInitiatives: 0,
-        created_at: new Date().toISOString(),
-        initiativesList: [] // Inicializa a lista de iniciativas para uma nova meta
+        total_initiatives: 0
+      })
+      if (newGoalData) {
+        setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
+        setShowCreateGoalModal(false)
       }
-      setGoals([...goals, newGoalData])
-      setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
-      setShowCreateGoalModal(false)
     }
   }
 
@@ -617,39 +615,37 @@ export default function PlanningPage() {
     setShowEditGoalModal(true)
   }
 
-  const handleUpdateGoal = () => {
+  const handleUpdateGoal = async () => {
     if (editingGoal && editingGoal.title.trim() && editingGoal.projectId) {
-      // Atualizar o campo nextStep com o valor de whatIsMissing
-      const updatedGoal = {
-        ...editingGoal,
-        nextStep: editingGoal.whatIsMissing || ''
+      const updatedGoal = await updateGoal(editingGoal.id, {
+        title: editingGoal.title.trim(),
+        description: editingGoal.description?.trim() || '',
+        project_id: editingGoal.projectId,
+        sub_project: editingGoal.subProject?.trim() || '',
+        what_is_missing: editingGoal.whatIsMissing?.trim() || '',
+        due_date: editingGoal.dueDate || undefined,
+        next_step: editingGoal.whatIsMissing?.trim() || ''
+      })
+      if (updatedGoal) {
+        setEditingGoal(null)
+        setShowEditGoalModal(false)
       }
-      
-      setGoals(goals.map(g => 
-        g.id === editingGoal.id ? updatedGoal : g
-      ))
-      setEditingGoal(null)
-      setShowEditGoalModal(false)
     }
   }
 
-  const handleDeleteGoal = (goalId: string) => {
+  const handleDeleteGoal = async (goalId: string) => {
     if (confirm('Tem certeza que deseja deletar esta meta? Esta ação não pode ser desfeita.')) {
-      setGoals(goals.filter(g => g.id !== goalId))
-      setShowEditGoalModal(false)
-      setEditingGoal(null)
+      const success = await deleteGoal(goalId)
+      if (success) {
+        setShowEditGoalModal(false)
+        setEditingGoal(null)
+      }
     }
   }
 
   // Função para atualizar apenas o progresso de uma meta
-  const handleUpdateGoalProgress = (goalId: string, newProgress: number) => {
-    setGoals(prevGoals => 
-      prevGoals.map(goal => 
-        goal.id === goalId 
-          ? { ...goal, progress: newProgress }
-          : goal
-      )
-    )
+  const handleUpdateGoalProgress = async (goalId: string, newProgress: number) => {
+    await updateGoal(goalId, { progress: newProgress })
   }
 
   const handleCreateTask = () => {
@@ -753,47 +749,50 @@ export default function PlanningPage() {
   
 
 
-  const handleAddReminder = () => {
+  const handleAddReminder = async () => {
     if (newReminder.trim() && activeReminderTab) {
-      const newReminderData: Reminder = {
-        id: Date.now().toString(),
+      const newReminderData = await createReminder({
         title: newReminder.trim(),
         description: '', // Descrição opcional
-        dueDate: undefined, // Data de vencimento opcional
+        due_date: undefined, // Data de vencimento opcional
         priority: 'medium', // Prioridade padrão
-        created_at: new Date().toISOString()
+        category: activeReminderTab as 'compras' | 'followups' | 'lembretes',
+        completed: false
+      })
+      if (newReminderData) {
+        setNewReminder('')
+        setShowAddReminderForm(false)
       }
-      // Salvar o lembrete no estado
-      setReminders([...reminders, newReminderData])
-      setNewReminder('')
-      setShowAddReminderForm(false)
     }
   }
 
   // Funções para lembretes
-  const handleToggleReminderComplete = (reminderId: string) => {
+  const handleToggleReminderComplete = async (reminderId: string) => {
     // Remove o lembrete da lista quando marcado como completo
-    setReminders(reminders.filter(r => r.id !== reminderId))
+    await deleteReminder(reminderId)
   }
 
   const handleEditReminder = (reminder: Reminder) => {
-    setEditingReminder(reminder)
-    setShowEditReminderForm(true)
+    // TODO: Implementar edição de lembretes
+    console.log('Editar lembrete:', reminder)
   }
 
-  const handleUpdateReminder = () => {
+  const handleUpdateReminder = async () => {
     if (editingReminder && editingReminder.title.trim()) {
-      setReminders(reminders.map(r => 
-        r.id === editingReminder.id ? editingReminder : r
-      ))
-      setEditingReminder(null)
-      setShowEditReminderForm(false)
+      const updatedReminder = await updateReminder(editingReminder.id, {
+        title: editingReminder.title.trim(),
+        description: editingReminder.description || '',
+        priority: editingReminder.priority || 'medium'
+      })
+      if (updatedReminder) {
+        // Lembrete atualizado com sucesso
+      }
     }
   }
 
   const handleCancelEditReminder = () => {
-    setEditingReminder(null)
-    setShowEditReminderForm(false)
+    // TODO: Implementar cancelamento de edição
+    console.log('Cancelar edição de lembrete')
   }
 
   // Funções para to-dos
