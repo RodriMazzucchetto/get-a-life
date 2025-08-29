@@ -714,6 +714,10 @@ export default function PlanningPage() {
   // Estado para adicionar novo lembrete
   const [showAddReminderForm, setShowAddReminderForm] = useState(false)
   const [newReminder, setNewReminder] = useState('')
+  
+  // Estado para editar lembrete
+  const [showEditReminderForm, setShowEditReminderForm] = useState(false)
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
 
 
 
@@ -741,18 +745,22 @@ export default function PlanningPage() {
   }
 
   const handleEditReminder = (reminder: Reminder) => {
-    // TODO: Implementar edição de lembretes
-    console.log('Editar lembrete:', reminder)
+    setEditingReminder(reminder)
+    setShowEditReminderForm(true)
   }
 
   const handleUpdateReminder = async () => {
-    // TODO: Implementar atualização de lembretes
-    console.log('Atualizar lembrete')
+    if (editingReminder) {
+      // TODO: Implementar atualização de lembretes
+      console.log('Atualizar lembrete:', editingReminder)
+      setShowEditReminderForm(false)
+      setEditingReminder(null)
+    }
   }
 
   const handleCancelEditReminder = () => {
-    // TODO: Implementar cancelamento de edição
-    console.log('Cancelar edição de lembrete')
+    setShowEditReminderForm(false)
+    setEditingReminder(null)
   }
 
   // Funções para to-dos
