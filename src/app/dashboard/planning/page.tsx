@@ -1068,7 +1068,7 @@ export default function PlanningPage() {
     if (editingTodo && editingTodo.id === todoId) {
       setEditingTodo({
         ...editingTodo,
-        tags: editingTodo.tags?.filter || [](tag => tag.name !== tagName)
+        tags: editingTodo.tags?.filter(tag => tag.name !== tagName) || []
       })
     }
   }
@@ -1371,7 +1371,7 @@ export default function PlanningPage() {
     if (tag) {
       setBacklogTodos(backlogTodos.map(t => 
         t.id === todoId 
-          ? { ...t, tags: t.tags?.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+          ? { ...t, tags: (t.tags?.some(existingTag => existingTag.name === tagName) || false) ? t.tags : [...(t.tags || []), tag] }
           : t
       ))
       
@@ -1390,7 +1390,7 @@ export default function PlanningPage() {
   const handleRemoveTagFromBacklogTodo = (todoId: string, tagName: string) => {
     setBacklogTodos(backlogTodos.map(t => 
       t.id === todoId 
-        ? { ...t, tags: t.tags?.filter || [](tag => tag.name !== tagName) }
+        ? { ...t, tags: t.tags?.filter(tag => tag.name !== tagName) || [] }
         : t
     ))
     
@@ -1398,7 +1398,7 @@ export default function PlanningPage() {
     if (editingTodo && editingTodo.id === todoId) {
       setEditingTodo({
         ...editingTodo,
-        tags: editingTodo.tags?.filter || [](tag => tag.name !== tagName)
+        tags: editingTodo.tags?.filter(tag => tag.name !== tagName) || []
       })
     }
   }
@@ -1415,7 +1415,7 @@ export default function PlanningPage() {
     // Remove a tag de todos os todos que a possuem
     setTodos(todos.map(t => ({
       ...t,
-      tags: t.tags?.filter || [](tag => tag.name !== tagName)
+      tags: t.tags?.filter(tag => tag.name !== tagName) || []
     })))
     // Remove a tag da lista de tags disponíveis
     setAvailableTags(availableTags.filter(t => t.name !== tagName))
@@ -3267,9 +3267,9 @@ export default function PlanningPage() {
                   </label>
                   
                   {/* Tags existentes */}
-                  {editingTodo.tags || [].length > 0 && (
+                  {(editingTodo.tags && editingTodo.tags.length > 0) && (
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {editingTodo.tags || [].map((tag, index) => (
+                      {editingTodo.tags.map((tag, index) => (
                         <span
                           key={index}
                           className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
