@@ -510,8 +510,6 @@ export interface Goal {
   id: string;
   title: string;
   description?: string;
-  projectId: string;
-  subProject?: string;
   whatIsMissing?: string;
   dueDate?: string;
   status: 'active' | 'completed';
@@ -529,8 +527,6 @@ export function fromDbGoal(row: DBGoal): Goal {
     id: row.id,
     title: row.title,
     description: row.description,
-    projectId: row.project_id || '',
-    subProject: row.sub_project,
     whatIsMissing: row.what_is_missing,
     dueDate: row.due_date,
     status: row.status,
@@ -547,8 +543,6 @@ export function toDbGoal(goal: Partial<Goal>): Partial<DBGoal> {
   const out: Partial<DBGoal> = {};
   if (goal.title !== undefined) out.title = goal.title;
   if (goal.description !== undefined) out.description = goal.description;
-  if (goal.projectId !== undefined) out.project_id = goal.projectId;
-  if (goal.subProject !== undefined) out.sub_project = goal.subProject;
   if (goal.whatIsMissing !== undefined) out.what_is_missing = goal.whatIsMissing;
   if (goal.dueDate !== undefined) out.due_date = goal.dueDate;
   if (goal.status !== undefined) out.status = goal.status;

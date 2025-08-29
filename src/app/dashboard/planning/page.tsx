@@ -247,18 +247,13 @@ import { Todo, Goal } from '@/lib/planning'
 export default function PlanningPage() {
   // Hook para gerenciar dados de planejamento
   const {
-    projects,
     todos,
     goals,
     reminders,
     isLoading,
     setTodos,
-    setProjects,
     setGoals,
     setReminders,
-    createProject,
-    updateProject,
-    deleteProject,
     createTodo,
     updateTodo,
     deleteTodo,
@@ -272,15 +267,12 @@ export default function PlanningPage() {
 
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
-  const [showProjectsModal, setShowProjectsModal] = useState(false)
-  const [showNewProjectForm, setShowNewProjectForm] = useState(false)
+  // Estado de showProjectsModal REMOVIDO
+  // Estado de showNewProjectForm REMOVIDO
   // Estado de showNewTagForm REMOVIDO
-  const [editingProject, setEditingProject] = useState<{ id: string; name: string; color: string } | null>(null)
+  // Estado de editingProject REMOVIDO
   // Estado de editingTag REMOVIDO
-  const [newProject, setNewProject] = useState({
-    name: '',
-    color: '#3B82F6'
-  })
+  // Estado de newProject REMOVIDO
   // Estado de newTag REMOVIDO
   const [newTask, setNewTask] = useState({
     title: '',
@@ -297,8 +289,7 @@ export default function PlanningPage() {
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
-    projectId: '',
-    subProject: '',
+    // Propriedades de projeto REMOVIDAS
     whatIsMissing: '',
     dueDate: null as Date | null
   })
@@ -445,57 +436,15 @@ export default function PlanningPage() {
     }
   ])
 
-  const handleCreateProject = async () => {
-    if (newProject.name.trim()) {
-      const newProjectData = await createProject(newProject.name.trim(), newProject.color)
-      if (newProjectData) {
-      setNewProject({ name: '', color: '#3B82F6' })
-      setShowNewProjectForm(false)
-      }
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleCreateProject()
-    }
-  }
-
-  const handleEditProject = (project: { id: string; name: string; color: string }) => {
-    setEditingProject(project)
-    setShowNewProjectForm(false)
-  }
-
-  const handleUpdateProject = async () => {
-    if (editingProject && editingProject.name.trim()) {
-      const updatedProject = await updateProject(editingProject.id, {
-        name: editingProject.name.trim(),
-        color: editingProject.color
-      })
-      if (updatedProject) {
-      setEditingProject(null)
-      }
-    }
-  }
-
-  const handleDeleteProject = async (projectId: string) => {
-    if (confirm('Tem certeza que deseja deletar este projeto? Esta ação não pode ser desfeita.')) {
-      const success = await deleteProject(projectId)
-      if (success) {
-        // Projeto removido com sucesso
-      }
-    }
-  }
+  // Funções de projetos REMOVIDAS - será reimplementado do zero
 
   // Funções de tags REMOVIDAS - será reimplementado do zero
 
   const handleCreateGoal = async () => {
-    if (newGoal.title.trim() && newGoal.projectId) {
+    if (newGoal.title.trim()) {
       const newGoalData = await createGoal({
         title: newGoal.title.trim(),
         description: newGoal.description.trim(),
-        projectId: newGoal.projectId,
-        subProject: newGoal.subProject.trim(),
         whatIsMissing: newGoal.whatIsMissing.trim(),
         dueDate: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
         status: 'active',
@@ -505,7 +454,7 @@ export default function PlanningPage() {
         totalInitiatives: 0
       })
       if (newGoalData) {
-      setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
+      setNewGoal({ title: '', description: '', whatIsMissing: '', dueDate: null })
       setShowCreateGoalModal(false)
       }
     }
@@ -522,12 +471,10 @@ export default function PlanningPage() {
   }
 
   const handleUpdateGoal = async () => {
-    if (editingGoal && editingGoal.title.trim() && editingGoal.projectId) {
+    if (editingGoal && editingGoal.title.trim()) {
       const updatedGoal = await updateGoal(editingGoal.id, {
         title: editingGoal.title.trim(),
         description: editingGoal.description?.trim() || '',
-        projectId: editingGoal.projectId,
-        subProject: editingGoal.subProject?.trim() || '',
         whatIsMissing: editingGoal.whatIsMissing?.trim() || '',
         dueDate: editingGoal.dueDate || undefined,
         nextStep: editingGoal.whatIsMissing?.trim() || ''
@@ -1408,130 +1355,7 @@ export default function PlanningPage() {
                   </button>
                 </div>
                 
-                {/* Agrupamento de metas por projeto */}
-                {(() => {
-                  const goalsByProject = projects.map(project => {
-                    const projectGoals = goals.filter(goal => goal.projectId === project.id)
-                    return { project, goals: projectGoals }
-                  }).filter(item => item.goals.length > 0)
-
-                  return goalsByProject.map(({ project, goals }) => (
-                    <div key={project.id} className="space-y-3">
-                      {/* Header do projeto */}
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 rounded-full" style={{ backgroundColor: project.color }}></div>
-                          <h5 className="text-sm font-medium text-gray-900">{project.name}</h5>
-                          <span className="text-xs text-gray-600">{goals.length} meta{goals.length !== 1 ? 's' : ''}</span>
-                        </div>
-                        <button
-                          onClick={() => setShowCreateGoalModal(true)}
-                          className="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700"
-                        >
-                          <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          + Meta
-                        </button>
-                      </div>
-                      
-                      {/* Grid de metas - adaptativo baseado na quantidade */}
-                      <div className={`grid gap-4 ${
-                        goals.length === 1 
-                          ? 'grid-cols-1' // 1 meta = ocupa toda a largura
-                          : goals.length === 2 
-                            ? 'grid-cols-1 md:grid-cols-2' // 2 metas = 2 colunas em desktop
-                            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' // 3+ metas = 3 colunas em desktop
-                      }`}>
-                        {goals.map((goal) => (
-                          <div 
-                            key={goal.id} 
-                            className={`p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
-                              goals.length === 1 ? 'max-w-none' : '' // 1 meta = sem limite de largura
-                            }`}
-                            onClick={() => handleEditGoal(goal)}
-                          >
-                            <div className="space-y-3">
-                              {/* Cabeçalho da meta */}
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }}></div>
-                                  <h6 className="text-sm font-medium text-gray-900">{goal.title}</h6>
-                                </div>
-                                <button 
-                                  className="text-gray-400 hover:text-gray-600"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleEditGoal(goal)
-                                  }}
-                                >
-                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm6 0a.75.75 0 011.5 0zm6 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
-                                  </svg>
-                                </button>
-                              </div>
-                              
-                              {/* Tag de sub-projeto */}
-                              {goal.subProject && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                                  {goal.subProject}
-                                </span>
-                              )}
-                              
-                              {/* Barra de progresso interativa */}
-                              <InteractiveProgressBar
-                                progress={goal.progress}
-                                onProgressChange={(newProgress) => {
-                                  // Atualizar o progresso da meta
-                                  handleUpdateGoalProgress(goal.id, newProgress)
-                                }}
-                              />
-                              
-                              {/* Próximo passo */}
-                              {goal.nextStep && (
-                                <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-                                  <p className="text-xs text-yellow-800">
-                                    <span className="font-medium">Próximo Passo:</span> {goal.nextStep}
-                                  </p>
-                                </div>
-                              )}
-                              
-                              {/* Informações adicionais */}
-                              <div className="space-y-2 text-xs text-gray-600">
-                                <div className="flex items-center gap-4">
-                                  <span>Iniciativas: {goal.initiatives}/{goal.totalInitiatives}</span>
-                                  {goal.dueDate && (
-                                    <span className="flex items-center gap-1">
-                                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                      </svg>
-                                      {new Date(goal.dueDate).toLocaleDateString('pt-BR')}
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                {/* Botão para adicionar iniciativa */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setShowAddInitiativeForm(true)
-                                    setEditingGoal(goal)
-                                  }}
-                                  className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
-                                >
-                                  <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                  </svg>
-                                  + Iniciativa
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                })()}
+                {/* Agrupamento de metas por projeto REMOVIDO - será reimplementado do zero */}
               </div>
             )}
           </div>
@@ -1901,164 +1725,7 @@ export default function PlanningPage() {
         </div>
       </DndContext>
 
-      {/* Modal de Projetos e Tags */}
-      <ModalOverlay isOpen={showProjectsModal} onClose={() => setShowProjectsModal(false)}>
-        <div className="relative top-20 mx-auto p-6 w-[600px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-medium text-gray-900">Gerenciar Projetos e Tags</h3>
-              <button
-                onClick={() => setShowProjectsModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Seção de Projetos */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-lg font-medium text-gray-900">Projetos</h4>
-                <button 
-                  onClick={() => setShowNewProjectForm(!showNewProjectForm)}
-                  className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
-                >
-                  <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  + Projeto
-                </button>
-              </div>
-
-              {/* Formulário de Novo Projeto ou Edição */}
-              {(showNewProjectForm || editingProject) && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nome do Projeto
-                      </label>
-                      <input
-                        type="text"
-                        value={editingProject ? editingProject.name : newProject.name}
-                        onChange={(e) => {
-                          if (editingProject) {
-                            setEditingProject({ ...editingProject, name: e.target.value })
-                          } else {
-                            setNewProject({ ...newProject, name: e.target.value })
-                          }
-                        }}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            if (editingProject) {
-                              handleUpdateProject()
-                            } else {
-                              handleCreateProject()
-                            }
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Digite o nome do projeto"
-                        autoFocus
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Cor do Projeto
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={editingProject ? editingProject.color : newProject.color}
-                          onChange={(e) => {
-                            if (editingProject) {
-                              setEditingProject({ ...editingProject, color: e.target.value })
-                            } else {
-                              setNewProject({ ...newProject, color: e.target.value })
-                            }
-                          }}
-                          className="w-12 h-10 border border-blue-300 rounded-md cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          value={editingProject ? editingProject.color : newProject.color}
-                          onChange={(e) => {
-                            if (editingProject) {
-                              setEditingProject({ ...editingProject, color: e.target.value })
-                            } else {
-                              setNewProject({ ...newProject, color: e.target.value })
-                            }
-                          }}
-                          placeholder="#000000"
-                          className="flex-1 px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => {
-                          if (editingProject) {
-                            setEditingProject(null)
-                          } else {
-                            setShowNewProjectForm(false)
-                            setNewProject({ name: '', color: '#3B82F6' })
-                          }
-                        }}
-                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={editingProject ? handleUpdateProject : handleCreateProject}
-                        disabled={!editingProject?.name.trim() && !newProject.name.trim()}
-                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {editingProject ? 'Atualizar' : 'Salvar'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {projects.map((project) => (
-                  <div key={project.id} className="group flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors duration-200">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: project.color }}
-                      ></div>
-                      <span className="text-sm text-gray-900">{project.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <button 
-                        onClick={() => handleEditProject(project)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteProject(project.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors duration-200"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Seção de Tags REMOVIDA - será reimplementada do zero */}
-            </div>
-          </div>
-        </ModalOverlay>
+      {/* Modal de Projetos e Tags REMOVIDO - será reimplementado do zero */}
 
       {/* Task Creation Modal */}
       <ModalOverlay isOpen={showTaskModal} onClose={() => setShowTaskModal(false)}>
@@ -2418,44 +2085,7 @@ export default function PlanningPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Projeto *
-                  </label>
-                  <select
-                    value={editingGoal.projectId}
-                    onChange={(e) => setEditingGoal({ ...editingGoal, projectId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
-                  {editingGoal.projectId && (
-                    <div className="flex items-center gap-2 mt-2 p-2 bg-gray-50 rounded-md">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: projects.find(p => p.id === editingGoal.projectId)?.color || '#6B7280' }}></div>
-                      <span className="text-sm text-gray-700">
-                        Projeto selecionado: <span className="font-medium">{projects.find(p => p.id === editingGoal.projectId)?.name}</span>
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sub-projeto (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={editingGoal.subProject || ''}
-                    onChange={(e) => setEditingGoal({ ...editingGoal, subProject: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: SDK, CN, Marketing..."
-                  />
-                </div>
+                {/* Seleção de projeto e sub-projeto REMOVIDA - será reimplementada do zero */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2624,7 +2254,7 @@ export default function PlanningPage() {
                     </button>
                     <button
                       onClick={handleUpdateGoal}
-                      disabled={!editingGoal.title.trim() || !editingGoal.projectId}
+                      disabled={!editingGoal.title.trim()}
                       className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Atualizar Meta
