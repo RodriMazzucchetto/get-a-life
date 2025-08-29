@@ -778,16 +778,8 @@ export default function PlanningPage() {
   }
 
   const handleUpdateReminder = async () => {
-    if (editingReminder && editingReminder.title.trim()) {
-      const updatedReminder = await updateReminder(editingReminder.id, {
-        title: editingReminder.title.trim(),
-        description: editingReminder.description || '',
-        priority: editingReminder.priority || 'medium'
-      })
-      if (updatedReminder) {
-        // Lembrete atualizado com sucesso
-      }
-    }
+    // TODO: Implementar atualização de lembretes
+    console.log('Atualizar lembrete')
   }
 
   const handleCancelEditReminder = () => {
@@ -796,26 +788,25 @@ export default function PlanningPage() {
   }
 
   // Funções para to-dos
-  const handleCreateTodo = () => {
+  const handleCreateTodo = async () => {
     if (newTodo.title.trim()) {
-      const newTodoData: Todo = {
-        id: Date.now().toString(),
+      const newTodoData = await createTodo({
         title: newTodo.title.trim(),
         description: newTodo.description.trim(),
         priority: newTodo.priority,
         category: newTodo.category.trim(),
-        dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
+        due_date: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
-        isHighPriority: false,
-        timeSensitive: newTodo.timeSensitive,
-        onHold: false,
-        onHoldReason: undefined,
-        tags: newTodo.tags, // Incluir as tags selecionadas
-        created_at: new Date().toISOString()
+        is_high_priority: false,
+        time_sensitive: newTodo.timeSensitive,
+        on_hold: false,
+        on_hold_reason: undefined,
+        status: 'backlog'
+      })
+      if (newTodoData) {
+        setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
+        setShowInlineCreateForm(false)
       }
-      setTodos([...todos, newTodoData])
-      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
-      setShowInlineCreateForm(false)
     }
   }
 
