@@ -506,7 +506,7 @@ export default function PlanningPage() {
     }
   }
 
-  // Funções para gerenciar tags
+  // Funções para gerenciar tags - PR1: Base limpa para reimplementação
   const handleCreateTag = () => {
     if (newTag.name.trim() && !availableTags.some(t => t.name === newTag.name.trim())) {
       const newTagData = {
