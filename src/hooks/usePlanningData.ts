@@ -65,9 +65,15 @@ export function usePlanningData() {
       setTags(tagsData)
       setLoadingTags(false)
 
-      // Carregar tarefas
+      // Carregar tarefas (agora com tags via JOIN)
+      console.log('🔄 Hook: Carregando todos com tags...')
       const todosData = await todosService.getTodos(user.id)
-      setTodos(todosData.map(fromDbTodo))
+      console.log('📊 Hook: Todos carregados do banco:', todosData)
+      
+      const todosWithTags = todosData.map(fromDbTodo)
+      console.log('✅ Hook: Todos convertidos com tags:', todosWithTags)
+      
+      setTodos(todosWithTags)
       setLoadingTodos(false)
 
       // Carregar metas
@@ -350,6 +356,13 @@ export function usePlanningData() {
         console.log('🔄 Hook: Tags do todo atualizado:', updatedTodo?.tags)
         return updated
       })
+      
+      // Recarregar dados para garantir sincronização
+      console.log('🔄 Hook: Recarregando dados para sincronizar...')
+      const reloadedTodos = await todosService.getTodos(user.id)
+      const reloadedTodosWithTags = reloadedTodos.map(fromDbTodo)
+      setTodos(reloadedTodosWithTags)
+      console.log('✅ Hook: Dados recarregados e sincronizados')
       
       console.log('✅ Hook: Tag adicionada com sucesso ao todo:', todoId)
       return true

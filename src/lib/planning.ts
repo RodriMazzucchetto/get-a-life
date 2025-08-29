@@ -317,28 +317,50 @@ export const todoTagsService = {
 
 // Serviço de Tarefas
 export const todosService = {
-  // Buscar todas as tarefas do usuário com suas tags
-  async getTodos(userId: string): Promise<DBTodo[]> {
+  // Buscar todas as tarefas do usuário com suas tags (JOIN direto)
+  async getTodos(userId: string): Promise<(DBTodo & { tags?: DBTag[] })[]> {
     const supabase = createClient()
+    console.log('🔄 Serviço: Buscando todos com tags para usuário:', userId)
+    
+    // Fazer JOIN direto com todo_tags e tags
     const { data, error } = await supabase
       .from('todos')
-      .select('*')
+      .select(`
+        *,
+        todo_tags!inner(
+          tags(
+            id,
+            user_id,
+            name,
+            color,
+            created_at,
+            updated_at
+          )
+        )
+      `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Erro ao buscar tarefas:', error)
+      console.error('❌ Erro ao buscar tarefas com tags:', error)
       throw error
     }
 
-    // Buscar tags para cada tarefa
-    const todosWithTags = await Promise.all(
-      (data || []).map(async (todo) => {
-        const tags = await todoTagsService.getTagsForTodo(todo.id)
-        return { ...todo, tags }
-      })
-    )
+    console.log('📊 Dados brutos retornados:', data)
 
+          // Processar os dados para extrair tags corretamente
+      const todosWithTags = (data || []).map(todo => {
+        // Extrair tags do resultado do JOIN
+        const tags = todo.todo_tags?.map((tt: { tags: DBTag }) => tt.tags).filter(Boolean) || []
+        console.log('🔄 Serviço: Todo', todo.id, 'tem tags:', tags)
+        
+        return {
+          ...todo,
+          tags: tags
+        }
+      })
+
+    console.log('✅ Todos processados com tags:', todosWithTags)
     return todosWithTags
   },
 
@@ -541,7 +563,9 @@ export const remindersService = {
 
 // Adapters para converter entre DBTodo e Todo
 export function fromDbTodo(row: DBTodo & { tags?: DBTag[] }): Todo {
-  return {
+  console.log('🔄 Adapter: Convertendo DBTodo para Todo:', { id: row.id, tags: row.tags })
+  
+  const todo = {
     id: row.id,
     title: row.title,
     description: row.description,
@@ -557,6 +581,9 @@ export function fromDbTodo(row: DBTodo & { tags?: DBTag[] }): Todo {
     created_at: row.created_at,
     updated_at: row.updated_at
   };
+  
+  console.log('✅ Adapter: Todo convertido:', { id: todo.id, tags: todo.tags })
+  return todo;
 }
 
 export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
