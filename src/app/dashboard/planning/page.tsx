@@ -248,22 +248,17 @@ export default function PlanningPage() {
   // Hook para gerenciar dados de planejamento
   const {
     projects,
-    tags,
     todos,
     goals,
     reminders,
     isLoading,
     setTodos,
     setProjects,
-    setTags,
     setGoals,
     setReminders,
     createProject,
     updateProject,
     deleteProject,
-    createTag,
-    updateTag,
-    deleteTag,
     createTodo,
     updateTodo,
     deleteTodo,
@@ -279,17 +274,14 @@ export default function PlanningPage() {
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showProjectsModal, setShowProjectsModal] = useState(false)
   const [showNewProjectForm, setShowNewProjectForm] = useState(false)
-  const [showNewTagForm, setShowNewTagForm] = useState(false)
+  // Estado de showNewTagForm REMOVIDO
   const [editingProject, setEditingProject] = useState<{ id: string; name: string; color: string } | null>(null)
-  const [editingTag, setEditingTag] = useState<{ name: string; color: string } | null>(null)
+  // Estado de editingTag REMOVIDO
   const [newProject, setNewProject] = useState({
     name: '',
     color: '#3B82F6'
   })
-  const [newTag, setNewTag] = useState({
-    name: '',
-    color: '#3B82F6'
-  })
+  // Estado de newTag REMOVIDO
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -324,18 +316,7 @@ export default function PlanningPage() {
   const [todoToPutOnHold, setTodoToPutOnHold] = useState<Todo | null>(null)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [showInlineCreateForm, setShowInlineCreateForm] = useState(false)
-  const [showTagSelector, setShowTagSelector] = useState(false)
-  const [availableTags, setAvailableTags] = useState<{ name: string; color: string }[]>([
-    { name: 'KimonoLab', color: '#EF4444' },
-    { name: 'EXLG SDK', color: '#8B5CF6' },
-    { name: 'EXLG CN', color: '#EC4899' },
-    { name: 'Zentrix BS', color: '#8B5CF6' },
-    { name: 'Miscellaneous', color: '#10B981' },
-    { name: 'QuickWin', color: '#F59E0B' },
-    { name: 'Pessoal', color: '#3B82F6' }
-  ])
-  const [newTagName, setNewTagName] = useState('')
-  const [newTagColor, setNewTagColor] = useState('#3B82F6')
+  // Estados de tags REMOVIDOS - será reimplementado do zero
   const [newTodo, setNewTodo] = useState({
     title: '',
     description: '',
@@ -506,42 +487,7 @@ export default function PlanningPage() {
     }
   }
 
-  // Funções para gerenciar tags - PR1: Base limpa para reimplementação
-  const handleCreateTag = () => {
-    if (newTag.name.trim() && !availableTags.some(t => t.name === newTag.name.trim())) {
-      const newTagData = {
-        name: newTag.name.trim(),
-        color: newTag.color
-      }
-      setAvailableTags([...availableTags, newTagData])
-      setNewTag({ name: '', color: '#3B82F6' })
-      setShowNewTagForm(false)
-    }
-  }
-
-  const handleEditTag = (tag: { name: string; color: string }) => {
-    setEditingTag(tag)
-    setShowNewTagForm(false)
-  }
-
-  const handleUpdateTag = () => {
-    if (editingTag && editingTag.name.trim()) {
-      setAvailableTags(availableTags.map(t => 
-        t.name === editingTag.name 
-          ? { ...t, name: editingTag.name.trim(), color: editingTag.color }
-          : t
-      ))
-      setEditingTag(null)
-    }
-  }
-
-  const handleDeleteTag = async (tagName: string) => {
-    if (confirm('Tem certeza que deseja deletar esta tag? Esta ação removerá a tag de todas as tarefas que a possuem.')) {
-      // TODO: Implementar lógica para remover tag de todas as tarefas
-      // Por enquanto, apenas remove da lista de tags disponíveis
-      // setAvailableTags(availableTags.filter(t => t.name !== tagName))
-    }
-  }
+  // Funções de tags REMOVIDAS - será reimplementado do zero
 
   const handleCreateGoal = async () => {
     if (newGoal.title.trim() && newGoal.projectId) {
@@ -865,47 +811,7 @@ export default function PlanningPage() {
     }
   }
 
-  // Função para agrupar todos por primeira tag
-  const groupTodosByFirstTag = (todoList: Todo[]) => {
-    const groups: { [key: string]: Todo[] } = {}
-    
-    todoList.forEach(todo => {
-      console.log('🔄 Agrupando todo:', { id: todo.id, title: todo.title, tags: todo.tags })
-      
-      if (todo.tags && todo.tags.length > 0) {
-        const firstTag = todo.tags[0].name
-        console.log('✅ Todo com tag:', { firstTag })
-        
-        if (!groups[firstTag]) {
-          groups[firstTag] = []
-        }
-        groups[firstTag].push(todo)
-      } else {
-        // Itens sem tags vão para um grupo "Sem Tags"
-        console.log('❌ Todo sem tags')
-        if (!groups['Sem Tags']) {
-          groups['Sem Tags'] = []
-        }
-        groups['Sem Tags'].push(todo)
-      }
-    })
-    
-    console.log('📊 Grupos criados:', Object.keys(groups))
-    
-    // Ordenar itens dentro de cada grupo: itens ativos primeiro, itens em espera por último
-    Object.keys(groups).forEach(tagName => {
-      groups[tagName].sort((a, b) => {
-        // Se ambos estão em espera ou ambos não estão, mantém ordem original
-        if (a.onHold === b.onHold) return 0
-        // Se a não está em espera e b está, a vem primeiro
-        if (!a.onHold && b.onHold) return -1
-        // Se a está em espera e b não está, b vem primeiro
-        return 1
-      })
-    })
-    
-    return groups
-  }
+  // Função groupTodosByFirstTag REMOVIDA - será reimplementada do zero
 
   // Função para drag and drop entre blocos
   const handleDragEndBetweenBlocks = (event: DragEndEvent) => {
@@ -1806,60 +1712,7 @@ export default function PlanningPage() {
 
                     {/* Seletor de tags */}
                     <div className="flex items-center">
-                      {/* Dropdown customizado para tags com cores */}
-                      <div className="relative">
-                        <button
-                          onClick={() => setShowTagSelector(!showTagSelector)}
-                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white hover:bg-gray-50 transition-colors min-w-[200px] text-left flex items-center justify-between"
-                        >
-                          <span className="text-gray-500">Selecionar tag...</span>
-                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                        
-                        {/* Dropdown de tags */}
-                        {showTagSelector && (
-                          <>
-                            {/* Overlay para fechar ao clicar fora */}
-                            <div 
-                              className="fixed inset-0 z-0" 
-                              onClick={() => setShowTagSelector(false)}
-                            />
-                            <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
-                              <div className="p-3">
-                                <h4 className="text-sm font-medium text-gray-700 mb-3">Tags disponíveis:</h4>
-                                <div className="space-y-2">
-                                  {availableTags
-                                    .filter(tag => !newTodo.tags.some(t => t.name === tag.name))
-                                    .map((tag) => (
-                                      <button
-                                        key={tag.name}
-                                        onClick={() => {
-                                          setNewTodo({ ...newTodo, tags: [...newTodo.tags, tag] })
-                                          setShowTagSelector(false)
-                                        }}
-                                        className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded-md transition-colors text-left"
-                                      >
-                                        <div 
-                                          className="w-4 h-4 rounded-full flex-shrink-0"
-                                          style={{ backgroundColor: tag.color }}
-                                        ></div>
-                                        <span className="text-sm text-gray-900">{tag.name}</span>
-                                      </button>
-                                    ))}
-                                </div>
-                                
-                                {availableTags.filter(tag => !newTodo.tags.some(t => t.name === tag.name)).length === 0 && (
-                                  <div className="text-center py-4 text-gray-500 text-sm">
-                                    Todas as tags já foram selecionadas
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      {/* Seletor de tags REMOVIDO - será reimplementado do zero */}
                     </div>
                   </div>
                 </div>
@@ -1884,7 +1737,8 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   (() => {
-                    const groupedTodos = groupTodosByFirstTag(sortedTodos)
+                    // Agrupamento por tags REMOVIDO - será reimplementado do zero
+  const groupedTodos = { 'Tarefas': sortedTodos }
                     const groupEntries = Object.entries(groupedTodos)
                     
                     return (
@@ -3043,54 +2897,10 @@ export default function PlanningPage() {
                   )}
 
                   {/* Criar nova tag */}
-                  <div className="border-t pt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Criar nova tag
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newTagName}
-                        onChange={(e) => setNewTagName(e.target.value)}
-                        placeholder="Nome da tag"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <input
-                        type="color"
-                        value={newTagColor}
-                        onChange={(e) => setNewTagColor(e.target.value)}
-                        className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
-                      />
-                      <button
-                                                    onClick={() => console.log('Nova tag - funcionalidade será reimplementada')}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+                  {/* Seção de criação de nova tag REMOVIDA - será reimplementada do zero */}
 
                   {/* Tags disponíveis para adicionar */}
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Adicionar tags existentes
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {availableTags
-                        .filter(tag => !editingTodo.tags?.some(existingTag => existingTag.name === tag.name))
-                        .map((tag, index) => (
-                          <button
-                            key={index}
-                            onClick={() => console.log('Tag adicionada - funcionalidade será reimplementada')}
-                            className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
-                            + {tag.name}
-                          </button>
-                        ))}
-                    </div>
-                  </div>
+                  {/* Seção de tags REMOVIDA - será reimplementada do zero */}
                 </div>
 
                 {/* Botões de ação */}
