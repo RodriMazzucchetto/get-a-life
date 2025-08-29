@@ -6,7 +6,13 @@ export async function GET() {
     const supabase = await createClient()
     
     // Testar conexão com as tabelas
-    const results = {
+    const results: {
+      projects: { error?: string; success?: boolean; count?: number } | null
+      tags: { error?: string; success?: boolean; count?: number } | null
+      todos: { error?: string; success?: boolean; count?: number } | null
+      goals: { error?: string; success?: boolean; count?: number } | null
+      reminders: { error?: string; success?: boolean; count?: number } | null
+    } = {
       projects: null,
       tags: null,
       todos: null,
