@@ -863,7 +863,7 @@ export default function PlanningPage() {
     const currentTodo = todos.find(t => t.id === todoId)
     if (currentTodo) {
       await updateTodo(todoId, {
-        is_high_priority: !currentTodo.isHighPriority
+        is_high_priority: !(currentTodo as any).isHighPriority
       })
     }
   }
