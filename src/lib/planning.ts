@@ -253,17 +253,22 @@ export const todoTagsService = {
   // Adicionar tag a uma tarefa
   async addTagToTodo(todoId: string, tagId: string): Promise<void> {
     const supabase = createClient()
-    const { error } = await supabase
+    console.log('🔄 Adicionando tag:', { todoId, tagId })
+    
+    const { data, error } = await supabase
       .from('todo_tags')
       .insert({
         todo_id: todoId,
         tag_id: tagId
       })
+      .select()
 
     if (error) {
-      console.error('Erro ao adicionar tag à tarefa:', error)
+      console.error('❌ Erro ao adicionar tag à tarefa:', error)
       throw error
     }
+    
+    console.log('✅ Tag adicionada com sucesso:', data)
   },
 
   // Remover tag de uma tarefa

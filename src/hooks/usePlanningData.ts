@@ -284,23 +284,35 @@ export function usePlanningData() {
     if (!user) return false
     
     try {
+      console.log('🔄 Hook: Adicionando tag ao todo:', { todoId, tagName })
+      console.log('🔄 Hook: Tags disponíveis:', tags)
+      
       // Encontrar a tag pelo nome
       const tag = tags.find(t => t.name === tagName)
-      if (!tag) return false
+      if (!tag) {
+        console.log('❌ Hook: Tag não encontrada:', tagName)
+        return false
+      }
+      
+      console.log('✅ Hook: Tag encontrada:', tag)
 
       // Adicionar tag ao todo no banco
       await todoTagsService.addTagToTodo(todoId, tag.id)
       
       // Atualizar estado local
-      setTodos(prev => prev.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: [...(t.tags || []), { name: tag.name, color: tag.color }] }
-          : t
-      ))
+      setTodos(prev => {
+        const updated = prev.map(t => 
+          t.id === todoId 
+            ? { ...t, tags: [...(t.tags || []), { name: tag.name, color: tag.color }] }
+            : t
+        )
+        console.log('🔄 Hook: Estado atualizado:', updated.find(t => t.id === todoId))
+        return updated
+      })
       
       return true
     } catch (error) {
-      console.error('Erro ao adicionar tag ao todo:', error)
+      console.error('❌ Hook: Erro ao adicionar tag ao todo:', error)
       return false
     }
   }, [user, tags])

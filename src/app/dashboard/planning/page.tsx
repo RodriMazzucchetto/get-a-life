@@ -852,22 +852,27 @@ export default function PlanningPage() {
     const groups: { [key: string]: Todo[] } = {}
     
     todoList.forEach(todo => {
-      if (todo.tags && todo.tags?.length || 0 > 0) {
-        const firstTag = todo.tags?.[0].name
-        if (firstTag && !groups[firstTag]) {
+      console.log('🔄 Agrupando todo:', { id: todo.id, title: todo.title, tags: todo.tags })
+      
+      if (todo.tags && todo.tags.length > 0) {
+        const firstTag = todo.tags[0].name
+        console.log('✅ Todo com tag:', { firstTag })
+        
+        if (!groups[firstTag]) {
           groups[firstTag] = []
         }
-        if (firstTag) {
-          groups[firstTag].push(todo)
-        }
+        groups[firstTag].push(todo)
       } else {
         // Itens sem tags vão para um grupo "Sem Tags"
+        console.log('❌ Todo sem tags')
         if (!groups['Sem Tags']) {
           groups['Sem Tags'] = []
         }
         groups['Sem Tags'].push(todo)
       }
     })
+    
+    console.log('📊 Grupos criados:', Object.keys(groups))
     
     // Ordenar itens dentro de cada grupo: itens ativos primeiro, itens em espera por último
     Object.keys(groups).forEach(tagName => {
@@ -1003,24 +1008,74 @@ export default function PlanningPage() {
 
   // Funções para gerenciar tags
   const handleAddTagToTodo = async (todoId: string, tagName: string) => {
+    console.log('🔄 Componente: Adicionando tag ao todo:', { todoId, tagName })
+    
     const success = await addTagToTodo(todoId, tagName)
     if (success) {
-      // Atualizar também o editingTodo se estiver editando a mesma tarefa
-      if (editingTodo && editingTodo.id === todoId) {
-        const tag = availableTags.find(t => t.name === tagName)
-        if (tag) {
+      console.log('✅ Componente: Tag adicionada com sucesso, atualizando estados locais')
+      
+      const tag = availableTags.find(t => t.name === tagName)
+      if (tag) {
+        // Atualizar todos os estados locais para manter sincronização
+        setTodos(prevTodos => prevTodos.map(t => 
+          t.id === todoId 
+            ? { ...t, tags: [...(t.tags || []), tag] }
+            : t
+        ))
+        
+        setBacklogTodos(prevBacklog => prevBacklog.map(t => 
+          t.id === todoId 
+            ? { ...t, tags: [...(t.tags || []), tag] }
+            : t
+        ))
+        
+        setInProgressTodos(prevInProgress => prevInProgress.map(t => 
+          t.id === todoId 
+            ? { ...t, tags: [...(t.tags || []), tag] }
+            : t
+        ))
+        
+        // Atualizar também o editingTodo se estiver editando a mesma tarefa
+        if (editingTodo && editingTodo.id === todoId) {
           setEditingTodo({
             ...editingTodo,
             tags: [...(editingTodo.tags || []), tag]
           })
         }
+        
+        console.log('✅ Componente: Todos os estados locais atualizados')
       }
+    } else {
+      console.log('❌ Componente: Falha ao adicionar tag')
     }
   }
 
   const handleRemoveTagFromTodo = async (todoId: string, tagName: string) => {
+    console.log('🔄 Componente: Removendo tag do todo:', { todoId, tagName })
+    
     const success = await removeTagFromTodo(todoId, tagName)
     if (success) {
+      console.log('✅ Componente: Tag removida com sucesso, atualizando estados locais')
+      
+      // Atualizar todos os estados locais para manter sincronização
+      setTodos(prevTodos => prevTodos.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: (t.tags || []).filter(tag => tag.name !== tagName) }
+          : t
+      ))
+      
+      setBacklogTodos(prevBacklog => prevBacklog.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: (t.tags || []).filter(tag => tag.name !== tagName) }
+          : t
+      ))
+      
+      setInProgressTodos(prevInProgress => prevInProgress.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: (t.tags || []).filter(tag => tag.name !== tagName) }
+          : t
+      ))
+      
       // Atualizar também o editingTodo se estiver editando a mesma tarefa
       if (editingTodo && editingTodo.id === todoId) {
         setEditingTodo({
@@ -1028,6 +1083,10 @@ export default function PlanningPage() {
           tags: (editingTodo.tags || []).filter(tag => tag.name !== tagName)
         })
       }
+      
+      console.log('✅ Componente: Todos os estados locais atualizados')
+    } else {
+      console.log('❌ Componente: Falha ao remover tag')
     }
   }
 
