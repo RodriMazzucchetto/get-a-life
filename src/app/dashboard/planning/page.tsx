@@ -832,7 +832,27 @@ export default function PlanningPage() {
 
   const handleDeleteTodo = async (todoId: string) => {
     if (confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) {
-      await deleteTodo(todoId)
+      console.log('🗑️ Deletando todo:', todoId)
+      
+      const success = await deleteTodo(todoId)
+      if (success) {
+        console.log('✅ Todo deletado com sucesso, removendo de todos os estados locais')
+        
+        // Remover de todos os estados locais para manter sincronização
+        setTodos(prev => prev.filter(t => t.id !== todoId))
+        setBacklogTodos(prev => prev.filter(t => t.id !== todoId))
+        setInProgressTodos(prev => prev.filter(t => t.id !== todoId))
+        
+        // Limpar editingTodo se estiver editando o item deletado
+        if (editingTodo && editingTodo.id === todoId) {
+          setEditingTodo(null)
+          setShowEditTodoModal(false)
+        }
+        
+        console.log('✅ Todo removido de todos os estados locais')
+      } else {
+        console.log('❌ Falha ao deletar todo')
+      }
     }
   }
 

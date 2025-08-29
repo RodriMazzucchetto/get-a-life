@@ -168,16 +168,44 @@ export function usePlanningData() {
     if (!user) return null
     
     try {
+      console.log('🔄 Hook: Criando todo com dados:', todoData)
+      
       const dbTodoData = toDbUpdate(todoData)
       const newDbTodo = await todosService.createTodo(user.id, dbTodoData as Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at'>)
       const newTodo = fromDbTodo(newDbTodo)
+      
+      console.log('✅ Hook: Todo criado no banco:', newTodo)
+      
+      // Se o todo tem tags, adicioná-las através do serviço de tags
+      if (todoData.tags && todoData.tags.length > 0) {
+        console.log('🔄 Hook: Adicionando tags ao todo recém-criado:', todoData.tags)
+        
+        for (const tag of todoData.tags) {
+          try {
+            // Encontrar a tag pelo nome
+            const existingTag = tags.find(t => t.name === tag.name)
+            if (existingTag) {
+              await todoTagsService.addTagToTodo(newTodo.id, existingTag.id)
+              console.log('✅ Hook: Tag adicionada:', tag.name)
+            } else {
+              console.log('⚠️ Hook: Tag não encontrada no banco:', tag.name)
+            }
+          } catch (error) {
+            console.error('❌ Hook: Erro ao adicionar tag:', tag.name, error)
+          }
+        }
+        
+        // Atualizar o todo com as tags
+        newTodo.tags = todoData.tags
+      }
+      
       setTodos(prev => [newTodo, ...prev])
       return newTodo
     } catch (error) {
-      console.error('Erro ao criar tarefa:', error)
+      console.error('❌ Hook: Erro ao criar tarefa:', error)
       return null
     }
-  }, [user])
+  }, [user, tags])
 
   const updateTodo = useCallback(async (todoId: string, updates: Partial<Todo>) => {
     try {

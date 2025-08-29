@@ -226,6 +226,8 @@ export const todoTagsService = {
   // Buscar tags de uma tarefa específica
   async getTagsForTodo(todoId: string): Promise<DBTag[]> {
     const supabase = createClient()
+    console.log('🔄 Serviço: Buscando tags para todo:', todoId)
+    
     const { data, error } = await supabase
       .from('todo_tags')
       .select(`
@@ -241,12 +243,16 @@ export const todoTagsService = {
       .eq('todo_id', todoId)
 
     if (error) {
-      console.error('Erro ao buscar tags da tarefa:', error)
+      console.error('❌ Erro ao buscar tags da tarefa:', error)
       return []
     }
 
+    console.log('📊 Dados retornados do banco:', data)
+
     // Extrair as tags do array aninhado
     const tags = data?.flatMap(item => item.tags || []).filter(Boolean) || []
+    console.log('✅ Tags extraídas:', tags)
+    
     return tags
   },
 
@@ -557,6 +563,11 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.timeSensitive !== undefined) out.time_sensitive = patch.timeSensitive;
   if (patch.onHold !== undefined) out.on_hold = patch.onHold;
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
+  
+  // As tags são gerenciadas separadamente através do todoTagsService
+  // Não incluímos tags aqui porque DBTodo não tem campo tags
+  console.log('🔄 Adapter: Convertendo todo para DB (tags serão gerenciadas separadamente):', patch);
+  
   return out;
 }
 
