@@ -272,7 +272,9 @@ export default function PlanningPage() {
     deleteGoal,
     createReminder,
     updateReminder,
-    deleteReminder
+    deleteReminder,
+    addTagToTodo,
+    removeTagFromTodo
   } = usePlanningData()
 
   const [showTaskModal, setShowTaskModal] = useState(false)
@@ -1000,76 +1002,32 @@ export default function PlanningPage() {
   }
 
   // Funções para gerenciar tags
-  const handleAddTagToTodo = (todoId: string, tagName: string) => {
-    const tag = availableTags.find(t => t.name === tagName)
-    if (tag) {
-      // Verificar em qual bloco está a tarefa
-      const isBacklogTodo = backlogTodos.some(t => t.id === todoId)
-      const isInProgressTodo = inProgressTodos.some(t => t.id === todoId)
-      
-      if (isBacklogTodo) {
-        setBacklogTodos(backlogTodos.map(t => 
-          t.id === todoId 
-            ? { ...t, tags: (t.tags?.some(existingTag => existingTag.name === tagName) || false) ? t.tags : [...(t.tags || []), tag] }
-            : t
-        ))
-      } else if (isInProgressTodo) {
-        setInProgressTodos(inProgressTodos.map(t => 
-          t.id === todoId 
-            ? { ...t, tags: (t.tags?.some(existingTag => existingTag.name === tagName) || false) ? t.tags : [...(t.tags || []), tag] }
-            : t
-        ))
-      } else {
-        setTodos(todos.map(t => 
-          t.id === todoId 
-            ? { ...t, tags: (t.tags?.some(existingTag => existingTag.name === tagName) || false) ? t.tags : [...(t.tags || []), tag] }
-            : t
-        ))
-      }
-      
+  const handleAddTagToTodo = async (todoId: string, tagName: string) => {
+    const success = await addTagToTodo(todoId, tagName)
+    if (success) {
       // Atualizar também o editingTodo se estiver editando a mesma tarefa
       if (editingTodo && editingTodo.id === todoId) {
-        setEditingTodo({
-          ...editingTodo,
-          tags: editingTodo.tags?.some(existingTag => existingTag.name === tagName) 
-            ? editingTodo.tags || [] 
-            : [...editingTodo.tags || [], tag]
-        })
+        const tag = availableTags.find(t => t.name === tagName)
+        if (tag) {
+          setEditingTodo({
+            ...editingTodo,
+            tags: [...(editingTodo.tags || []), tag]
+          })
+        }
       }
     }
   }
 
-  const handleRemoveTagFromTodo = (todoId: string, tagName: string) => {
-    // Verificar em qual bloco está a tarefa
-    const isBacklogTodo = backlogTodos.some(t => t.id === todoId)
-    const isInProgressTodo = inProgressTodos.some(t => t.id === todoId)
-    
-    if (isBacklogTodo) {
-      setBacklogTodos(backlogTodos.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: (t.tags?.filter(tag => tag.name !== tagName) || []) }
-          : t
-      ))
-    } else if (isInProgressTodo) {
-      setInProgressTodos(inProgressTodos.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: (t.tags?.filter(tag => tag.name !== tagName) || []) }
-          : t
-      ))
-    } else {
-      setTodos(todos.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: (t.tags?.filter(tag => tag.name !== tagName) || []) }
-          : t
-      ))
-    }
-    
-    // Atualizar também o editingTodo se estiver editando a mesma tarefa
-    if (editingTodo && editingTodo.id === todoId) {
-      setEditingTodo({
-        ...editingTodo,
-        tags: editingTodo.tags?.filter(tag => tag.name !== tagName) || []
-      })
+  const handleRemoveTagFromTodo = async (todoId: string, tagName: string) => {
+    const success = await removeTagFromTodo(todoId, tagName)
+    if (success) {
+      // Atualizar também o editingTodo se estiver editando a mesma tarefa
+      if (editingTodo && editingTodo.id === todoId) {
+        setEditingTodo({
+          ...editingTodo,
+          tags: (editingTodo.tags || []).filter(tag => tag.name !== tagName)
+        })
+      }
     }
   }
 
@@ -1366,40 +1324,32 @@ export default function PlanningPage() {
     }
   }
 
-  const handleAddTagToBacklogTodo = (todoId: string, tagName: string) => {
-    const tag = availableTags.find(t => t.name === tagName)
-    if (tag) {
-      setBacklogTodos(backlogTodos.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: (t.tags?.some(existingTag => existingTag.name === tagName) || false) ? t.tags : [...(t.tags || []), tag] }
-          : t
-      ))
-      
+  const handleAddTagToBacklogTodo = async (todoId: string, tagName: string) => {
+    const success = await addTagToTodo(todoId, tagName)
+    if (success) {
       // Atualizar também o editingTodo se estiver editando a mesma tarefa
       if (editingTodo && editingTodo.id === todoId) {
-        setEditingTodo({
-          ...editingTodo,
-          tags: editingTodo.tags?.some(existingTag => existingTag.name === tagName) 
-            ? editingTodo.tags || [] 
-            : [...editingTodo.tags || [], tag]
-        })
+        const tag = availableTags.find(t => t.name === tagName)
+        if (tag) {
+          setEditingTodo({
+            ...editingTodo,
+            tags: [...(editingTodo.tags || []), tag]
+          })
+        }
       }
     }
   }
 
-  const handleRemoveTagFromBacklogTodo = (todoId: string, tagName: string) => {
-    setBacklogTodos(backlogTodos.map(t => 
-      t.id === todoId 
-        ? { ...t, tags: t.tags?.filter(tag => tag.name !== tagName) || [] }
-        : t
-    ))
-    
-    // Atualizar também o editingTodo se estiver editando a mesma tarefa
-    if (editingTodo && editingTodo.id === todoId) {
-      setEditingTodo({
-        ...editingTodo,
-        tags: editingTodo.tags?.filter(tag => tag.name !== tagName) || []
-      })
+  const handleRemoveTagFromBacklogTodo = async (todoId: string, tagName: string) => {
+    const success = await removeTagFromTodo(todoId, tagName)
+    if (success) {
+      // Atualizar também o editingTodo se estiver editando a mesma tarefa
+      if (editingTodo && editingTodo.id === todoId) {
+        setEditingTodo({
+          ...editingTodo,
+          tags: (editingTodo.tags || []).filter(tag => tag.name !== tagName)
+        })
+      }
     }
   }
 
@@ -1411,14 +1361,27 @@ export default function PlanningPage() {
     }
   }
 
-  const handleRemoveTag = (tagName: string) => {
-    // Remove a tag de todos os todos que a possuem
-    setTodos(todos.map(t => ({
-      ...t,
-      tags: t.tags?.filter(tag => tag.name !== tagName) || []
-    })))
-    // Remove a tag da lista de tags disponíveis
-    setAvailableTags(availableTags.filter(t => t.name !== tagName))
+  const handleRemoveTag = async (tagName: string) => {
+    try {
+      // Encontrar a tag pelo nome
+      const tag = tags.find(t => t.name === tagName)
+      if (!tag) return
+
+      // Remover a tag de todos os todos que a possuem
+      for (const todo of todos) {
+        if (todo.tags?.some(t => t.name === tagName)) {
+          await removeTagFromTodo(todo.id, tagName)
+        }
+      }
+
+      // Remover a tag da lista de tags disponíveis
+      setAvailableTags(availableTags.filter(t => t.name !== tagName))
+      
+      // Recarregar dados para sincronizar com o banco
+      // reloadData()
+    } catch (error) {
+      console.error('Erro ao remover tag:', error)
+    }
   }
 
   // Configuração dos sensores para drag and drop

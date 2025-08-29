@@ -55,6 +55,13 @@ export interface DBGoal {
   updated_at: string
 }
 
+export interface DBTodoTag {
+  id: string
+  todo_id: string
+  tag_id: string
+  created_at: string
+}
+
 export interface DBReminder {
   id: string
   user_id: string
@@ -214,9 +221,84 @@ export const tagsService = {
   }
 }
 
+// Serviço para gerenciar relacionamentos todo_tags
+export const todoTagsService = {
+  // Buscar tags de uma tarefa específica
+  async getTagsForTodo(todoId: string): Promise<DBTag[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('todo_tags')
+      .select(`
+        tags (
+          id,
+          user_id,
+          name,
+          color,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('todo_id', todoId)
+
+    if (error) {
+      console.error('Erro ao buscar tags da tarefa:', error)
+      return []
+    }
+
+    // Extrair as tags do array aninhado
+    const tags = data?.flatMap(item => item.tags || []).filter(Boolean) || []
+    return tags
+  },
+
+  // Adicionar tag a uma tarefa
+  async addTagToTodo(todoId: string, tagId: string): Promise<void> {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('todo_tags')
+      .insert({
+        todo_id: todoId,
+        tag_id: tagId
+      })
+
+    if (error) {
+      console.error('Erro ao adicionar tag à tarefa:', error)
+      throw error
+    }
+  },
+
+  // Remover tag de uma tarefa
+  async removeTagFromTodo(todoId: string, tagId: string): Promise<void> {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('todo_tags')
+      .delete()
+      .eq('todo_id', todoId)
+      .eq('tag_id', tagId)
+
+    if (error) {
+      console.error('Erro ao remover tag da tarefa:', error)
+      throw error
+    }
+  },
+
+  // Remover todas as tags de uma tarefa
+  async removeAllTagsFromTodo(todoId: string): Promise<void> {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('todo_tags')
+      .delete()
+      .eq('todo_id', todoId)
+
+    if (error) {
+      console.error('Erro ao remover todas as tags da tarefa:', error)
+      throw error
+    }
+  }
+}
+
 // Serviço de Tarefas
 export const todosService = {
-  // Buscar todas as tarefas do usuário
+  // Buscar todas as tarefas do usuário com suas tags
   async getTodos(userId: string): Promise<DBTodo[]> {
     const supabase = createClient()
     const { data, error } = await supabase
@@ -230,7 +312,15 @@ export const todosService = {
       throw error
     }
 
-    return data || []
+    // Buscar tags para cada tarefa
+    const todosWithTags = await Promise.all(
+      (data || []).map(async (todo) => {
+        const tags = await todoTagsService.getTagsForTodo(todo.id)
+        return { ...todo, tags }
+      })
+    )
+
+    return todosWithTags
   },
 
   // Criar nova tarefa
@@ -431,7 +521,7 @@ export const remindersService = {
 }
 
 // Adapters para converter entre DBTodo e Todo
-export function fromDbTodo(row: DBTodo): Todo {
+export function fromDbTodo(row: DBTodo & { tags?: DBTag[] }): Todo {
   return {
     id: row.id,
     title: row.title,
@@ -444,7 +534,7 @@ export function fromDbTodo(row: DBTodo): Todo {
     timeSensitive: row.time_sensitive,
     onHold: row.on_hold,
     onHoldReason: row.on_hold_reason,
-    tags: [], // Por enquanto vazio, será implementado separadamente
+    tags: row.tags?.map(tag => ({ name: tag.name, color: tag.color })) || [],
     created_at: row.created_at,
     updated_at: row.updated_at
   };

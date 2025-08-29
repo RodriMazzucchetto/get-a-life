@@ -6,6 +6,7 @@ import {
   todosService, 
   goalsService, 
   remindersService,
+  todoTagsService,
   type DBProject,
   type DBTag,
   type DBTodo,
@@ -278,6 +279,57 @@ export function usePlanningData() {
     }
   }, [])
 
+  // Funções para gerenciar tags de todos
+  const addTagToTodo = useCallback(async (todoId: string, tagName: string) => {
+    if (!user) return false
+    
+    try {
+      // Encontrar a tag pelo nome
+      const tag = tags.find(t => t.name === tagName)
+      if (!tag) return false
+
+      // Adicionar tag ao todo no banco
+      await todoTagsService.addTagToTodo(todoId, tag.id)
+      
+      // Atualizar estado local
+      setTodos(prev => prev.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: [...(t.tags || []), { name: tag.name, color: tag.color }] }
+          : t
+      ))
+      
+      return true
+    } catch (error) {
+      console.error('Erro ao adicionar tag ao todo:', error)
+      return false
+    }
+  }, [user, tags])
+
+  const removeTagFromTodo = useCallback(async (todoId: string, tagName: string) => {
+    if (!user) return false
+    
+    try {
+      // Encontrar a tag pelo nome
+      const tag = tags.find(t => t.name === tagName)
+      if (!tag) return false
+
+      // Remover tag do todo no banco
+      await todoTagsService.removeTagFromTodo(todoId, tag.id)
+      
+      // Atualizar estado local
+      setTodos(prev => prev.map(t => 
+        t.id === todoId 
+          ? { ...t, tags: (t.tags || []).filter(tag => tag.name !== tagName) }
+          : t
+      ))
+      
+      return true
+    } catch (error) {
+      console.error('Erro ao remover tag do todo:', error)
+      return false
+    }
+  }, [user, tags])
+
   // Estados de loading consolidados
   const isLoading = loadingProjects || loadingTags || loadingTodos || loadingGoals || loadingReminders
 
@@ -338,6 +390,10 @@ export function usePlanningData() {
     createReminder,
     updateReminder,
     deleteReminder,
+    
+    // Funções para gerenciar tags de todos
+    addTagToTodo,
+    removeTagFromTodo,
     
     // Recarregar dados
     reloadData: loadAllData
