@@ -1029,44 +1029,70 @@ export default function PlanningPage() {
   // Funções para gerenciar tags
   const handleAddTagToTodo = async (todoId: string, tagName: string) => {
     console.log('🔄 Componente: Adicionando tag ao todo:', { todoId, tagName })
+    console.log('🔄 Componente: availableTags:', availableTags)
+    console.log('🔄 Componente: editingTodo:', editingTodo)
     
-    const success = await addTagToTodo(todoId, tagName)
-    if (success) {
-      console.log('✅ Componente: Tag adicionada com sucesso, atualizando estados locais')
+    try {
+      const success = await addTagToTodo(todoId, tagName)
+      console.log('🔄 Componente: Resultado de addTagToTodo:', success)
       
-      const tag = availableTags.find(t => t.name === tagName)
-      if (tag) {
-        // Atualizar todos os estados locais para manter sincronização
-        setTodos(prevTodos => prevTodos.map(t => 
-          t.id === todoId 
-            ? { ...t, tags: [...(t.tags || []), tag] }
-            : t
-        ))
+      if (success) {
+        console.log('✅ Componente: Tag adicionada com sucesso, atualizando estados locais')
         
-        setBacklogTodos(prevBacklog => prevBacklog.map(t => 
-          t.id === todoId 
-            ? { ...t, tags: [...(t.tags || []), tag] }
-            : t
-        ))
+        const tag = availableTags.find(t => t.name === tagName)
+        console.log('🔄 Componente: Tag encontrada:', tag)
         
-        setInProgressTodos(prevInProgress => prevInProgress.map(t => 
-          t.id === todoId 
-            ? { ...t, tags: [...(t.tags || []), tag] }
-            : t
-        ))
-        
-        // Atualizar também o editingTodo se estiver editando a mesma tarefa
-        if (editingTodo && editingTodo.id === todoId) {
-          setEditingTodo({
-            ...editingTodo,
-            tags: [...(editingTodo.tags || []), tag]
+        if (tag) {
+          // Atualizar todos os estados locais para manter sincronização
+          setTodos(prevTodos => {
+            const updated = prevTodos.map(t => 
+              t.id === todoId 
+                ? { ...t, tags: [...(t.tags || []), tag] }
+                : t
+            )
+            console.log('🔄 Componente: Estado todos atualizado:', updated.find(t => t.id === todoId))
+            return updated
           })
+          
+          setBacklogTodos(prevBacklog => {
+            const updated = prevBacklog.map(t => 
+              t.id === todoId 
+                ? { ...t, tags: [...(t.tags || []), tag] }
+                : t
+            )
+            console.log('🔄 Componente: Estado backlogTodos atualizado:', updated.find(t => t.id === todoId))
+            return updated
+          })
+          
+          setInProgressTodos(prevInProgress => {
+            const updated = prevInProgress.map(t => 
+              t.id === todoId 
+                ? { ...t, tags: [...(t.tags || []), tag] }
+                : t
+            )
+            console.log('🔄 Componente: Estado inProgressTodos atualizado:', updated.find(t => t.id === todoId))
+            return updated
+          })
+          
+          // Atualizar também o editingTodo se estiver editando a mesma tarefa
+          if (editingTodo && editingTodo.id === todoId) {
+            const updatedEditingTodo = {
+              ...editingTodo,
+              tags: [...(editingTodo.tags || []), tag]
+            }
+            setEditingTodo(updatedEditingTodo)
+            console.log('🔄 Componente: editingTodo atualizado:', updatedEditingTodo)
+          }
+          
+          console.log('✅ Componente: Todos os estados locais atualizados')
+        } else {
+          console.log('❌ Componente: Tag não encontrada em availableTags')
         }
-        
-        console.log('✅ Componente: Todos os estados locais atualizados')
+      } else {
+        console.log('❌ Componente: Falha ao adicionar tag')
       }
-    } else {
-      console.log('❌ Componente: Falha ao adicionar tag')
+    } catch (error) {
+      console.error('❌ Componente: Erro ao adicionar tag:', error)
     }
   }
 

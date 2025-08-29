@@ -309,23 +309,34 @@ export function usePlanningData() {
 
   // Funções para gerenciar tags de todos
   const addTagToTodo = useCallback(async (todoId: string, tagName: string) => {
-    if (!user) return false
+    if (!user) {
+      console.log('❌ Hook: Usuário não autenticado')
+      return false
+    }
     
     try {
       console.log('🔄 Hook: Adicionando tag ao todo:', { todoId, tagName })
+      console.log('🔄 Hook: Usuário:', user.id)
       console.log('🔄 Hook: Tags disponíveis:', tags)
+      console.log('🔄 Hook: Tags length:', tags.length)
       
       // Encontrar a tag pelo nome
       const tag = tags.find(t => t.name === tagName)
+      console.log('🔄 Hook: Buscando tag com nome:', tagName)
+      console.log('🔄 Hook: Tag encontrada:', tag)
+      
       if (!tag) {
         console.log('❌ Hook: Tag não encontrada:', tagName)
+        console.log('❌ Hook: Nomes das tags disponíveis:', tags.map(t => t.name))
         return false
       }
       
       console.log('✅ Hook: Tag encontrada:', tag)
+      console.log('🔄 Hook: Adicionando tag ao banco...')
 
       // Adicionar tag ao todo no banco
       await todoTagsService.addTagToTodo(todoId, tag.id)
+      console.log('✅ Hook: Tag adicionada ao banco com sucesso')
       
       // Atualizar estado local
       setTodos(prev => {
@@ -334,13 +345,19 @@ export function usePlanningData() {
             ? { ...t, tags: [...(t.tags || []), { name: tag.name, color: tag.color }] }
             : t
         )
-        console.log('🔄 Hook: Estado atualizado:', updated.find(t => t.id === todoId))
+        const updatedTodo = updated.find(t => t.id === todoId)
+        console.log('🔄 Hook: Estado atualizado:', updatedTodo)
+        console.log('🔄 Hook: Tags do todo atualizado:', updatedTodo?.tags)
         return updated
       })
       
+      console.log('✅ Hook: Tag adicionada com sucesso ao todo:', todoId)
       return true
     } catch (error) {
       console.error('❌ Hook: Erro ao adicionar tag ao todo:', error)
+      if (error instanceof Error) {
+        console.error('❌ Hook: Stack trace:', error.stack)
+      }
       return false
     }
   }, [user, tags])
