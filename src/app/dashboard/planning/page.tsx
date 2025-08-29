@@ -858,10 +858,14 @@ export default function PlanningPage() {
   }
 
   // Função para alternar prioridade
-  const handleTogglePriority = (todoId: string) => {
-    setTodos(todos.map(t => 
-      t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-    ))
+  const handleTogglePriority = async (todoId: string) => {
+    // Encontrar a tarefa atual
+    const currentTodo = todos.find(t => t.id === todoId)
+    if (currentTodo) {
+      await updateTodo(todoId, {
+        is_high_priority: !currentTodo.isHighPriority
+      })
+    }
   }
 
   // Função para agrupar todos por primeira tag
