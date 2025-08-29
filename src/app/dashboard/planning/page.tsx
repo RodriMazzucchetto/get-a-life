@@ -272,9 +272,7 @@ export default function PlanningPage() {
     deleteGoal,
     createReminder,
     updateReminder,
-    deleteReminder,
-    addTagToTodo,
-    removeTagFromTodo
+    deleteReminder
   } = usePlanningData()
 
   const [showTaskModal, setShowTaskModal] = useState(false)
@@ -1026,115 +1024,9 @@ export default function PlanningPage() {
     }
   }
 
-  // Funções para gerenciar tags
-  const handleAddTagToTodo = async (todoId: string, tagName: string) => {
-    console.log('🔄 Componente: Adicionando tag ao todo:', { todoId, tagName })
-    console.log('🔄 Componente: availableTags:', availableTags)
-    console.log('🔄 Componente: editingTodo:', editingTodo)
-    
-    try {
-      const success = await addTagToTodo(todoId, tagName)
-      console.log('🔄 Componente: Resultado de addTagToTodo:', success)
-      
-      if (success) {
-        console.log('✅ Componente: Tag adicionada com sucesso, atualizando estados locais')
-        
-        const tag = availableTags.find(t => t.name === tagName)
-        console.log('🔄 Componente: Tag encontrada:', tag)
-        
-        if (tag) {
-          // Atualizar todos os estados locais para manter sincronização
-          setTodos(prevTodos => {
-            const updated = prevTodos.map(t => 
-              t.id === todoId 
-                ? { ...t, tags: [...(t.tags || []), tag] }
-                : t
-            )
-            console.log('🔄 Componente: Estado todos atualizado:', updated.find(t => t.id === todoId))
-            return updated
-          })
-          
-          setBacklogTodos(prevBacklog => {
-            const updated = prevBacklog.map(t => 
-              t.id === todoId 
-                ? { ...t, tags: [...(t.tags || []), tag] }
-                : t
-            )
-            console.log('🔄 Componente: Estado backlogTodos atualizado:', updated.find(t => t.id === todoId))
-            return updated
-          })
-          
-          setInProgressTodos(prevInProgress => {
-            const updated = prevInProgress.map(t => 
-              t.id === todoId 
-                ? { ...t, tags: [...(t.tags || []), tag] }
-                : t
-            )
-            console.log('🔄 Componente: Estado inProgressTodos atualizado:', updated.find(t => t.id === todoId))
-            return updated
-          })
-          
-          // Atualizar também o editingTodo se estiver editando a mesma tarefa
-          if (editingTodo && editingTodo.id === todoId) {
-            const updatedEditingTodo = {
-              ...editingTodo,
-              tags: [...(editingTodo.tags || []), tag]
-            }
-            setEditingTodo(updatedEditingTodo)
-            console.log('🔄 Componente: editingTodo atualizado:', updatedEditingTodo)
-          }
-          
-          console.log('✅ Componente: Todos os estados locais atualizados')
-        } else {
-          console.log('❌ Componente: Tag não encontrada em availableTags')
-        }
-      } else {
-        console.log('❌ Componente: Falha ao adicionar tag')
-      }
-    } catch (error) {
-      console.error('❌ Componente: Erro ao adicionar tag:', error)
-    }
-  }
+  // Funções de tags removidas - serão reimplementadas do zero
 
-  const handleRemoveTagFromTodo = async (todoId: string, tagName: string) => {
-    console.log('🔄 Componente: Removendo tag do todo:', { todoId, tagName })
-    
-    const success = await removeTagFromTodo(todoId, tagName)
-    if (success) {
-      console.log('✅ Componente: Tag removida com sucesso, atualizando estados locais')
-      
-      // Atualizar todos os estados locais para manter sincronização
-      setTodos(prevTodos => prevTodos.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: (t.tags || []).filter(tag => tag.name !== tagName) }
-          : t
-      ))
-      
-      setBacklogTodos(prevBacklog => prevBacklog.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: (t.tags || []).filter(tag => tag.name !== tagName) }
-          : t
-      ))
-      
-      setInProgressTodos(prevInProgress => prevInProgress.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: (t.tags || []).filter(tag => tag.name !== tagName) }
-          : t
-      ))
-      
-      // Atualizar também o editingTodo se estiver editando a mesma tarefa
-      if (editingTodo && editingTodo.id === todoId) {
-        setEditingTodo({
-          ...editingTodo,
-          tags: (editingTodo.tags || []).filter(tag => tag.name !== tagName)
-        })
-      }
-      
-      console.log('✅ Componente: Todos os estados locais atualizados')
-    } else {
-      console.log('❌ Componente: Falha ao remover tag')
-    }
-  }
+  // Funções de tags removidas - serão reimplementadas do zero
 
   // Funções para itens em progresso
   const handleCreateInProgressTodo = () => {
@@ -1429,65 +1321,7 @@ export default function PlanningPage() {
     }
   }
 
-  const handleAddTagToBacklogTodo = async (todoId: string, tagName: string) => {
-    const success = await addTagToTodo(todoId, tagName)
-    if (success) {
-      // Atualizar também o editingTodo se estiver editando a mesma tarefa
-      if (editingTodo && editingTodo.id === todoId) {
-        const tag = availableTags.find(t => t.name === tagName)
-        if (tag) {
-          setEditingTodo({
-            ...editingTodo,
-            tags: [...(editingTodo.tags || []), tag]
-          })
-        }
-      }
-    }
-  }
-
-  const handleRemoveTagFromBacklogTodo = async (todoId: string, tagName: string) => {
-    const success = await removeTagFromTodo(todoId, tagName)
-    if (success) {
-      // Atualizar também o editingTodo se estiver editando a mesma tarefa
-      if (editingTodo && editingTodo.id === todoId) {
-        setEditingTodo({
-          ...editingTodo,
-          tags: (editingTodo.tags || []).filter(tag => tag.name !== tagName)
-        })
-      }
-    }
-  }
-
-  const handleCreateNewTag = () => {
-    if (newTagName.trim() && !availableTags.some(t => t.name === newTagName.trim())) {
-      const newTag = { name: newTagName.trim(), color: newTagColor }
-      setAvailableTags([...availableTags, newTag])
-      setNewTagName('')
-    }
-  }
-
-  const handleRemoveTag = async (tagName: string) => {
-    try {
-      // Encontrar a tag pelo nome
-      const tag = tags.find(t => t.name === tagName)
-      if (!tag) return
-
-      // Remover a tag de todos os todos que a possuem
-      for (const todo of todos) {
-        if (todo.tags?.some(t => t.name === tagName)) {
-          await removeTagFromTodo(todo.id, tagName)
-        }
-      }
-
-      // Remover a tag da lista de tags disponíveis
-      setAvailableTags(availableTags.filter(t => t.name !== tagName))
-      
-      // Recarregar dados para sincronizar com o banco
-      // reloadData()
-    } catch (error) {
-      console.error('Erro ao remover tag:', error)
-    }
-  }
+  // Funções de tags removidas - serão reimplementadas do zero
 
   // Configuração dos sensores para drag and drop
   const sensors = useSensors(
@@ -3345,7 +3179,7 @@ export default function PlanningPage() {
                         >
                           {tag.name}
                           <button
-                            onClick={() => handleRemoveTagFromTodo(editingTodo.id, tag.name)}
+                            onClick={() => console.log('Tag removida - funcionalidade será reimplementada')}
                             className="ml-2 text-white hover:text-gray-200"
                           >
                             ×
@@ -3375,7 +3209,7 @@ export default function PlanningPage() {
                         className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
                       />
                       <button
-                        onClick={handleCreateNewTag}
+                                                    onClick={() => console.log('Nova tag - funcionalidade será reimplementada')}
                         className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3396,7 +3230,7 @@ export default function PlanningPage() {
                         .map((tag, index) => (
                           <button
                             key={index}
-                            onClick={() => handleAddTagToTodo(editingTodo.id, tag.name)}
+                            onClick={() => console.log('Tag adicionada - funcionalidade será reimplementada')}
                             className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                           >
                             + {tag.name}

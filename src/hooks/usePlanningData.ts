@@ -6,7 +6,6 @@ import {
   todosService, 
   goalsService, 
   remindersService,
-  todoTagsService,
   type DBProject,
   type DBTag,
   type DBTodo,
@@ -65,15 +64,15 @@ export function usePlanningData() {
       setTags(tagsData)
       setLoadingTags(false)
 
-      // Carregar tarefas (agora com tags via JOIN)
-      console.log('🔄 Hook: Carregando todos com tags...')
+      // Carregar tarefas (sem tags por enquanto)
+      console.log('🔄 Hook: Carregando todos...')
       const todosData = await todosService.getTodos(user.id)
       console.log('📊 Hook: Todos carregados do banco:', todosData)
       
-      const todosWithTags = todosData.map(fromDbTodo)
-      console.log('✅ Hook: Todos convertidos com tags:', todosWithTags)
+      const todosConverted = todosData.map(fromDbTodo)
+      console.log('✅ Hook: Todos convertidos:', todosConverted)
       
-      setTodos(todosWithTags)
+      setTodos(todosConverted)
       setLoadingTodos(false)
 
       // Carregar metas
@@ -182,28 +181,8 @@ export function usePlanningData() {
       
       console.log('✅ Hook: Todo criado no banco:', newTodo)
       
-      // Se o todo tem tags, adicioná-las através do serviço de tags
-      if (todoData.tags && todoData.tags.length > 0) {
-        console.log('🔄 Hook: Adicionando tags ao todo recém-criado:', todoData.tags)
-        
-        for (const tag of todoData.tags) {
-          try {
-            // Encontrar a tag pelo nome
-            const existingTag = tags.find(t => t.name === tag.name)
-            if (existingTag) {
-              await todoTagsService.addTagToTodo(newTodo.id, existingTag.id)
-              console.log('✅ Hook: Tag adicionada:', tag.name)
-            } else {
-              console.log('⚠️ Hook: Tag não encontrada no banco:', tag.name)
-            }
-          } catch (error) {
-            console.error('❌ Hook: Erro ao adicionar tag:', tag.name, error)
-          }
-        }
-        
-        // Atualizar o todo com as tags
-        newTodo.tags = todoData.tags
-      }
+      // Tags serão implementadas do zero
+      console.log('🔄 Hook: Tags serão implementadas do zero')
       
       setTodos(prev => [newTodo, ...prev])
       return newTodo
@@ -313,92 +292,7 @@ export function usePlanningData() {
     }
   }, [])
 
-  // Funções para gerenciar tags de todos
-  const addTagToTodo = useCallback(async (todoId: string, tagName: string) => {
-    if (!user) {
-      console.log('❌ Hook: Usuário não autenticado')
-      return false
-    }
-    
-    try {
-      console.log('🔄 Hook: Adicionando tag ao todo:', { todoId, tagName })
-      console.log('🔄 Hook: Usuário:', user.id)
-      console.log('🔄 Hook: Tags disponíveis:', tags)
-      console.log('🔄 Hook: Tags length:', tags.length)
-      
-      // Encontrar a tag pelo nome
-      const tag = tags.find(t => t.name === tagName)
-      console.log('🔄 Hook: Buscando tag com nome:', tagName)
-      console.log('🔄 Hook: Tag encontrada:', tag)
-      
-      if (!tag) {
-        console.log('❌ Hook: Tag não encontrada:', tagName)
-        console.log('❌ Hook: Nomes das tags disponíveis:', tags.map(t => t.name))
-        return false
-      }
-      
-      console.log('✅ Hook: Tag encontrada:', tag)
-      console.log('🔄 Hook: Adicionando tag ao banco...')
-
-      // Adicionar tag ao todo no banco
-      await todoTagsService.addTagToTodo(todoId, tag.id)
-      console.log('✅ Hook: Tag adicionada ao banco com sucesso')
-      
-      // Atualizar estado local
-      setTodos(prev => {
-        const updated = prev.map(t => 
-          t.id === todoId 
-            ? { ...t, tags: [...(t.tags || []), { name: tag.name, color: tag.color }] }
-            : t
-        )
-        const updatedTodo = updated.find(t => t.id === todoId)
-        console.log('🔄 Hook: Estado atualizado:', updatedTodo)
-        console.log('🔄 Hook: Tags do todo atualizado:', updatedTodo?.tags)
-        return updated
-      })
-      
-      // Recarregar dados para garantir sincronização
-      console.log('🔄 Hook: Recarregando dados para sincronizar...')
-      const reloadedTodos = await todosService.getTodos(user.id)
-      const reloadedTodosWithTags = reloadedTodos.map(fromDbTodo)
-      setTodos(reloadedTodosWithTags)
-      console.log('✅ Hook: Dados recarregados e sincronizados')
-      
-      console.log('✅ Hook: Tag adicionada com sucesso ao todo:', todoId)
-      return true
-    } catch (error) {
-      console.error('❌ Hook: Erro ao adicionar tag ao todo:', error)
-      if (error instanceof Error) {
-        console.error('❌ Hook: Stack trace:', error.stack)
-      }
-      return false
-    }
-  }, [user, tags])
-
-  const removeTagFromTodo = useCallback(async (todoId: string, tagName: string) => {
-    if (!user) return false
-    
-    try {
-      // Encontrar a tag pelo nome
-      const tag = tags.find(t => t.name === tagName)
-      if (!tag) return false
-
-      // Remover tag do todo no banco
-      await todoTagsService.removeTagFromTodo(todoId, tag.id)
-      
-      // Atualizar estado local
-      setTodos(prev => prev.map(t => 
-        t.id === todoId 
-          ? { ...t, tags: (t.tags || []).filter(tag => tag.name !== tagName) }
-          : t
-      ))
-      
-      return true
-    } catch (error) {
-      console.error('Erro ao remover tag do todo:', error)
-      return false
-    }
-  }, [user, tags])
+  // Funções de tags removidas - serão reimplementadas do zero
 
   // Estados de loading consolidados
   const isLoading = loadingProjects || loadingTags || loadingTodos || loadingGoals || loadingReminders
@@ -460,10 +354,6 @@ export function usePlanningData() {
     createReminder,
     updateReminder,
     deleteReminder,
-    
-    // Funções para gerenciar tags de todos
-    addTagToTodo,
-    removeTagFromTodo,
     
     // Recarregar dados
     reloadData: loadAllData
