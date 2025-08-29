@@ -820,35 +820,35 @@ export default function PlanningPage() {
     setShowEditTodoModal(true)
   }
 
-  const handleUpdateTodo = () => {
+  const handleUpdateTodo = async () => {
     if (editingTodo && editingTodo.title.trim()) {
-      // Atualizar no bloco correto baseado no ID
-      const isBacklogTodo = backlogTodos.some(t => t.id === editingTodo.id)
-      const isInProgressTodo = inProgressTodos.some(t => t.id === editingTodo.id)
-      
-      if (isBacklogTodo) {
-        setBacklogTodos(backlogTodos.map(t => 
-          t.id === editingTodo.id ? editingTodo : t
-        ))
-      } else if (isInProgressTodo) {
-        setInProgressTodos(inProgressTodos.map(t => 
-          t.id === editingTodo.id ? editingTodo : t
-        ))
-      } else {
-        setTodos(todos.map(t => 
-          t.id === editingTodo.id ? editingTodo : t
-        ))
+      const updatedTodo = await updateTodo(editingTodo.id, {
+        title: editingTodo.title.trim(),
+        description: editingTodo.description?.trim() || '',
+        priority: editingTodo.priority,
+        category: editingTodo.category?.trim() || '',
+        due_date: editingTodo.dueDate || undefined,
+        completed: editingTodo.completed,
+        is_high_priority: editingTodo.isHighPriority,
+        time_sensitive: editingTodo.timeSensitive,
+        on_hold: editingTodo.onHold,
+        on_hold_reason: editingTodo.onHoldReason
+      })
+      if (updatedTodo) {
+        setEditingTodo(null)
+        setShowEditTodoModal(false)
       }
-      
-      setEditingTodo(null)
-      setShowEditTodoModal(false)
     }
   }
 
-  const handleToggleTodoComplete = (todoId: string) => {
-    setTodos(todos.map(t => 
-      t.id === todoId ? { ...t, completed: !t.completed } : t
-    ))
+  const handleToggleTodoComplete = async (todoId: string) => {
+    // Encontrar a tarefa atual
+    const currentTodo = todos.find(t => t.id === todoId)
+    if (currentTodo) {
+      await updateTodo(todoId, {
+        completed: !currentTodo.completed
+      })
+    }
   }
 
   const handleDeleteTodo = (todoId: string) => {
