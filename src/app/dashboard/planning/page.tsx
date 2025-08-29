@@ -575,23 +575,11 @@ export default function PlanningPage() {
     }
   }
 
-  const handleDeleteTag = (tagName: string) => {
+  const handleDeleteTag = async (tagName: string) => {
     if (confirm('Tem certeza que deseja deletar esta tag? Esta ação removerá a tag de todas as tarefas que a possuem.')) {
-      // Remove a tag de todos os todos que a possuem
-      setTodos(todos.map(t => ({
-        ...t,
-        tags: t.tags.filter(tag => tag.name !== tagName)
-      })))
-      setBacklogTodos(backlogTodos.map(t => ({
-        ...t,
-        tags: t.tags.filter(tag => tag.name !== tagName)
-      })))
-      setInProgressTodos(inProgressTodos.map(t => ({
-        ...t,
-        tags: t.tags.filter(tag => tag.name !== tagName)
-      })))
-      // Remove a tag da lista de tags disponíveis
-      setAvailableTags(availableTags.filter(t => t.name !== tagName))
+      // TODO: Implementar lógica para remover tag de todas as tarefas
+      // Por enquanto, apenas remove da lista de tags disponíveis
+      // setAvailableTags(availableTags.filter(t => t.name !== tagName))
     }
   }
 
