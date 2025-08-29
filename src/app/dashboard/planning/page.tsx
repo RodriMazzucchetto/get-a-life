@@ -508,8 +508,8 @@ export default function PlanningPage() {
     if (newProject.name.trim()) {
       const newProjectData = await createProject(newProject.name.trim(), newProject.color)
       if (newProjectData) {
-        setNewProject({ name: '', color: '#3B82F6' })
-        setShowNewProjectForm(false)
+      setNewProject({ name: '', color: '#3B82F6' })
+      setShowNewProjectForm(false)
       }
     }
   }
@@ -532,7 +532,7 @@ export default function PlanningPage() {
         color: editingProject.color
       })
       if (updatedProject) {
-        setEditingProject(null)
+      setEditingProject(null)
       }
     }
   }
@@ -599,8 +599,8 @@ export default function PlanningPage() {
         total_initiatives: 0
       })
       if (newGoalData) {
-        setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
-        setShowCreateGoalModal(false)
+      setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
+      setShowCreateGoalModal(false)
       }
     }
   }
@@ -627,8 +627,8 @@ export default function PlanningPage() {
         next_step: editingGoal.whatIsMissing?.trim() || ''
       })
       if (updatedGoal) {
-        setEditingGoal(null)
-        setShowEditGoalModal(false)
+      setEditingGoal(null)
+      setShowEditGoalModal(false)
       }
     }
   }
@@ -637,8 +637,8 @@ export default function PlanningPage() {
     if (confirm('Tem certeza que deseja deletar esta meta? Esta ação não pode ser desfeita.')) {
       const success = await deleteGoal(goalId)
       if (success) {
-        setShowEditGoalModal(false)
-        setEditingGoal(null)
+      setShowEditGoalModal(false)
+      setEditingGoal(null)
       }
     }
   }
@@ -746,7 +746,7 @@ export default function PlanningPage() {
   // Estado para adicionar novo lembrete
   const [showAddReminderForm, setShowAddReminderForm] = useState(false)
   const [newReminder, setNewReminder] = useState('')
-  
+
 
 
   const handleAddReminder = async () => {
@@ -760,8 +760,8 @@ export default function PlanningPage() {
         completed: false
       })
       if (newReminderData) {
-        setNewReminder('')
-        setShowAddReminderForm(false)
+      setNewReminder('')
+      setShowAddReminderForm(false)
       }
     }
   }
@@ -804,8 +804,8 @@ export default function PlanningPage() {
         status: 'backlog'
       })
       if (newTodoData) {
-        setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
-        setShowInlineCreateForm(false)
+      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
+      setShowInlineCreateForm(false)
       }
     }
   }
@@ -835,8 +835,8 @@ export default function PlanningPage() {
         on_hold_reason: editingTodo.onHoldReason
       })
       if (updatedTodo) {
-        setEditingTodo(null)
-        setShowEditTodoModal(false)
+      setEditingTodo(null)
+      setShowEditTodoModal(false)
       }
     }
   }
@@ -863,7 +863,7 @@ export default function PlanningPage() {
     const currentTodo = todos.find(t => t.id === todoId)
     if (currentTodo) {
       await updateTodo(todoId, {
-        is_high_priority: !(currentTodo as any).isHighPriority
+        is_high_priority: !currentTodo.isHighPriority
       })
     }
   }
@@ -2180,20 +2180,20 @@ export default function PlanningPage() {
         <div className="relative top-20 mx-auto p-6 w-[600px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-medium text-gray-900">Gerenciar Projetos e Tags</h3>
-            <button
-              onClick={() => setShowProjectsModal(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ✕
-            </button>
-          </div>
+              <button
+                onClick={() => setShowProjectsModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Seção de Projetos */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-lg font-medium text-gray-900">Projetos</h4>
-                <button
+                <button 
                   onClick={() => setShowNewProjectForm(!showNewProjectForm)}
                   className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
                 >
@@ -2467,10 +2467,10 @@ export default function PlanningPage() {
                   </div>
                 ))}
               </div>
+              </div>
             </div>
           </div>
-        </div>
-      </ModalOverlay>
+        </ModalOverlay>
 
       {/* Task Creation Modal */}
       <ModalOverlay isOpen={showTaskModal} onClose={() => setShowTaskModal(false)}>
