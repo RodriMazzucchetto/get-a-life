@@ -10,7 +10,13 @@ import {
   type DBTag,
   type DBTodo,
   type DBGoal,
-  type DBReminder
+  type DBReminder,
+  type Todo,
+  type Goal,
+  fromDbTodo,
+  toDbUpdate,
+  fromDbGoal,
+  toDbGoal
 } from '@/lib/planning'
 
 export function usePlanningData() {
@@ -25,11 +31,11 @@ export function usePlanningData() {
   const [loadingTags, setLoadingTags] = useState(true)
   
   // Estado para tarefas
-  const [todos, setTodos] = useState<DBTodo[]>([])
+  const [todos, setTodos] = useState<Todo[]>([])
   const [loadingTodos, setLoadingTodos] = useState(true)
   
   // Estado para metas
-  const [goals, setGoals] = useState<DBGoal[]>([])
+  const [goals, setGoals] = useState<Goal[]>([])
   const [loadingGoals, setLoadingGoals] = useState(true)
   
   // Estado para lembretes
@@ -60,12 +66,12 @@ export function usePlanningData() {
 
       // Carregar tarefas
       const todosData = await todosService.getTodos(user.id)
-      setTodos(todosData)
+      setTodos(todosData.map(fromDbTodo))
       setLoadingTodos(false)
 
       // Carregar metas
       const goalsData = await goalsService.getGoals(user.id)
-      setGoals(goalsData)
+      setGoals(goalsData.map(fromDbGoal))
       setLoadingGoals(false)
 
       // Carregar lembretes
@@ -157,11 +163,13 @@ export function usePlanningData() {
   }, [])
 
   // Funções para tarefas
-  const createTodo = useCallback(async (todoData: Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const createTodo = useCallback(async (todoData: Omit<Todo, 'id' | 'created_at' | 'updated_at'>) => {
     if (!user) return null
     
     try {
-      const newTodo = await todosService.createTodo(user.id, todoData)
+      const dbTodoData = toDbUpdate(todoData)
+      const newDbTodo = await todosService.createTodo(user.id, dbTodoData as Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at'>)
+      const newTodo = fromDbTodo(newDbTodo)
       setTodos(prev => [newTodo, ...prev])
       return newTodo
     } catch (error) {
@@ -170,9 +178,11 @@ export function usePlanningData() {
     }
   }, [user])
 
-  const updateTodo = useCallback(async (todoId: string, updates: Partial<DBTodo>) => {
+  const updateTodo = useCallback(async (todoId: string, updates: Partial<Todo>) => {
     try {
-      const updatedTodo = await todosService.updateTodo(todoId, updates)
+      const dbUpdates = toDbUpdate(updates)
+      const updatedDbTodo = await todosService.updateTodo(todoId, dbUpdates)
+      const updatedTodo = fromDbTodo(updatedDbTodo)
       setTodos(prev => prev.map(t => t.id === todoId ? updatedTodo : t))
       return updatedTodo
     } catch (error) {
@@ -193,11 +203,13 @@ export function usePlanningData() {
   }, [])
 
   // Funções para metas
-  const createGoal = useCallback(async (goalData: Omit<DBGoal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const createGoal = useCallback(async (goalData: Omit<Goal, 'id' | 'created_at'>) => {
     if (!user) return null
     
     try {
-      const newGoal = await goalsService.createGoal(user.id, goalData)
+      const dbGoalData = toDbGoal(goalData)
+      const newDbGoal = await goalsService.createGoal(user.id, dbGoalData as Omit<DBGoal, 'id' | 'user_id' | 'created_at' | 'updated_at'>)
+      const newGoal = fromDbGoal(newDbGoal)
       setGoals(prev => [newGoal, ...prev])
       return newGoal
     } catch (error) {
@@ -206,9 +218,11 @@ export function usePlanningData() {
     }
   }, [user])
 
-  const updateGoal = useCallback(async (goalId: string, updates: Partial<DBGoal>) => {
+  const updateGoal = useCallback(async (goalId: string, updates: Partial<Goal>) => {
     try {
-      const updatedGoal = await goalsService.updateGoal(goalId, updates)
+      const dbUpdates = toDbGoal(updates)
+      const updatedDbGoal = await goalsService.updateGoal(goalId, dbUpdates)
+      const updatedGoal = fromDbGoal(updatedDbGoal)
       setGoals(prev => prev.map(g => g.id === goalId ? updatedGoal : g))
       return updatedGoal
     } catch (error) {
@@ -275,6 +289,13 @@ export function usePlanningData() {
     goals,
     reminders,
     
+    // Setters para estado local
+    setTodos,
+    setProjects,
+    setTags,
+    setGoals,
+    setReminders,
+    
     // Loading states
     isLoading,
     loadingProjects,
@@ -293,10 +314,20 @@ export function usePlanningData() {
     updateTag,
     deleteTag,
     
-    // Funções de tarefas
-    createTodo,
-    updateTodo,
-    deleteTodo,
+      // Funções de tarefas
+  createTodo,
+  updateTodo,
+  deleteTodo,
+  
+  // Ações específicas
+  togglePriority: async (todoId: string) => {
+    const todo = todos.find(t => t.id === todoId);
+    if (todo) {
+      const newPriority = !todo.isHighPriority;
+      setTodos(prev => prev.map(t => t.id === todoId ? { ...t, isHighPriority: newPriority } : t));
+      await updateTodo(todoId, { isHighPriority: newPriority });
+    }
+  },
     
     // Funções de metas
     createGoal,

@@ -429,3 +429,110 @@ export const remindersService = {
     }
   }
 }
+
+// Adapters para converter entre DBTodo e Todo
+export function fromDbTodo(row: DBTodo): Todo {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    priority: row.priority,
+    category: row.category,
+    dueDate: row.due_date,
+    completed: row.completed,
+    isHighPriority: row.is_high_priority,
+    timeSensitive: row.time_sensitive,
+    onHold: row.on_hold,
+    onHoldReason: row.on_hold_reason,
+    tags: [], // Por enquanto vazio, será implementado separadamente
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
+}
+
+export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
+  const out: Partial<DBTodo> = {};
+  if (patch.title !== undefined) out.title = patch.title;
+  if (patch.description !== undefined) out.description = patch.description;
+  if (patch.priority !== undefined) out.priority = patch.priority;
+  if (patch.category !== undefined) out.category = patch.category;
+  if (patch.dueDate !== undefined) out.due_date = patch.dueDate;
+  if (patch.completed !== undefined) out.completed = patch.completed;
+  if (patch.isHighPriority !== undefined) out.is_high_priority = patch.isHighPriority;
+  if (patch.timeSensitive !== undefined) out.time_sensitive = patch.timeSensitive;
+  if (patch.onHold !== undefined) out.on_hold = patch.onHold;
+  if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
+  return out;
+}
+
+// Interface Todo para o domínio/UI (camelCase)
+export interface Todo {
+  id: string;
+  title: string;
+  description?: string;
+  priority: 'low' | 'medium' | 'high';
+  category?: string;
+  dueDate?: string;
+  completed: boolean;
+  isHighPriority: boolean;
+  timeSensitive: boolean;
+  onHold: boolean;
+  onHoldReason?: string;
+  tags?: { name: string; color: string }[];
+  created_at: string;
+  updated_at: string;
+}
+
+// Interface Goal para o domínio/UI (camelCase)
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  projectId: string;
+  subProject?: string;
+  whatIsMissing?: string;
+  dueDate?: string;
+  status: 'active' | 'completed';
+  progress: number;
+  nextStep?: string;
+  initiatives: number;
+  totalInitiatives: number;
+  created_at: string;
+  initiativesList?: { id: string; description: string }[];
+}
+
+// Adapters para Goal
+export function fromDbGoal(row: DBGoal): Goal {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    projectId: row.project_id || '',
+    subProject: row.sub_project,
+    whatIsMissing: row.what_is_missing,
+    dueDate: row.due_date,
+    status: row.status,
+    progress: row.progress,
+    nextStep: row.next_step,
+    initiatives: row.initiatives,
+    totalInitiatives: row.total_initiatives,
+    created_at: row.created_at,
+    initiativesList: []
+  };
+}
+
+export function toDbGoal(goal: Partial<Goal>): Partial<DBGoal> {
+  const out: Partial<DBGoal> = {};
+  if (goal.title !== undefined) out.title = goal.title;
+  if (goal.description !== undefined) out.description = goal.description;
+  if (goal.projectId !== undefined) out.project_id = goal.projectId;
+  if (goal.subProject !== undefined) out.sub_project = goal.subProject;
+  if (goal.whatIsMissing !== undefined) out.what_is_missing = goal.whatIsMissing;
+  if (goal.dueDate !== undefined) out.due_date = goal.dueDate;
+  if (goal.status !== undefined) out.status = goal.status;
+  if (goal.progress !== undefined) out.progress = goal.progress;
+  if (goal.nextStep !== undefined) out.next_step = goal.nextStep;
+  if (goal.initiatives !== undefined) out.initiatives = goal.initiatives;
+  if (goal.totalInitiatives !== undefined) out.total_initiatives = goal.totalInitiatives;
+  return out;
+}

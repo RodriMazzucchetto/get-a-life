@@ -124,20 +124,7 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
         )}
       </div>
 
-      {/* Tags no canto direito */}
-      {todo.tags.length > 0 && (
-        <div className="flex items-center gap-1 mr-2">
-          {todo.tags.map((tag, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
-              style={{ backgroundColor: tag.color }}
-            >
-              {tag.name}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* Tags no canto direito - removido temporariamente */}
 
       {/* Botões de ação (visíveis apenas no hover da atividade específica) - sobrepostos às tags */}
       <div className="opacity-0 hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 absolute right-0 top-0 bottom-0 bg-white bg-opacity-90 px-2">
@@ -163,17 +150,17 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
             }`}
             title={todo.onHold ? 'Remover da espera' : 'Colocar em espera'}
           >
-            {todo.onHold ? (
-              // Ícone de play (remover da espera)
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ) : (
-              // Ícone de pause (colocar em espera)
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
+                          {todo.onHold ? (
+                // Ícone de play (remover da espera)
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                // Ícone de pause (colocar em espera)
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
           </button>
         )}
 
@@ -252,47 +239,10 @@ interface Task {
   created_at: string
 }
 
-interface Reminder {
-  id: string
-  title: string
-  description?: string
-  dueDate?: string
-  priority: 'low' | 'medium' | 'high'
-  created_at: string
-}
+import { DBReminder } from '@/lib/planning'
+type Reminder = DBReminder
 
-interface Goal {
-  id: string
-  title: string
-  description?: string
-  projectId: string
-  subProject?: string
-  whatIsMissing?: string
-  dueDate?: string
-  status: 'active' | 'completed'
-  progress: number
-  nextStep?: string
-  initiatives: number
-  totalInitiatives: number
-  created_at: string
-  initiativesList?: { id: string; description: string }[] // Adicionado para armazenar a lista de iniciativas
-}
-
-interface Todo {
-  id: string
-  title: string
-  description?: string
-  priority: 'low' | 'medium' | 'high'
-  category?: string
-  dueDate?: string
-  completed: boolean
-  isHighPriority: boolean
-  timeSensitive: boolean
-  onHold: boolean
-  onHoldReason?: string
-  tags: { name: string; color: string }[]
-  created_at: string
-}
+import { Todo, Goal } from '@/lib/planning'
 
 export default function PlanningPage() {
   // Hook para gerenciar dados de planejamento
@@ -303,6 +253,11 @@ export default function PlanningPage() {
     goals,
     reminders,
     isLoading,
+    setTodos,
+    setProjects,
+    setTags,
+    setGoals,
+    setReminders,
     createProject,
     updateProject,
     deleteProject,
@@ -365,7 +320,7 @@ export default function PlanningPage() {
   const [showCreateTodoModal, setShowCreateTodoModal] = useState(false)
   const [showEditTodoModal, setShowEditTodoModal] = useState(false)
   const [showOnHoldModal, setShowOnHoldModal] = useState(false)
-  const [onHoldReason, setOnHoldReason] = useState('')
+  const [on_hold_reason, setOnHoldReason] = useState('')
   const [todoToPutOnHold, setTodoToPutOnHold] = useState<Todo | null>(null)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [showInlineCreateForm, setShowInlineCreateForm] = useState(false)
@@ -440,7 +395,8 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       tags: [{ name: 'KimonoLab', color: '#EF4444' }],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     },
     {
       id: '21',
@@ -455,7 +411,8 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       tags: [{ name: 'Zentrix BS', color: '#8B5CF6' }],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     },
     {
       id: '22',
@@ -470,7 +427,8 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(), 
+      updated_at: new Date().toISOString()
     },
     {
       id: '23',
@@ -485,7 +443,8 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(), 
+      updated_at: new Date().toISOString()
     },
     {
       id: '24',
@@ -500,7 +459,8 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(), 
+      updated_at: new Date().toISOString()
     }
   ])
 
@@ -588,15 +548,15 @@ export default function PlanningPage() {
       const newGoalData = await createGoal({
         title: newGoal.title.trim(),
         description: newGoal.description.trim(),
-        project_id: newGoal.projectId,
-        sub_project: newGoal.subProject.trim(),
-        what_is_missing: newGoal.whatIsMissing.trim(),
-        due_date: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
+        projectId: newGoal.projectId,
+        subProject: newGoal.subProject.trim(),
+        whatIsMissing: newGoal.whatIsMissing.trim(),
+        dueDate: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
         status: 'active',
         progress: 0,
-        next_step: newGoal.whatIsMissing.trim(),
+        nextStep: newGoal.whatIsMissing.trim(),
         initiatives: 0,
-        total_initiatives: 0
+        totalInitiatives: 0
       })
       if (newGoalData) {
       setNewGoal({ title: '', description: '', projectId: '', subProject: '', whatIsMissing: '', dueDate: null })
@@ -620,11 +580,11 @@ export default function PlanningPage() {
       const updatedGoal = await updateGoal(editingGoal.id, {
         title: editingGoal.title.trim(),
         description: editingGoal.description?.trim() || '',
-        project_id: editingGoal.projectId,
-        sub_project: editingGoal.subProject?.trim() || '',
-        what_is_missing: editingGoal.whatIsMissing?.trim() || '',
-        due_date: editingGoal.dueDate || undefined,
-        next_step: editingGoal.whatIsMissing?.trim() || ''
+        projectId: editingGoal.projectId,
+        subProject: editingGoal.subProject?.trim() || '',
+        whatIsMissing: editingGoal.whatIsMissing?.trim() || '',
+        dueDate: editingGoal.dueDate || undefined,
+        nextStep: editingGoal.whatIsMissing?.trim() || ''
       })
       if (updatedGoal) {
       setEditingGoal(null)
@@ -682,19 +642,27 @@ export default function PlanningPage() {
   const mockReminders: Reminder[] = [
     {
       id: '1',
+      user_id: 'user-1',
       title: 'Reunião com equipe',
       description: 'Discussão sobre próximos sprints',
-      dueDate: '2024-01-15',
+      due_date: '2024-01-15',
       priority: 'high',
-      created_at: new Date().toISOString()
+      category: 'lembretes',
+      completed: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     },
     {
       id: '2',
+      user_id: 'user-1',
       title: 'Pagar contas',
       description: 'Verificar boletos pendentes',
-      dueDate: '2024-01-20',
+      due_date: '2024-01-20',
       priority: 'medium',
-      created_at: new Date().toISOString()
+      category: 'lembretes',
+      completed: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }
   ]
 
@@ -795,13 +763,14 @@ export default function PlanningPage() {
         description: newTodo.description.trim(),
         priority: newTodo.priority,
         category: newTodo.category.trim(),
-        due_date: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
+        dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
-        is_high_priority: false,
-        time_sensitive: newTodo.timeSensitive,
-        on_hold: false,
-        on_hold_reason: undefined,
-        status: 'backlog'
+        isHighPriority: false,
+        timeSensitive: newTodo.timeSensitive,
+        onHold: false,
+        onHoldReason: undefined,
+        tags: [],
+        /* status: 'backlog' */
       })
       if (newTodoData) {
       setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
@@ -827,12 +796,12 @@ export default function PlanningPage() {
         description: editingTodo.description?.trim() || '',
         priority: editingTodo.priority,
         category: editingTodo.category?.trim() || '',
-        due_date: editingTodo.dueDate || undefined,
+        dueDate: editingTodo.dueDate || undefined,
         completed: editingTodo.completed,
-        is_high_priority: editingTodo.isHighPriority,
-        time_sensitive: editingTodo.timeSensitive,
-        on_hold: editingTodo.onHold,
-        on_hold_reason: editingTodo.onHoldReason
+        isHighPriority: editingTodo.isHighPriority,
+        timeSensitive: editingTodo.timeSensitive,
+        onHold: editingTodo.onHold,
+        onHoldReason: editingTodo.onHoldReason
       })
       if (updatedTodo) {
       setEditingTodo(null)
@@ -863,7 +832,7 @@ export default function PlanningPage() {
     const currentTodo = todos.find(t => t.id === todoId)
     if (currentTodo) {
       await updateTodo(todoId, {
-        is_high_priority: !currentTodo.isHighPriority
+        isHighPriority: !currentTodo.isHighPriority
       })
     }
   }
@@ -873,12 +842,14 @@ export default function PlanningPage() {
     const groups: { [key: string]: Todo[] } = {}
     
     todoList.forEach(todo => {
-      if (todo.tags.length > 0) {
-        const firstTag = todo.tags[0].name
-        if (!groups[firstTag]) {
+      if (todo.tags && todo.tags?.length || 0 > 0) {
+        const firstTag = todo.tags?.[0].name
+        if (firstTag && !groups[firstTag]) {
           groups[firstTag] = []
         }
-        groups[firstTag].push(todo)
+        if (firstTag) {
+          groups[firstTag].push(todo)
+        }
       } else {
         // Itens sem tags vão para um grupo "Sem Tags"
         if (!groups['Sem Tags']) {
@@ -1031,19 +1002,19 @@ export default function PlanningPage() {
       if (isBacklogTodo) {
         setBacklogTodos(backlogTodos.map(t => 
           t.id === todoId 
-            ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+            ? { ...t, tags: (t.tags?.some(existingTag => existingTag.name === tagName) || false) ? t.tags : [...(t.tags || []), tag] }
             : t
         ))
       } else if (isInProgressTodo) {
         setInProgressTodos(inProgressTodos.map(t => 
           t.id === todoId 
-            ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+            ? { ...t, tags: (t.tags?.some(existingTag => existingTag.name === tagName) || false) ? t.tags : [...(t.tags || []), tag] }
             : t
         ))
       } else {
         setTodos(todos.map(t => 
           t.id === todoId 
-            ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+            ? { ...t, tags: (t.tags?.some(existingTag => existingTag.name === tagName) || false) ? t.tags : [...(t.tags || []), tag] }
             : t
         ))
       }
@@ -1052,9 +1023,9 @@ export default function PlanningPage() {
       if (editingTodo && editingTodo.id === todoId) {
         setEditingTodo({
           ...editingTodo,
-          tags: editingTodo.tags.some(existingTag => existingTag.name === tagName) 
-            ? editingTodo.tags 
-            : [...editingTodo.tags, tag]
+          tags: editingTodo.tags?.some(existingTag => existingTag.name === tagName) 
+            ? editingTodo.tags || [] 
+            : [...editingTodo.tags || [], tag]
         })
       }
     }
@@ -1068,19 +1039,19 @@ export default function PlanningPage() {
     if (isBacklogTodo) {
       setBacklogTodos(backlogTodos.map(t => 
         t.id === todoId 
-          ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
+          ? { ...t, tags: (t.tags?.filter(tag => tag.name !== tagName) || []) }
           : t
       ))
     } else if (isInProgressTodo) {
       setInProgressTodos(inProgressTodos.map(t => 
         t.id === todoId 
-          ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
+          ? { ...t, tags: (t.tags?.filter(tag => tag.name !== tagName) || []) }
           : t
       ))
     } else {
       setTodos(todos.map(t => 
         t.id === todoId 
-          ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
+          ? { ...t, tags: (t.tags?.filter(tag => tag.name !== tagName) || []) }
           : t
       ))
     }
@@ -1089,7 +1060,7 @@ export default function PlanningPage() {
     if (editingTodo && editingTodo.id === todoId) {
       setEditingTodo({
         ...editingTodo,
-        tags: editingTodo.tags.filter(tag => tag.name !== tagName)
+        tags: editingTodo.tags?.filter || [](tag => tag.name !== tagName)
       })
     }
   }
@@ -1110,7 +1081,7 @@ export default function PlanningPage() {
         onHold: false,
         onHoldReason: undefined,
         tags: [],
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString()
       }
       setInProgressTodos([...inProgressTodos, newTodoData])
       setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
@@ -1204,11 +1175,11 @@ export default function PlanningPage() {
   }
 
   const handleConfirmOnHold = () => {
-    if (todoToPutOnHold && onHoldReason.trim()) {
+    if (todoToPutOnHold && on_hold_reason.trim()) {
       const updatedTodo = {
         ...todoToPutOnHold,
         onHold: true,
-        onHoldReason: onHoldReason.trim()
+        onHoldReason: on_hold_reason.trim()
       }
 
       // Atualizar no bloco correto e reordenar para colocar itens "Em espera" no final
@@ -1328,7 +1299,7 @@ export default function PlanningPage() {
         onHold: false,
         onHoldReason: undefined,
         tags: [],
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString()
       }
       setBacklogTodos([...backlogTodos, newTodoData])
       setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [] })
@@ -1392,7 +1363,7 @@ export default function PlanningPage() {
     if (tag) {
       setBacklogTodos(backlogTodos.map(t => 
         t.id === todoId 
-          ? { ...t, tags: t.tags.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
+          ? { ...t, tags: t.tags?.some(existingTag => existingTag.name === tagName) ? t.tags : [...t.tags, tag] }
           : t
       ))
       
@@ -1400,9 +1371,9 @@ export default function PlanningPage() {
       if (editingTodo && editingTodo.id === todoId) {
         setEditingTodo({
           ...editingTodo,
-          tags: editingTodo.tags.some(existingTag => existingTag.name === tagName) 
-            ? editingTodo.tags 
-            : [...editingTodo.tags, tag]
+          tags: editingTodo.tags?.some(existingTag => existingTag.name === tagName) 
+            ? editingTodo.tags || [] 
+            : [...editingTodo.tags || [], tag]
         })
       }
     }
@@ -1411,7 +1382,7 @@ export default function PlanningPage() {
   const handleRemoveTagFromBacklogTodo = (todoId: string, tagName: string) => {
     setBacklogTodos(backlogTodos.map(t => 
       t.id === todoId 
-        ? { ...t, tags: t.tags.filter(tag => tag.name !== tagName) }
+        ? { ...t, tags: t.tags?.filter || [](tag => tag.name !== tagName) }
         : t
     ))
     
@@ -1419,7 +1390,7 @@ export default function PlanningPage() {
     if (editingTodo && editingTodo.id === todoId) {
       setEditingTodo({
         ...editingTodo,
-        tags: editingTodo.tags.filter(tag => tag.name !== tagName)
+        tags: editingTodo.tags?.filter || [](tag => tag.name !== tagName)
       })
     }
   }
@@ -1436,7 +1407,7 @@ export default function PlanningPage() {
     // Remove a tag de todos os todos que a possuem
     setTodos(todos.map(t => ({
       ...t,
-      tags: t.tags.filter(tag => tag.name !== tagName)
+      tags: t.tags?.filter || [](tag => tag.name !== tagName)
     })))
     // Remove a tag da lista de tags disponíveis
     setAvailableTags(availableTags.filter(t => t.name !== tagName))
@@ -3288,9 +3259,9 @@ export default function PlanningPage() {
                   </label>
                   
                   {/* Tags existentes */}
-                  {editingTodo.tags.length > 0 && (
+                  {editingTodo.tags || [].length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {editingTodo.tags.map((tag, index) => (
+                      {editingTodo.tags || [].map((tag, index) => (
                         <span
                           key={index}
                           className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
@@ -3345,7 +3316,7 @@ export default function PlanningPage() {
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {availableTags
-                        .filter(tag => !editingTodo.tags.some(existingTag => existingTag.name === tag.name))
+                        .filter(tag => !editingTodo.tags?.some(existingTag => existingTag.name === tag.name))
                         .map((tag, index) => (
                           <button
                             key={index}
@@ -3416,12 +3387,12 @@ export default function PlanningPage() {
               {/* Conteúdo */}
               <div className="p-6">
                 <div className="mb-4">
-                  <label htmlFor="onHoldReason" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="on_hold_reason" className="block text-sm font-medium text-gray-700 mb-2">
                     Motivo da espera
                   </label>
                   <textarea
-                    id="onHoldReason"
-                    value={onHoldReason}
+                    id="on_hold_reason"
+                    value={on_hold_reason}
                     onChange={(e) => setOnHoldReason(e.target.value)}
                     placeholder="Explique por que esta tarefa está aguardando..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
@@ -3440,7 +3411,7 @@ export default function PlanningPage() {
                 </button>
                 <button
                   onClick={handleConfirmOnHold}
-                  disabled={!onHoldReason.trim()}
+                  disabled={!on_hold_reason.trim()}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {todoToPutOnHold?.onHold ? 'Remover da Espera' : 'Confirmar'}
