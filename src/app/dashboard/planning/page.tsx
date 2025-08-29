@@ -851,9 +851,9 @@ export default function PlanningPage() {
     }
   }
 
-  const handleDeleteTodo = (todoId: string) => {
+  const handleDeleteTodo = async (todoId: string) => {
     if (confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) {
-      setTodos(todos.filter(t => t.id !== todoId))
+      await deleteTodo(todoId)
     }
   }
 
