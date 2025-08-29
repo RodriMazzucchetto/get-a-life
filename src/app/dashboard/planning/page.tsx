@@ -298,8 +298,14 @@ export default function PlanningPage() {
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showProjectsModal, setShowProjectsModal] = useState(false)
   const [showNewProjectForm, setShowNewProjectForm] = useState(false)
+  const [showNewTagForm, setShowNewTagForm] = useState(false)
   const [editingProject, setEditingProject] = useState<{ id: string; name: string; color: string } | null>(null)
+  const [editingTag, setEditingTag] = useState<{ name: string; color: string } | null>(null)
   const [newProject, setNewProject] = useState({
+    name: '',
+    color: '#3B82F6'
+  })
+  const [newTag, setNewTag] = useState({
     name: '',
     color: '#3B82F6'
   })
@@ -917,6 +923,55 @@ export default function PlanningPage() {
   const handleDeleteProject = (projectId: string) => {
     if (confirm('Tem certeza que deseja deletar este projeto? Esta ação não pode ser desfeita.')) {
       setProjects(projects.filter(p => p.id !== projectId))
+    }
+  }
+
+  // Funções para gerenciar tags
+  const handleCreateTag = () => {
+    if (newTag.name.trim() && !availableTags.some(t => t.name === newTag.name.trim())) {
+      const newTagData = {
+        name: newTag.name.trim(),
+        color: newTag.color
+      }
+      setAvailableTags([...availableTags, newTagData])
+      setNewTag({ name: '', color: '#3B82F6' })
+      setShowNewTagForm(false)
+    }
+  }
+
+  const handleEditTag = (tag: { name: string; color: string }) => {
+    setEditingTag(tag)
+    setShowNewTagForm(false)
+  }
+
+  const handleUpdateTag = () => {
+    if (editingTag && editingTag.name.trim()) {
+      setAvailableTags(availableTags.map(t => 
+        t.name === editingTag.name 
+          ? { ...t, name: editingTag.name.trim(), color: editingTag.color }
+          : t
+      ))
+      setEditingTag(null)
+    }
+  }
+
+  const handleDeleteTag = (tagName: string) => {
+    if (confirm('Tem certeza que deseja deletar esta tag? Esta ação removerá a tag de todas as tarefas que a possuem.')) {
+      // Remove a tag de todos os todos que a possuem
+      setTodos(todos.map(t => ({
+        ...t,
+        tags: t.tags.filter(tag => tag.name !== tagName)
+      })))
+      setBacklogTodos(backlogTodos.map(t => ({
+        ...t,
+        tags: t.tags.filter(tag => tag.name !== tagName)
+      })))
+      setInProgressTodos(inProgressTodos.map(t => ({
+        ...t,
+        tags: t.tags.filter(tag => tag.name !== tagName)
+      })))
+      // Remove a tag da lista de tags disponíveis
+      setAvailableTags(availableTags.filter(t => t.name !== tagName))
     }
   }
 
@@ -1788,6 +1843,18 @@ export default function PlanningPage() {
           
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
+            {/* Gerenciar Projetos e Tags Button */}
+            <button
+              onClick={() => setShowProjectsModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Gerenciar Projetos & Tags
+            </button>
+            
             {/* Google Calendar Button */}
             <button className="inline-flex items-center px-4 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-white hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
               <ExclamationTriangleIcon className="h-4 w-4 mr-2 text-orange-500" />
@@ -1888,20 +1955,6 @@ export default function PlanningPage() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowProjectsModal(true)
-                }}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              >
-                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Projetos
-              </button>
-              
               <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
                 <span className="text-sm font-medium text-gray-700">
                   {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}% média` : '0% média'}
@@ -2492,35 +2545,38 @@ export default function PlanningPage() {
         </div>
       </DndContext>
 
-      {/* Projects Management Modal */}
+      {/* Modal de Projetos e Tags */}
       <ModalOverlay isOpen={showProjectsModal} onClose={() => setShowProjectsModal(false)}>
-        <div className="relative top-20 mx-auto p-6 w-96 shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Gerenciar Projetos</h3>
-              <button
-                onClick={() => setShowProjectsModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
+        <div className="relative top-20 mx-auto p-6 w-[600px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-medium text-gray-900">Gerenciar Projetos e Tags</h3>
+            <button
+              onClick={() => setShowProjectsModal(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
 
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="text-sm font-medium text-gray-700">Projetos Existentes</h4>
-                <button 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Seção de Projetos */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-medium text-gray-900">Projetos</h4>
+                <button
                   onClick={() => setShowNewProjectForm(!showNewProjectForm)}
-                  className="w-8 h-8 border-2 border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-700 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
+                  className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
+                  + Projeto
                 </button>
               </div>
 
               {/* Formulário de Novo Projeto ou Edição */}
               {(showNewProjectForm || editingProject) && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2545,7 +2601,7 @@ export default function PlanningPage() {
                             }
                           }
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Digite o nome do projeto"
                         autoFocus
                       />
@@ -2566,7 +2622,7 @@ export default function PlanningPage() {
                               setNewProject({ ...newProject, color: e.target.value })
                             }
                           }}
-                          className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
+                          className="w-12 h-10 border border-blue-300 rounded-md cursor-pointer"
                         />
                         <input
                           type="text"
@@ -2579,7 +2635,7 @@ export default function PlanningPage() {
                             }
                           }}
                           placeholder="#000000"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     </div>
@@ -2642,8 +2698,149 @@ export default function PlanningPage() {
                 ))}
               </div>
             </div>
+
+            {/* Seção de Tags */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-medium text-gray-900">Tags</h4>
+                <button
+                  onClick={() => setShowNewTagForm(!showNewTagForm)}
+                  className="inline-flex items-center px-3 py-1 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700"
+                >
+                  <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  + Tag
+                </button>
+              </div>
+
+              {/* Formulário de Nova Tag ou Edição */}
+              {(showNewTagForm || editingTag) && (
+                <div className="p-4 bg-purple-50 border border-purple-200 rounded-md">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nome da Tag
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTag ? editingTag.name : newTag.name}
+                        onChange={(e) => {
+                          if (editingTag) {
+                            setEditingTag({ ...editingTag, name: e.target.value })
+                          } else {
+                            setNewTag({ ...newTag, name: e.target.value })
+                          }
+                        }}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            if (editingTag) {
+                              handleUpdateTag()
+                            } else {
+                              handleCreateTag()
+                            }
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Digite o nome da tag"
+                        autoFocus
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Cor da Tag
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={editingTag ? editingTag.color : newTag.color}
+                          onChange={(e) => {
+                            if (editingTag) {
+                              setEditingTag({ ...editingTag, color: e.target.value })
+                            } else {
+                              setNewTag({ ...newTag, color: e.target.value })
+                            }
+                          }}
+                          className="w-12 h-10 border border-purple-300 rounded-md cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={editingTag ? editingTag.color : newTag.color}
+                          onChange={(e) => {
+                            if (editingTag) {
+                              setEditingTag({ ...editingTag, color: e.target.value })
+                            } else {
+                              setNewTag({ ...newTag, color: e.target.value })
+                            }
+                          }}
+                          placeholder="#000000"
+                          className="flex-1 px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          if (editingTag) {
+                            setEditingTag(null)
+                          } else {
+                            setShowNewTagForm(false)
+                            setNewTag({ name: '', color: '#3B82F6' })
+                          }
+                        }}
+                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={editingTag ? handleUpdateTag : handleCreateTag}
+                        disabled={!editingTag?.name.trim() && !newTag.name.trim()}
+                        className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {editingTag ? 'Atualizar' : 'Salvar'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {availableTags.map((tag) => (
+                  <div key={tag.name} className="group flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors duration-200">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: tag.color }}
+                      ></div>
+                      <span className="text-sm text-gray-900">{tag.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button 
+                        onClick={() => handleEditTag(tag)}
+                        className="text-gray-400 hover:text-purple-600 transition-colors duration-200"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteTag(tag.name)}
+                        className="text-gray-400 hover:text-red-500 transition-colors duration-200"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </ModalOverlay>
+        </div>
+      </ModalOverlay>
 
       {/* Task Creation Modal */}
       <ModalOverlay isOpen={showTaskModal} onClose={() => setShowTaskModal(false)}>
