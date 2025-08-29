@@ -6,6 +6,7 @@ import ModalOverlay from '@/components/ModalOverlay'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
+import { usePlanningData } from '@/hooks/usePlanningData'
 import {
   DndContext,
   closestCenter,
@@ -294,6 +295,31 @@ interface Todo {
 }
 
 export default function PlanningPage() {
+  // Hook para gerenciar dados de planejamento
+  const {
+    projects,
+    tags,
+    todos,
+    goals,
+    reminders,
+    isLoading,
+    createProject,
+    updateProject,
+    deleteProject,
+    createTag,
+    updateTag,
+    deleteTag,
+    createTodo,
+    updateTodo,
+    deleteTodo,
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    createReminder,
+    updateReminder,
+    deleteReminder
+  } = usePlanningData()
+
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showProjectsModal, setShowProjectsModal] = useState(false)
@@ -367,13 +393,7 @@ export default function PlanningPage() {
     tags: [] as { name: string; color: string }[]
   })
 
-  // Mock data para projetos
-  const [projects, setProjects] = useState([
-    { id: '1', name: 'Pessoal', color: '#3B82F6' },
-    { id: '2', name: 'ExitLag', color: '#6B7280' },
-    { id: '3', name: 'KimonoLab', color: '#EF4444' },
-    { id: '4', name: 'Zentrix', color: '#8B5CF6' }
-  ])
+
 
   // Mock data para metas
   const [goals, setGoals] = useState<Goal[]>([
