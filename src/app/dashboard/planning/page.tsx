@@ -1142,6 +1142,11 @@ export default function PlanningPage() {
   // Estado para adicionar novo lembrete
   const [showAddReminderForm, setShowAddReminderForm] = useState(false)
   const [newReminder, setNewReminder] = useState('')
+  
+  // Estado para lembretes criados
+  const [reminders, setReminders] = useState<Reminder[]>([])
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
+  const [showEditReminderForm, setShowEditReminderForm] = useState(false)
 
   const handleAddReminder = () => {
     if (newReminder.trim() && activeReminderTab) {
@@ -1153,11 +1158,37 @@ export default function PlanningPage() {
         priority: 'medium', // Prioridade padrão
         created_at: new Date().toISOString()
       }
-      // Adicionar lógica para salvar o lembrete no estado mock
-      console.log('Novo lembrete:', newReminderData)
+      // Salvar o lembrete no estado
+      setReminders([...reminders, newReminderData])
       setNewReminder('')
       setShowAddReminderForm(false)
     }
+  }
+
+  // Funções para lembretes
+  const handleToggleReminderComplete = (reminderId: string) => {
+    // Remove o lembrete da lista quando marcado como completo
+    setReminders(reminders.filter(r => r.id !== reminderId))
+  }
+
+  const handleEditReminder = (reminder: Reminder) => {
+    setEditingReminder(reminder)
+    setShowEditReminderForm(true)
+  }
+
+  const handleUpdateReminder = () => {
+    if (editingReminder && editingReminder.title.trim()) {
+      setReminders(reminders.map(r => 
+        r.id === editingReminder.id ? editingReminder : r
+      ))
+      setEditingReminder(null)
+      setShowEditReminderForm(false)
+    }
+  }
+
+  const handleCancelEditReminder = () => {
+    setEditingReminder(null)
+    setShowEditReminderForm(false)
   }
 
   // Funções para to-dos
@@ -3052,19 +3083,81 @@ export default function PlanningPage() {
 
               {activeReminderTab === 'lembretes' && (
                 <>
+                  {/* Lembretes estáticos existentes */}
                   <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <input 
+                      type="checkbox" 
+                      className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                      onChange={() => handleToggleReminderComplete('static-1')}
+                    />
                     <span className="text-sm text-gray-700">Quando a LP ficar pronta, precisamos avançar com botão no software + mensagem via bot</span>
                   </div>
                   <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <input 
+                      type="checkbox" 
+                      className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                      onChange={() => handleToggleReminderComplete('static-2')}
+                    />
                     <span className="text-sm text-gray-700">Falar com Day de afiliados: Bot de servidores como afiliado... Permite colocar o bot no server... Nós fazemos as divulgações, quem fechar via bot, o servidor ganha também</span>
                   </div>
                   <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
+                    <input 
+                      type="checkbox" 
+                      className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                      onChange={() => handleToggleReminderComplete('static-3')}
+                    />
                     <span className="text-sm text-gray-700">Quando terminarem a integração do whmcs com Sentinel, precisamos configurar e testar o pricing funcionando bem</span>
-                    <button className="ml-auto text-gray-400 hover:text-gray-600">✕</button>
                   </div>
+                  
+                  {/* Lembretes criados dinamicamente */}
+                  {reminders.map((reminder) => (
+                    <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                        onChange={() => handleToggleReminderComplete(reminder.id)}
+                      />
+                      <div className="flex-1">
+                        {showEditReminderForm && editingReminder?.id === reminder.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={editingReminder.title}
+                              onChange={(e) => setEditingReminder({...editingReminder, title: e.target.value})}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              onKeyPress={(e) => e.key === 'Enter' && handleUpdateReminder()}
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleUpdateReminder}
+                                disabled={!editingReminder.title.trim()}
+                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                onClick={handleCancelEditReminder}
+                                className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-700">{reminder.title}</span>
+                        )}
+                      </div>
+                      {!showEditReminderForm && (
+                        <button 
+                          onClick={() => handleEditReminder(reminder)}
+                          className="ml-auto text-gray-400 hover:text-gray-600 text-sm"
+                          title="Editar lembrete"
+                        >
+                          ✎
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </>
               )}
             </div>
