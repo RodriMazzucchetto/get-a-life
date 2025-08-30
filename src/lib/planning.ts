@@ -46,15 +46,10 @@ export interface DBGoal {
   user_id: string
   title: string
   description?: string
-  project_id?: string
-  sub_project?: string
-  what_is_missing?: string
-  due_date?: string
-  status: 'active' | 'completed'
+  project_id: string
   progress: number
-  next_step?: string
-  initiatives: number
-  total_initiatives: number
+  next_steps?: string
+  due_date?: string
   created_at: string
   updated_at: string
 }
@@ -612,15 +607,13 @@ export interface Goal {
   id: string;
   title: string;
   description?: string;
-  whatIsMissing?: string;
-  dueDate?: string;
-  status: 'active' | 'completed';
+  projectId: string;
   progress: number;
-  nextStep?: string;
-  initiatives: number;
-  totalInitiatives: number;
+  nextSteps?: string;
+  dueDate?: string;
+  initiatives: { id: string; title: string; completed: boolean }[];
   created_at: string;
-  initiativesList?: { id: string; description: string }[];
+  updated_at: string;
 }
 
 // Interface Initiative para o domínio/UI (camelCase)
@@ -642,15 +635,13 @@ export function fromDbGoal(row: DBGoal): Goal {
     id: row.id,
     title: row.title,
     description: row.description,
-    whatIsMissing: row.what_is_missing,
-    dueDate: row.due_date,
-    status: row.status,
+    projectId: row.project_id,
     progress: row.progress,
-    nextStep: row.next_step,
-    initiatives: row.initiatives,
-    totalInitiatives: row.total_initiatives,
+    nextSteps: row.next_steps,
+    dueDate: row.due_date,
+    initiatives: [], // Será carregado separadamente
     created_at: row.created_at,
-    initiativesList: []
+    updated_at: row.updated_at
   };
 }
 
@@ -658,13 +649,10 @@ export function toDbGoal(goal: Partial<Goal>): Partial<DBGoal> {
   const out: Partial<DBGoal> = {};
   if (goal.title !== undefined) out.title = goal.title;
   if (goal.description !== undefined) out.description = goal.description;
-  if (goal.whatIsMissing !== undefined) out.what_is_missing = goal.whatIsMissing;
-  if (goal.dueDate !== undefined) out.due_date = goal.dueDate;
-  if (goal.status !== undefined) out.status = goal.status;
+  if (goal.projectId !== undefined) out.project_id = goal.projectId;
   if (goal.progress !== undefined) out.progress = goal.progress;
-  if (goal.nextStep !== undefined) out.next_step = goal.nextStep;
-  if (goal.initiatives !== undefined) out.initiatives = goal.initiatives;
-  if (goal.totalInitiatives !== undefined) out.total_initiatives = goal.totalInitiatives;
+  if (goal.nextSteps !== undefined) out.next_steps = goal.nextSteps;
+  if (goal.dueDate !== undefined) out.due_date = goal.dueDate;
   return out;
 }
 

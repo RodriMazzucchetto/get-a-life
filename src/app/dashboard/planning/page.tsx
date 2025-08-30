@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { PlusIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
+import { GoalManagementModal } from '@/components/GoalManagementModal'
+import { GoalDisplay } from '@/components/GoalDisplay'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
@@ -287,6 +289,7 @@ export default function PlanningPage() {
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showProjectsModal, setShowProjectsModal] = useState(false)
+  const [showGoalModal, setShowGoalModal] = useState(false)
   // Estado de showProjectsModal REMOVIDO
   // Estado de showNewProjectForm REMOVIDO
   // Estado de showNewTagForm REMOVIDO
@@ -309,8 +312,8 @@ export default function PlanningPage() {
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
-    // Propriedades de projeto REMOVIDAS
-    whatIsMissing: '',
+    projectId: '',
+    nextSteps: '',
     dueDate: null as Date | null
   })
 
@@ -468,26 +471,25 @@ export default function PlanningPage() {
       const newGoalData = await createGoal({
         title: newGoal.title.trim(),
         description: newGoal.description.trim(),
-        whatIsMissing: newGoal.whatIsMissing.trim(),
+        projectId: newGoal.projectId || '',
         dueDate: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
-        status: 'active',
         progress: 0,
-        nextStep: newGoal.whatIsMissing.trim(),
-        initiatives: 0,
-        totalInitiatives: 0
+        nextSteps: newGoal.nextSteps || '',
+        initiatives: [],
+
       })
       if (newGoalData) {
-      setNewGoal({ title: '', description: '', whatIsMissing: '', dueDate: null })
+      setNewGoal({ title: '', description: '', projectId: '', nextSteps: '', dueDate: null })
       setShowCreateGoalModal(false)
       }
     }
   }
 
   const handleEditGoal = (goal: Goal) => {
-    // Sincronizar o nextStep com whatIsMissing para edição
+    // Sincronizar o nextSteps para edição
     const goalForEditing = {
       ...goal,
-      whatIsMissing: goal.nextStep || ''
+      nextSteps: goal.nextSteps || ''
     }
     setEditingGoal(goalForEditing)
     setShowEditGoalModal(true)
@@ -498,9 +500,9 @@ export default function PlanningPage() {
       const updatedGoal = await updateGoal(editingGoal.id, {
         title: editingGoal.title.trim(),
         description: editingGoal.description?.trim() || '',
-        whatIsMissing: editingGoal.whatIsMissing?.trim() || '',
+        projectId: editingGoal.projectId || '',
         dueDate: editingGoal.dueDate || undefined,
-        nextStep: editingGoal.whatIsMissing?.trim() || ''
+        nextSteps: editingGoal.nextSteps || ''
       })
       if (updatedGoal) {
       setEditingGoal(null)
@@ -516,6 +518,88 @@ export default function PlanningPage() {
       setShowEditGoalModal(false)
       setEditingGoal(null)
       }
+    }
+  }
+
+  // Funções para gerenciar metas (nova implementação)
+  const handleCreateGoalNew = async (goalData: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const newGoal = await createGoal(goalData)
+      if (newGoal) {
+        setGoals(prevGoals => [...prevGoals, newGoal])
+        return newGoal
+      }
+      return null
+    } catch (error) {
+      console.error('Erro ao criar meta:', error)
+      return null
+    }
+  }
+
+  const handleUpdateGoalNew = async (id: string, updates: Partial<Goal>) => {
+    try {
+      const updatedGoal = await updateGoal(id, updates)
+      if (updatedGoal) {
+        setGoals(prevGoals => prevGoals.map(g => g.id === id ? updatedGoal : g))
+        return updatedGoal
+      }
+      return null
+    } catch (error) {
+      console.error('Erro ao atualizar meta:', error)
+      return null
+    }
+  }
+
+  const handleUpdateGoalProgressNew = async (goalId: string, progress: number) => {
+    try {
+      await handleUpdateGoalNew(goalId, { progress })
+    } catch (error) {
+      console.error('Erro ao atualizar progresso da meta:', error)
+    }
+  }
+
+  const handleToggleInitiativeNew = async (goalId: string, initiativeId: string) => {
+    try {
+      const goal = goals.find(g => g.id === goalId)
+      if (!goal) return
+
+      const updatedInitiatives = goal.initiatives.map(i => 
+        i.id === initiativeId ? { ...i, completed: !i.completed } : i
+      )
+
+      await handleUpdateGoalNew(goalId, { initiatives: updatedInitiatives })
+    } catch (error) {
+      console.error('Erro ao alternar iniciativa:', error)
+    }
+  }
+
+  const handleEditInitiativeNew = async (goalId: string, initiativeId: string, newTitle: string) => {
+    try {
+      const goal = goals.find(g => g.id === goalId)
+      if (!goal) {
+        console.error('Meta não encontrada')
+        return
+      }
+
+      const updatedInitiatives = goal.initiatives.map(i => 
+        i.id === initiativeId ? { ...i, title: newTitle } : i
+      )
+
+      await handleUpdateGoalNew(goalId, { initiatives: updatedInitiatives })
+    } catch (error) {
+      console.error('Erro ao editar iniciativa:', error)
+    }
+  }
+
+  const handleDeleteInitiativeNew = async (goalId: string, initiativeId: string) => {
+    try {
+      const goal = goals.find(g => g.id === goalId)
+      if (!goal) return
+
+      const updatedInitiatives = goal.initiatives.filter(i => i.id !== initiativeId)
+      await handleUpdateGoalNew(goalId, { initiatives: updatedInitiatives })
+    } catch (error) {
+      console.error('Erro ao deletar iniciativa:', error)
     }
   }
 
@@ -591,7 +675,7 @@ export default function PlanningPage() {
       }
       setEditingGoal(prevGoal => ({
         ...prevGoal!,
-        initiativesList: [...(prevGoal!.initiativesList || []), newInitiativeData]
+        initiatives: [...(prevGoal!.initiatives || []), newInitiativeData]
       }))
       setNewInitiative('')
       setShowAddInitiativeForm(false)
@@ -606,8 +690,8 @@ export default function PlanningPage() {
     if (editingInitiative && editingInitiative.description.trim() && editingGoal) {
       setEditingGoal(prevGoal => ({
         ...prevGoal!,
-        initiativesList: (prevGoal!.initiativesList || []).map(i =>
-          i.id === editingInitiative.id ? { ...i, description: editingInitiative.description.trim() } : i
+        initiatives: (prevGoal!.initiatives || []).map(i =>
+          i.id === editingInitiative.id ? { ...i, title: editingInitiative.description.trim() } : i
         )
       }))
       setEditingInitiative(null)
@@ -618,7 +702,7 @@ export default function PlanningPage() {
     if (confirm('Tem certeza que deseja deletar esta iniciativa? Esta ação não pode ser desfeita.')) {
       setEditingGoal(prevGoal => ({
         ...prevGoal!,
-        initiativesList: (prevGoal!.initiativesList || []).filter(i => i.id !== initiativeId)
+        initiatives: (prevGoal!.initiatives || []).filter(i => i.id !== initiativeId)
       }))
       setEditingInitiative(null)
     }
@@ -1232,17 +1316,32 @@ export default function PlanningPage() {
           
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
-            {/* Botão de Gerenciar Projetos */}
-            <button
-              onClick={() => setShowProjectsModal(true)}
-              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
-              title="Gerenciar Projetos"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
+                            {/* Botão de Gerenciar Projetos */}
+                <button
+                  onClick={() => setShowProjectsModal(true)}
+                  className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
+                  title="Gerenciar Projetos"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+
+                {/* Botão de Criar Meta */}
+                <button
+                  onClick={() => {
+                    setEditingGoal(null)
+                    setShowGoalModal(true)
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                  title="Criar Nova Meta"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Meta
+                </button>
             
             {/* Google Calendar Button */}
             <button className="inline-flex items-center px-4 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-white hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
@@ -1339,7 +1438,9 @@ export default function PlanningPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Metas</h2>
-                <p className="text-sm text-gray-600">{goals.filter(g => g.status === 'active').length} ativas • {goals.filter(g => g.status === 'completed').length} concluídas</p>
+                <p className="text-sm text-gray-600">
+                  {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}% média` : '0% média'}
+                </p>
               </div>
             </div>
             
@@ -2658,6 +2759,17 @@ export default function PlanningPage() {
         onCreateProject={createProject}
         onUpdateProject={updateProject}
         onDeleteProject={deleteProject}
+      />
+
+      {/* Modal de Gerenciamento de Metas */}
+      <GoalManagementModal
+        isOpen={showGoalModal}
+        onClose={() => setShowGoalModal(false)}
+        goal={editingGoal}
+        projects={projects}
+        onCreateGoal={handleCreateGoalNew}
+        onUpdateGoal={handleUpdateGoalNew}
+        onDeleteGoal={handleDeleteGoal}
       />
     </div>
   )

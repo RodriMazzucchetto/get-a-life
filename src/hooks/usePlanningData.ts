@@ -85,7 +85,20 @@ export function usePlanningData() {
 
       // Carregar metas
       const goalsData = await goalsService.getGoals(user.id)
-      setGoals(goalsData.map(fromDbGoal))
+      const goalsWithInitiatives = await Promise.all(
+        goalsData.map(async (goal) => {
+          const initiatives = await initiativesService.getInitiativesByGoal(goal.id)
+          return {
+            ...fromDbGoal(goal),
+            initiatives: initiatives.map((i: { id: string; title: string; completed: boolean }) => ({
+              id: i.id,
+              title: i.title,
+              completed: i.completed
+            }))
+          }
+        })
+      )
+      setGoals(goalsWithInitiatives)
       setLoadingGoals(false)
 
       // Carregar iniciativas
