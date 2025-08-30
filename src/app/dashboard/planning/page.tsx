@@ -286,6 +286,10 @@ export default function PlanningPage() {
     deleteReminder
   } = usePlanningData()
 
+  // Debug: Log do estado de metas
+  console.log('🎯 Page: Estado atual de metas:', goals)
+  console.log('🎯 Page: Função setGoals disponível:', !!setGoals)
+
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showProjectsModal, setShowProjectsModal] = useState(false)

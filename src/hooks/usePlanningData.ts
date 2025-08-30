@@ -55,6 +55,7 @@ export function usePlanningData() {
   // Carregar dados do banco quando usuário mudar
   useEffect(() => {
     if (user) {
+      console.log('🔄 Hook: Usuário detectado, carregando dados...')
       loadAllData()
     }
   }, [user])
@@ -64,6 +65,8 @@ export function usePlanningData() {
     if (!user) return
 
     try {
+      console.log('🔄 Hook: Iniciando carregamento de dados...')
+      
       // Carregar projetos
       const projectsData = await projectsService.getProjects(user.id)
       setProjects(projectsData.map(fromDbProject))
@@ -86,7 +89,10 @@ export function usePlanningData() {
       setLoadingTodos(false)
 
       // Carregar metas
+      console.log('🎯 Hook: Carregando metas...')
       const goalsData = await goalsService.getGoals(user.id)
+      console.log('🎯 Hook: Metas carregadas do banco:', goalsData)
+      
       const goalsWithInitiatives = await Promise.all(
         goalsData.map(async (goal) => {
           const initiatives = await initiativesService.getInitiativesByGoal(goal.id)
@@ -100,6 +106,7 @@ export function usePlanningData() {
           }
         })
       )
+      console.log('🎯 Hook: Metas com iniciativas processadas:', goalsWithInitiatives)
       setGoals(goalsWithInitiatives)
       setLoadingGoals(false)
 
@@ -112,6 +119,8 @@ export function usePlanningData() {
       const remindersData = await remindersService.getReminders(user.id)
       setReminders(remindersData)
       setLoadingReminders(false)
+
+      console.log('✅ Hook: Todos os dados carregados com sucesso!')
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
