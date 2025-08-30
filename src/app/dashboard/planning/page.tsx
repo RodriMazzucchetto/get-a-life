@@ -306,7 +306,7 @@ export default function PlanningPage() {
 
   // Estados para metas
   const [goalsExpanded, setGoalsExpanded] = useState(false)
-  const [showCreateGoalModal, setShowCreateGoalModal] = useState(false)
+
   const [showEditGoalModal, setShowEditGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [newGoal, setNewGoal] = useState({
@@ -479,7 +479,7 @@ export default function PlanningPage() {
       })
       if (newGoalData) {
         setNewGoal({ title: '', description: '', projectId: '', nextSteps: '', dueDate: null })
-        setShowCreateGoalModal(false)
+        setShowGoalModal(false)
       }
     }
   }
@@ -1330,20 +1330,7 @@ export default function PlanningPage() {
                   </svg>
                 </button>
 
-                {/* Botão de Criar Meta */}
-                <button
-                  onClick={() => {
-                    setEditingGoal(null)
-                    setShowGoalModal(true)
-                  }}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                  title="Criar Nova Meta"
-                >
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Meta
-                </button>
+
             
             {/* Google Calendar Button */}
             <button className="inline-flex items-center px-4 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-white hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
@@ -1468,7 +1455,10 @@ export default function PlanningPage() {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma meta criada</h3>
                 <p className="text-gray-600 mb-4">Você ainda não tem metas definidas. Use o botão abaixo para criar sua primeira meta.</p>
                 <button
-                  onClick={() => setShowCreateGoalModal(true)}
+                  onClick={() => {
+                    setEditingGoal(null)
+                    setShowGoalModal(true)
+                  }}
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1482,7 +1472,10 @@ export default function PlanningPage() {
                 <div className="flex justify-between items-center">
                   <h4 className="text-sm font-medium text-gray-700">Suas Metas</h4>
                   <button
-                    onClick={() => setShowCreateGoalModal(true)}
+                    onClick={() => {
+                      setEditingGoal(null)
+                      setShowGoalModal(true)
+                    }}
                     className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700"
                   >
                     <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2159,29 +2152,7 @@ export default function PlanningPage() {
         </div>
       </ModalOverlay>
 
-      {/* Create Goal Modal - PLACEHOLDER */}
-      <ModalOverlay isOpen={showCreateGoalModal} onClose={() => setShowCreateGoalModal(false)}>
-        <div className="relative top-20 mx-auto p-6 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
-          <div className="mt-3">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Nova Meta</h3>
-              <button
-                onClick={() => setShowCreateGoalModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="text-center py-8">
-                <p className="text-gray-500">Modal de criação de meta em desenvolvimento</p>
-                <p className="text-sm text-gray-400 mt-2">Funcionalidade será reintroduzida em breve</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </ModalOverlay>
+
 
       {/* Edit Goal Modal */}
       <ModalOverlay isOpen={showEditGoalModal} onClose={() => setShowEditGoalModal(false)}>
