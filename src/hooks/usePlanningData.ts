@@ -250,10 +250,19 @@ export function usePlanningData() {
     if (!user) return null
     
     try {
+      console.log('🎯 Hook: Criando meta com dados:', goalData)
       const dbGoalData = toDbGoal(goalData)
+      console.log('🎯 Hook: Dados convertidos para DB:', dbGoalData)
       const newDbGoal = await goalsService.createGoal(user.id, dbGoalData as Omit<DBGoal, 'id' | 'user_id' | 'created_at' | 'updated_at'>)
+      console.log('🎯 Hook: Meta criada no banco:', newDbGoal)
       const newGoal = fromDbGoal(newDbGoal)
-      setGoals(prev => [newGoal, ...prev])
+      console.log('🎯 Hook: Meta convertida para domínio:', newGoal)
+      setGoals(prev => {
+        console.log('🎯 Hook: Estado anterior de metas:', prev)
+        const newGoals = [newGoal, ...prev]
+        console.log('🎯 Hook: Novo estado de metas:', newGoals)
+        return newGoals
+      })
       return newGoal
     } catch (error) {
       console.error('Erro ao criar meta:', error)

@@ -132,12 +132,12 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
       {/* Tag do projeto - posicionada no canto direito */}
       {todo.projectId && projects.find(p => p.id === todo.projectId) && (
         <div className="flex-shrink-0 ml-2">
-          <span
-            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+            <span
+              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
             style={{ backgroundColor: projects.find(p => p.id === todo.projectId)?.color || '#3B82F6' }}
-          >
+            >
             {projects.find(p => p.id === todo.projectId)?.name}
-          </span>
+            </span>
         </div>
       )}
 
@@ -514,8 +514,8 @@ export default function PlanningPage() {
     if (confirm('Tem certeza que deseja deletar esta meta? Esta ação não pode ser desfeita.')) {
       const success = await deleteGoal(goalId)
       if (success) {
-        setShowEditGoalModal(false)
-        setEditingGoal(null)
+      setShowEditGoalModal(false)
+      setEditingGoal(null)
       }
       return success
     }
@@ -525,9 +525,17 @@ export default function PlanningPage() {
   // Funções para gerenciar metas (nova implementação)
   const handleCreateGoalNew = async (goalData: Omit<Goal, 'id' | 'created_at'>) => {
     try {
+      console.log('🎯 Page: Criando meta com dados:', goalData)
       const newGoal = await createGoal(goalData)
+      console.log('🎯 Page: Meta retornada do hook:', newGoal)
       if (newGoal) {
-        setGoals(prevGoals => [...prevGoals, newGoal])
+        console.log('🎯 Page: Meta criada com sucesso, atualizando estado local')
+        setGoals(prevGoals => {
+          console.log('🎯 Page: Estado anterior de metas:', prevGoals)
+          const newGoals = [...prevGoals, newGoal]
+          console.log('🎯 Page: Novo estado de metas:', newGoals)
+          return newGoals
+        })
         return newGoal
       }
       return null
@@ -1319,16 +1327,16 @@ export default function PlanningPage() {
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
                             {/* Botão de Gerenciar Projetos */}
-                <button
-                  onClick={() => setShowProjectsModal(true)}
+            <button
+              onClick={() => setShowProjectsModal(true)}
                   className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
                   title="Gerenciar Projetos"
-                >
+            >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
 
 
             
@@ -1485,8 +1493,20 @@ export default function PlanningPage() {
                   </button>
                 </div>
                 
-                {/* Agrupamento de metas por projeto REMOVIDO - será reimplementado do zero */}
-                        </div>
+                {/* Exibição das metas usando o componente GoalDisplay */}
+                <GoalDisplay
+                  goals={goals}
+                  projects={projects}
+                  onEditGoal={(goal) => {
+                    setEditingGoal(goal)
+                    setShowGoalModal(true)
+                  }}
+                  onUpdateGoalProgress={handleUpdateGoalProgressNew}
+                  onToggleInitiative={handleToggleInitiativeNew}
+                  onEditInitiative={handleEditInitiativeNew}
+                  onDeleteInitiative={handleDeleteInitiativeNew}
+                />
+              </div>
             )}
           </div>
         )}
@@ -2552,10 +2572,10 @@ export default function PlanningPage() {
                 </div>
 
                 {/* Projeto */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                     Projeto
-                  </label>
+                    </label>
                   
                   {/* Projeto selecionado */}
                   {editingTodo.projectId && projects.find(p => p.id === editingTodo.projectId) && (
@@ -2565,29 +2585,29 @@ export default function PlanningPage() {
                         style={{ backgroundColor: projects.find(p => p.id === editingTodo.projectId)?.color || '#3B82F6' }}
                       >
                         {projects.find(p => p.id === editingTodo.projectId)?.name}
-                        <button
+                    <button
                           onClick={() => setEditingTodo({ ...editingTodo, projectId: undefined })}
                           className="ml-2 text-white hover:text-gray-200"
                         >
                           ×
-                        </button>
+                    </button>
                       </span>
-                    </div>
+                  </div>
                   )}
-
+                  
                   {/* Seletor de projeto */}
-                  <select
+                    <select
                     value={editingTodo.projectId || ''}
                     onChange={(e) => setEditingTodo({ ...editingTodo, projectId: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
                     <option value="">Sem projeto</option>
                     {projects.map((project) => (
                       <option key={project.id} value={project.id}>
                         {project.name}
                       </option>
                     ))}
-                  </select>
+                    </select>
                 </div>
 
 
