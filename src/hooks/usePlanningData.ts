@@ -56,7 +56,12 @@ export function usePlanningData() {
   useEffect(() => {
     if (user) {
       console.log('🔄 Hook: Usuário detectado, carregando dados...')
-      loadAllData()
+      // Verificar se já temos dados para evitar recarregamento desnecessário
+      if (goals.length === 0 && projects.length === 0) {
+        loadAllData()
+      } else {
+        console.log('🔄 Hook: Dados já carregados, pulando recarregamento')
+      }
     }
   }, [user])
 

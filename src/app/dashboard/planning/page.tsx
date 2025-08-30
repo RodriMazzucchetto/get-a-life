@@ -533,13 +533,7 @@ export default function PlanningPage() {
       const newGoal = await createGoal(goalData)
       console.log('🎯 Page: Meta retornada do hook:', newGoal)
       if (newGoal) {
-        console.log('🎯 Page: Meta criada com sucesso, atualizando estado local')
-        setGoals(prevGoals => {
-          console.log('🎯 Page: Estado anterior de metas:', prevGoals)
-          const newGoals = [...prevGoals, newGoal]
-          console.log('🎯 Page: Novo estado de metas:', newGoals)
-          return newGoals
-        })
+        console.log('🎯 Page: Meta criada com sucesso! O hook já atualizou o estado.')
         return newGoal
       }
       return null
@@ -553,7 +547,7 @@ export default function PlanningPage() {
     try {
       const updatedGoal = await updateGoal(id, updates)
       if (updatedGoal) {
-        setGoals(prevGoals => prevGoals.map(g => g.id === id ? updatedGoal : g))
+        console.log('🎯 Page: Meta atualizada com sucesso! O hook já atualizou o estado.')
         return updatedGoal
       }
       return null
