@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import ModalOverlay from './ModalOverlay'
-
-interface Project {
-  id: string
-  name: string
-  color: string
-  created_at: string
-  updated_at: string
-}
+import { Project } from '@/lib/planning'
 
 interface ProjectManagementModalProps {
   isOpen: boolean

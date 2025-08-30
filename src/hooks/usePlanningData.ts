@@ -16,18 +16,20 @@ import {
   type Todo,
   type Goal,
   type Initiative,
+  type Project,
   fromDbTodo,
   toDbUpdate,
   fromDbGoal,
   toDbGoal,
-  fromDbInitiative
+  fromDbInitiative,
+  fromDbProject
 } from '@/lib/planning'
 
 export function usePlanningData() {
   const { user } = useAuthContext()
   
   // Estado para projetos
-  const [projects, setProjects] = useState<DBProject[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)
   
   // Estado para tags
@@ -64,7 +66,7 @@ export function usePlanningData() {
     try {
       // Carregar projetos
       const projectsData = await projectsService.getProjects(user.id)
-      setProjects(projectsData)
+      setProjects(projectsData.map(fromDbProject))
       setLoadingProjects(false)
 
       // Carregar tags
@@ -90,10 +92,10 @@ export function usePlanningData() {
           const initiatives = await initiativesService.getInitiativesByGoal(goal.id)
           return {
             ...fromDbGoal(goal),
-            initiatives: initiatives.map((i: { id: string; title: string; completed: boolean }) => ({
+            initiatives: initiatives.map((i: DBInitiative) => ({
               id: i.id,
               title: i.title,
-              completed: i.completed
+              completed: i.status === 'completed'
             }))
           }
         })

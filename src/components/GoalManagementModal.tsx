@@ -2,31 +2,7 @@ import React, { useState, useEffect } from 'react'
 import ModalOverlay from './ModalOverlay'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-
-interface Project {
-  id: string
-  name: string
-  color: string
-}
-
-interface Initiative {
-  id: string
-  title: string
-  completed: boolean
-}
-
-interface Goal {
-  id: string
-  title: string
-  description?: string
-  projectId: string
-  progress: number
-  nextSteps?: string
-  dueDate?: string
-  initiatives: Initiative[]
-  created_at: string
-  updated_at: string
-}
+import { Goal, Project, SimpleInitiative } from '@/lib/planning'
 
 interface GoalManagementModalProps {
   isOpen: boolean
@@ -56,7 +32,7 @@ export function GoalManagementModal({
   const [progress, setProgress] = useState(0)
   const [nextSteps, setNextSteps] = useState('')
   const [dueDate, setDueDate] = useState<Date | null>(null)
-  const [initiatives, setInitiatives] = useState<Initiative[]>([])
+  const [initiatives, setInitiatives] = useState<SimpleInitiative[]>([])
   const [newInitiativeTitle, setNewInitiativeTitle] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -142,7 +118,7 @@ export function GoalManagementModal({
   const handleAddInitiative = () => {
     if (!newInitiativeTitle.trim()) return
 
-    const newInitiative: Initiative = {
+    const newInitiative: SimpleInitiative = {
       id: `temp-${Date.now()}`,
       title: newInitiativeTitle.trim(),
       completed: false
@@ -158,7 +134,7 @@ export function GoalManagementModal({
     ))
   }
 
-  const handleStartEditInitiative = (initiative: Initiative) => {
+  const handleStartEditInitiative = (initiative: SimpleInitiative) => {
     setEditingInitiativeId(initiative.id)
     setEditingInitiativeTitle(initiative.title)
   }

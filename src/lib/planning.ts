@@ -10,6 +10,15 @@ export interface DBProject {
   updated_at: string
 }
 
+// Interface Project para o domínio/UI (camelCase)
+export interface Project {
+  id: string
+  name: string
+  color: string
+  created_at: string
+  updated_at: string
+}
+
 export interface DBTag {
   id: string
   user_id: string
@@ -602,6 +611,13 @@ export interface Todo {
   updated_at: string;
 }
 
+// Interface SimpleInitiative para iniciativas dentro de metas
+export interface SimpleInitiative {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 // Interface Goal para o domínio/UI (camelCase)
 export interface Goal {
   id: string;
@@ -611,9 +627,9 @@ export interface Goal {
   progress: number;
   nextSteps?: string;
   dueDate?: string;
-  initiatives: { id: string; title: string; completed: boolean }[];
+  initiatives: SimpleInitiative[];
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 // Interface Initiative para o domínio/UI (camelCase)
@@ -654,6 +670,17 @@ export function toDbGoal(goal: Partial<Goal>): Partial<DBGoal> {
   if (goal.nextSteps !== undefined) out.next_steps = goal.nextSteps;
   if (goal.dueDate !== undefined) out.due_date = goal.dueDate;
   return out;
+}
+
+// Adapters para Project
+export function fromDbProject(row: DBProject): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
 }
 
 // Adapters para Initiative

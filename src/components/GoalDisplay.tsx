@@ -1,29 +1,5 @@
 import React, { useState } from 'react'
-
-interface Project {
-  id: string
-  name: string
-  color: string
-}
-
-interface Initiative {
-  id: string
-  title: string
-  completed: boolean
-}
-
-interface Goal {
-  id: string
-  title: string
-  description?: string
-  projectId: string
-  progress: number
-  nextSteps?: string
-  dueDate?: string
-  initiatives: Initiative[]
-  created_at: string
-  updated_at: string
-}
+import { Goal, Project, SimpleInitiative } from '@/lib/planning'
 
 interface GoalDisplayProps {
   goals: Goal[]
@@ -75,7 +51,7 @@ export function GoalDisplay({
     })
   }
 
-  const handleStartEditInitiative = (initiative: Initiative) => {
+  const handleStartEditInitiative = (initiative: SimpleInitiative) => {
     setEditingInitiativeId(initiative.id)
     setEditingInitiativeTitle(initiative.title)
   }

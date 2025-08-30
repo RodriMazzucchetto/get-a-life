@@ -475,12 +475,11 @@ export default function PlanningPage() {
         dueDate: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
         progress: 0,
         nextSteps: newGoal.nextSteps || '',
-        initiatives: [],
-
+        initiatives: []
       })
       if (newGoalData) {
-      setNewGoal({ title: '', description: '', projectId: '', nextSteps: '', dueDate: null })
-      setShowCreateGoalModal(false)
+        setNewGoal({ title: '', description: '', projectId: '', nextSteps: '', dueDate: null })
+        setShowCreateGoalModal(false)
       }
     }
   }
@@ -515,14 +514,16 @@ export default function PlanningPage() {
     if (confirm('Tem certeza que deseja deletar esta meta? Esta ação não pode ser desfeita.')) {
       const success = await deleteGoal(goalId)
       if (success) {
-      setShowEditGoalModal(false)
-      setEditingGoal(null)
+        setShowEditGoalModal(false)
+        setEditingGoal(null)
       }
+      return success
     }
+    return false
   }
 
   // Funções para gerenciar metas (nova implementação)
-  const handleCreateGoalNew = async (goalData: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleCreateGoalNew = async (goalData: Omit<Goal, 'id' | 'created_at'>) => {
     try {
       const newGoal = await createGoal(goalData)
       if (newGoal) {
@@ -671,7 +672,8 @@ export default function PlanningPage() {
     if (newInitiative.trim() && editingGoal) {
       const newInitiativeData = {
         id: Date.now().toString(),
-        description: newInitiative.trim()
+        title: newInitiative.trim(),
+        completed: false
       }
       setEditingGoal(prevGoal => ({
         ...prevGoal!,
@@ -682,8 +684,8 @@ export default function PlanningPage() {
     }
   }
 
-  const handleEditInitiative = (initiative: { id: string; description: string }) => {
-    setEditingInitiative(initiative)
+  const handleEditInitiative = (initiative: { id: string; title: string; completed: boolean }) => {
+    setEditingInitiative({ id: initiative.id, description: initiative.title })
   }
 
   const handleUpdateInitiative = () => {
@@ -2230,8 +2232,8 @@ export default function PlanningPage() {
                     Próximo Passo (opcional)
                   </label>
                   <textarea
-                    value={editingGoal.whatIsMissing || ''}
-                    onChange={(e) => setEditingGoal({ ...editingGoal, whatIsMissing: e.target.value })}
+                    value={editingGoal.nextSteps || ''}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, nextSteps: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                     placeholder="Descreva o próximo passo para esta meta..."
@@ -2312,8 +2314,8 @@ export default function PlanningPage() {
 
                   {/* Lista de iniciativas existentes */}
                   <div className="space-y-2">
-                    {editingGoal.initiativesList && editingGoal.initiativesList.length > 0 ? (
-                      editingGoal.initiativesList.map((initiative) => (
+                    {editingGoal.initiatives && editingGoal.initiatives.length > 0 ? (
+                      editingGoal.initiatives.map((initiative) => (
                         <div key={initiative.id} className="p-3 bg-white rounded-md border border-gray-200">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -2338,7 +2340,7 @@ export default function PlanningPage() {
                                   </button>
                                 </div>
                               ) : (
-                                <p className="text-sm text-gray-900">{initiative.description}</p>
+                                <p className="text-sm text-gray-900">{initiative.title}</p>
                               )}
                             </div>
                             <div className="flex items-center gap-1 ml-2">
