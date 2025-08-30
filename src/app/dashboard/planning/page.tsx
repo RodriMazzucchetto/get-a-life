@@ -1233,14 +1233,13 @@ export default function PlanningPage() {
             {/* Botão de Gerenciar Projetos */}
             <button
               onClick={() => setShowProjectsModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
               title="Gerenciar Projetos"
             >
-              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Gerenciar Projetos
             </button>
             
             {/* Google Calendar Button */}
@@ -1550,18 +1549,18 @@ export default function PlanningPage() {
                     {/* Projeto selecionado */}
                     {newTodo.projectId && projects.find(p => p.id === newTodo.projectId) && (
                       <div className="flex items-center gap-2 mb-3">
-                        <span
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                          <span
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
                           style={{ backgroundColor: projects.find(p => p.id === newTodo.projectId)?.color || '#3B82F6' }}
-                        >
-                          {projects.find(p => p.id === newTodo.projectId)?.name}
-                          <button
-                            onClick={() => setNewTodo({ ...newTodo, projectId: undefined })}
-                            className="ml-2 text-white hover:text-gray-200"
                           >
-                            ×
-                          </button>
-                        </span>
+                          {projects.find(p => p.id === newTodo.projectId)?.name}
+                            <button
+                            onClick={() => setNewTodo({ ...newTodo, projectId: undefined })}
+                              className="ml-2 text-white hover:text-gray-200"
+                            >
+                              ×
+                            </button>
+                          </span>
                       </div>
                     )}
 
@@ -1580,8 +1579,8 @@ export default function PlanningPage() {
                           </option>
                         ))}
                       </select>
-                    </div>
-                  </div>
+                                </div>
+                                  </div>
                 </div>
               )}
 
@@ -1613,13 +1612,13 @@ export default function PlanningPage() {
                           key={todo.id}
                           todo={todo}
                           projects={projects}
-                          onToggleComplete={handleToggleTodoComplete}
-                          onTogglePriority={handleTogglePriority}
-                          onEdit={handleEditTodo}
-                          onPutOnHold={handlePutTodoOnHold}
-                          onMoveToProgress={handleMoveToProgress}
-                          onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
-                        />
+                              onToggleComplete={handleToggleTodoComplete}
+                              onTogglePriority={handleTogglePriority}
+                              onEdit={handleEditTodo}
+                              onPutOnHold={handlePutTodoOnHold}
+                              onMoveToProgress={handleMoveToProgress}
+                              onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
+                            />
                           ))}
                         </div>
                       </SortableContext>
@@ -2431,6 +2430,23 @@ export default function PlanningPage() {
             
             {editingTodo && (
               <div className="space-y-6">
+                {/* Prioridade - ícone de bandeira no topo */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => setEditingTodo({ ...editingTodo, isHighPriority: !editingTodo.isHighPriority })}
+                    className={`p-3 rounded-full transition-colors ${
+                      editingTodo.isHighPriority
+                        ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={editingTodo.isHighPriority ? 'Remover prioridade' : 'Marcar como prioridade'}
+                  >
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z"/>
+                    </svg>
+                  </button>
+                </div>
+
                 {/* Título */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2459,43 +2475,46 @@ export default function PlanningPage() {
                   />
                 </div>
 
-                {/* Prioridade e Status */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Prioridade
-                    </label>
-                    <button
-                      onClick={() => setEditingTodo({ ...editingTodo, isHighPriority: !editingTodo.isHighPriority })}
-                      className={`w-full px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
-                        editingTodo.isHighPriority
-                          ? 'bg-red-100 border-red-300 text-red-700'
-                          : 'bg-gray-100 border-gray-300 text-gray-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z"/>
-                        </svg>
-                        Prioridade
-                      </div>
-                    </button>
-                  </div>
+                {/* Projeto */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Projeto
+                  </label>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
-                    </label>
-                    <select
-                      value={editingTodo.completed ? 'completed' : 'open'}
-                      onChange={(e) => setEditingTodo({ ...editingTodo, completed: e.target.value === 'completed' })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="open">Aberta</option>
-                      <option value="completed">Concluída</option>
-                    </select>
-                  </div>
+                  {/* Projeto selecionado */}
+                  {editingTodo.projectId && projects.find(p => p.id === editingTodo.projectId) && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <span
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                        style={{ backgroundColor: projects.find(p => p.id === editingTodo.projectId)?.color || '#3B82F6' }}
+                      >
+                        {projects.find(p => p.id === editingTodo.projectId)?.name}
+                        <button
+                          onClick={() => setEditingTodo({ ...editingTodo, projectId: undefined })}
+                          className="ml-2 text-white hover:text-gray-200"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Seletor de projeto */}
+                  <select
+                    value={editingTodo.projectId || ''}
+                    onChange={(e) => setEditingTodo({ ...editingTodo, projectId: e.target.value || undefined })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Sem projeto</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+
 
                 {/* Time Sensitive */}
                 <div className="space-y-3">
@@ -2535,39 +2554,7 @@ export default function PlanningPage() {
                   )}
                 </div>
 
-                {/* Tags */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Tags
-                  </label>
-                  
-                  {/* Tags existentes */}
-                  {(editingTodo.tags && editingTodo.tags.length > 0) && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {editingTodo.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
-                          style={{ backgroundColor: tag.color }}
-                        >
-                          {tag.name}
-                          <button
-                            onClick={() => console.log('Tag removida - funcionalidade será reimplementada')}
-                            className="ml-2 text-white hover:text-gray-200"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
 
-                  {/* Criar nova tag */}
-                  {/* Seção de criação de nova tag REMOVIDA - será reimplementada do zero */}
-
-                  {/* Tags disponíveis para adicionar */}
-                  {/* Seção de tags REMOVIDA - será reimplementada do zero */}
-                </div>
 
                 {/* Botões de ação */}
                 <div className="flex justify-between gap-3 pt-4 border-t">
