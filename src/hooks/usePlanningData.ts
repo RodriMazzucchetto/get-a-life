@@ -6,17 +6,21 @@ import {
   todosService, 
   goalsService, 
   remindersService,
+  initiativesService,
   type DBProject,
   type DBTag,
   type DBTodo,
   type DBGoal,
+  type DBInitiative,
   type DBReminder,
   type Todo,
   type Goal,
+  type Initiative,
   fromDbTodo,
   toDbUpdate,
   fromDbGoal,
-  toDbGoal
+  toDbGoal,
+  fromDbInitiative
 } from '@/lib/planning'
 
 export function usePlanningData() {
@@ -37,6 +41,10 @@ export function usePlanningData() {
   // Estado para metas
   const [goals, setGoals] = useState<Goal[]>([])
   const [loadingGoals, setLoadingGoals] = useState(true)
+  
+  // Estado para iniciativas
+  const [initiatives, setInitiatives] = useState<Initiative[]>([])
+  const [loadingInitiatives, setLoadingInitiatives] = useState(true)
   
   // Estado para lembretes
   const [reminders, setReminders] = useState<DBReminder[]>([])
@@ -80,6 +88,11 @@ export function usePlanningData() {
       setGoals(goalsData.map(fromDbGoal))
       setLoadingGoals(false)
 
+      // Carregar iniciativas
+      const initiativesData = await initiativesService.getInitiativesByGoal(goalsData[0]?.id || '')
+      setInitiatives(initiativesData.map(fromDbInitiative))
+      setLoadingInitiatives(false)
+
       // Carregar lembretes
       const remindersData = await remindersService.getReminders(user.id)
       setReminders(remindersData)
@@ -92,6 +105,7 @@ export function usePlanningData() {
       setLoadingTags(false)
       setLoadingTodos(false)
       setLoadingGoals(false)
+      setLoadingInitiatives(false)
       setLoadingReminders(false)
     }
   }, [user])
@@ -295,7 +309,7 @@ export function usePlanningData() {
   // Funções de tags removidas - serão reimplementadas do zero
 
   // Estados de loading consolidados
-  const isLoading = loadingProjects || loadingTags || loadingTodos || loadingGoals || loadingReminders
+  const isLoading = loadingProjects || loadingTags || loadingTodos || loadingGoals || loadingInitiatives || loadingReminders
 
   return {
     // Estado
@@ -303,6 +317,7 @@ export function usePlanningData() {
     tags,
     todos,
     goals,
+    initiatives,
     reminders,
     
     // Setters para estado local
@@ -310,6 +325,7 @@ export function usePlanningData() {
     setProjects,
     setTags,
     setGoals,
+    setInitiatives,
     setReminders,
     
     // Loading states
@@ -318,6 +334,7 @@ export function usePlanningData() {
     loadingTags,
     loadingTodos,
     loadingGoals,
+    loadingInitiatives,
     loadingReminders,
     
     // Funções de projetos
@@ -349,6 +366,44 @@ export function usePlanningData() {
     createGoal,
     updateGoal,
     deleteGoal,
+    
+    // Funções de iniciativas
+    createInitiative: async (goalId: string, initiativeData: Omit<Initiative, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!user) return null
+      try {
+        const newInitiative = await initiativesService.createInitiative(user.id, {
+          ...initiativeData,
+          goal_id: goalId
+        })
+        setInitiatives(prev => [fromDbInitiative(newInitiative), ...prev])
+        return fromDbInitiative(newInitiative)
+      } catch (error) {
+        console.error('Erro ao criar iniciativa:', error)
+        return null
+      }
+    },
+    
+    updateInitiative: async (initiativeId: string, updates: Partial<Initiative>) => {
+      try {
+        const updatedInitiative = await initiativesService.updateInitiative(initiativeId, updates)
+        setInitiatives(prev => prev.map(i => i.id === initiativeId ? fromDbInitiative(updatedInitiative) : i))
+        return fromDbInitiative(updatedInitiative)
+      } catch (error) {
+        console.error('Erro ao atualizar iniciativa:', error)
+        return null
+      }
+    },
+    
+    deleteInitiative: async (initiativeId: string) => {
+      try {
+        await initiativesService.deleteInitiative(initiativeId)
+        setInitiatives(prev => prev.filter(i => i.id !== initiativeId))
+        return true
+      } catch (error) {
+        console.error('Erro ao deletar iniciativa:', error)
+        return false
+      }
+    },
     
     // Funções de lembretes
     createReminder,

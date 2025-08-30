@@ -150,17 +150,17 @@ function SortableTodoItem({ todo, onToggleComplete, onTogglePriority, onEdit, on
             }`}
             title={todo.onHold ? 'Remover da espera' : 'Colocar em espera'}
           >
-                          {todo.onHold ? (
-                // Ícone de play (remover da espera)
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              ) : (
-                // Ícone de pause (colocar em espera)
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
+            {todo.onHold ? (
+              // Ícone de play (remover da espera)
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ) : (
+              // Ícone de pause (colocar em espera)
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
           </button>
         )}
 
@@ -644,7 +644,7 @@ export default function PlanningPage() {
 
   const handleUpdateReminder = async () => {
     if (editingReminder) {
-      // TODO: Implementar atualização de lembretes
+    // TODO: Implementar atualização de lembretes
       console.log('Atualizar lembrete:', editingReminder)
       setShowEditReminderForm(false)
       setEditingReminder(null)
@@ -1356,7 +1356,7 @@ export default function PlanningPage() {
                 </div>
                 
                 {/* Agrupamento de metas por projeto REMOVIDO - será reimplementado do zero */}
-              </div>
+                        </div>
             )}
           </div>
         )}
@@ -1537,8 +1537,8 @@ export default function PlanningPage() {
                     {/* Seletor de tags */}
                     <div className="flex items-center">
                       {/* Seletor de tags REMOVIDO - será reimplementado do zero */}
-                    </div>
-                  </div>
+                                </div>
+                                  </div>
                 </div>
               )}
 
@@ -1560,25 +1560,25 @@ export default function PlanningPage() {
                     </button>
                   </div>
                 ) : (
-                  <SortableContext
+                      <SortableContext
                     items={sortedTodos.map(todo => todo.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
+                        strategy={verticalListSortingStrategy}
+                      >
                     <div className="space-y-2">
                       {sortedTodos.map((todo) => (
                         <SortableTodoItem
                           key={todo.id}
                           todo={todo}
-                          onToggleComplete={handleToggleTodoComplete}
-                          onTogglePriority={handleTogglePriority}
-                          onEdit={handleEditTodo}
-                          onPutOnHold={handlePutTodoOnHold}
-                          onMoveToProgress={handleMoveToProgress}
-                          onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
+                              onToggleComplete={handleToggleTodoComplete}
+                              onTogglePriority={handleTogglePriority}
+                              onEdit={handleEditTodo}
+                              onPutOnHold={handlePutTodoOnHold}
+                              onMoveToProgress={handleMoveToProgress}
+                              onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
                 )}
               </div>
             </div>

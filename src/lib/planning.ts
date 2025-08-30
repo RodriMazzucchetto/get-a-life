@@ -33,6 +33,10 @@ export interface DBTodo {
   on_hold: boolean
   on_hold_reason?: string
   status: 'backlog' | 'in_progress' | 'current_week'
+  // RELACIONAMENTOS OPCIONAIS (podem ser NULL)
+  project_id?: string
+  goal_id?: string
+  initiative_id?: string
   created_at: string
   updated_at: string
 }
@@ -51,6 +55,19 @@ export interface DBGoal {
   next_step?: string
   initiatives: number
   total_initiatives: number
+  created_at: string
+  updated_at: string
+}
+
+export interface DBInitiative {
+  id: string
+  user_id: string
+  title: string
+  description?: string
+  goal_id: string
+  status: 'active' | 'completed' | 'cancelled'
+  priority: 'low' | 'medium' | 'high'
+  due_date?: string
   created_at: string
   updated_at: string
 }
@@ -222,6 +239,78 @@ export const tagsService = {
 }
 
 // Serviço de tags será reimplementado do zero
+
+// Serviço de Iniciativas
+export const initiativesService = {
+  // Buscar todas as iniciativas de uma meta
+  async getInitiativesByGoal(goalId: string): Promise<DBInitiative[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('initiatives')
+      .select('*')
+      .eq('goal_id', goalId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar iniciativas:', error)
+      throw error
+    }
+
+    return data || []
+  },
+
+  // Criar nova iniciativa
+  async createInitiative(userId: string, initiativeData: Omit<DBInitiative, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<DBInitiative> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('initiatives')
+      .insert({
+        user_id: userId,
+        ...initiativeData
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao criar iniciativa:', error)
+      throw error
+    }
+
+    return data
+  },
+
+  // Atualizar iniciativa
+  async updateInitiative(initiativeId: string, updates: Partial<DBInitiative>): Promise<DBInitiative> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('initiatives')
+      .update(updates)
+      .eq('id', initiativeId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao atualizar iniciativa:', error)
+      throw error
+    }
+
+    return data
+  },
+
+  // Deletar iniciativa
+  async deleteInitiative(initiativeId: string): Promise<void> {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('initiatives')
+      .delete()
+      .eq('id', initiativeId)
+
+    if (error) {
+      console.error('Erro ao deletar iniciativa:', error)
+      throw error
+    }
+  }
+}
 
 // Serviço de Tarefas
 export const todosService = {
@@ -459,6 +548,10 @@ export function fromDbTodo(row: DBTodo): Todo {
     onHold: row.on_hold,
     onHoldReason: row.on_hold_reason,
     tags: [], // Tags serão implementadas do zero
+    // RELACIONAMENTOS OPCIONAIS
+    projectId: row.project_id,
+    goalId: row.goal_id,
+    initiativeId: row.initiative_id,
     created_at: row.created_at,
     updated_at: row.updated_at
   };
@@ -479,6 +572,11 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.timeSensitive !== undefined) out.time_sensitive = patch.timeSensitive;
   if (patch.onHold !== undefined) out.on_hold = patch.onHold;
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
+  
+  // RELACIONAMENTOS OPCIONAIS
+  if (patch.projectId !== undefined) out.project_id = patch.projectId;
+  if (patch.goalId !== undefined) out.goal_id = patch.goalId;
+  if (patch.initiativeId !== undefined) out.initiative_id = patch.initiativeId;
   
   // As tags são gerenciadas separadamente através do todoTagsService
   // Não incluímos tags aqui porque DBTodo não tem campo tags
@@ -501,6 +599,10 @@ export interface Todo {
   onHold: boolean;
   onHoldReason?: string;
   tags?: { name: string; color: string }[];
+  // RELACIONAMENTOS OPCIONAIS
+  projectId?: string;
+  goalId?: string;
+  initiativeId?: string;
   created_at: string;
   updated_at: string;
 }
@@ -519,6 +621,19 @@ export interface Goal {
   totalInitiatives: number;
   created_at: string;
   initiativesList?: { id: string; description: string }[];
+}
+
+// Interface Initiative para o domínio/UI (camelCase)
+export interface Initiative {
+  id: string;
+  title: string;
+  description?: string;
+  goalId: string;
+  status: 'active' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Adapters para Goal
@@ -550,5 +665,31 @@ export function toDbGoal(goal: Partial<Goal>): Partial<DBGoal> {
   if (goal.nextStep !== undefined) out.next_step = goal.nextStep;
   if (goal.initiatives !== undefined) out.initiatives = goal.initiatives;
   if (goal.totalInitiatives !== undefined) out.total_initiatives = goal.totalInitiatives;
+  return out;
+}
+
+// Adapters para Initiative
+export function fromDbInitiative(row: DBInitiative): Initiative {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    goalId: row.goal_id,
+    status: row.status,
+    priority: row.priority,
+    dueDate: row.due_date,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
+}
+
+export function toDbInitiative(initiative: Partial<Initiative>): Partial<DBInitiative> {
+  const out: Partial<DBInitiative> = {};
+  if (initiative.title !== undefined) out.title = initiative.title;
+  if (initiative.description !== undefined) out.description = initiative.description;
+  if (initiative.goalId !== undefined) out.goal_id = initiative.goalId;
+  if (initiative.status !== undefined) out.status = initiative.status;
+  if (initiative.priority !== undefined) out.priority = initiative.priority;
+  if (initiative.dueDate !== undefined) out.due_date = initiative.dueDate;
   return out;
 }
