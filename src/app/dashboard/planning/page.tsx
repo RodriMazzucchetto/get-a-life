@@ -1440,10 +1440,21 @@ export default function PlanningPage() {
             </div>
             
             <div className="flex items-center gap-3">
+              {goals.length > 0 && (
+                <button
+                  onClick={() => {
+                    setEditingGoal(null)
+                    setShowGoalModal(true)
+                  }}
+                  className="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                  title="Criar Nova Meta"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              )}
               <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
-                <span className="text-sm font-medium text-gray-700">
-                  {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}% média` : '0% média'}
-                </span>
                 <svg className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${goalsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -1477,18 +1488,6 @@ export default function PlanningPage() {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h4 className="text-sm font-medium text-gray-700">Suas Metas</h4>
-                  <button
-                    onClick={() => {
-                      setEditingGoal(null)
-                      setShowGoalModal(true)
-                    }}
-                    className="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                    title="Criar Nova Meta"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
                 </div>
                 
                 {/* Exibição das metas usando o componente GoalDisplay */}
