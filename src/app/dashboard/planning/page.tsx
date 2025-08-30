@@ -117,16 +117,6 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
       <div className="flex-1 flex items-center gap-2">
         <span className="text-sm text-gray-900">{todo.title}</span>
         
-        {/* Tag do projeto */}
-        {todo.projectId && projects.find(p => p.id === todo.projectId) && (
-          <span
-            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
-            style={{ backgroundColor: projects.find(p => p.id === todo.projectId)?.color || '#3B82F6' }}
-          >
-            {projects.find(p => p.id === todo.projectId)?.name}
-          </span>
-        )}
-        
         {todo.onHold && todo.onHoldReason && (
           <span 
             className="text-sm text-yellow-600 truncate max-w-32 cursor-help"
@@ -136,6 +126,18 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
           </span>
         )}
       </div>
+
+      {/* Tag do projeto - posicionada no canto direito */}
+      {todo.projectId && projects.find(p => p.id === todo.projectId) && (
+        <div className="flex-shrink-0 ml-2">
+          <span
+            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+            style={{ backgroundColor: projects.find(p => p.id === todo.projectId)?.color || '#3B82F6' }}
+          >
+            {projects.find(p => p.id === todo.projectId)?.name}
+          </span>
+        </div>
+      )}
 
       {/* Tags no canto direito - removido temporariamente */}
 
