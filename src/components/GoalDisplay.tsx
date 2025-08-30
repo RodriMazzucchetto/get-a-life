@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react'
 import { Goal, Project, SimpleInitiative } from '@/lib/planning'
 
@@ -148,29 +149,31 @@ export function GoalDisplay({
                         </span>
                       </div>
                       
+                      {/* Slider interativo - clicável e arrastável */}
                       <div className="relative">
-                        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden cursor-pointer">
                           <div 
-                            className={`h-full ${getProgressColor(goal.progress)} rounded-full transition-all duration-300 ease-out`}
+                            className={`h-full ${getProgressColor(goal.progress)} rounded-full transition-all duration-300 ease-out relative`}
                             style={{ width: `${goal.progress}%` }}
-                          />
+                          >
+                            {/* Indicador visual no final da barra preenchida */}
+                            <div className="absolute right-0 top-1/2 w-3 h-3 bg-white rounded-full shadow-md transform -translate-y-1/2 border-2 border-gray-300"></div>
+                          </div>
                         </div>
-                        {/* Slider circular no final da barra */}
-                        <div 
-                          className={`absolute top-1/2 w-4 h-4 ${getProgressColor(goal.progress)} rounded-full border-2 border-white shadow-md transform -translate-y-1/2 transition-all duration-300`}
-                          style={{ left: `calc(${goal.progress}% - 8px)` }}
+                        
+                        {/* Input range invisível mas funcional */}
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={goal.progress}
+                          onChange={(e) => onUpdateGoalProgress(goal.id, parseInt(e.target.value))}
+                          className="absolute inset-0 w-full h-4 opacity-0 cursor-pointer"
+                          style={{
+                            background: `linear-gradient(to right, ${getProgressColor(goal.progress).replace('bg-', '')} 0%, ${getProgressColor(goal.progress).replace('bg-', '')} ${goal.progress}%, #e5e7eb ${goal.progress}%, #e5e7eb 100%)`
+                          }}
                         />
                       </div>
-                      
-                      {/* Controle de progresso */}
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={goal.progress}
-                        onChange={(e) => onUpdateGoalProgress(goal.id, parseInt(e.target.value))}
-                        className="w-full h-2 bg-transparent appearance-none cursor-pointer"
-                      />
                     </div>
                   </div>
 
