@@ -382,7 +382,7 @@ export function usePlanningData() {
       console.error('Erro ao atualizar meta:', error)
       return null
     }
-  }, [])
+  }, [user])
 
   const deleteGoal = useCallback(async (goalId: string) => {
     try {
