@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { 
@@ -105,8 +106,8 @@ export function usePlanningData() {
             ...fromDbGoal(goal),
             initiatives: initiatives.map((i: DBInitiative) => ({
               id: i.id,
-              title: i.title,
-              completed: i.status === 'completed'
+              title: i.description, // Usar description como title
+              completed: false // Sempre false por enquanto
             }))
           }
         })
@@ -278,11 +279,7 @@ export function usePlanningData() {
         for (const initiative of goalData.initiatives) {
           await initiativesService.createInitiative(user.id, {
             title: initiative.title,
-            description: '',
-            goal_id: newGoal.id,
-            status: initiative.completed ? 'completed' : 'active',
-            priority: 'medium',
-            due_date: undefined
+            goal_id: newGoal.id
           })
         }
         console.log('🎯 Hook: Iniciativas criadas com sucesso')
@@ -294,8 +291,8 @@ export function usePlanningData() {
         ...newGoal,
         initiatives: newInitiatives.map((i: DBInitiative) => ({
           id: i.id,
-          title: i.title,
-          completed: i.status === 'completed'
+          title: i.description || '', // Usar description como title
+          completed: false // Sempre false por enquanto
         }))
       }
       console.log('🎯 Hook: Meta criada com iniciativas recarregadas:', newGoalWithInitiatives)
@@ -351,11 +348,7 @@ export function usePlanningData() {
         for (const initiative of updates.initiatives) {
           await initiativesService.createInitiative(user.id, {
             title: initiative.title,
-            description: '',
-            goal_id: goalId,
-            status: initiative.completed ? 'completed' : 'active',
-            priority: 'medium',
-            due_date: undefined
+            goal_id: goalId
           })
         }
         console.log('🎯 Hook: Iniciativas atualizadas com sucesso')
@@ -497,7 +490,7 @@ export function usePlanningData() {
       if (!user) return null
       try {
         const newInitiative = await initiativesService.createInitiative(user.id, {
-          ...initiativeData,
+          title: initiativeData.title,
           goal_id: goalId
         })
         setInitiatives(prev => [fromDbInitiative(newInitiative), ...prev])
@@ -510,7 +503,7 @@ export function usePlanningData() {
     
     updateInitiative: async (initiativeId: string, updates: Partial<Initiative>) => {
       try {
-        const updatedInitiative = await initiativesService.updateInitiative(initiativeId, updates)
+        const updatedInitiative = await initiativesService.updateInitiative(initiativeId, { title: updates.title })
         setInitiatives(prev => prev.map(i => i.id === initiativeId ? fromDbInitiative(updatedInitiative) : i))
         return fromDbInitiative(updatedInitiative)
       } catch (error) {

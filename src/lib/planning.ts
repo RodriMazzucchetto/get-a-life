@@ -65,15 +65,9 @@ export interface DBGoal {
 
 export interface DBInitiative {
   id: string
-  user_id: string
-  title: string
-  description?: string
   goal_id: string
-  status: 'active' | 'completed' | 'cancelled'
-  priority: 'low' | 'medium' | 'high'
-  due_date?: string
+  description: string
   created_at: string
-  updated_at: string
 }
 
 export interface DBTodoTag {
@@ -264,7 +258,7 @@ export const initiativesService = {
   },
 
   // Criar nova iniciativa
-  async createInitiative(userId: string, initiativeData: Omit<DBInitiative, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<DBInitiative> {
+  async createInitiative(userId: string, initiativeData: { goal_id: string; title: string }): Promise<DBInitiative> {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('goal_initiatives')
@@ -284,7 +278,7 @@ export const initiativesService = {
   },
 
   // Atualizar iniciativa
-  async updateInitiative(initiativeId: string, updates: Partial<DBInitiative>): Promise<DBInitiative> {
+  async updateInitiative(initiativeId: string, updates: { title?: string }): Promise<DBInitiative> {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('goal_initiatives')
@@ -689,24 +683,20 @@ export function fromDbProject(row: DBProject): Project {
 export function fromDbInitiative(row: DBInitiative): Initiative {
   return {
     id: row.id,
-    title: row.title,
-    description: row.description,
+    title: row.description, // Usar description como title
+    description: '', // Não há description na tabela
     goalId: row.goal_id,
-    status: row.status,
-    priority: row.priority,
-    dueDate: row.due_date,
+    status: 'active', // Valor padrão
+    priority: 'medium', // Valor padrão
+    dueDate: undefined, // Não há due_date na tabela
     created_at: row.created_at,
-    updated_at: row.updated_at
+    updated_at: row.created_at // Usar created_at como updated_at
   };
 }
 
 export function toDbInitiative(initiative: Partial<Initiative>): Partial<DBInitiative> {
   const out: Partial<DBInitiative> = {};
-  if (initiative.title !== undefined) out.title = initiative.title;
-  if (initiative.description !== undefined) out.description = initiative.description;
+  if (initiative.title !== undefined) out.description = initiative.title; // Usar title como description
   if (initiative.goalId !== undefined) out.goal_id = initiative.goalId;
-  if (initiative.status !== undefined) out.status = initiative.status;
-  if (initiative.priority !== undefined) out.priority = initiative.priority;
-  if (initiative.dueDate !== undefined) out.due_date = initiative.dueDate;
   return out;
 }
