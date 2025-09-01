@@ -290,7 +290,7 @@ export function usePlanningData() {
       console.log('🎯 Hook: nextSteps recebido:', updates.nextSteps)
       const dbUpdates = toDbGoal(updates)
       console.log('🎯 Hook: Dados convertidos para DB:', dbUpdates)
-      console.log('🎯 Hook: next_steps no DB:', dbUpdates.next_steps)
+      console.log('🎯 Hook: next_step no DB:', dbUpdates.next_step)
       const updatedDbGoal = await goalsService.updateGoal(goalId, dbUpdates)
       console.log('🎯 Hook: Meta atualizada no banco:', updatedDbGoal)
       const updatedGoal = fromDbGoal(updatedDbGoal)

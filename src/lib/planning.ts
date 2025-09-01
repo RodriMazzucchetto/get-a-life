@@ -57,7 +57,7 @@ export interface DBGoal {
   description?: string
   project_id: string
   progress: number
-  next_steps?: string
+  next_step?: string
   due_date?: string
   created_at: string
   updated_at: string
@@ -653,7 +653,7 @@ export function fromDbGoal(row: DBGoal): Goal {
     description: row.description,
     projectId: row.project_id,
     progress: row.progress,
-    nextSteps: row.next_steps,
+    nextSteps: row.next_step,
     dueDate: row.due_date,
     initiatives: [], // Será carregado separadamente
     created_at: row.created_at,
@@ -667,7 +667,7 @@ export function toDbGoal(goal: Partial<Goal>): Partial<DBGoal> {
   if (goal.description !== undefined) out.description = goal.description;
   if (goal.projectId !== undefined) out.project_id = goal.projectId;
   if (goal.progress !== undefined) out.progress = goal.progress;
-  if (goal.nextSteps !== undefined) out.next_steps = goal.nextSteps;
+  if (goal.nextSteps !== undefined) out.next_step = goal.nextSteps;
   if (goal.dueDate !== undefined) out.due_date = goal.dueDate;
   return out;
 }
