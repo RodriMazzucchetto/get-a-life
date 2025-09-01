@@ -286,9 +286,16 @@ export function usePlanningData() {
 
   const updateGoal = useCallback(async (goalId: string, updates: Partial<Goal>) => {
     try {
+      console.log('🎯 Hook: Atualizando meta com dados:', updates)
+      console.log('🎯 Hook: nextSteps recebido:', updates.nextSteps)
       const dbUpdates = toDbGoal(updates)
+      console.log('🎯 Hook: Dados convertidos para DB:', dbUpdates)
+      console.log('🎯 Hook: next_steps no DB:', dbUpdates.next_steps)
       const updatedDbGoal = await goalsService.updateGoal(goalId, dbUpdates)
+      console.log('🎯 Hook: Meta atualizada no banco:', updatedDbGoal)
       const updatedGoal = fromDbGoal(updatedDbGoal)
+      console.log('🎯 Hook: Meta convertida para domínio:', updatedGoal)
+      console.log('🎯 Hook: nextSteps após conversão:', updatedGoal.nextSteps)
       setGoals(prev => prev.map(g => g.id === goalId ? updatedGoal : g))
       return updatedGoal
     } catch (error) {
