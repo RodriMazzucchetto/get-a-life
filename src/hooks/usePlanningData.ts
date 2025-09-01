@@ -299,6 +299,9 @@ export function usePlanningData() {
         }))
       }
       console.log('🎯 Hook: Meta criada com iniciativas recarregadas:', newGoalWithInitiatives)
+      console.log('🎯 Hook: Iniciativas recarregadas do banco (criar):', newInitiatives)
+      console.log('🎯 Hook: Iniciativas processadas (criar):', newGoalWithInitiatives.initiatives)
+      console.log('🎯 Hook: Número de iniciativas recarregadas (criar):', newGoalWithInitiatives.initiatives.length)
       
       setGoals(prev => {
         console.log('🎯 Hook: Estado anterior de metas:', prev)
@@ -361,6 +364,9 @@ export function usePlanningData() {
         }))
       }
       console.log('🎯 Hook: Meta atualizada com iniciativas recarregadas:', updatedGoalWithInitiatives)
+      console.log('🎯 Hook: Iniciativas recarregadas do banco:', updatedInitiatives)
+      console.log('🎯 Hook: Iniciativas processadas:', updatedGoalWithInitiatives.initiatives)
+      console.log('🎯 Hook: Número de iniciativas recarregadas:', updatedGoalWithInitiatives.initiatives.length)
       
       setGoals(prev => prev.map(g => g.id === goalId ? updatedGoalWithInitiatives : g))
       return updatedGoalWithInitiatives
