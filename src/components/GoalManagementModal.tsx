@@ -86,6 +86,8 @@ export function GoalManagementModal({
 
       console.log('🎯 Modal: Salvando meta com dados:', goalData)
       console.log('🎯 Modal: nextSteps sendo enviado:', goalData.nextSteps)
+      console.log('🎯 Modal: Iniciativas sendo enviadas:', goalData.initiatives)
+      console.log('🎯 Modal: Número de iniciativas:', goalData.initiatives.length)
 
       if (isEditing && goal) {
         await onUpdateGoal(goal.id, goalData)

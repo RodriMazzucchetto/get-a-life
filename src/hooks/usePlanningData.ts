@@ -296,6 +296,31 @@ export function usePlanningData() {
       const updatedGoal = fromDbGoal(updatedDbGoal)
       console.log('🎯 Hook: Meta convertida para domínio:', updatedGoal)
       console.log('🎯 Hook: nextSteps após conversão:', updatedGoal.nextSteps)
+      
+      // Processar iniciativas se existirem
+      if (updates.initiatives && updates.initiatives.length > 0 && user) {
+        console.log('🎯 Hook: Processando iniciativas na atualização:', updates.initiatives)
+        
+        // Primeiro, deletar todas as iniciativas existentes da meta
+        const existingInitiatives = await initiativesService.getInitiativesByGoal(goalId)
+        for (const existingInitiative of existingInitiatives) {
+          await initiativesService.deleteInitiative(existingInitiative.id)
+        }
+        
+        // Depois, criar as novas iniciativas
+        for (const initiative of updates.initiatives) {
+          await initiativesService.createInitiative(user.id, {
+            title: initiative.title,
+            description: '',
+            goal_id: goalId,
+            status: initiative.completed ? 'completed' : 'active',
+            priority: 'medium',
+            due_date: undefined
+          })
+        }
+        console.log('🎯 Hook: Iniciativas atualizadas com sucesso')
+      }
+      
       setGoals(prev => prev.map(g => g.id === goalId ? updatedGoal : g))
       return updatedGoal
     } catch (error) {
