@@ -1,5 +1,6 @@
 
 
+
 import React, { useState } from 'react'
 import { Goal, Project, SimpleInitiative } from '@/lib/planning'
 
@@ -124,8 +125,12 @@ export function GoalDisplay({
                 key={goal.id} 
                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md hover:shadow-blue-100/30 transition-all duration-200 group"
               >
-                {/* Cabeçalho da meta */}
-                <div className="flex justify-between items-start mb-4">
+                {/* Cabeçalho da meta - CLICÁVEL para abrir modal */}
+                <div 
+                  className="flex justify-between items-start mb-4 cursor-pointer"
+                  onClick={() => onEditGoal(goal)}
+                  title="Clique para editar a meta"
+                >
                   <div className="flex-1">
                     {/* Categoria e título */}
                     <div className="flex items-center gap-2 mb-2">
@@ -136,9 +141,21 @@ export function GoalDisplay({
                       <span className="text-xs text-gray-500">{project.name}</span>
                     </div>
                     
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-200">
-                      {goal.title}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                        {goal.title}
+                      </h3>
+                      <span title="Clique para editar">
+                        <svg 
+                          className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors duration-200 opacity-0 group-hover:opacity-100" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </span>
+                    </div>
                     
                     {/* Progresso com barra única e cores dinâmicas */}
                     <div className="space-y-2">
@@ -177,9 +194,12 @@ export function GoalDisplay({
                     </div>
                   </div>
 
-                  {/* Botão de menu (três pontos) */}
+                  {/* Botão de menu (três pontos) - MANTIDO para edição rápida */}
                   <button
-                    onClick={() => onEditGoal(goal)}
+                    onClick={(e) => {
+                      e.stopPropagation() // Evita que o clique propague para o cabeçalho
+                      onEditGoal(goal)
+                    }}
                     className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
                     title="Editar meta"
                   >
@@ -189,9 +209,13 @@ export function GoalDisplay({
                   </button>
                 </div>
 
-                {/* Próximos Passos com destaque especial */}
+                {/* Próximos Passos com destaque especial - CLICÁVEL */}
                 {goal.nextSteps && (
-                  <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
+                  <div 
+                    className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg cursor-pointer hover:from-yellow-100 hover:to-orange-100 transition-all duration-200"
+                    onClick={() => onEditGoal(goal)}
+                    title="Clique para editar a meta"
+                  >
                     <div className="flex items-center gap-2 mb-1">
                       <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
                       <span className="text-xs font-semibold text-yellow-800">
