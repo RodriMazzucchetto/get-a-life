@@ -123,13 +123,22 @@ export function GoalManagementModal({
   const handleAddInitiative = () => {
     if (!newInitiativeTitle.trim()) return
 
+    console.log('🎯 Modal: Adicionando nova iniciativa')
+    console.log('🎯 Modal: Título da iniciativa:', newInitiativeTitle.trim())
+
     const newInitiative: SimpleInitiative = {
       id: `temp-${Date.now()}`,
       title: newInitiativeTitle.trim(),
       completed: false
     }
 
+    console.log('🎯 Modal: Nova iniciativa criada:', newInitiative)
+    console.log('🎯 Modal: Estado anterior das iniciativas:', initiatives)
+
     setInitiatives([...initiatives, newInitiative])
+    
+    console.log('🎯 Modal: Iniciativas após adicionar:', [...initiatives, newInitiative])
+    
     setNewInitiativeTitle('')
   }
 
