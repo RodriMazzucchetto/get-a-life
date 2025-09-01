@@ -375,8 +375,8 @@ export function usePlanningData() {
         ...updatedGoal,
         initiatives: updatedInitiatives.map((i: DBInitiative) => ({
           id: i.id,
-          title: i.description || '', // Usar description como title
-          completed: false // Sempre false por enquanto
+          title: i.title || '', // Usar o campo title correto
+          completed: i.status === 'completed'
         }))
       }
       console.log('🎯 Hook: Meta atualizada com iniciativas recarregadas:', updatedGoalWithInitiatives)
