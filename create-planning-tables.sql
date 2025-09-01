@@ -88,15 +88,9 @@ CREATE TABLE IF NOT EXISTS goals (
 -- =====================================================
 CREATE TABLE IF NOT EXISTS goal_initiatives (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   goal_id UUID REFERENCES goals(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  status TEXT CHECK (status IN ('active', 'completed', 'cancelled')) DEFAULT 'active',
-  priority TEXT CHECK (priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
-  due_date TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  description TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- =====================================================

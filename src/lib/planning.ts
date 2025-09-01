@@ -269,8 +269,8 @@ export const initiativesService = {
     const { data, error } = await supabase
       .from('goal_initiatives')
       .insert({
-        user_id: userId,
-        ...initiativeData
+        goal_id: initiativeData.goal_id,
+        description: initiativeData.title // Usar title como description
       })
       .select()
       .single()
@@ -288,7 +288,9 @@ export const initiativesService = {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('goal_initiatives')
-      .update(updates)
+      .update({
+        description: updates.title // Usar title como description
+      })
       .eq('id', initiativeId)
       .select()
       .single()
