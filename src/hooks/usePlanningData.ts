@@ -329,6 +329,14 @@ export function usePlanningData() {
       console.log('🎯 Hook: Meta convertida para domínio:', updatedGoal)
       console.log('🎯 Hook: nextSteps após conversão:', updatedGoal.nextSteps)
       
+      // Verificar condição para processar iniciativas
+      console.log('🎯 Hook: Verificando condição para iniciativas:')
+      console.log('🎯 Hook: updates.initiatives existe?', !!updates.initiatives)
+      console.log('🎯 Hook: updates.initiatives:', updates.initiatives)
+      console.log('🎯 Hook: updates.initiatives.length:', updates.initiatives?.length)
+      console.log('🎯 Hook: user existe?', !!user)
+      console.log('🎯 Hook: Condição completa:', !!(updates.initiatives && updates.initiatives.length > 0 && user))
+      
       // Processar iniciativas se existirem
       if (updates.initiatives && updates.initiatives.length > 0 && user) {
         console.log('🎯 Hook: Processando iniciativas na atualização:', updates.initiatives)
