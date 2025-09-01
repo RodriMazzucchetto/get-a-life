@@ -106,8 +106,8 @@ export function usePlanningData() {
             ...fromDbGoal(goal),
             initiatives: initiatives.map((i: DBInitiative) => ({
               id: i.id,
-              title: i.description, // Usar description como title
-              completed: false // Sempre false por enquanto
+              title: i.title || '',
+              completed: i.status === 'completed'
             }))
           }
         })
@@ -273,39 +273,54 @@ export function usePlanningData() {
       const newGoal = fromDbGoal(newDbGoal)
       console.log('🎯 Hook: Meta convertida para domínio:', newGoal)
       
-      // Processar iniciativas se existirem
-      if (goalData.initiatives && goalData.initiatives.length > 0) {
-        console.log('🎯 Hook: Processando iniciativas:', goalData.initiatives)
-        for (const initiative of goalData.initiatives) {
-          await initiativesService.createInitiative(user.id, {
-            title: initiative.title,
-            goal_id: newGoal.id
-          })
-        }
-        console.log('🎯 Hook: Iniciativas criadas com sucesso')
-      }
-      
-      // Recarregar as iniciativas da meta criada
-      const newInitiatives = await initiativesService.getInitiativesByGoal(newGoal.id)
+      // Criar a meta primeiro (Fase 1 - sempre deve funcionar)
       const newGoalWithInitiatives = {
         ...newGoal,
-        initiatives: newInitiatives.map((i: DBInitiative) => ({
-          id: i.id,
-          title: i.description || '', // Usar description como title
-          completed: false // Sempre false por enquanto
-        }))
+        initiatives: []
       }
-      console.log('🎯 Hook: Meta criada com iniciativas recarregadas:', newGoalWithInitiatives)
-      console.log('🎯 Hook: Iniciativas recarregadas do banco (criar):', newInitiatives)
-      console.log('🎯 Hook: Iniciativas processadas (criar):', newGoalWithInitiatives.initiatives)
-      console.log('🎯 Hook: Número de iniciativas recarregadas (criar):', newGoalWithInitiatives.initiatives.length)
       
+      // Atualizar o estado imediatamente com a meta criada
       setGoals(prev => {
         console.log('🎯 Hook: Estado anterior de metas:', prev)
         const newGoals = [newGoalWithInitiatives, ...prev]
         console.log('🎯 Hook: Novo estado de metas:', newGoals)
         return newGoals
       })
+      
+      // Processar iniciativas em background (Fase 2 - não deve falhar a meta)
+      if (goalData.initiatives && goalData.initiatives.length > 0) {
+        console.log('🎯 Hook: Processando iniciativas em background:', goalData.initiatives)
+        
+        // Usar try-catch separado para não afetar a meta
+        try {
+          for (const initiative of goalData.initiatives) {
+            await initiativesService.createInitiative(user.id, {
+              title: initiative.title,
+              goal_id: newGoal.id
+            })
+          }
+          console.log('🎯 Hook: Iniciativas criadas com sucesso')
+          
+          // Recarregar iniciativas e atualizar a meta
+          const newInitiatives = await initiativesService.getInitiativesByGoal(newGoal.id)
+          const updatedGoalWithInitiatives = {
+            ...newGoal,
+                         initiatives: newInitiatives.map((i: DBInitiative) => ({
+               id: i.id,
+               title: i.title || '',
+               completed: i.status === 'completed'
+             }))
+          }
+          
+          // Atualizar a meta com as iniciativas
+          setGoals(prev => prev.map(g => g.id === newGoal.id ? updatedGoalWithInitiatives : g))
+          
+        } catch (error) {
+          console.error('🎯 Hook: Erro ao criar iniciativas (não afeta a meta):', error)
+          // A meta já está no estado, apenas logar o erro
+        }
+      }
+      
       return newGoalWithInitiatives
     } catch (error) {
       console.error('Erro ao criar meta:', error)

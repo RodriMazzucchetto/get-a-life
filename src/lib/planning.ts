@@ -66,8 +66,14 @@ export interface DBGoal {
 export interface DBInitiative {
   id: string
   goal_id: string
-  description: string
+  title: string
+  description?: string
+  status: string
+  priority: string
+  due_date?: string
+  user_id: string
   created_at: string
+  updated_at: string
 }
 
 export interface DBTodoTag {
@@ -244,7 +250,7 @@ export const initiativesService = {
   async getInitiativesByGoal(goalId: string): Promise<DBInitiative[]> {
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('goal_initiatives')
+      .from('initiatives')
       .select('*')
       .eq('goal_id', goalId)
       .order('created_at', { ascending: false })
@@ -261,10 +267,11 @@ export const initiativesService = {
   async createInitiative(userId: string, initiativeData: { goal_id: string; title: string }): Promise<DBInitiative> {
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('goal_initiatives')
+      .from('initiatives')
       .insert({
         goal_id: initiativeData.goal_id,
-        description: initiativeData.title // Usar title como description
+        title: initiativeData.title,
+        user_id: userId
       })
       .select()
       .single()
@@ -281,9 +288,9 @@ export const initiativesService = {
   async updateInitiative(initiativeId: string, updates: { title?: string }): Promise<DBInitiative> {
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('goal_initiatives')
+      .from('initiatives')
       .update({
-        description: updates.title // Usar title como description
+        title: updates.title
       })
       .eq('id', initiativeId)
       .select()
@@ -301,7 +308,7 @@ export const initiativesService = {
   async deleteInitiative(initiativeId: string): Promise<void> {
     const supabase = createClient()
     const { error } = await supabase
-      .from('goal_initiatives')
+      .from('initiatives')
       .delete()
       .eq('id', initiativeId)
 
@@ -683,20 +690,24 @@ export function fromDbProject(row: DBProject): Project {
 export function fromDbInitiative(row: DBInitiative): Initiative {
   return {
     id: row.id,
-    title: row.description, // Usar description como title
-    description: '', // Não há description na tabela
+    title: row.title,
+    description: row.description || '',
     goalId: row.goal_id,
-    status: 'active', // Valor padrão
-    priority: 'medium', // Valor padrão
-    dueDate: undefined, // Não há due_date na tabela
+    status: row.status as 'active' | 'completed' | 'cancelled',
+    priority: row.priority as 'low' | 'medium' | 'high',
+    dueDate: row.due_date,
     created_at: row.created_at,
-    updated_at: row.created_at // Usar created_at como updated_at
+    updated_at: row.updated_at
   };
 }
 
 export function toDbInitiative(initiative: Partial<Initiative>): Partial<DBInitiative> {
   const out: Partial<DBInitiative> = {};
-  if (initiative.title !== undefined) out.description = initiative.title; // Usar title como description
+  if (initiative.title !== undefined) out.title = initiative.title;
+  if (initiative.description !== undefined) out.description = initiative.description;
   if (initiative.goalId !== undefined) out.goal_id = initiative.goalId;
+  if (initiative.status !== undefined) out.status = initiative.status;
+  if (initiative.priority !== undefined) out.priority = initiative.priority;
+  if (initiative.dueDate !== undefined) out.due_date = initiative.dueDate;
   return out;
 }
