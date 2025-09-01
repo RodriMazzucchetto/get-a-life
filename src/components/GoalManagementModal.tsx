@@ -198,7 +198,7 @@ export function GoalManagementModal({
         <div className="space-y-6">
           {/* Título */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-800 mb-2">
               Título da Meta *
             </label>
             <input
@@ -206,13 +206,13 @@ export function GoalManagementModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Digite o título da meta"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
             />
           </div>
 
           {/* Descrição */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-800 mb-2">
               Descrição
             </label>
             <textarea
@@ -220,19 +220,19 @@ export function GoalManagementModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Descreva sua meta (opcional)"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
             />
           </div>
 
           {/* Projeto */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-800 mb-2">
               Projeto *
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
             >
               <option value="">Selecione um projeto</option>
               {projects.map((project) => (
@@ -245,8 +245,8 @@ export function GoalManagementModal({
 
           {/* Progresso */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Progresso: {progress}%
+            <label className="block text-sm font-semibold text-gray-800 mb-2">
+              Progresso: <span className="text-blue-600 font-bold">{progress}%</span>
             </label>
             <div className="relative">
               <input
@@ -266,7 +266,7 @@ export function GoalManagementModal({
 
           {/* Próximos Passos */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-800 mb-2">
               Próximos Passos
             </label>
             <textarea
@@ -274,19 +274,19 @@ export function GoalManagementModal({
               onChange={(e) => setNextSteps(e.target.value)}
               placeholder="Descreva os próximos passos para alcançar esta meta (opcional)"
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
             />
           </div>
 
           {/* Data Limite */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-800 mb-2">
               Data Limite
             </label>
             <DatePicker
               selected={dueDate}
               onChange={(date: Date | null) => setDueDate(date)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
               placeholderText="Selecionar data limite"
               dateFormat="dd/MM/yyyy"
               isClearable
@@ -300,8 +300,8 @@ export function GoalManagementModal({
 
           {/* Iniciativas */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Iniciativas ({initiatives.length})
+            <label className="block text-sm font-semibold text-gray-800 mb-3">
+              Iniciativas <span className="text-blue-600 font-bold">({initiatives.length})</span>
             </label>
             
             {/* Lista de iniciativas */}
@@ -326,7 +326,7 @@ export function GoalManagementModal({
                         type="text"
                         value={editingInitiativeTitle}
                         onChange={(e) => setEditingInitiativeTitle(e.target.value)}
-                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm text-gray-800"
                         onKeyPress={(e) => {
                           if (e.key === 'Enter') {
                             handleSaveInitiativeEdit()
@@ -355,7 +355,7 @@ export function GoalManagementModal({
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 flex-1">
-                      <span className={`text-sm ${initiative.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                      <span className={`text-sm font-medium ${initiative.completed ? 'line-through text-gray-600' : 'text-gray-800'}`}>
                         {initiative.title}
                       </span>
                       <button
@@ -389,7 +389,7 @@ export function GoalManagementModal({
                 value={newInitiativeTitle}
                 onChange={(e) => setNewInitiativeTitle(e.target.value)}
                 placeholder="Digite o título da nova iniciativa"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     handleAddInitiative()
@@ -420,7 +420,7 @@ export function GoalManagementModal({
             <div className="flex gap-3 ml-auto">
               <button
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-800 bg-white hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancelar
               </button>
