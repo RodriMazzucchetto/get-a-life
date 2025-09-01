@@ -271,13 +271,42 @@ export function usePlanningData() {
       console.log('🎯 Hook: Meta criada no banco:', newDbGoal)
       const newGoal = fromDbGoal(newDbGoal)
       console.log('🎯 Hook: Meta convertida para domínio:', newGoal)
+      
+      // Processar iniciativas se existirem
+      if (goalData.initiatives && goalData.initiatives.length > 0) {
+        console.log('🎯 Hook: Processando iniciativas:', goalData.initiatives)
+        for (const initiative of goalData.initiatives) {
+          await initiativesService.createInitiative(user.id, {
+            title: initiative.title,
+            description: '',
+            goal_id: newGoal.id,
+            status: initiative.completed ? 'completed' : 'active',
+            priority: 'medium',
+            due_date: undefined
+          })
+        }
+        console.log('🎯 Hook: Iniciativas criadas com sucesso')
+      }
+      
+      // Recarregar as iniciativas da meta criada
+      const newInitiatives = await initiativesService.getInitiativesByGoal(newGoal.id)
+      const newGoalWithInitiatives = {
+        ...newGoal,
+        initiatives: newInitiatives.map((i: DBInitiative) => ({
+          id: i.id,
+          title: i.title,
+          completed: i.status === 'completed'
+        }))
+      }
+      console.log('🎯 Hook: Meta criada com iniciativas recarregadas:', newGoalWithInitiatives)
+      
       setGoals(prev => {
         console.log('🎯 Hook: Estado anterior de metas:', prev)
-        const newGoals = [newGoal, ...prev]
+        const newGoals = [newGoalWithInitiatives, ...prev]
         console.log('🎯 Hook: Novo estado de metas:', newGoals)
         return newGoals
       })
-      return newGoal
+      return newGoalWithInitiatives
     } catch (error) {
       console.error('Erro ao criar meta:', error)
       return null
@@ -321,8 +350,20 @@ export function usePlanningData() {
         console.log('🎯 Hook: Iniciativas atualizadas com sucesso')
       }
       
-      setGoals(prev => prev.map(g => g.id === goalId ? updatedGoal : g))
-      return updatedGoal
+      // Recarregar as iniciativas da meta atualizada
+      const updatedInitiatives = await initiativesService.getInitiativesByGoal(goalId)
+      const updatedGoalWithInitiatives = {
+        ...updatedGoal,
+        initiatives: updatedInitiatives.map((i: DBInitiative) => ({
+          id: i.id,
+          title: i.title,
+          completed: i.status === 'completed'
+        }))
+      }
+      console.log('🎯 Hook: Meta atualizada com iniciativas recarregadas:', updatedGoalWithInitiatives)
+      
+      setGoals(prev => prev.map(g => g.id === goalId ? updatedGoalWithInitiatives : g))
+      return updatedGoalWithInitiatives
     } catch (error) {
       console.error('Erro ao atualizar meta:', error)
       return null
