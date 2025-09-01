@@ -271,7 +271,9 @@ export const initiativesService = {
       .insert({
         goal_id: initiativeData.goal_id,
         title: initiativeData.title,
-        user_id: userId
+        user_id: userId,
+        status: 'active',
+        priority: 'medium'
       })
       .select()
       .single()
