@@ -250,7 +250,7 @@ export const initiativesService = {
   async getInitiativesByGoal(goalId: string): Promise<DBInitiative[]> {
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('initiatives')
+      .from('goal_initiatives')
       .select('*')
       .eq('goal_id', goalId)
       .order('created_at', { ascending: false })
@@ -267,7 +267,7 @@ export const initiativesService = {
   async createInitiative(userId: string, initiativeData: Omit<DBInitiative, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<DBInitiative> {
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('initiatives')
+      .from('goal_initiatives')
       .insert({
         user_id: userId,
         ...initiativeData
@@ -287,7 +287,7 @@ export const initiativesService = {
   async updateInitiative(initiativeId: string, updates: Partial<DBInitiative>): Promise<DBInitiative> {
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('initiatives')
+      .from('goal_initiatives')
       .update(updates)
       .eq('id', initiativeId)
       .select()
@@ -305,7 +305,7 @@ export const initiativesService = {
   async deleteInitiative(initiativeId: string): Promise<void> {
     const supabase = createClient()
     const { error } = await supabase
-      .from('initiatives')
+      .from('goal_initiatives')
       .delete()
       .eq('id', initiativeId)
 
