@@ -332,60 +332,90 @@ export function usePlanningData() {
     try {
       console.log('🎯 Hook: Atualizando meta com dados:', updates)
       console.log('🎯 Hook: nextSteps recebido:', updates.nextSteps)
+      
+      // 1. ATUALIZAR META (se necessário)
       const dbUpdates = toDbGoal(updates)
       console.log('🎯 Hook: Dados convertidos para DB:', dbUpdates)
       console.log('🎯 Hook: next_step no DB:', dbUpdates.next_step)
+      
+      // Usar retorno minimal para evitar erro 406
       const updatedDbGoal = await goalsService.updateGoal(goalId, dbUpdates)
       console.log('🎯 Hook: Meta atualizada no banco:', updatedDbGoal)
       const updatedGoal = fromDbGoal(updatedDbGoal)
       console.log('🎯 Hook: Meta convertida para domínio:', updatedGoal)
       console.log('🎯 Hook: nextSteps após conversão:', updatedGoal.nextSteps)
       
-      // Verificar condição para processar iniciativas
-      console.log('🎯 Hook: Verificando condição para iniciativas:')
-      console.log('🎯 Hook: updates.initiatives existe?', !!updates.initiatives)
-      console.log('🎯 Hook: updates.initiatives:', updates.initiatives)
-      console.log('🎯 Hook: updates.initiatives.length:', updates.initiatives?.length)
-      console.log('🎯 Hook: user existe?', !!user)
-      console.log('🎯 Hook: Condição completa:', !!(updates.initiatives && updates.initiatives.length > 0 && user))
-      
-      // Processar iniciativas se existirem
-      if (updates.initiatives && updates.initiatives.length > 0 && user) {
-        console.log('🎯 Hook: Processando iniciativas na atualização:', updates.initiatives)
+      // 2. PROCESSAR INICIATIVAS COM CÁLCULO DE DIFFS
+      if (updates.initiatives !== undefined && user) {
+        console.log('🎯 Hook: Processando iniciativas com cálculo de diffs')
         
-        // Primeiro, deletar todas as iniciativas existentes da meta
+        // 2.1. Carregar estado anterior das iniciativas
         const existingInitiatives = await initiativesService.getInitiativesByGoal(goalId)
-        for (const existingInitiative of existingInitiatives) {
-          await initiativesService.deleteInitiative(existingInitiative.id)
-        }
+        console.log('🎯 Hook: Iniciativas existentes no banco:', existingInitiatives)
+        console.log('🎯 Hook: Iniciativas novas da modal:', updates.initiatives)
         
-        // Depois, criar as novas iniciativas
-        for (const initiative of updates.initiatives) {
+        // 2.2. Calcular diffs
+        const existingIds = new Set(existingInitiatives.map(i => i.id))
+        const newIds = new Set(updates.initiatives.map(i => i.id).filter(id => !id.startsWith('temp-')))
+        
+        // toDelete: iniciativas que estavam no banco mas não estão na modal
+        const toDelete = existingInitiatives.filter(i => !newIds.has(i.id))
+        console.log('🎯 Hook: Iniciativas para deletar:', toDelete)
+        
+        // toCreate: iniciativas com ID temporário (temp-)
+        const toCreate = updates.initiatives.filter(i => i.id.startsWith('temp-'))
+        console.log('🎯 Hook: Iniciativas para criar:', toCreate)
+        
+        // toUpdate: iniciativas que existem e podem ter mudado
+        const toUpdate = updates.initiatives.filter(i => !i.id.startsWith('temp-') && existingIds.has(i.id))
+        console.log('🎯 Hook: Iniciativas para atualizar:', toUpdate)
+        
+        // 2.3. Executar operações em sequência
+        
+        // 2.3.1. DELETAR iniciativas removidas
+        for (const initiative of toDelete) {
+          console.log('🎯 Hook: Deletando iniciativa:', initiative.id)
+          await initiativesService.deleteInitiative(initiative.id)
+        }
+        console.log('🎯 Hook: Iniciativas deletadas:', toDelete.length)
+        
+        // 2.3.2. CRIAR novas iniciativas
+        for (const initiative of toCreate) {
+          console.log('🎯 Hook: Criando iniciativa:', initiative.title)
           await initiativesService.createInitiative(user.id, {
             title: initiative.title,
             goal_id: goalId
           })
         }
-        console.log('🎯 Hook: Iniciativas atualizadas com sucesso')
+        console.log('🎯 Hook: Iniciativas criadas:', toCreate.length)
+        
+        // 2.3.3. ATUALIZAR iniciativas existentes
+        for (const initiative of toUpdate) {
+          console.log('🎯 Hook: Atualizando iniciativa:', initiative.id)
+          await initiativesService.updateInitiative(initiative.id, {
+            title: initiative.title
+          })
+        }
+        console.log('🎯 Hook: Iniciativas atualizadas:', toUpdate.length)
+        
+        console.log('🎯 Hook: Processamento de iniciativas concluído')
       }
       
-      // Recarregar as iniciativas da meta atualizada
-      const updatedInitiatives = await initiativesService.getInitiativesByGoal(goalId)
-      const updatedGoalWithInitiatives = {
+      // 3. RECARREGAR estado final
+      const finalInitiatives = await initiativesService.getInitiativesByGoal(goalId)
+      const finalGoalWithInitiatives = {
         ...updatedGoal,
-        initiatives: updatedInitiatives.map((i: DBInitiative) => ({
+        initiatives: finalInitiatives.map((i: DBInitiative) => ({
           id: i.id,
-          title: i.title || '', // Usar o campo title correto
+          title: i.title || '',
           completed: i.status === 'completed'
         }))
       }
-      console.log('🎯 Hook: Meta atualizada com iniciativas recarregadas:', updatedGoalWithInitiatives)
-      console.log('🎯 Hook: Iniciativas recarregadas do banco:', updatedInitiatives)
-      console.log('🎯 Hook: Iniciativas processadas:', updatedGoalWithInitiatives.initiatives)
-      console.log('🎯 Hook: Número de iniciativas recarregadas:', updatedGoalWithInitiatives.initiatives.length)
+      console.log('🎯 Hook: Estado final da meta:', finalGoalWithInitiatives)
+      console.log('🎯 Hook: Iniciativas finais:', finalInitiatives.length)
       
-      setGoals(prev => prev.map(g => g.id === goalId ? updatedGoalWithInitiatives : g))
-      return updatedGoalWithInitiatives
+      setGoals(prev => prev.map(g => g.id === goalId ? finalGoalWithInitiatives : g))
+      return finalGoalWithInitiatives
     } catch (error) {
       console.error('Erro ao atualizar meta:', error)
       return null

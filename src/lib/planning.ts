@@ -438,16 +438,28 @@ export const goalsService = {
   // Atualizar meta
   async updateGoal(goalId: string, updates: Partial<DBGoal>): Promise<DBGoal> {
     const supabase = createClient()
-    const { data, error } = await supabase
+    
+    // Primeiro, fazer o update sem retorno para evitar erro 406
+    const { error: updateError } = await supabase
       .from('goals')
       .update(updates)
       .eq('id', goalId)
-      .select()
+
+    if (updateError) {
+      console.error('Erro ao atualizar meta:', updateError)
+      throw updateError
+    }
+
+    // Depois, buscar a meta atualizada
+    const { data, error: selectError } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('id', goalId)
       .single()
 
-    if (error) {
-      console.error('Erro ao atualizar meta:', error)
-      throw error
+    if (selectError) {
+      console.error('Erro ao buscar meta atualizada:', selectError)
+      throw selectError
     }
 
     return data
