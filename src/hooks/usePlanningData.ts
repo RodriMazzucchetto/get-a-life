@@ -460,12 +460,19 @@ export function usePlanningData() {
 
   const completeReminder = useCallback(async (reminderId: string) => {
     try {
+      console.log('✅ Marcando lembrete como concluído:', reminderId)
       await remindersService.completeReminder(reminderId)
+      console.log('✅ Lembrete marcado como concluído com sucesso')
+      
       // Remove otimisticamente da lista (já que getReminders filtra completed_at IS NULL)
-      setReminders(prev => prev.filter(r => r.id !== reminderId))
+      setReminders(prev => {
+        const newList = prev.filter(r => r.id !== reminderId)
+        console.log('✅ Lista atualizada, removendo lembrete:', reminderId, 'Nova lista:', newList.length)
+        return newList
+      })
       return true
     } catch (error) {
-      console.error('Erro ao marcar lembrete como concluído:', error)
+      console.error('❌ Erro ao marcar lembrete como concluído:', error)
       return false
     }
   }, [])
@@ -475,11 +482,15 @@ export function usePlanningData() {
     if (!user) return
 
     try {
-      // Verificar se o usuário já tem lembretes
-      const existingReminders = await remindersService.getReminders(user.id)
+      console.log('🌱 Verificando se precisa seedar lembretes para usuário:', user.id)
+      
+      // Verificar se o usuário já tem lembretes (incluindo concluídos)
+      const existingReminders = await remindersService.getAllReminders(user.id)
+      console.log('🌱 Lembretes existentes:', existingReminders.length)
       
       // Se não tem nenhum lembrete, criar os padrões
       if (existingReminders.length === 0) {
+        console.log('🌱 Criando lembretes padrão...')
         const defaultReminders = [
           {
             title: 'Quando a LP ficar pronta, precisamos avançar com botão no software + mensagem via bot',

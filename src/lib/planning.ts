@@ -483,7 +483,7 @@ export const goalsService = {
 
 // Serviço de Lembretes
 export const remindersService = {
-  // Buscar todos os lembretes do usuário
+  // Buscar todos os lembretes do usuário (apenas não concluídos)
   async getReminders(userId: string): Promise<DBReminder[]> {
     const supabase = createClient()
     const { data, error } = await supabase
@@ -495,6 +495,23 @@ export const remindersService = {
 
     if (error) {
       console.error('Erro ao buscar lembretes:', error)
+      throw error
+    }
+
+    return data || []
+  },
+
+  // Buscar todos os lembretes do usuário (incluindo concluídos) - para verificação de seed
+  async getAllReminders(userId: string): Promise<DBReminder[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('reminders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar todos os lembretes:', error)
       throw error
     }
 

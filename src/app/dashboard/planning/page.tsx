@@ -751,14 +751,18 @@ export default function PlanningPage() {
   // Funções para lembretes
   const handleToggleReminderComplete = async (reminderId: string) => {
     try {
+      console.log('🔄 Iniciando toggle do lembrete:', reminderId)
+      
       // Marcar como concluído (persistente)
       const success = await completeReminder(reminderId)
       if (!success) {
         // Se falhou, mostrar toast de erro (implementar depois)
-        console.error('Falha ao marcar lembrete como concluído')
+        console.error('❌ Falha ao marcar lembrete como concluído')
+      } else {
+        console.log('✅ Lembrete marcado como concluído com sucesso')
       }
     } catch (error) {
-      console.error('Erro ao marcar lembrete como concluído:', error)
+      console.error('❌ Erro ao marcar lembrete como concluído:', error)
     }
   }
 
