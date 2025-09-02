@@ -828,6 +828,28 @@ export default function PlanningPage() {
     }
   }
 
+  // Função unificada que determina qual função de update usar baseada no bloco
+  const handleUpdateTodoUnified = async () => {
+    if (!editingTodo || !editingTodo.title.trim()) return
+
+    // Verificar em qual bloco o todo está localizado
+    const isInTodos = todos.some(t => t.id === editingTodo.id)
+    const isInBacklog = backlogTodos.some(t => t.id === editingTodo.id)
+    const isInProgress = inProgressTodos.some(t => t.id === editingTodo.id)
+
+    if (isInTodos || isInProgress) {
+      // Para "Semana atual" e "Em progresso": usar API
+      await handleUpdateTodo()
+    } else if (isInBacklog) {
+      // Para "Backlog": atualizar apenas estado local
+      setBacklogTodos(backlogTodos.map(t => 
+        t.id === editingTodo.id ? editingTodo : t
+      ))
+      setEditingTodo(null)
+      setShowEditTodoModal(false)
+    }
+  }
+
   const handleToggleTodoComplete = async (todoId: string) => {
     // Encontrar a tarefa atual
     const currentTodo = todos.find(t => t.id === todoId)
@@ -2669,7 +2691,7 @@ export default function PlanningPage() {
                       Cancelar
                     </button>
                     <button
-                      onClick={handleUpdateTodo}
+                      onClick={handleUpdateTodoUnified}
                       disabled={!editingTodo.title.trim()}
                       className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
