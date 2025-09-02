@@ -92,6 +92,7 @@ export interface DBReminder {
   priority: 'low' | 'medium' | 'high'
   category: 'compras' | 'followups' | 'lembretes'
   completed: boolean
+  completed_at?: string
   created_at: string
   updated_at: string
 }
@@ -489,6 +490,7 @@ export const remindersService = {
       .from('reminders')
       .select('*')
       .eq('user_id', userId)
+      .is('completed_at', null) // Só retorna lembretes não concluídos
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -531,6 +533,27 @@ export const remindersService = {
 
     if (error) {
       console.error('Erro ao atualizar lembrete:', error)
+      throw error
+    }
+
+    return data
+  },
+
+  // Marcar lembrete como concluído
+  async completeReminder(reminderId: string): Promise<DBReminder> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('reminders')
+      .update({
+        completed: true,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', reminderId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao marcar lembrete como concluído:', error)
       throw error
     }
 

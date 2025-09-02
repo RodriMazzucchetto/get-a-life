@@ -458,6 +458,65 @@ export function usePlanningData() {
     }
   }, [])
 
+  const completeReminder = useCallback(async (reminderId: string) => {
+    try {
+      await remindersService.completeReminder(reminderId)
+      // Remove otimisticamente da lista (já que getReminders filtra completed_at IS NULL)
+      setReminders(prev => prev.filter(r => r.id !== reminderId))
+      return true
+    } catch (error) {
+      console.error('Erro ao marcar lembrete como concluído:', error)
+      return false
+    }
+  }, [])
+
+  // Função para seedar lembretes padrão se o usuário não tiver nenhum
+  const seedDefaultReminders = useCallback(async () => {
+    if (!user) return
+
+    try {
+      // Verificar se o usuário já tem lembretes
+      const existingReminders = await remindersService.getReminders(user.id)
+      
+      // Se não tem nenhum lembrete, criar os padrões
+      if (existingReminders.length === 0) {
+        const defaultReminders = [
+          {
+            title: 'Quando a LP ficar pronta, precisamos avançar com botão no software + mensagem via bot',
+            description: '',
+            category: 'lembretes' as const,
+            priority: 'medium' as const,
+            completed: false
+          },
+          {
+            title: 'Falar com Day de afiliados: Bot de servidores como afiliado... Permite colocar o bot no server... Nós fazemos as divulgações, quem fechar via bot, o servidor ganha também',
+            description: '',
+            category: 'lembretes' as const,
+            priority: 'medium' as const,
+            completed: false
+          },
+          {
+            title: 'Quando terminarem a integração do whmcs com Sentinel, precisamos configurar e testar o pricing funcionando bem',
+            description: '',
+            category: 'lembretes' as const,
+            priority: 'medium' as const,
+            completed: false
+          }
+        ]
+
+        // Criar todos os lembretes padrão
+        for (const reminderData of defaultReminders) {
+          await remindersService.createReminder(user.id, reminderData)
+        }
+
+        // Recarregar a lista de lembretes
+        await loadAllData()
+      }
+    } catch (error) {
+      console.error('Erro ao seedar lembretes padrão:', error)
+    }
+  }, [user, loadAllData])
+
   const deleteReminder = useCallback(async (reminderId: string) => {
     try {
       await remindersService.deleteReminder(reminderId)
@@ -571,7 +630,9 @@ export function usePlanningData() {
     // Funções de lembretes
     createReminder,
     updateReminder,
+    completeReminder,
     deleteReminder,
+    seedDefaultReminders,
     
     // Recarregar dados
     reloadData: loadAllData

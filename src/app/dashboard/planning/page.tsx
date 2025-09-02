@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PlusIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
@@ -283,7 +283,9 @@ export default function PlanningPage() {
     deleteGoal,
     createReminder,
     updateReminder,
-    deleteReminder
+    completeReminder,
+    deleteReminder,
+    seedDefaultReminders
   } = usePlanningData()
 
   // Debug: Log do estado de metas
@@ -643,7 +645,7 @@ export default function PlanningPage() {
     currentWeek: todos.filter(t => !t.completed).length,
     backlog: backlogTodos.filter(t => !t.completed).length,
     completed: todos.filter(t => t.completed).length + backlogTodos.filter(t => t.completed).length + inProgressTodos.filter(t => t.completed).length,
-    reminders: 6 // Valor fixo - já está correto
+    reminders: reminders.length // Usar contagem real dos lembretes
   }
 
   const mockReminders: Reminder[] = [
@@ -727,9 +729,6 @@ export default function PlanningPage() {
   const [showEditReminderForm, setShowEditReminderForm] = useState(false)
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
 
-  // Estado para gerenciar lembretes estáticos (que aparecem no JSX)
-  const [completedStaticReminders, setCompletedStaticReminders] = useState<Set<string>>(new Set())
-
 
 
   const handleAddReminder = async () => {
@@ -751,21 +750,15 @@ export default function PlanningPage() {
 
   // Funções para lembretes
   const handleToggleReminderComplete = async (reminderId: string) => {
-    // Verificar se é um lembrete estático (começa com 'static-')
-    if (reminderId.startsWith('static-')) {
-      // Para lembretes estáticos: marcar como concluído no estado local
-      setCompletedStaticReminders(prev => {
-        const newSet = new Set(prev)
-        if (newSet.has(reminderId)) {
-          newSet.delete(reminderId) // Se já estava marcado, desmarca
-        } else {
-          newSet.add(reminderId) // Se não estava marcado, marca
-        }
-        return newSet
-      })
-    } else {
-      // Para lembretes dinâmicos: deletar do banco de dados
-      await deleteReminder(reminderId)
+    try {
+      // Marcar como concluído (persistente)
+      const success = await completeReminder(reminderId)
+      if (!success) {
+        // Se falhou, mostrar toast de erro (implementar depois)
+        console.error('Falha ao marcar lembrete como concluído')
+      }
+    } catch (error) {
+      console.error('Erro ao marcar lembrete como concluído:', error)
     }
   }
 
@@ -787,6 +780,13 @@ export default function PlanningPage() {
     setShowEditReminderForm(false)
     setEditingReminder(null)
   }
+
+  // Seedar lembretes padrão quando a modal for aberta
+  useEffect(() => {
+    if (showRemindersModal) {
+      seedDefaultReminders()
+    }
+  }, [showRemindersModal, seedDefaultReminders])
 
   // Funções para to-dos
   const handleCreateTodo = async () => {
@@ -2001,7 +2001,7 @@ export default function PlanningPage() {
           <div className="mt-3">
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Lembretes (6)</h3>
+              <h3 className="text-lg font-medium text-gray-900">Lembretes ({reminders.length})</h3>
               <button
                 onClick={() => setShowRemindersModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -2092,74 +2092,120 @@ export default function PlanningPage() {
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {activeReminderTab === 'compras' && (
                 <>
-                  <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
-                    <span className="text-sm text-gray-700">Comprar licenças do software para equipe de desenvolvimento</span>
-                  </div>
-                  <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
-                    <span className="text-sm text-gray-700">Renovar assinatura do serviço de hospedagem</span>
-                  </div>
-                  <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
-                    <span className="text-sm text-gray-700">Adquirir equipamentos para novo escritório</span>
-                  </div>
+                  {/* Lembretes dinâmicos */}
+                  {reminders
+                    .filter(reminder => reminder.category === 'compras')
+                    .map((reminder) => (
+                    <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                        onChange={() => handleToggleReminderComplete(reminder.id)}
+                      />
+                      <div className="flex-1">
+                        {showEditReminderForm && editingReminder?.id === reminder.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={editingReminder.title}
+                              onChange={(e) => setEditingReminder({...editingReminder, title: e.target.value})}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              onKeyPress={(e) => e.key === 'Enter' && handleUpdateReminder()}
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleUpdateReminder}
+                                className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                onClick={handleCancelEditReminder}
+                                className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700">{reminder.title}</span>
+                            <button
+                              onClick={() => handleEditReminder(reminder)}
+                              className="text-gray-400 hover:text-gray-600 text-xs"
+                            >
+                              Editar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </>
               )}
 
               {activeReminderTab === 'followups' && (
                 <>
-                  <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
-                    <span className="text-sm text-gray-700">Follow up com cliente sobre proposta enviada</span>
-                  </div>
-                  <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
-                    <span className="text-sm text-gray-700">Verificar status da integração com parceiro</span>
-                  </div>
-                  <div className="flex items-start gap-3 p-3">
-                    <input type="checkbox" className="mt-1 w-4 h-4 text-blue-600 rounded" />
-                    <span className="text-sm text-gray-700">Acompanhar desenvolvimento do projeto piloto</span>
-                  </div>
+                  {/* Lembretes dinâmicos */}
+                  {reminders
+                    .filter(reminder => reminder.category === 'followups')
+                    .map((reminder) => (
+                    <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                        onChange={() => handleToggleReminderComplete(reminder.id)}
+                      />
+                      <div className="flex-1">
+                        {showEditReminderForm && editingReminder?.id === reminder.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={editingReminder.title}
+                              onChange={(e) => setEditingReminder({...editingReminder, title: e.target.value})}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              onKeyPress={(e) => e.key === 'Enter' && handleUpdateReminder()}
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleUpdateReminder}
+                                className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                onClick={handleCancelEditReminder}
+                                className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700">{reminder.title}</span>
+                            <button
+                              onClick={() => handleEditReminder(reminder)}
+                              className="text-gray-400 hover:text-gray-600 text-xs"
+                            >
+                              Editar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </>
               )}
 
               {activeReminderTab === 'lembretes' && (
                 <>
-                  {/* Lembretes estáticos existentes - só aparecem se não estiverem concluídos */}
-                  {!completedStaticReminders.has('static-1') && (
-                    <div className="flex items-start gap-3 p-3">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                        onChange={() => handleToggleReminderComplete('static-1')}
-                      />
-                      <span className="text-sm text-gray-700">Quando a LP ficar pronta, precisamos avançar com botão no software + mensagem via bot</span>
-                    </div>
-                  )}
-                  {!completedStaticReminders.has('static-2') && (
-                    <div className="flex items-start gap-3 p-3">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                        onChange={() => handleToggleReminderComplete('static-2')}
-                      />
-                      <span className="text-sm text-gray-700">Falar com Day de afiliados: Bot de servidores como afiliado... Permite colocar o bot no server... Nós fazemos as divulgações, quem fechar via bot, o servidor ganha também</span>
-                    </div>
-                  )}
-                  {!completedStaticReminders.has('static-3') && (
-                    <div className="flex items-start gap-3 p-3">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                        onChange={() => handleToggleReminderComplete('static-3')}
-                      />
-                      <span className="text-sm text-gray-700">Quando terminarem a integração do whmcs com Sentinel, precisamos configurar e testar o pricing funcionando bem</span>
-                    </div>
-                  )}
-                  
-                  {/* Lembretes criados dinamicamente */}
-                  {reminders.map((reminder) => (
+                  {/* Lembretes dinâmicos (incluindo os seedados) */}
+                  {reminders
+                    .filter(reminder => reminder.category === 'lembretes')
+                    .map((reminder) => (
                     <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
                       <input 
                         type="checkbox" 
