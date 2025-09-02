@@ -118,12 +118,12 @@ export function GoalDisplay({
             </span>
           </div>
 
-          {/* Metas do projeto */}
-          <div className="space-y-4">
+          {/* Metas do projeto - Grade responsiva */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projectGoals.map((goal) => (
               <div 
                 key={goal.id} 
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md hover:shadow-blue-100/30 transition-all duration-200 group"
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md hover:shadow-blue-100/30 transition-all duration-200 group h-fit"
               >
                 {/* Cabeçalho da meta - CLICÁVEL para abrir modal */}
                 <div 
