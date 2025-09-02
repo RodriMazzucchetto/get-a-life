@@ -14,7 +14,8 @@ interface RemindersModalProps {
   onEditReminder: (reminder: Reminder) => void
   onUpdateReminder: () => void
   onCancelEdit: () => void
-  onAddReminder: () => void
+  onShowAddForm: () => void
+  onSaveReminder: () => void
   onCancelAdd: () => void
   newReminder: string
   onNewReminderChange: (value: string) => void
@@ -34,7 +35,8 @@ export function RemindersModal({
   onEditReminder,
   onUpdateReminder,
   onCancelEdit,
-  onAddReminder,
+  onShowAddForm,
+  onSaveReminder,
   onCancelAdd,
   newReminder,
   onNewReminderChange,
@@ -99,7 +101,7 @@ export function RemindersModal({
         <div className="mb-6">
           {!showAddForm ? (
             <button
-              onClick={onAddReminder}
+              onClick={onShowAddForm}
               className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors"
             >
               <span className="text-lg text-gray-400">+</span>
@@ -117,11 +119,11 @@ export function RemindersModal({
                 onChange={(e) => onNewReminderChange(e.target.value)}
                 placeholder={`Digite o ${activeTab === 'compras' ? 'item de compra' : activeTab === 'followups' ? 'follow up' : 'lembrete'}...`}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                onKeyPress={(e) => e.key === 'Enter' && onAddReminder()}
+                onKeyPress={(e) => e.key === 'Enter' && onSaveReminder()}
                 autoFocus
               />
               <button
-                onClick={onAddReminder}
+                onClick={onSaveReminder}
                 disabled={!newReminder.trim()}
                 className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >

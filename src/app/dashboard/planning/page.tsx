@@ -743,10 +743,14 @@ export default function PlanningPage() {
         completed: false
       })
       if (newReminderData) {
-      setNewReminder('')
-      setShowAddReminderForm(false)
+        setNewReminder('')
+        setShowAddReminderForm(false)
       }
     }
+  }
+
+  const handleShowAddReminderForm = () => {
+    setShowAddReminderForm(true)
   }
 
   // Funções para lembretes
@@ -2011,7 +2015,8 @@ export default function PlanningPage() {
         onEditReminder={handleEditReminder}
         onUpdateReminder={handleUpdateReminder}
         onCancelEdit={handleCancelEditReminder}
-        onAddReminder={handleAddReminder}
+        onShowAddForm={handleShowAddReminderForm}
+        onSaveReminder={handleAddReminder}
         onCancelAdd={() => {
           setShowAddReminderForm(false)
           setNewReminder('')
