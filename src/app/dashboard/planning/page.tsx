@@ -727,6 +727,9 @@ export default function PlanningPage() {
   const [showEditReminderForm, setShowEditReminderForm] = useState(false)
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
 
+  // Estado para gerenciar lembretes estáticos (que aparecem no JSX)
+  const [completedStaticReminders, setCompletedStaticReminders] = useState<Set<string>>(new Set())
+
 
 
   const handleAddReminder = async () => {
@@ -748,8 +751,22 @@ export default function PlanningPage() {
 
   // Funções para lembretes
   const handleToggleReminderComplete = async (reminderId: string) => {
-    // Remove o lembrete da lista quando marcado como completo
-    await deleteReminder(reminderId)
+    // Verificar se é um lembrete estático (começa com 'static-')
+    if (reminderId.startsWith('static-')) {
+      // Para lembretes estáticos: marcar como concluído no estado local
+      setCompletedStaticReminders(prev => {
+        const newSet = new Set(prev)
+        if (newSet.has(reminderId)) {
+          newSet.delete(reminderId) // Se já estava marcado, desmarca
+        } else {
+          newSet.add(reminderId) // Se não estava marcado, marca
+        }
+        return newSet
+      })
+    } else {
+      // Para lembretes dinâmicos: deletar do banco de dados
+      await deleteReminder(reminderId)
+    }
   }
 
   const handleEditReminder = (reminder: Reminder) => {
@@ -2109,31 +2126,37 @@ export default function PlanningPage() {
 
               {activeReminderTab === 'lembretes' && (
                 <>
-                  {/* Lembretes estáticos existentes */}
-                  <div className="flex items-start gap-3 p-3">
-                    <input 
-                      type="checkbox" 
-                      className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                      onChange={() => handleToggleReminderComplete('static-1')}
-                    />
-                    <span className="text-sm text-gray-700">Quando a LP ficar pronta, precisamos avançar com botão no software + mensagem via bot</span>
-                  </div>
-                  <div className="flex items-start gap-3 p-3">
-                    <input 
-                      type="checkbox" 
-                      className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                      onChange={() => handleToggleReminderComplete('static-2')}
-                    />
-                    <span className="text-sm text-gray-700">Falar com Day de afiliados: Bot de servidores como afiliado... Permite colocar o bot no server... Nós fazemos as divulgações, quem fechar via bot, o servidor ganha também</span>
-                  </div>
-                  <div className="flex items-start gap-3 p-3">
-                    <input 
-                      type="checkbox" 
-                      className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                      onChange={() => handleToggleReminderComplete('static-3')}
-                    />
-                    <span className="text-sm text-gray-700">Quando terminarem a integração do whmcs com Sentinel, precisamos configurar e testar o pricing funcionando bem</span>
-                  </div>
+                  {/* Lembretes estáticos existentes - só aparecem se não estiverem concluídos */}
+                  {!completedStaticReminders.has('static-1') && (
+                    <div className="flex items-start gap-3 p-3">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                        onChange={() => handleToggleReminderComplete('static-1')}
+                      />
+                      <span className="text-sm text-gray-700">Quando a LP ficar pronta, precisamos avançar com botão no software + mensagem via bot</span>
+                    </div>
+                  )}
+                  {!completedStaticReminders.has('static-2') && (
+                    <div className="flex items-start gap-3 p-3">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                        onChange={() => handleToggleReminderComplete('static-2')}
+                      />
+                      <span className="text-sm text-gray-700">Falar com Day de afiliados: Bot de servidores como afiliado... Permite colocar o bot no server... Nós fazemos as divulgações, quem fechar via bot, o servidor ganha também</span>
+                    </div>
+                  )}
+                  {!completedStaticReminders.has('static-3') && (
+                    <div className="flex items-start gap-3 p-3">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                        onChange={() => handleToggleReminderComplete('static-3')}
+                      />
+                      <span className="text-sm text-gray-700">Quando terminarem a integração do whmcs com Sentinel, precisamos configurar e testar o pricing funcionando bem</span>
+                    </div>
+                  )}
                   
                   {/* Lembretes criados dinamicamente */}
                   {reminders.map((reminder) => (
