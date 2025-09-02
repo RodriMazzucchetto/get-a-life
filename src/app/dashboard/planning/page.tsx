@@ -6,6 +6,7 @@ import ModalOverlay from '@/components/ModalOverlay'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
 import { GoalManagementModal } from '@/components/GoalManagementModal'
 import { GoalDisplay } from '@/components/GoalDisplay'
+import { RemindersModal } from '@/components/RemindersModal'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
@@ -719,7 +720,7 @@ export default function PlanningPage() {
   }
 
   // Estado para controlar a aba ativa dos lembretes
-  const [activeReminderTab, setActiveReminderTab] = useState('compras')
+  const [activeReminderTab, setActiveReminderTab] = useState<'compras' | 'followups' | 'lembretes'>('compras')
 
   // Estado para adicionar novo lembrete
   const [showAddReminderForm, setShowAddReminderForm] = useState(false)
@@ -2000,270 +2001,28 @@ export default function PlanningPage() {
         </ModalOverlay>
 
       {/* Reminders Modal */}
-      <ModalOverlay isOpen={showRemindersModal} onClose={() => setShowRemindersModal(false)}>
-        <div className="relative top-20 mx-auto p-5 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
-          <div className="mt-3">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Lembretes ({reminders.length})</h3>
-              <button
-                onClick={() => setShowRemindersModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex space-x-1 mb-4">
-              <button
-                onClick={() => setActiveReminderTab('compras')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeReminderTab === 'compras'
-                    ? 'text-blue-600 bg-green-100 border-2 border-green-500'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Compras
-              </button>
-              <button
-                onClick={() => setActiveReminderTab('followups')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeReminderTab === 'followups'
-                    ? 'text-blue-600 bg-green-100 border-2 border-green-500'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Follow Ups
-              </button>
-              <button
-                onClick={() => setActiveReminderTab('lembretes')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeReminderTab === 'lembretes'
-                    ? 'text-blue-600 bg-green-100 border-2 border-green-500'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Lembretes
-              </button>
-            </div>
-
-            {/* Add Reminder Section */}
-            <div className="mb-4">
-              {!showAddReminderForm ? (
-                <button
-                  onClick={() => setShowAddReminderForm(true)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  <span className="text-lg text-gray-400">+</span>
-                  <span>
-                    {activeReminderTab === 'compras' && 'Adicionar compra'}
-                    {activeReminderTab === 'followups' && 'Adicionar follow up'}
-                    {activeReminderTab === 'lembretes' && 'Adicionar lembrete'}
-                  </span>
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newReminder}
-                    onChange={(e) => setNewReminder(e.target.value)}
-                    placeholder={`Digite o ${activeReminderTab === 'compras' ? 'item de compra' : activeReminderTab === 'followups' ? 'follow up' : 'lembrete'}...`}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddReminder()}
-                  />
-                  <button
-                    onClick={handleAddReminder}
-                    disabled={!newReminder.trim()}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Adicionar
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowAddReminderForm(false)
-                      setNewReminder('')
-                    }}
-                    className="px-3 py-2 text-gray-600 hover:text-gray-800 text-sm"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Reminders List */}
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {activeReminderTab === 'compras' && (
-                <>
-                  {/* Lembretes dinâmicos */}
-                  {reminders
-                    .filter(reminder => reminder.category === 'compras')
-                    .map((reminder) => (
-                    <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                        onChange={() => handleToggleReminderComplete(reminder.id)}
-                      />
-                      <div className="flex-1">
-                        {showEditReminderForm && editingReminder?.id === reminder.id ? (
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              value={editingReminder.title}
-                              onChange={(e) => setEditingReminder({...editingReminder, title: e.target.value})}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              onKeyPress={(e) => e.key === 'Enter' && handleUpdateReminder()}
-                              autoFocus
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleUpdateReminder}
-                                className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                              >
-                                Salvar
-                              </button>
-                              <button
-                                onClick={handleCancelEditReminder}
-                                className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-700">{reminder.title}</span>
-                            <button
-                              onClick={() => handleEditReminder(reminder)}
-                              className="text-gray-400 hover:text-gray-600 text-xs"
-                            >
-                              Editar
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {activeReminderTab === 'followups' && (
-                <>
-                  {/* Lembretes dinâmicos */}
-                  {reminders
-                    .filter(reminder => reminder.category === 'followups')
-                    .map((reminder) => (
-                    <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                        onChange={() => handleToggleReminderComplete(reminder.id)}
-                      />
-                      <div className="flex-1">
-                        {showEditReminderForm && editingReminder?.id === reminder.id ? (
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              value={editingReminder.title}
-                              onChange={(e) => setEditingReminder({...editingReminder, title: e.target.value})}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              onKeyPress={(e) => e.key === 'Enter' && handleUpdateReminder()}
-                              autoFocus
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleUpdateReminder}
-                                className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                              >
-                                Salvar
-                              </button>
-                              <button
-                                onClick={handleCancelEditReminder}
-                                className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-700">{reminder.title}</span>
-                            <button
-                              onClick={() => handleEditReminder(reminder)}
-                              className="text-gray-400 hover:text-gray-600 text-xs"
-                            >
-                              Editar
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {activeReminderTab === 'lembretes' && (
-                <>
-                  {/* Lembretes dinâmicos (incluindo os seedados) */}
-                  {reminders
-                    .filter(reminder => reminder.category === 'lembretes')
-                    .map((reminder) => (
-                    <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 w-4 h-4 text-blue-600 rounded" 
-                        onChange={() => handleToggleReminderComplete(reminder.id)}
-                      />
-                      <div className="flex-1">
-                        {showEditReminderForm && editingReminder?.id === reminder.id ? (
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              value={editingReminder.title}
-                              onChange={(e) => setEditingReminder({...editingReminder, title: e.target.value})}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              onKeyPress={(e) => e.key === 'Enter' && handleUpdateReminder()}
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleUpdateReminder}
-                                disabled={!editingReminder.title.trim()}
-                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                              >
-                                Salvar
-                              </button>
-                              <button
-                                onClick={handleCancelEditReminder}
-                                className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-700">{reminder.title}</span>
-                        )}
-                      </div>
-                      {!showEditReminderForm && (
-                        <button 
-                          onClick={() => handleEditReminder(reminder)}
-                          className="ml-auto text-gray-400 hover:text-gray-600 text-sm"
-                          title="Editar lembrete"
-                        >
-                          ✎
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </ModalOverlay>
-
+      <RemindersModal
+        isOpen={showRemindersModal}
+        onClose={() => setShowRemindersModal(false)}
+        reminders={reminders}
+        activeTab={activeReminderTab}
+        onTabChange={setActiveReminderTab}
+        onToggleComplete={handleToggleReminderComplete}
+        onEditReminder={handleEditReminder}
+        onUpdateReminder={handleUpdateReminder}
+        onCancelEdit={handleCancelEditReminder}
+        onAddReminder={handleAddReminder}
+        onCancelAdd={() => {
+          setShowAddReminderForm(false)
+          setNewReminder('')
+        }}
+        newReminder={newReminder}
+        onNewReminderChange={setNewReminder}
+        showAddForm={showAddReminderForm}
+        showEditForm={showEditReminderForm}
+        editingReminder={editingReminder}
+        onEditingReminderChange={setEditingReminder}
+      />
 
 
       {/* Edit Goal Modal */}
