@@ -118,8 +118,11 @@ export function GoalDisplay({
             </span>
           </div>
 
-          {/* Metas do projeto - Grade responsiva */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Metas do projeto - Layout condicional baseado no número de metas */}
+          <div className={projectGoals.length === 1 
+            ? "w-full" 
+            : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          }>
             {projectGoals.map((goal) => (
               <div 
                 key={goal.id} 
