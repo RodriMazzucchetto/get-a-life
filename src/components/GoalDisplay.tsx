@@ -102,6 +102,20 @@ export function GoalDisplay({
     return 'text-green-600'
   }
 
+  // Função para formatar data em pt-BR
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    } catch {
+      return dateString
+    }
+  }
+
   return (
     <div className="space-y-6">
       {Object.values(goalsByProject).map(({ project, goals: projectGoals }) => (
@@ -126,9 +140,9 @@ export function GoalDisplay({
             {projectGoals.map((goal) => (
               <div 
                 key={goal.id} 
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md hover:shadow-blue-100/30 transition-all duration-200 group h-fit"
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md hover:shadow-blue-100/30 transition-all duration-200 group h-full flex flex-col"
               >
-                {/* Cabeçalho da meta - CLICÁVEL para abrir modal */}
+                {/* HEADER: Cabeçalho da meta - CLICÁVEL para abrir modal */}
                 <div 
                   className="flex justify-between items-start mb-4 cursor-pointer"
                   onClick={() => onEditGoal(goal)}
@@ -144,7 +158,7 @@ export function GoalDisplay({
                       <span className="text-xs text-gray-500">{project.name}</span>
                     </div>
                     
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2">
                       <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
                         {goal.title}
                       </h3>
@@ -158,42 +172,6 @@ export function GoalDisplay({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </span>
-                    </div>
-                    
-                    {/* Progresso com barra única e cores dinâmicas */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Progresso</span>
-                        <span className={`text-sm font-semibold ${getProgressTextColor(goal.progress)}`}>
-                          {goal.progress}%
-                        </span>
-                      </div>
-                      
-                      {/* Slider interativo - clicável e arrastável */}
-                      <div className="relative">
-                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden cursor-pointer">
-                          <div 
-                            className={`h-full ${getProgressColor(goal.progress)} rounded-full transition-all duration-200 ease-out relative`}
-                            style={{ width: `${goal.progress}%` }}
-                          >
-                            {/* Indicador visual sutil no final da barra preenchida */}
-                            <div className="absolute right-0 top-1/2 w-2 h-2 bg-white rounded-full shadow-sm transform -translate-y-1/2 border border-gray-200"></div>
-                          </div>
-                        </div>
-                        
-                        {/* Input range invisível mas funcional */}
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={goal.progress}
-                          onChange={(e) => onUpdateGoalProgress(goal.id, parseInt(e.target.value))}
-                          className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
-                          style={{
-                            background: `linear-gradient(to right, ${getProgressColor(goal.progress).replace('bg-', '')} 0%, ${getProgressColor(goal.progress).replace('bg-', '')} ${goal.progress}%, #e5e7eb ${goal.progress}%, #e5e7eb 100%)`
-                          }}
-                        />
-                      </div>
                     </div>
                   </div>
 
@@ -212,41 +190,78 @@ export function GoalDisplay({
                   </button>
                 </div>
 
-                {/* Próximos Passos com destaque especial - CLICÁVEL */}
-                {goal.nextSteps && (
-                  <div 
-                    className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg cursor-pointer hover:from-yellow-100 hover:to-orange-100 transition-all duration-200"
-                    onClick={() => onEditGoal(goal)}
-                    title="Clique para editar a meta"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
-                      <span className="text-xs font-semibold text-yellow-800">
-                        Próximo Passo:
+                {/* CONTEÚDO FLEXÍVEL: Progresso e Próximos Passos */}
+                <div className="flex-1 flex flex-col space-y-4">
+                  {/* Progresso com barra única e cores dinâmicas */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Progresso</span>
+                      <span className={`text-sm font-semibold ${getProgressTextColor(goal.progress)}`}>
+                        {goal.progress}%
                       </span>
                     </div>
-                    <div className="text-xs text-yellow-700 leading-relaxed">
-                      {goal.nextSteps}
+                    
+                    {/* Slider interativo - clicável e arrastável */}
+                    <div className="relative">
+                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden cursor-pointer">
+                        <div 
+                          className={`h-full ${getProgressColor(goal.progress)} rounded-full transition-all duration-200 ease-out relative`}
+                          style={{ width: `${goal.progress}%` }}
+                        >
+                          {/* Indicador visual sutil no final da barra preenchida */}
+                          <div className="absolute right-0 top-1/2 w-2 h-2 bg-white rounded-full shadow-sm transform -translate-y-1/2 border border-gray-200"></div>
+                        </div>
+                      </div>
+                      
+                      {/* Input range invisível mas funcional */}
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={goal.progress}
+                        onChange={(e) => onUpdateGoalProgress(goal.id, parseInt(e.target.value))}
+                        className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
+                        style={{
+                          background: `linear-gradient(to right, ${getProgressColor(goal.progress).replace('bg-', '')} 0%, ${getProgressColor(goal.progress).replace('bg-', '')} ${goal.progress}%, #e5e7eb ${goal.progress}%, #e5e7eb 100%)`
+                        }}
+                      />
                     </div>
                   </div>
-                )}
 
-                {/* Iniciativas */}
-                <div className="border-t border-gray-100 pt-3">
-                  <button
-                    onClick={() => toggleGoalExpansion(goal.id)}
-                    className="flex items-center justify-between w-full text-left mb-3 group"
-                  >
-                    <div className="flex items-center gap-2">
+                  {/* Próximos Passos com destaque especial - CLICÁVEL */}
+                  {goal.nextSteps && (
+                    <div 
+                      className="p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg cursor-pointer hover:from-yellow-100 hover:to-orange-100 transition-all duration-200"
+                      onClick={() => onEditGoal(goal)}
+                      title="Clique para editar a meta"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
+                        <span className="text-xs font-semibold text-yellow-800">
+                          Próximo Passo:
+                        </span>
+                      </div>
+                      <div className="text-xs text-yellow-700 leading-relaxed line-clamp-3">
+                        {goal.nextSteps}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* FOOTER: Iniciativas e Prazo */}
+                <div className="border-t border-gray-100 pt-3 mt-auto">
+                  <div className="flex items-center justify-between mb-3">
+                    {/* Iniciativas */}
+                    <button
+                      onClick={() => toggleGoalExpansion(goal.id)}
+                      className="flex items-center gap-2 text-left group"
+                    >
                       <span className="text-sm font-medium text-gray-700">
                         Iniciativas
                       </span>
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
                         {goal.initiatives.filter(i => i.completed).length}/{goal.initiatives.length}
                       </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
                       <svg 
                         className={`w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-all duration-200 ${
                           expandedGoals.has(goal.id) ? 'rotate-180' : ''
@@ -257,8 +272,20 @@ export function GoalDisplay({
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
-                    </div>
-                  </button>
+                    </button>
+
+                    {/* Prazo da meta */}
+                    {goal.dueDate && (
+                      <div className="flex items-center gap-1 text-xs text-gray-600">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span aria-label={`Prazo da meta ${formatDate(goal.dueDate)}`}>
+                          {formatDate(goal.dueDate)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Lista de iniciativas (expansível) */}
                   {expandedGoals.has(goal.id) && (
