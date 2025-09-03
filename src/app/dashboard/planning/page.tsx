@@ -858,22 +858,8 @@ export default function PlanningPage() {
   const handleUpdateTodoUnified = async () => {
     if (!editingTodo || !editingTodo.title.trim()) return
 
-    // Verificar em qual bloco o todo está localizado
-    const isInTodos = todos.some(t => t.id === editingTodo.id)
-    const isInBacklog = backlogTodos.some(t => t.id === editingTodo.id)
-    const isInProgress = inProgressTodos.some(t => t.id === editingTodo.id)
-
-    if (isInTodos || isInProgress) {
-      // Para "Semana atual" e "Em progresso": usar API
-      await handleUpdateTodo()
-    } else if (isInBacklog) {
-      // Para "Backlog": atualizar apenas estado local
-      setBacklogTodos(backlogTodos.map(t => 
-        t.id === editingTodo.id ? editingTodo : t
-      ))
-      setEditingTodo(null)
-      setShowEditTodoModal(false)
-    }
+    // SEMPRE usar API para persistir no banco, independente do bloco
+    await handleUpdateTodo()
   }
 
   const handleToggleTodoComplete = async (todoId: string) => {
@@ -1047,10 +1033,9 @@ export default function PlanningPage() {
   // Funções de tags removidas - serão reimplementadas do zero
 
   // Funções para itens em progresso
-  const handleCreateInProgressTodo = () => {
+  const handleCreateInProgressTodo = async () => {
     if (newInProgressTodo.title.trim()) {
-      const newTodoData: Todo = {
-        id: Date.now().toString(),
+      const newTodoData = {
         title: newInProgressTodo.title.trim(),
         description: newInProgressTodo.description.trim(),
         priority: newInProgressTodo.priority,
@@ -1061,12 +1046,16 @@ export default function PlanningPage() {
         timeSensitive: newInProgressTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
-        tags: [],
-        created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+        status: 'in_progress' as const,
+        projectId: newInProgressTodo.projectId
       }
-      setInProgressTodos([...inProgressTodos, newTodoData])
-      setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
-      setShowInProgressCreateForm(false)
+      
+      // Usar API para criar no banco
+      const createdTodo = await createTodo(newTodoData)
+      if (createdTodo) {
+        setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
+        setShowInProgressCreateForm(false)
+      }
     }
   }
 
@@ -1080,73 +1069,34 @@ export default function PlanningPage() {
     setShowEditTodoModal(true)
   }
 
-  const handleToggleInProgressTodoComplete = (todoId: string) => {
-    setInProgressTodos(inProgressTodos.map(t => 
-      t.id === todoId ? { ...t, completed: !t.completed } : t
-    ))
+  const handleToggleInProgressTodoComplete = async (todoId: string) => {
+    // Encontrar a tarefa atual
+    const currentTodo = inProgressTodos.find(t => t.id === todoId)
+    if (currentTodo) {
+      await updateTodo(todoId, {
+        completed: !currentTodo.completed
+      })
+    }
   }
 
-  const handleToggleInProgressPriority = (todoId: string) => {
-    setInProgressTodos(inProgressTodos.map(t => 
-      t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-    ))
+  const handleToggleInProgressPriority = async (todoId: string) => {
+    // Encontrar a tarefa atual
+    const currentTodo = inProgressTodos.find(t => t.id === todoId)
+    if (currentTodo) {
+      await updateTodo(todoId, {
+        isHighPriority: !currentTodo.isHighPriority
+      })
+    }
   }
 
   // Funções para gerenciar status "Em Espera"
-  const handlePutTodoOnHold = (todo: Todo) => {
+  const handlePutTodoOnHold = async (todo: Todo) => {
     if (todo.onHold) {
-      // Se já está em espera, remover da espera
-      const updatedTodo = {
-        ...todo,
+      // Se já está em espera, remover da espera usando API
+      await updateTodo(todo.id, {
         onHold: false,
         onHoldReason: undefined
-      }
-
-      // Atualizar no bloco correto
-      const isInTodos = todos.some(t => t.id === todo.id)
-      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
-      const isInProgress = inProgressTodos.some(t => t.id === todo.id)
-
-      if (isInTodos) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedTodos = todos
-          .filter(t => t.id !== todo.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        setTodos([...reorderedTodos, updatedTodo]) // Adiciona o item atualizado no final
-      } else if (isInBacklog) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedBacklogTodos = backlogTodos
-          .filter(t => t.id !== todo.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        setBacklogTodos([...reorderedBacklogTodos, updatedTodo]) // Adiciona o item atualizado no final
-      } else if (isInProgress) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedInProgressTodos = inProgressTodos
-          .filter(t => t.id !== todo.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        setInProgressTodos([...reorderedInProgressTodos, updatedTodo]) // Adiciona o item atualizado no final
-      }
+      })
     } else {
       // Se não está em espera, abrir modal para colocar em espera
       setTodoToPutOnHold(todo)
@@ -1155,59 +1105,13 @@ export default function PlanningPage() {
     }
   }
 
-  const handleConfirmOnHold = () => {
+  const handleConfirmOnHold = async () => {
     if (todoToPutOnHold && on_hold_reason.trim()) {
-      const updatedTodo = {
-        ...todoToPutOnHold,
+      // Usar API para salvar no banco
+      await updateTodo(todoToPutOnHold.id, {
         onHold: true,
         onHoldReason: on_hold_reason.trim()
-      }
-
-      // Atualizar no bloco correto e reordenar para colocar itens "Em espera" no final
-      const isInTodos = todos.some(t => t.id === todoToPutOnHold.id)
-      const isInBacklog = backlogTodos.some(t => t.id === todoToPutOnHold.id)
-      const isInProgress = inProgressTodos.some(t => t.id === todoToPutOnHold.id)
-
-      if (isInTodos) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedTodos = todos
-          .filter(t => t.id !== todoToPutOnHold.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        setTodos([...reorderedTodos, updatedTodo]) // Adiciona o item atualizado no final
-      } else if (isInBacklog) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedBacklogTodos = backlogTodos
-          .filter(t => t.id !== todoToPutOnHold.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        setBacklogTodos([...reorderedBacklogTodos, updatedTodo]) // Adiciona o item atualizado no final
-      } else if (isInProgress) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedInProgressTodos = inProgressTodos
-          .filter(t => t.id !== todoToPutOnHold.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        setInProgressTodos([...reorderedInProgressTodos, updatedTodo]) // Adiciona o item atualizado no final
-      }
+      })
 
       setShowOnHoldModal(false)
       setTodoToPutOnHold(null)
@@ -1247,28 +1151,31 @@ export default function PlanningPage() {
   }
 
   // Função para deletar item com confirmação de qualquer bloco
-  const handleDeleteTodoFromAnyBlock = (todo: Todo) => {
+  const handleDeleteTodoFromAnyBlock = async (todo: Todo) => {
     if (confirm('Tem certeza que deseja deletar esta tarefa? Esta ação não pode ser desfeita.')) {
-      // Verificar de qual bloco está vindo
-      const isInTodos = todos.some(t => t.id === todo.id)
-      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
-      const isInProgress = inProgressTodos.some(t => t.id === todo.id)
+      console.log('🗑️ Deletando todo de qualquer bloco:', todo.id)
       
-      if (isInTodos) {
-        setTodos(todos.filter(t => t.id !== todo.id))
-      } else if (isInBacklog) {
-        setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
-      } else if (isInProgress) {
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
+      // SEMPRE usar API para deletar do banco
+      const success = await deleteTodo(todo.id)
+      if (success) {
+        console.log('✅ Todo deletado com sucesso do banco, removendo de todos os estados locais')
+        
+        // Remover de todos os estados locais para manter sincronização
+        setTodos(prev => prev.filter(t => t.id !== todo.id))
+        setBacklogTodos(prev => prev.filter(t => t.id !== todo.id))
+        setInProgressTodos(prev => prev.filter(t => t.id !== todo.id))
+        
+        console.log('✅ Todo removido de todos os estados locais')
+      } else {
+        console.log('❌ Falha ao deletar todo do banco')
       }
     }
   }
 
   // Funções para backlog
-  const handleCreateBacklogTodo = () => {
+  const handleCreateBacklogTodo = async () => {
     if (newBacklogTodo.title.trim()) {
-      const newTodoData: Todo = {
-        id: Date.now().toString(),
+      const newTodoData = {
         title: newBacklogTodo.title.trim(),
         description: newBacklogTodo.description.trim(),
         priority: newBacklogTodo.priority,
@@ -1279,12 +1186,16 @@ export default function PlanningPage() {
         timeSensitive: newBacklogTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
-        tags: [],
-        created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+        status: 'backlog' as const,
+        projectId: newBacklogTodo.projectId
       }
-      setBacklogTodos([...backlogTodos, newTodoData])
-      setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
-      setShowBacklogCreateForm(false)
+      
+      // Usar API para criar no banco
+      const createdTodo = await createTodo(newTodoData)
+      if (createdTodo) {
+        setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
+        setShowBacklogCreateForm(false)
+      }
     }
   }
 
@@ -1298,32 +1209,52 @@ export default function PlanningPage() {
     setShowEditTodoModal(true)
   }
 
-  const handleUpdateBacklogTodo = () => {
+  const handleUpdateBacklogTodo = async () => {
     if (editingTodo && editingTodo.title.trim()) {
-      setBacklogTodos(backlogTodos.map(t => 
-        t.id === editingTodo.id ? editingTodo : t
-      ))
-      setEditingTodo(null)
-      setShowEditTodoModal(false)
+      // SEMPRE usar API para persistir no banco
+      await handleUpdateTodo()
     }
   }
 
-  const handleToggleBacklogTodoComplete = (todoId: string) => {
-    setBacklogTodos(backlogTodos.map(t => 
-      t.id === todoId ? { ...t, completed: !t.completed } : t
-    ))
+  const handleToggleBacklogTodoComplete = async (todoId: string) => {
+    // Encontrar a tarefa atual
+    const currentTodo = backlogTodos.find(t => t.id === todoId)
+    if (currentTodo) {
+      await updateTodo(todoId, {
+        completed: !currentTodo.completed
+      })
+    }
   }
 
-  const handleDeleteBacklogTodo = (todoId: string) => {
+  const handleDeleteBacklogTodo = async (todoId: string) => {
     if (confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) {
-      setBacklogTodos(backlogTodos.filter(t => t.id !== todoId))
+      console.log('🗑️ Deletando todo do backlog:', todoId)
+      
+      // SEMPRE usar API para deletar do banco
+      const success = await deleteTodo(todoId)
+      if (success) {
+        console.log('✅ Todo deletado com sucesso do banco, removendo de todos os estados locais')
+        
+        // Remover de todos os estados locais para manter sincronização
+        setTodos(prev => prev.filter(t => t.id !== todoId))
+        setBacklogTodos(prev => prev.filter(t => t.id !== todoId))
+        setInProgressTodos(prev => prev.filter(t => t.id !== todoId))
+        
+        console.log('✅ Todo removido de todos os estados locais')
+      } else {
+        console.log('❌ Falha ao deletar todo do banco')
+      }
     }
   }
 
-  const handleToggleBacklogPriority = (todoId: string) => {
-    setBacklogTodos(backlogTodos.map(t => 
-      t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-    ))
+  const handleToggleBacklogPriority = async (todoId: string) => {
+    // Encontrar a tarefa atual
+    const currentTodo = backlogTodos.find(t => t.id === todoId)
+    if (currentTodo) {
+      await updateTodo(todoId, {
+        isHighPriority: !currentTodo.isHighPriority
+      })
+    }
   }
 
   const handleDragEndBacklog = (event: DragEndEvent) => {
