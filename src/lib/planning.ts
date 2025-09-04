@@ -333,7 +333,7 @@ export const todosService = {
       .from('todos')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
 
     if (error) {
       console.error('❌ Erro ao buscar tarefas:', error)
