@@ -1009,11 +1009,21 @@ export default function PlanningPage() {
       if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'current_week' })
         setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-        setTodos([...todos, activeTodoInBacklog])
+        
+        // Encontrar a posição do item de destino e inserir antes dele
+        const targetIndex = todos.findIndex(t => t.id === overId)
+        const newTodos = [...todos]
+        newTodos.splice(targetIndex, 0, activeTodoInBacklog)
+        setTodos(newTodos)
       } else if (activeTodoInProgress) {
         await updateTodo(activeId, { status: 'current_week' })
         setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
-        setTodos([...todos, activeTodoInProgress])
+        
+        // Encontrar a posição do item de destino e inserir antes dele
+        const targetIndex = todos.findIndex(t => t.id === overId)
+        const newTodos = [...todos]
+        newTodos.splice(targetIndex, 0, activeTodoInProgress)
+        setTodos(newTodos)
       }
       return
     }
@@ -1040,10 +1050,12 @@ export default function PlanningPage() {
       if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'current_week' })
         setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        // Para grupos de tags, adicionar no final da lista
         setTodos([...todos, activeTodoInBacklog])
       } else if (activeTodoInProgress) {
         await updateTodo(activeId, { status: 'current_week' })
         setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        // Para grupos de tags, adicionar no final da lista
         setTodos([...todos, activeTodoInProgress])
       }
       return
@@ -1202,12 +1214,26 @@ export default function PlanningPage() {
     if (isInProgress) {
       // Se está em progresso, voltar para Semana Atual
       await updateTodo(todo.id, { status: 'current_week' })
+      
+      // Encontrar a posição original do item (se existir)
+      const originalIndex = todos.findIndex(t => t.id === todo.id)
+      
       // Atualizar estado local imediatamente
       setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
-      setTodos([...todos, todo])
+      
+      if (originalIndex !== -1) {
+        // Restaurar na posição original
+        const newTodos = [...todos]
+        newTodos.splice(originalIndex, 0, todo)
+        setTodos(newTodos)
+      } else {
+        // Se não encontrar posição original, adicionar no final
+        setTodos([...todos, todo])
+      }
     } else {
       // Se não está em progresso, mover para Em Progresso
       await updateTodo(todo.id, { status: 'in_progress' })
+      
       // Atualizar estado local imediatamente
       const isInTodos = todos.some(t => t.id === todo.id)
       const isInBacklog = backlogTodos.some(t => t.id === todo.id)
