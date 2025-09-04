@@ -943,10 +943,12 @@ export default function PlanningPage() {
       // Mover da Semana Atual ou Em Progresso para o Backlog
       if (activeTodoInTodos) {
         await updateTodo(activeId, { status: 'backlog' })
-        await reloadData()
+        setTodos(todos.filter(t => t.id !== activeId))
+        setBacklogTodos([...backlogTodos, activeTodoInTodos])
       } else if (activeTodoInProgress) {
         await updateTodo(activeId, { status: 'backlog' })
-        await reloadData()
+        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        setBacklogTodos([...backlogTodos, activeTodoInProgress])
       }
       return
     }
@@ -957,10 +959,12 @@ export default function PlanningPage() {
       // Mover do Backlog ou Em Progresso para a Semana Atual
       if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'current_week' })
-        await reloadData()
+        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        setTodos([...todos, activeTodoInBacklog])
       } else if (activeTodoInProgress) {
         await updateTodo(activeId, { status: 'current_week' })
-        await reloadData()
+        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        setTodos([...todos, activeTodoInProgress])
       }
       return
     }
@@ -971,10 +975,12 @@ export default function PlanningPage() {
       // Mover da Semana Atual ou Backlog para Em Progresso
       if (activeTodoInTodos) {
         await updateTodo(activeId, { status: 'in_progress' })
-        await reloadData()
+        setTodos(todos.filter(t => t.id !== activeId))
+        setInProgressTodos([...inProgressTodos, activeTodoInTodos])
       } else if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'in_progress' })
-        await reloadData()
+        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        setInProgressTodos([...inProgressTodos, activeTodoInBacklog])
       }
       return
     }
@@ -984,10 +990,12 @@ export default function PlanningPage() {
       // Mover do Backlog ou Em Progresso para a Semana Atual
       if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'current_week' })
-        await reloadData()
+        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        setTodos([...todos, activeTodoInBacklog])
       } else if (activeTodoInProgress) {
         await updateTodo(activeId, { status: 'current_week' })
-        await reloadData()
+        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        setTodos([...todos, activeTodoInProgress])
       }
       return
     }
@@ -1145,11 +1153,23 @@ export default function PlanningPage() {
     if (isInProgress) {
       // Se está em progresso, voltar para Semana Atual
       await updateTodo(todo.id, { status: 'current_week' })
-      await reloadData()
+      // Atualizar estado local imediatamente
+      setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
+      setTodos([...todos, todo])
     } else {
       // Se não está em progresso, mover para Em Progresso
       await updateTodo(todo.id, { status: 'in_progress' })
-      await reloadData()
+      // Atualizar estado local imediatamente
+      const isInTodos = todos.some(t => t.id === todo.id)
+      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
+      
+      if (isInTodos) {
+        setTodos(todos.filter(t => t.id !== todo.id))
+        setInProgressTodos([...inProgressTodos, todo])
+      } else if (isInBacklog) {
+        setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
+        setInProgressTodos([...inProgressTodos, todo])
+      }
     }
   }
 
