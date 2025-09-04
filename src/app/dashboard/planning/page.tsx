@@ -1062,7 +1062,16 @@ export default function PlanningPage() {
     }
 
     // Se não estiver movendo entre blocos, fazer reordenação dentro do mesmo bloco
+    console.log('🔄 Verificando reordenação dentro do mesmo bloco:', {
+      activeId,
+      overId,
+      activeTodoInTodos: !!activeTodoInTodos,
+      activeTodoInBacklog: !!activeTodoInBacklog,
+      activeTodoInProgress: !!activeTodoInProgress
+    })
+    
     if (activeTodoInTodos) {
+      console.log('📝 Reordenando dentro da Semana Atual')
       // Reordenação dentro da Semana Atual
       const reorderedTodos = arrayMove(todos, 
         todos.findIndex((item) => item.id === activeId),
@@ -1077,9 +1086,11 @@ export default function PlanningPage() {
       if (movedTodo) {
         // Criar um novo timestamp baseado na posição para manter a ordem
         const newTimestamp = new Date(Date.now() - (reorderedTodos.length - reorderedTodos.indexOf(movedTodo)) * 1000).toISOString()
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp })
         await updateTodo(activeId, { created_at: newTimestamp })
       }
     } else if (activeTodoInBacklog) {
+      console.log('📝 Reordenando dentro do Backlog')
       // Reordenação dentro do Backlog
       const reorderedBacklog = arrayMove(backlogTodos, 
         backlogTodos.findIndex((item) => item.id === activeId),
@@ -1093,9 +1104,11 @@ export default function PlanningPage() {
       const movedTodo = reorderedBacklog.find(t => t.id === activeId)
       if (movedTodo) {
         const newTimestamp = new Date(Date.now() - (reorderedBacklog.length - reorderedBacklog.indexOf(movedTodo)) * 1000).toISOString()
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp })
         await updateTodo(activeId, { created_at: newTimestamp })
       }
     } else if (activeTodoInProgress) {
+      console.log('📝 Reordenando dentro de Em Progresso')
       // Reordenação dentro de Em Progresso
       const reorderedInProgress = arrayMove(inProgressTodos, 
         inProgressTodos.findIndex((item) => item.id === activeId),
@@ -1109,6 +1122,7 @@ export default function PlanningPage() {
       const movedTodo = reorderedInProgress.find(t => t.id === activeId)
       if (movedTodo) {
         const newTimestamp = new Date(Date.now() - (reorderedInProgress.length - reorderedInProgress.indexOf(movedTodo)) * 1000).toISOString()
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp })
         await updateTodo(activeId, { created_at: newTimestamp })
       }
     }
