@@ -869,12 +869,30 @@ export default function PlanningPage() {
   }
 
   const handleToggleTodoComplete = async (todoId: string) => {
-    // Encontrar a tarefa atual
-    const currentTodo = todos.find(t => t.id === todoId)
+    // Encontrar a tarefa atual em todos os arrays
+    const currentTodo = todos.find(t => t.id === todoId) || 
+                       inProgressTodos.find(t => t.id === todoId) || 
+                       backlogTodos.find(t => t.id === todoId)
+    
     if (currentTodo) {
       await updateTodo(todoId, {
         completed: !currentTodo.completed
       })
+      
+      // Atualizar estado local imediatamente
+      if (todos.find(t => t.id === todoId)) {
+        setTodos(todos.map(t => 
+          t.id === todoId ? { ...t, completed: !t.completed } : t
+        ))
+      } else if (inProgressTodos.find(t => t.id === todoId)) {
+        setInProgressTodos(inProgressTodos.map(t => 
+          t.id === todoId ? { ...t, completed: !t.completed } : t
+        ))
+      } else if (backlogTodos.find(t => t.id === todoId)) {
+        setBacklogTodos(backlogTodos.map(t => 
+          t.id === todoId ? { ...t, completed: !t.completed } : t
+        ))
+      }
     }
   }
 
@@ -906,12 +924,30 @@ export default function PlanningPage() {
 
   // Função para alternar prioridade
   const handleTogglePriority = async (todoId: string) => {
-    // Encontrar a tarefa atual
-    const currentTodo = todos.find(t => t.id === todoId)
+    // Encontrar a tarefa atual em todos os arrays
+    const currentTodo = todos.find(t => t.id === todoId) || 
+                       inProgressTodos.find(t => t.id === todoId) || 
+                       backlogTodos.find(t => t.id === todoId)
+    
     if (currentTodo) {
       await updateTodo(todoId, {
         isHighPriority: !currentTodo.isHighPriority
       })
+      
+      // Atualizar estado local imediatamente
+      if (todos.find(t => t.id === todoId)) {
+        setTodos(todos.map(t => 
+          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
+        ))
+      } else if (inProgressTodos.find(t => t.id === todoId)) {
+        setInProgressTodos(inProgressTodos.map(t => 
+          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
+        ))
+      } else if (backlogTodos.find(t => t.id === todoId)) {
+        setBacklogTodos(backlogTodos.map(t => 
+          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
+        ))
+      }
     }
   }
 
