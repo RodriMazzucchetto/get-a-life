@@ -1064,28 +1064,53 @@ export default function PlanningPage() {
     // Se não estiver movendo entre blocos, fazer reordenação dentro do mesmo bloco
     if (activeTodoInTodos) {
       // Reordenação dentro da Semana Atual
-      setTodos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === activeId)
-        const newIndex = items.findIndex((item) => item.id === overId)
-
-        return arrayMove(items, oldIndex, newIndex)
-      })
+      const reorderedTodos = arrayMove(todos, 
+        todos.findIndex((item) => item.id === activeId),
+        todos.findIndex((item) => item.id === overId)
+      )
+      
+      // Atualizar estado local
+      setTodos(reorderedTodos)
+      
+      // Persistir nova ordem no banco atualizando created_at
+      const movedTodo = reorderedTodos.find(t => t.id === activeId)
+      if (movedTodo) {
+        // Criar um novo timestamp baseado na posição para manter a ordem
+        const newTimestamp = new Date(Date.now() - (reorderedTodos.length - reorderedTodos.indexOf(movedTodo)) * 1000).toISOString()
+        await updateTodo(activeId, { created_at: newTimestamp })
+      }
     } else if (activeTodoInBacklog) {
       // Reordenação dentro do Backlog
-      setBacklogTodos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === activeId)
-        const newIndex = items.findIndex((item) => item.id === overId)
-
-        return arrayMove(items, oldIndex, newIndex)
-      })
+      const reorderedBacklog = arrayMove(backlogTodos, 
+        backlogTodos.findIndex((item) => item.id === activeId),
+        backlogTodos.findIndex((item) => item.id === overId)
+      )
+      
+      // Atualizar estado local
+      setBacklogTodos(reorderedBacklog)
+      
+      // Persistir nova ordem no banco
+      const movedTodo = reorderedBacklog.find(t => t.id === activeId)
+      if (movedTodo) {
+        const newTimestamp = new Date(Date.now() - (reorderedBacklog.length - reorderedBacklog.indexOf(movedTodo)) * 1000).toISOString()
+        await updateTodo(activeId, { created_at: newTimestamp })
+      }
     } else if (activeTodoInProgress) {
       // Reordenação dentro de Em Progresso
-      setInProgressTodos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === activeId)
-        const newIndex = items.findIndex((item) => item.id === overId)
-
-        return arrayMove(items, oldIndex, newIndex)
-      })
+      const reorderedInProgress = arrayMove(inProgressTodos, 
+        inProgressTodos.findIndex((item) => item.id === activeId),
+        inProgressTodos.findIndex((item) => item.id === overId)
+      )
+      
+      // Atualizar estado local
+      setInProgressTodos(reorderedInProgress)
+      
+      // Persistir nova ordem no banco
+      const movedTodo = reorderedInProgress.find(t => t.id === activeId)
+      if (movedTodo) {
+        const newTimestamp = new Date(Date.now() - (reorderedInProgress.length - reorderedInProgress.indexOf(movedTodo)) * 1000).toISOString()
+        await updateTodo(activeId, { created_at: newTimestamp })
+      }
     }
   }
 

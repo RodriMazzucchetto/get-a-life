@@ -647,6 +647,7 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.onHold !== undefined) out.on_hold = patch.onHold;
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
   if (patch.status !== undefined) out.status = patch.status;
+  if (patch.created_at !== undefined) out.created_at = patch.created_at;
   
   // RELACIONAMENTOS OPCIONAIS
   if (patch.projectId !== undefined) out.project_id = patch.projectId;
