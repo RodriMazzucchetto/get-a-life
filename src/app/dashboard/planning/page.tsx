@@ -1115,8 +1115,9 @@ export default function PlanningPage() {
       const movedTodo = reorderedTodos.find(t => t.id === activeId)
       if (movedTodo) {
         // Criar um novo timestamp baseado na posição para manter a ordem
-        const newTimestamp = new Date(Date.now() - (reorderedTodos.length - reorderedTodos.indexOf(movedTodo)) * 1000).toISOString()
-        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp })
+        // Posição 0 = timestamp mais novo, posição maior = timestamp mais antigo
+        const newTimestamp = new Date(Date.now() + (reorderedTodos.indexOf(movedTodo) * 1000)).toISOString()
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp, position: reorderedTodos.indexOf(movedTodo) })
         await updateTodo(activeId, { created_at: newTimestamp })
       }
     } else if (activeTodoInBacklog) {
@@ -1133,8 +1134,8 @@ export default function PlanningPage() {
       // Persistir nova ordem no banco
       const movedTodo = reorderedBacklog.find(t => t.id === activeId)
       if (movedTodo) {
-        const newTimestamp = new Date(Date.now() - (reorderedBacklog.length - reorderedBacklog.indexOf(movedTodo)) * 1000).toISOString()
-        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp })
+        const newTimestamp = new Date(Date.now() + (reorderedBacklog.indexOf(movedTodo) * 1000)).toISOString()
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp, position: reorderedBacklog.indexOf(movedTodo) })
         await updateTodo(activeId, { created_at: newTimestamp })
       }
     } else if (activeTodoInProgress) {
@@ -1151,8 +1152,8 @@ export default function PlanningPage() {
       // Persistir nova ordem no banco
       const movedTodo = reorderedInProgress.find(t => t.id === activeId)
       if (movedTodo) {
-        const newTimestamp = new Date(Date.now() - (reorderedInProgress.length - reorderedInProgress.indexOf(movedTodo)) * 1000).toISOString()
-        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp })
+        const newTimestamp = new Date(Date.now() + (reorderedInProgress.indexOf(movedTodo) * 1000)).toISOString()
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp, position: reorderedInProgress.indexOf(movedTodo) })
         await updateTodo(activeId, { created_at: newTimestamp })
       }
     }
