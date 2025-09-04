@@ -975,20 +975,42 @@ export default function PlanningPage() {
     const activeId = active.id as string
     const overId = over.id as string
 
+    console.log('🎯 DragEndBetweenBlocks iniciado:', { activeId, overId })
+
     // Verificar se o item está sendo movido para uma posição diferente
-    if (activeId === overId) return
+    if (activeId === overId) {
+      console.log('❌ Mesmo item, cancelando')
+      return
+    }
 
     // Encontrar o item ativo em todos os arrays
     const activeTodoInTodos = todos.find(t => t.id === activeId)
     const activeTodoInBacklog = backlogTodos.find(t => t.id === activeId)
     const activeTodoInProgress = inProgressTodos.find(t => t.id === activeId)
 
-    // Se o item não foi encontrado, não fazer nada
-    if (!activeTodoInTodos && !activeTodoInBacklog && !activeTodoInProgress) return
+    console.log('🔍 Item ativo encontrado em:', {
+      activeTodoInTodos: !!activeTodoInTodos,
+      activeTodoInBacklog: !!activeTodoInBacklog,
+      activeTodoInProgress: !!activeTodoInProgress
+    })
 
-    // Verificar se o item está sendo movido para o backlog
+    // Se o item não foi encontrado, não fazer nada
+    if (!activeTodoInTodos && !activeTodoInBacklog && !activeTodoInProgress) {
+      console.log('❌ Item não encontrado em nenhum array')
+      return
+    }
+
+    // Verificar se o item está sendo movido para o backlog (mas não reordenação dentro do mesmo bloco)
     const overTodoInBacklog = backlogTodos.find(t => t.id === overId)
-    if (overTodoInBacklog && (activeTodoInTodos || activeTodoInProgress)) {
+    console.log('🔍 Verificando movimentação para backlog:', {
+      overTodoInBacklog: !!overTodoInBacklog,
+      activeTodoInTodos: !!activeTodoInTodos,
+      activeTodoInProgress: !!activeTodoInProgress,
+      activeTodoInBacklog: !!activeTodoInBacklog
+    })
+    
+    if (overTodoInBacklog && (activeTodoInTodos || activeTodoInProgress) && !activeTodoInBacklog) {
+      console.log('✅ Movendo para backlog')
       // Mover da Semana Atual ou Em Progresso para o Backlog
       if (activeTodoInTodos) {
         await updateTodo(activeId, { status: 'backlog' })
@@ -1002,9 +1024,17 @@ export default function PlanningPage() {
       return
     }
 
-    // Verificar se o item está sendo movido para a semana atual
+    // Verificar se o item está sendo movido para a semana atual (mas não reordenação dentro do mesmo bloco)
     const overTodoInTodos = todos.find(t => t.id === overId)
-    if (overTodoInTodos && (activeTodoInBacklog || activeTodoInProgress)) {
+    console.log('🔍 Verificando movimentação para semana atual:', {
+      overTodoInTodos: !!overTodoInTodos,
+      activeTodoInBacklog: !!activeTodoInBacklog,
+      activeTodoInProgress: !!activeTodoInProgress,
+      activeTodoInTodos: !!activeTodoInTodos
+    })
+    
+    if (overTodoInTodos && (activeTodoInBacklog || activeTodoInProgress) && !activeTodoInTodos) {
+      console.log('✅ Movendo para semana atual')
       // Mover do Backlog ou Em Progresso para a Semana Atual
       if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'current_week' })
@@ -1028,9 +1058,9 @@ export default function PlanningPage() {
       return
     }
 
-    // Verificar se o item está sendo movido para em progresso
+    // Verificar se o item está sendo movido para em progresso (mas não reordenação dentro do mesmo bloco)
     const overTodoInProgress = inProgressTodos.find(t => t.id === overId)
-    if (overTodoInProgress && (activeTodoInTodos || activeTodoInBacklog)) {
+    if (overTodoInProgress && (activeTodoInTodos || activeTodoInBacklog) && !activeTodoInProgress) {
       // Mover da Semana Atual ou Backlog para Em Progresso
       if (activeTodoInTodos) {
         await updateTodo(activeId, { status: 'in_progress' })
