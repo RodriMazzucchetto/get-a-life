@@ -1458,14 +1458,8 @@ export default function PlanningPage() {
     })
   )
 
-  // Ordenar to-dos: prioridade alta primeiro, depois pela ordem manual
-  const sortedTodos = todos
-    .filter(todo => !todo.completed)
-    .sort((a, b) => {
-      if (a.isHighPriority && !b.isHighPriority) return -1
-      if (!a.isHighPriority && b.isHighPriority) return 1
-      return 0
-    })
+  // Usar ordem do banco (pos) - NÃO reordenar
+  const sortedTodos = todos.filter(todo => !todo.completed)
 
   return (
     <div className="space-y-6">

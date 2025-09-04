@@ -341,20 +341,9 @@ export const todosService = {
       throw error
     }
 
-    // Ordenar localmente: itens não em pausa primeiro, depois itens em pausa
-    const sortedData = (data || []).sort((a, b) => {
-      // Se ambos estão em pausa ou ambos não estão, mantém ordem por created_at
-      if (a.on_hold === b.on_hold) {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      }
-      // Se a não está em pausa e b está, a vem primeiro
-      if (!a.on_hold && b.on_hold) return -1
-      // Se a está em pausa e b não está, b vem primeiro
-      return 1
-    })
-
-    console.log('✅ Todos carregados e ordenados:', sortedData.length)
-    return sortedData
+    // NÃO ordenar localmente - o banco já ordena por pos
+    console.log('✅ Todos carregados e ordenados por pos:', data.length)
+    return data || []
   },
 
   // Criar nova tarefa
@@ -393,6 +382,38 @@ export const todosService = {
   // Atualizar tarefa
   async updateTodo(todoId: string, updates: Partial<DBTodo>): Promise<DBTodo> {
     const supabase = createClient()
+    
+    // Se está atualizando pos, usar RPC para garantir atomicidade
+    if (updates.pos !== undefined) {
+      console.log('🔄 Usando RPC para atualizar pos:', { todoId, pos: updates.pos, status: updates.status })
+      
+      const { error: rpcError } = await supabase.rpc('move_todo', {
+        p_id: todoId,
+        p_status: updates.status || null,
+        p_pos: updates.pos
+      })
+      
+      if (rpcError) {
+        console.error('❌ Erro no RPC move_todo:', rpcError)
+        throw rpcError
+      }
+      
+      // Buscar o todo atualizado
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*')
+        .eq('id', todoId)
+        .single()
+      
+      if (error) {
+        console.error('❌ Erro ao buscar todo atualizado:', error)
+        throw error
+      }
+      
+      return data
+    }
+    
+    // Para outras atualizações, usar método normal
     const { data, error } = await supabase
       .from('todos')
       .update(updates)
