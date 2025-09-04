@@ -340,8 +340,20 @@ export const todosService = {
       throw error
     }
 
-    console.log('✅ Todos carregados:', data?.length || 0)
-    return data || []
+    // Ordenar localmente: itens não em pausa primeiro, depois itens em pausa
+    const sortedData = (data || []).sort((a, b) => {
+      // Se ambos estão em pausa ou ambos não estão, mantém ordem por created_at
+      if (a.on_hold === b.on_hold) {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+      // Se a não está em pausa e b está, a vem primeiro
+      if (!a.on_hold && b.on_hold) return -1
+      // Se a está em pausa e b não está, b vem primeiro
+      return 1
+    })
+
+    console.log('✅ Todos carregados e ordenados:', sortedData.length)
+    return sortedData
   },
 
   // Criar nova tarefa

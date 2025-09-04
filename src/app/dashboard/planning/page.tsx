@@ -286,7 +286,8 @@ export default function PlanningPage() {
     updateReminder,
     completeReminder,
     deleteReminder,
-    seedDefaultReminders
+    seedDefaultReminders,
+    reloadData
   } = usePlanningData()
 
   // Debug: Log do estado de metas
@@ -1098,54 +1099,8 @@ export default function PlanningPage() {
         onHoldReason: undefined
       })
       
-      // Reordenar: itens não em espera primeiro, depois itens em espera
-      const isInTodos = todos.some(t => t.id === todo.id)
-      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
-      const isInProgress = inProgressTodos.some(t => t.id === todo.id)
-
-      if (isInTodos) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedTodos = todos
-          .filter(t => t.id !== todo.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        const updatedTodo = { ...todo, onHold: false, onHoldReason: undefined }
-        setTodos([...reorderedTodos, updatedTodo]) // Adiciona o item atualizado no final
-      } else if (isInBacklog) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedBacklogTodos = backlogTodos
-          .filter(t => t.id !== todo.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        const updatedTodo = { ...todo, onHold: false, onHoldReason: undefined }
-        setBacklogTodos([...reorderedBacklogTodos, updatedTodo]) // Adiciona o item atualizado no final
-      } else if (isInProgress) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedInProgressTodos = inProgressTodos
-          .filter(t => t.id !== todo.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        const updatedTodo = { ...todo, onHold: false, onHoldReason: undefined }
-        setInProgressTodos([...reorderedInProgressTodos, updatedTodo]) // Adiciona o item atualizado no final
-      }
+      // Recarregar dados para aplicar a nova ordenação do backend
+      await reloadData()
     } else {
       // Se não está em espera, abrir modal para colocar em espera
       setTodoToPutOnHold(todo)
@@ -1162,54 +1117,8 @@ export default function PlanningPage() {
         onHoldReason: on_hold_reason.trim()
       })
 
-      // Reordenar: itens não em espera primeiro, depois itens em espera
-      const isInTodos = todos.some(t => t.id === todoToPutOnHold.id)
-      const isInBacklog = backlogTodos.some(t => t.id === todoToPutOnHold.id)
-      const isInProgress = inProgressTodos.some(t => t.id === todoToPutOnHold.id)
-
-      if (isInTodos) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedTodos = todos
-          .filter(t => t.id !== todoToPutOnHold.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        const updatedTodo = { ...todoToPutOnHold, onHold: true, onHoldReason: on_hold_reason.trim() }
-        setTodos([...reorderedTodos, updatedTodo]) // Adiciona o item atualizado no final
-      } else if (isInBacklog) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedBacklogTodos = backlogTodos
-          .filter(t => t.id !== todoToPutOnHold.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        const updatedTodo = { ...todoToPutOnHold, onHold: true, onHoldReason: on_hold_reason.trim() }
-        setBacklogTodos([...reorderedBacklogTodos, updatedTodo]) // Adiciona o item atualizado no final
-      } else if (isInProgress) {
-        // Reordenar: itens não em espera primeiro, depois itens em espera
-        const reorderedInProgressTodos = inProgressTodos
-          .filter(t => t.id !== todoToPutOnHold.id) // Remove o item atual
-          .sort((a, b) => {
-            // Se ambos estão em espera ou ambos não estão, mantém ordem original
-            if (a.onHold === b.onHold) return 0
-            // Se a não está em espera e b está, a vem primeiro
-            if (!a.onHold && b.onHold) return -1
-            // Se a está em espera e b não está, b vem primeiro
-            return 1
-          })
-        const updatedTodo = { ...todoToPutOnHold, onHold: true, onHoldReason: on_hold_reason.trim() }
-        setInProgressTodos([...reorderedInProgressTodos, updatedTodo]) // Adiciona o item atualizado no final
-      }
+      // Recarregar dados para aplicar a nova ordenação do backend
+      await reloadData()
 
       setShowOnHoldModal(false)
       setTodoToPutOnHold(null)
