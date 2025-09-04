@@ -213,7 +213,7 @@ export function usePlanningData() {
   }, [])
 
   // Funções para tarefas
-  const createTodo = useCallback(async (todoData: Omit<Todo, 'id' | 'created_at' | 'updated_at'>) => {
+  const createTodo = useCallback(async (todoData: Omit<Todo, 'id' | 'created_at' | 'updated_at' | 'pos'>) => {
     if (!user) return null
     
     try {

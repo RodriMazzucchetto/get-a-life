@@ -401,6 +401,7 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       status: 'backlog',
+      pos: 1000,
       tags: [{ name: 'KimonoLab', color: '#EF4444' }],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -418,6 +419,7 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       status: 'backlog',
+      pos: 2000,
       tags: [{ name: 'Zentrix BS', color: '#8B5CF6' }],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -435,6 +437,7 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       status: 'backlog',
+      pos: 3000,
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString()
@@ -452,6 +455,7 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       status: 'backlog',
+      pos: 3000,
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString()
@@ -469,6 +473,7 @@ export default function PlanningPage() {
       onHold: false,
       onHoldReason: undefined,
       status: 'backlog',
+      pos: 4000,
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString()
@@ -1111,14 +1116,14 @@ export default function PlanningPage() {
       // Atualizar estado local
       setTodos(reorderedTodos)
       
-      // Persistir nova ordem no banco atualizando created_at
+      // Persistir nova ordem no banco atualizando pos
       const movedTodo = reorderedTodos.find(t => t.id === activeId)
       if (movedTodo) {
-        // Criar um novo timestamp baseado na posição para manter a ordem
-        // Posição 0 = timestamp mais novo, posição maior = timestamp mais antigo
-        const newTimestamp = new Date(Date.now() + (reorderedTodos.indexOf(movedTodo) * 1000)).toISOString()
-        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp, position: reorderedTodos.indexOf(movedTodo) })
-        await updateTodo(activeId, { created_at: newTimestamp })
+        // Calcular nova posição baseada na posição na lista
+        const newPosition = reorderedTodos.indexOf(movedTodo)
+        const newPos = (newPosition + 1) * 1000 // 1000, 2000, 3000, etc.
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newPos, position: newPosition })
+        await updateTodo(activeId, { pos: newPos })
       }
     } else if (activeTodoInBacklog) {
       console.log('📝 Reordenando dentro do Backlog')
@@ -1134,9 +1139,10 @@ export default function PlanningPage() {
       // Persistir nova ordem no banco
       const movedTodo = reorderedBacklog.find(t => t.id === activeId)
       if (movedTodo) {
-        const newTimestamp = new Date(Date.now() + (reorderedBacklog.indexOf(movedTodo) * 1000)).toISOString()
-        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp, position: reorderedBacklog.indexOf(movedTodo) })
-        await updateTodo(activeId, { created_at: newTimestamp })
+        const newPosition = reorderedBacklog.indexOf(movedTodo)
+        const newPos = (newPosition + 1) * 1000 // 1000, 2000, 3000, etc.
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newPos, position: newPosition })
+        await updateTodo(activeId, { pos: newPos })
       }
     } else if (activeTodoInProgress) {
       console.log('📝 Reordenando dentro de Em Progresso')
@@ -1152,9 +1158,10 @@ export default function PlanningPage() {
       // Persistir nova ordem no banco
       const movedTodo = reorderedInProgress.find(t => t.id === activeId)
       if (movedTodo) {
-        const newTimestamp = new Date(Date.now() + (reorderedInProgress.indexOf(movedTodo) * 1000)).toISOString()
-        console.log('💾 Salvando nova ordem no banco:', { activeId, newTimestamp, position: reorderedInProgress.indexOf(movedTodo) })
-        await updateTodo(activeId, { created_at: newTimestamp })
+        const newPosition = reorderedInProgress.indexOf(movedTodo)
+        const newPos = (newPosition + 1) * 1000 // 1000, 2000, 3000, etc.
+        console.log('💾 Salvando nova ordem no banco:', { activeId, newPos, position: newPosition })
+        await updateTodo(activeId, { pos: newPos })
       }
     }
   }

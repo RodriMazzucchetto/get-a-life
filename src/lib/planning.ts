@@ -42,6 +42,7 @@ export interface DBTodo {
   on_hold: boolean
   on_hold_reason?: string
   status: 'backlog' | 'in_progress' | 'current_week'
+  pos: number // Nova coluna para ordenação persistente
   // RELACIONAMENTOS OPCIONAIS (podem ser NULL)
   project_id?: string
   goal_id?: string
@@ -333,7 +334,7 @@ export const todosService = {
       .from('todos')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true })
+      .order('pos', { ascending: true })
 
     if (error) {
       console.error('❌ Erro ao buscar tarefas:', error)
@@ -357,12 +358,25 @@ export const todosService = {
   },
 
   // Criar nova tarefa
-  async createTodo(userId: string, todoData: Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<DBTodo> {
+  async createTodo(userId: string, todoData: Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'pos'>): Promise<DBTodo> {
     const supabase = createClient()
+    
+    // Buscar o maior pos atual para calcular o próximo
+    const { data: maxPosData } = await supabase
+      .from('todos')
+      .select('pos')
+      .eq('user_id', userId)
+      .order('pos', { ascending: false })
+      .limit(1)
+      .single()
+    
+    const nextPos = maxPosData?.pos ? maxPosData.pos + 1000 : 1000
+    
     const { data, error } = await supabase
       .from('todos')
       .insert({
         user_id: userId,
+        pos: nextPos,
         ...todoData
       })
       .select()
@@ -621,6 +635,7 @@ export function fromDbTodo(row: DBTodo): Todo {
     onHold: row.on_hold,
     onHoldReason: row.on_hold_reason,
     status: row.status,
+    pos: row.pos, // Nova coluna para ordenação persistente
     tags: [], // Tags serão implementadas do zero
     // RELACIONAMENTOS OPCIONAIS
     projectId: row.project_id,
@@ -647,7 +662,7 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.onHold !== undefined) out.on_hold = patch.onHold;
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
   if (patch.status !== undefined) out.status = patch.status;
-  if (patch.created_at !== undefined) out.created_at = patch.created_at;
+  if (patch.pos !== undefined) out.pos = patch.pos; // Nova coluna para ordenação persistente
   
   // RELACIONAMENTOS OPCIONAIS
   if (patch.projectId !== undefined) out.project_id = patch.projectId;
@@ -675,6 +690,7 @@ export interface Todo {
   onHold: boolean;
   onHoldReason?: string;
   status: 'backlog' | 'in_progress' | 'current_week';
+  pos: number; // Nova coluna para ordenação persistente
   tags?: { name: string; color: string }[];
   // RELACIONAMENTOS OPCIONAIS
   projectId?: string;
