@@ -1119,10 +1119,37 @@ export default function PlanningPage() {
                     // Persistir nova ordem no banco atualizando pos
               const movedTodo = reorderedTodos.find(t => t.id === activeId)
               if (movedTodo) {
-                // Calcular nova posição baseada na posição na lista
                 const newPosition = reorderedTodos.indexOf(movedTodo)
-                const newPos = (newPosition + 1) * 1000 // 1000, 2000, 3000, etc.
-                console.log('💾 Salvando nova ordem no banco:', { activeId, newPos, position: newPosition })
+                
+                // Calcular pos baseado nos vizinhos
+                let newPos
+                if (newPosition === 0) {
+                  // Primeiro item: pos = primeiro vizinho - 1000
+                  const nextTodo = reorderedTodos[1]
+                  newPos = nextTodo ? nextTodo.pos - 1000 : 1000
+                } else if (newPosition === reorderedTodos.length - 1) {
+                  // Último item: pos = último vizinho + 1000
+                  const prevTodo = reorderedTodos[newPosition - 1]
+                  newPos = prevTodo ? prevTodo.pos + 1000 : (newPosition + 1) * 1000
+                } else {
+                  // Item no meio: pos = média entre vizinhos
+                  const prevTodo = reorderedTodos[newPosition - 1]
+                  const nextTodo = reorderedTodos[newPosition + 1]
+                  newPos = Math.round((prevTodo.pos + nextTodo.pos) / 2)
+                  
+                  // Se a média for igual a algum vizinho, usar gaps menores
+                  if (newPos === prevTodo.pos || newPos === nextTodo.pos) {
+                    newPos = prevTodo.pos + Math.round((nextTodo.pos - prevTodo.pos) / 2)
+                  }
+                }
+                
+                console.log('💾 Salvando nova ordem no banco:', { 
+                  activeId, 
+                  newPos, 
+                  position: newPosition,
+                  prevPos: reorderedTodos[newPosition - 1]?.pos,
+                  nextPos: reorderedTodos[newPosition + 1]?.pos
+                })
                 await updateTodo(activeId, { pos: newPos })
               }
     } else if (activeTodoInBacklog) {
@@ -1140,8 +1167,36 @@ export default function PlanningPage() {
               const movedTodo = reorderedBacklog.find(t => t.id === activeId)
               if (movedTodo) {
                 const newPosition = reorderedBacklog.indexOf(movedTodo)
-                const newPos = (newPosition + 1) * 1000 // 1000, 2000, 3000, etc.
-                console.log('💾 Salvando nova ordem no banco:', { activeId, newPos, position: newPosition })
+                
+                // Calcular pos baseado nos vizinhos
+                let newPos
+                if (newPosition === 0) {
+                  // Primeiro item: pos = primeiro vizinho - 1000
+                  const nextTodo = reorderedBacklog[1]
+                  newPos = nextTodo ? nextTodo.pos - 1000 : 1000
+                } else if (newPosition === reorderedBacklog.length - 1) {
+                  // Último item: pos = último vizinho + 1000
+                  const prevTodo = reorderedBacklog[newPosition - 1]
+                  newPos = prevTodo ? prevTodo.pos + 1000 : (newPosition + 1) * 1000
+                } else {
+                  // Item no meio: pos = média entre vizinhos
+                  const prevTodo = reorderedBacklog[newPosition - 1]
+                  const nextTodo = reorderedBacklog[newPosition + 1]
+                  newPos = Math.round((prevTodo.pos + nextTodo.pos) / 2)
+                  
+                  // Se a média for igual a algum vizinho, usar gaps menores
+                  if (newPos === prevTodo.pos || newPos === nextTodo.pos) {
+                    newPos = prevTodo.pos + Math.round((nextTodo.pos - prevTodo.pos) / 2)
+                  }
+                }
+                
+                console.log('💾 Salvando nova ordem no banco (backlog):', { 
+                  activeId, 
+                  newPos, 
+                  position: newPosition,
+                  prevPos: reorderedBacklog[newPosition - 1]?.pos,
+                  nextPos: reorderedBacklog[newPosition + 1]?.pos
+                })
                 await updateTodo(activeId, { pos: newPos })
               }
     } else if (activeTodoInProgress) {
@@ -1159,8 +1214,36 @@ export default function PlanningPage() {
               const movedTodo = reorderedInProgress.find(t => t.id === activeId)
               if (movedTodo) {
                 const newPosition = reorderedInProgress.indexOf(movedTodo)
-                const newPos = (newPosition + 1) * 1000 // 1000, 2000, 3000, etc.
-                console.log('💾 Salvando nova ordem no banco:', { activeId, newPos, position: newPosition })
+                
+                // Calcular pos baseado nos vizinhos
+                let newPos
+                if (newPosition === 0) {
+                  // Primeiro item: pos = primeiro vizinho - 1000
+                  const nextTodo = reorderedInProgress[1]
+                  newPos = nextTodo ? nextTodo.pos - 1000 : 1000
+                } else if (newPosition === reorderedInProgress.length - 1) {
+                  // Último item: pos = último vizinho + 1000
+                  const prevTodo = reorderedInProgress[newPosition - 1]
+                  newPos = prevTodo ? prevTodo.pos + 1000 : (newPosition + 1) * 1000
+                } else {
+                  // Item no meio: pos = média entre vizinhos
+                  const prevTodo = reorderedInProgress[newPosition - 1]
+                  const nextTodo = reorderedInProgress[newPosition + 1]
+                  newPos = Math.round((prevTodo.pos + nextTodo.pos) / 2)
+                  
+                  // Se a média for igual a algum vizinho, usar gaps menores
+                  if (newPos === prevTodo.pos || newPos === nextTodo.pos) {
+                    newPos = prevTodo.pos + Math.round((nextTodo.pos - prevTodo.pos) / 2)
+                  }
+                }
+                
+                console.log('💾 Salvando nova ordem no banco (in progress):', { 
+                  activeId, 
+                  newPos, 
+                  position: newPosition,
+                  prevPos: reorderedInProgress[newPosition - 1]?.pos,
+                  nextPos: reorderedInProgress[newPosition + 1]?.pos
+                })
                 await updateTodo(activeId, { pos: newPos })
               }
     }
