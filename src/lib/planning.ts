@@ -620,6 +620,7 @@ export function fromDbTodo(row: DBTodo): Todo {
     timeSensitive: row.time_sensitive,
     onHold: row.on_hold,
     onHoldReason: row.on_hold_reason,
+    status: row.status,
     tags: [], // Tags serão implementadas do zero
     // RELACIONAMENTOS OPCIONAIS
     projectId: row.project_id,
@@ -645,6 +646,7 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.timeSensitive !== undefined) out.time_sensitive = patch.timeSensitive;
   if (patch.onHold !== undefined) out.on_hold = patch.onHold;
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
+  if (patch.status !== undefined) out.status = patch.status;
   
   // RELACIONAMENTOS OPCIONAIS
   if (patch.projectId !== undefined) out.project_id = patch.projectId;
@@ -671,6 +673,7 @@ export interface Todo {
   timeSensitive: boolean;
   onHold: boolean;
   onHoldReason?: string;
+  status: 'backlog' | 'in_progress' | 'current_week';
   tags?: { name: string; color: string }[];
   // RELACIONAMENTOS OPCIONAIS
   projectId?: string;

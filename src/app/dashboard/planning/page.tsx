@@ -400,6 +400,7 @@ export default function PlanningPage() {
       timeSensitive: false,
       onHold: false,
       onHoldReason: undefined,
+      status: 'backlog',
       tags: [{ name: 'KimonoLab', color: '#EF4444' }],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -416,6 +417,7 @@ export default function PlanningPage() {
       timeSensitive: false,
       onHold: false,
       onHoldReason: undefined,
+      status: 'backlog',
       tags: [{ name: 'Zentrix BS', color: '#8B5CF6' }],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -432,6 +434,7 @@ export default function PlanningPage() {
       timeSensitive: false,
       onHold: false,
       onHoldReason: undefined,
+      status: 'backlog',
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString()
@@ -448,6 +451,7 @@ export default function PlanningPage() {
       timeSensitive: false,
       onHold: false,
       onHoldReason: undefined,
+      status: 'backlog',
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString()
@@ -464,6 +468,7 @@ export default function PlanningPage() {
       timeSensitive: false,
       onHold: false,
       onHoldReason: undefined,
+      status: 'backlog',
       tags: [{ name: 'Miscellaneous', color: '#10B981' }],
       created_at: new Date().toISOString(), 
       updated_at: new Date().toISOString()
@@ -812,9 +817,9 @@ export default function PlanningPage() {
         timeSensitive: newTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
+        status: 'current_week',
         tags: [],
-        projectId: newTodo.projectId,
-        /* status: 'backlog' */
+        projectId: newTodo.projectId
       })
       if (newTodoData) {
       setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
@@ -913,7 +918,7 @@ export default function PlanningPage() {
   // Função groupTodosByFirstTag REMOVIDA - será reimplementada do zero
 
   // Função para drag and drop entre blocos
-  const handleDragEndBetweenBlocks = (event: DragEndEvent) => {
+  const handleDragEndBetweenBlocks = async (event: DragEndEvent) => {
     const { active, over } = event
 
     if (!active || !over) return
@@ -937,11 +942,11 @@ export default function PlanningPage() {
     if (overTodoInBacklog && (activeTodoInTodos || activeTodoInProgress)) {
       // Mover da Semana Atual ou Em Progresso para o Backlog
       if (activeTodoInTodos) {
-        setTodos(todos.filter(t => t.id !== activeId))
-        setBacklogTodos([...backlogTodos, activeTodoInTodos])
+        await updateTodo(activeId, { status: 'backlog' })
+        await reloadData()
       } else if (activeTodoInProgress) {
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
-        setBacklogTodos([...backlogTodos, activeTodoInProgress])
+        await updateTodo(activeId, { status: 'backlog' })
+        await reloadData()
       }
       return
     }
@@ -951,11 +956,11 @@ export default function PlanningPage() {
     if (overTodoInTodos && (activeTodoInBacklog || activeTodoInProgress)) {
       // Mover do Backlog ou Em Progresso para a Semana Atual
       if (activeTodoInBacklog) {
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-        setTodos([...todos, activeTodoInBacklog])
+        await updateTodo(activeId, { status: 'current_week' })
+        await reloadData()
       } else if (activeTodoInProgress) {
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
-        setTodos([...todos, activeTodoInProgress])
+        await updateTodo(activeId, { status: 'current_week' })
+        await reloadData()
       }
       return
     }
@@ -965,11 +970,11 @@ export default function PlanningPage() {
     if (overTodoInProgress && (activeTodoInTodos || activeTodoInBacklog)) {
       // Mover da Semana Atual ou Backlog para Em Progresso
       if (activeTodoInTodos) {
-        setTodos(todos.filter(t => t.id !== activeId))
-        setInProgressTodos([...inProgressTodos, activeTodoInTodos])
+        await updateTodo(activeId, { status: 'in_progress' })
+        await reloadData()
       } else if (activeTodoInBacklog) {
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-        setInProgressTodos([...inProgressTodos, activeTodoInBacklog])
+        await updateTodo(activeId, { status: 'in_progress' })
+        await reloadData()
       }
       return
     }
@@ -978,11 +983,11 @@ export default function PlanningPage() {
     if (overId.startsWith('group-') && (activeTodoInBacklog || activeTodoInProgress)) {
       // Mover do Backlog ou Em Progresso para a Semana Atual
       if (activeTodoInBacklog) {
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-        setTodos([...todos, activeTodoInBacklog])
+        await updateTodo(activeId, { status: 'current_week' })
+        await reloadData()
       } else if (activeTodoInProgress) {
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
-        setTodos([...todos, activeTodoInProgress])
+        await updateTodo(activeId, { status: 'current_week' })
+        await reloadData()
       }
       return
     }
@@ -1133,27 +1138,18 @@ export default function PlanningPage() {
   }
 
   // Função para mover item para Em Progresso ou voltar para Semana Atual
-  const handleMoveToProgress = (todo: Todo) => {
+  const handleMoveToProgress = async (todo: Todo) => {
     // Verificar se o item está em progresso
     const isInProgress = inProgressTodos.some(t => t.id === todo.id)
     
     if (isInProgress) {
       // Se está em progresso, voltar para Semana Atual
-      setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
-      setTodos([...todos, todo])
+      await updateTodo(todo.id, { status: 'current_week' })
+      await reloadData()
     } else {
       // Se não está em progresso, mover para Em Progresso
-      // Verificar de qual bloco está vindo
-      const isInTodos = todos.some(t => t.id === todo.id)
-      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
-      
-      if (isInTodos) {
-        setTodos(todos.filter(t => t.id !== todo.id))
-        setInProgressTodos([...inProgressTodos, todo])
-      } else if (isInBacklog) {
-        setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
-        setInProgressTodos([...inProgressTodos, todo])
-      }
+      await updateTodo(todo.id, { status: 'in_progress' })
+      await reloadData()
     }
   }
 
