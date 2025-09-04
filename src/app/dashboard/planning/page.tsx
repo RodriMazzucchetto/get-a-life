@@ -1215,19 +1215,18 @@ export default function PlanningPage() {
       // Se está em progresso, voltar para Semana Atual
       await updateTodo(todo.id, { status: 'current_week' })
       
-      // Encontrar a posição original do item (se existir)
-      const originalIndex = todos.findIndex(t => t.id === todo.id)
-      
       // Atualizar estado local imediatamente
       setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
       
-      if (originalIndex !== -1) {
+      // Verificar se o todo tem uma posição original armazenada
+      const todoWithOriginalPosition = todo as Todo & { originalPosition?: number }
+      if (todoWithOriginalPosition.originalPosition !== undefined) {
         // Restaurar na posição original
         const newTodos = [...todos]
-        newTodos.splice(originalIndex, 0, todo)
+        newTodos.splice(todoWithOriginalPosition.originalPosition, 0, todo)
         setTodos(newTodos)
       } else {
-        // Se não encontrar posição original, adicionar no final
+        // Se não tem posição original, adicionar no final
         setTodos([...todos, todo])
       }
     } else {
@@ -1239,8 +1238,12 @@ export default function PlanningPage() {
       const isInBacklog = backlogTodos.some(t => t.id === todo.id)
       
       if (isInTodos) {
+        // Armazenar a posição original antes de mover
+        const originalIndex = todos.findIndex(t => t.id === todo.id)
+        const todoWithPosition = { ...todo, originalPosition: originalIndex }
+        
         setTodos(todos.filter(t => t.id !== todo.id))
-        setInProgressTodos([...inProgressTodos, todo])
+        setInProgressTodos([...inProgressTodos, todoWithPosition])
       } else if (isInBacklog) {
         setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
         setInProgressTodos([...inProgressTodos, todo])
