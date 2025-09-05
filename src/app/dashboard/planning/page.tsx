@@ -656,7 +656,7 @@ export default function PlanningPage() {
     inProgress: inProgressTodos.filter(t => !t.completed).length,
     currentWeek: todos.filter(t => !t.completed).length,
     backlog: backlogTodos.filter(t => !t.completed).length,
-    completed: todos.filter(t => t.completed).length + backlogTodos.filter(t => t.completed).length + inProgressTodos.filter(t => t.completed).length,
+    completed: todos.filter(t => t.completed).length, // Usar apenas o array global do hook
     reminders: reminders.length // Usar contagem real dos lembretes
   }
 
