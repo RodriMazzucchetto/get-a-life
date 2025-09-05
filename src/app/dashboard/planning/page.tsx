@@ -1315,6 +1315,11 @@ export default function PlanningPage() {
         completed: newCompletedStatus
       })
       
+      // Atualizar o array global imediatamente para sincronizar o contador
+      setTodos(prev => prev.map(t => 
+        t.id === todoId ? { ...t, completed: newCompletedStatus } : t
+      ))
+      
       // Se foi marcado como concluído, remover da lista imediatamente
       if (newCompletedStatus) {
         setInProgressTodos(inProgressTodos.filter(t => t.id !== todoId))
