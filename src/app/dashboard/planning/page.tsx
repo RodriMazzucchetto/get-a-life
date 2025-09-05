@@ -1308,9 +1308,22 @@ export default function PlanningPage() {
     // Encontrar a tarefa atual
     const currentTodo = inProgressTodos.find(t => t.id === todoId)
     if (currentTodo) {
+      const newCompletedStatus = !currentTodo.completed
+      
+      // Atualizar no banco
       await updateTodo(todoId, {
-        completed: !currentTodo.completed
+        completed: newCompletedStatus
       })
+      
+      // Se foi marcado como concluído, remover da lista imediatamente
+      if (newCompletedStatus) {
+        setInProgressTodos(inProgressTodos.filter(t => t.id !== todoId))
+      } else {
+        // Se foi desmarcado como concluído, atualizar o status no estado local
+        setInProgressTodos(inProgressTodos.map(t => 
+          t.id === todoId ? { ...t, completed: newCompletedStatus } : t
+        ))
+      }
     }
   }
 
