@@ -1566,8 +1566,18 @@ export default function PlanningPage() {
     })
   )
 
-  // Usar ordem do banco (pos) - NÃO reordenar
-  const sortedTodos = todos.filter(todo => !todo.completed)
+  // Função para ordenar por prioridade (alta prioridade primeiro)
+  const sortByPriority = (a: Todo, b: Todo) => {
+    // Se um tem alta prioridade e outro não, prioridade alta vem primeiro
+    if (a.isHighPriority && !b.isHighPriority) return -1
+    if (!a.isHighPriority && b.isHighPriority) return 1
+    
+    // Se ambos têm a mesma prioridade, manter ordem original (pos)
+    return a.pos - b.pos
+  }
+
+  // Usar ordem do banco (pos) com priorização por alta prioridade
+  const sortedTodos = todos.filter(todo => !todo.completed).sort(sortByPriority)
 
   return (
     <div className="space-y-6">
@@ -1804,12 +1814,13 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   <SortableContext
-                    items={inProgressTodos.filter(t => !t.completed).map(todo => todo.id)}
+                    items={inProgressTodos.filter(t => !t.completed).sort(sortByPriority).map(todo => todo.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-2">
                       {inProgressTodos
                         .filter(t => !t.completed)
+                        .sort(sortByPriority)
                         .map((todo) => (
                           <SortableTodoItem
                             key={todo.id}
@@ -2106,12 +2117,13 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   <SortableContext
-                    items={backlogTodos.filter(t => !t.completed).map(todo => todo.id)}
+                    items={backlogTodos.filter(t => !t.completed).sort(sortByPriority).map(todo => todo.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-2">
                       {backlogTodos
                         .filter(t => !t.completed)
+                        .sort(sortByPriority)
                         .map((todo) => (
                           <SortableTodoItem
                             key={todo.id}
