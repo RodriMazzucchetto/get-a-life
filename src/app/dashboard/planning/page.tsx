@@ -651,12 +651,14 @@ export default function PlanningPage() {
     }
   }
 
-  // Estatísticas calculadas dinamicamente baseadas no status do banco de dados
+  // Estatísticas calculadas baseadas nos arrays locais exibidos no frontend
   const taskStats = {
-    inProgress: todos.filter(t => t.status === 'in_progress').length,
-    currentWeek: todos.filter(t => t.status === 'current_week').length,
-    backlog: todos.filter(t => t.status === 'backlog').length,
-    completed: todos.filter(t => t.completed).length,
+    inProgress: inProgressTodos.length,
+    currentWeek: todos.length,
+    backlog: backlogTodos.length,
+    completed: todos.filter(t => t.completed).length + 
+               inProgressTodos.filter(t => t.completed).length + 
+               backlogTodos.filter(t => t.completed).length,
     reminders: reminders.length // Manter lembretes como está
   }
 
