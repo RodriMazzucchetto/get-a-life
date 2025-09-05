@@ -651,12 +651,12 @@ export default function PlanningPage() {
     }
   }
 
-  // Estatísticas calculadas dinamicamente baseadas nos dados reais
+  // Estatísticas calculadas dinamicamente baseadas nos dados reais do banco
   const taskStats = {
-    inProgress: inProgressTodos.filter(t => !t.completed).length,
-    currentWeek: todos.filter(t => !t.completed).length,
-    backlog: backlogTodos.filter(t => !t.completed).length,
-    completed: todos.filter(t => t.completed).length, // Usar apenas o array global do hook
+    inProgress: todos.filter(t => t.status === 'in_progress' && !t.completed).length,
+    currentWeek: todos.filter(t => t.status === 'current_week' && !t.completed).length,
+    backlog: todos.filter(t => t.status === 'backlog' && !t.completed).length,
+    completed: todos.filter(t => t.completed).length, // Contar todos os itens concluídos do banco
     reminders: reminders.length // Usar contagem real dos lembretes
   }
 
