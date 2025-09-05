@@ -1411,6 +1411,11 @@ export default function PlanningPage() {
       // Se não está em progresso, mover para Em Progresso
       await updateTodo(todo.id, { status: 'in_progress' })
       
+      // Atualizar o array global imediatamente para manter sincronização
+      setTodos(prev => prev.map(t => 
+        t.id === todo.id ? { ...t, status: 'in_progress' } : t
+      ))
+      
       // Atualizar estado local imediatamente
       const isInTodos = todos.some(t => t.id === todo.id)
       const isInBacklog = backlogTodos.some(t => t.id === todo.id)
@@ -1418,13 +1423,13 @@ export default function PlanningPage() {
       if (isInTodos) {
         // Armazenar a posição original antes de mover
         const originalIndex = todos.findIndex(t => t.id === todo.id)
-        const todoWithPosition = { ...todo, originalPosition: originalIndex }
+        const todoWithPosition = { ...todo, originalPosition: originalIndex, status: 'in_progress' as const }
         
         setTodos(todos.filter(t => t.id !== todo.id))
         setInProgressTodos([...inProgressTodos, todoWithPosition])
       } else if (isInBacklog) {
         setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
-        setInProgressTodos([...inProgressTodos, todo])
+        setInProgressTodos([...inProgressTodos, { ...todo, status: 'in_progress' as const }])
       }
     }
   }
