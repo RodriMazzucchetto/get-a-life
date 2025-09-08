@@ -9,6 +9,7 @@ import { loadWeekData, toggleSelectForWeek, assignIdeaToDate, unassignIdeaFromDa
 import WeekStrip from '@/components/offwork/WeekStrip';
 import SelectedTray from '@/components/offwork/SelectedTray';
 import IdeasList from '@/components/offwork/IdeasList';
+import HierarchicalIdeasList from '@/components/offwork/HierarchicalIdeasList';
 
 export default function OffWorkPage() {
   const { user } = useAuthContext();
@@ -17,6 +18,7 @@ export default function OffWorkPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draggedIdea, setDraggedIdea] = useState<IdeaWithSelection | null>(null);
+  const [viewMode, setViewMode] = useState<'simple' | 'hierarchical'>('hierarchical');
 
   // Carregar dados da semana atual
   useEffect(() => {
@@ -135,9 +137,9 @@ export default function OffWorkPage() {
 
   // Estados de loading e erro
   if (loading) {
-    return (
+  return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
+      <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando suas ideias...</p>
         </div>
@@ -160,7 +162,7 @@ export default function OffWorkPage() {
   }
 
   if (!weekData) {
-    return (
+          return (
       <div className="text-center py-8">
         <p className="text-gray-600">Nenhum dado encontrado.</p>
       </div>
@@ -209,12 +211,50 @@ export default function OffWorkPage() {
         />
 
         {/* Lista de Ideias */}
-        <IdeasList
-          ideas={allIdeas}
-          onToggleSelection={handleToggleSelection}
-          onMoveToDay={handleMoveToDay}
-          weekDays={weekDays}
-        />
+        <div className="space-y-4">
+          {/* Toggle de Visualização */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800">Ideias Disponíveis</h2>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('hierarchical')}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  viewMode === 'hierarchical'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Hierárquica
+              </button>
+              <button
+                onClick={() => setViewMode('simple')}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  viewMode === 'simple'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Simples
+              </button>
+            </div>
+          </div>
+
+          {/* Renderizar lista baseada no modo */}
+          {viewMode === 'hierarchical' ? (
+            <HierarchicalIdeasList
+              ideasWithSelection={allIdeas}
+              onToggleSelect={handleToggleSelection}
+              onMoveToDay={handleMoveToDay}
+            />
+          ) : (
+            <IdeasList
+              ideas={allIdeas}
+              onToggleSelection={handleToggleSelection}
+              onMoveToDay={handleMoveToDay}
+              weekDays={weekDays}
+            />
+          )}
+        </div>
 
         {/* Drag Overlay */}
         <DragOverlay>
@@ -228,7 +268,7 @@ export default function OffWorkPage() {
                   {draggedIdea.title}
                 </span>
               </div>
-            </div>
+              </div>
           ) : null}
         </DragOverlay>
       </div>

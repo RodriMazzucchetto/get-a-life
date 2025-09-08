@@ -18,8 +18,7 @@ interface CategoryFilterProps {
 function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryFilterProps) {
   const categories: Category[] = [
     'crescimento', 'mini-aventuras', 'lifestyle', 'esporte', 
-    'social', 'relacionamentos', 'hobbies', 'viagens',
-    'saude', 'aprendizado', 'criatividade', 'familia', 'aventura'
+    'social', 'relacionamentos', 'hobbies', 'viagens'
   ];
 
   return (
@@ -84,7 +83,7 @@ function IdeaItem({ idea, onToggleSelection, onMoveToDay, weekDays }: IdeaItemPr
           </span>
           {idea.subcategory && (
             <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-              {idea.subcategory}
+              {idea.subcategory.name}
             </span>
           )}
           {idea.assignedDate && (

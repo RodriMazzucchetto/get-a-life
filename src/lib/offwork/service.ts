@@ -1,8 +1,33 @@
 // Serviços Supabase para funcionalidade Off Work
 
 import { createClient } from '@/lib/supabase';
-import { Idea, WeekSelection, DayAssignment, IdeaWithSelection, WeekData, Category } from '@/types/offwork';
+import { Idea, WeekSelection, DayAssignment, IdeaWithSelection, WeekData, Category, Subcategory } from '@/types/offwork';
 import { getWeekStart, getWeekDays } from './date';
+
+/**
+ * Lista todas as subcategorias, opcionalmente filtradas por categoria
+ */
+export async function listSubcategories(category?: Category): Promise<Subcategory[]> {
+  const supabase = createClient();
+  
+  let query = supabase
+    .from('subcategory')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (category) {
+    query = query.eq('category', category);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Erro ao buscar subcategorias:', error);
+    throw new Error('Erro ao buscar subcategorias');
+  }
+
+  return data || [];
+}
 
 /**
  * Lista todas as ideias, opcionalmente filtradas por categoria
@@ -11,7 +36,15 @@ export async function listIdeas(category?: Category): Promise<Idea[]> {
   const supabase = createClient();
   let query = supabase
     .from('idea')
-    .select('*')
+    .select(`
+      *,
+      subcategory:subcategory_id (
+        id,
+        name,
+        category,
+        created_at
+      )
+    `)
     .order('created_at', { ascending: false });
 
   if (category) {
