@@ -20,7 +20,7 @@ export async function GET() {
     }
 
     // Agrupar por categoria
-    const categories = ideas?.reduce((acc: any, idea) => {
+    const categories = ideas?.reduce((acc: Record<string, string[]>, idea) => {
       if (!acc[idea.category]) {
         acc[idea.category] = [];
       }
