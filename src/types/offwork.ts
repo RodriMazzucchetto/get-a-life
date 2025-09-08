@@ -1,6 +1,6 @@
 // Tipos para funcionalidade Off Work
 
-export type Category = 'crescimento' | 'mini-aventuras' | 'lifestyle' | 'esporte' | 'social' | 'relacionamentos' | 'hobbies' | 'viagens';
+export type Category = 'crescimento' | 'mini-aventuras' | 'lifestyle' | 'esporte' | 'social' | 'relacionamentos' | 'hobbies' | 'viagens' | 'saude' | 'aprendizado' | 'criatividade' | 'familia' | 'aventura';
 
 export interface Idea {
   id: string;
@@ -96,5 +96,36 @@ export const CATEGORY_CONFIG: Record<Category, {
     color: 'text-indigo-600',
     icon: '✈️',
     bgColor: 'bg-indigo-50'
+  },
+  // Categorias antigas para compatibilidade
+  saude: {
+    label: 'Saúde',
+    color: 'text-green-600',
+    icon: '💚',
+    bgColor: 'bg-green-50'
+  },
+  aprendizado: {
+    label: 'Aprendizado',
+    color: 'text-purple-600',
+    icon: '📚',
+    bgColor: 'bg-purple-50'
+  },
+  criatividade: {
+    label: 'Criatividade',
+    color: 'text-pink-600',
+    icon: '🎨',
+    bgColor: 'bg-pink-50'
+  },
+  familia: {
+    label: 'Família',
+    color: 'text-indigo-600',
+    icon: '👨‍👩‍👧‍👦',
+    bgColor: 'bg-indigo-50'
+  },
+  aventura: {
+    label: 'Aventura',
+    color: 'text-orange-600',
+    icon: '🏔️',
+    bgColor: 'bg-orange-50'
   }
 };

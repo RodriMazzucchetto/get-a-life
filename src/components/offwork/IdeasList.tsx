@@ -16,7 +16,11 @@ interface CategoryFilterProps {
 }
 
 function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryFilterProps) {
-  const categories: Category[] = ['crescimento', 'mini-aventuras', 'lifestyle', 'esporte', 'social', 'relacionamentos', 'hobbies', 'viagens'];
+  const categories: Category[] = [
+    'crescimento', 'mini-aventuras', 'lifestyle', 'esporte', 
+    'social', 'relacionamentos', 'hobbies', 'viagens',
+    'saude', 'aprendizado', 'criatividade', 'familia', 'aventura'
+  ];
 
   return (
     <div className="flex flex-wrap gap-2 mb-4">
