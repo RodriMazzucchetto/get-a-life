@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { WeekData, IdeaWithSelection } from '@/types/offwork';
+import { WeekData, IdeaWithSelection, CATEGORY_CONFIG } from '@/types/offwork';
 import { getWeekStart, getWeekDays } from '@/lib/offwork/date';
 import { loadWeekData, toggleSelectForWeek, assignIdeaToDate, unassignIdeaFromDate, moveIdeaToDate } from '@/lib/offwork/service';
 import WeekStrip from '@/components/offwork/WeekStrip';
@@ -222,12 +222,7 @@ export default function OffWorkPage() {
             <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-lg opacity-90">
               <div className="flex items-center gap-2">
                 <span className="text-lg">
-                  {draggedIdea.category === 'saude' && '💚'}
-                  {draggedIdea.category === 'social' && '👥'}
-                  {draggedIdea.category === 'aprendizado' && '📚'}
-                  {draggedIdea.category === 'aventura' && '🏔️'}
-                  {draggedIdea.category === 'criatividade' && '🎨'}
-                  {draggedIdea.category === 'familia' && '👨‍👩‍👧‍👦'}
+                  {CATEGORY_CONFIG[draggedIdea.category]?.icon || '📝'}
                 </span>
                 <span className="text-sm font-medium truncate max-w-[200px]">
                   {draggedIdea.title}

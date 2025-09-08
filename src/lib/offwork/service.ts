@@ -82,12 +82,20 @@ export async function loadWeekData(weekStart?: string): Promise<WeekData> {
   const currentWeekStart = weekStart || getWeekStart();
   const weekDays = getWeekDays(currentWeekStart);
 
+  console.log('🔍 Carregando dados da semana:', currentWeekStart);
+
   // Carregar dados em paralelo
   const [ideas, selectedIdeas, assignments] = await Promise.all([
     listIdeas(),
     listSelectedForWeek(currentWeekStart),
     listAssignmentsForWeek(currentWeekStart)
   ]);
+
+  console.log('📊 Dados carregados:', {
+    ideas: ideas.length,
+    selectedIdeas: selectedIdeas.length,
+    assignments: assignments.length
+  });
 
   // Criar mapas para facilitar consultas
   const selectedIds = new Set(selectedIdeas.map(idea => idea.id));
