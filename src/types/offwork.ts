@@ -6,6 +6,7 @@ export interface Idea {
   id: string;
   title: string;
   category: Category;
+  subcategory?: string;
   created_at: string;
 }
 

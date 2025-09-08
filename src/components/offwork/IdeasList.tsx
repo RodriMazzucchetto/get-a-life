@@ -82,6 +82,11 @@ function IdeaItem({ idea, onToggleSelection, onMoveToDay, weekDays }: IdeaItemPr
           <span className={`text-xs px-2 py-1 rounded-full ${config.bgColor} ${config.color}`}>
             {config.label}
           </span>
+          {idea.subcategory && (
+            <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+              {idea.subcategory}
+            </span>
+          )}
           {idea.assignedDate && (
             <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
               ✓ Alocada
