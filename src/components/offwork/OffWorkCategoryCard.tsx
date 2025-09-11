@@ -106,8 +106,8 @@ export function OffWorkCategoryCard({
                       {activity.tags && activity.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {activity.tags.map((tag, index) => (
-                            <span key={index} className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                              #{tag}
+                            <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
+                              {tag}
                             </span>
                           ))}
                         </div>

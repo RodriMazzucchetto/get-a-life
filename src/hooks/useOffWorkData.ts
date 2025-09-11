@@ -24,13 +24,15 @@ export function useOffWorkData() {
   // Carregar atividades
   const loadActivities = useCallback(async (categoryName?: string) => {
     try {
-      const url = categoryName 
+      const url = categoryName
         ? `/api/offwork/activities?category=${encodeURIComponent(categoryName)}`
         : '/api/offwork/activities'
-      
       const response = await fetch(url)
-      if (!response.ok) throw new Error('Failed to fetch activities')
-      const data = await response.json()
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities')
+      }
+      const result = await response.json()
+      const data = result.activities || result
       setActivities(data)
     } catch (err) {
       console.error('Error loading activities:', err)
@@ -47,7 +49,8 @@ export function useOffWorkData() {
       
       const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch ideas')
-      const data = await response.json()
+      const result = await response.json()
+      const data = result.ideas || result
       setIdeas(data)
     } catch (err) {
       console.error('Error loading ideas:', err)
@@ -185,11 +188,9 @@ export function useOffWorkData() {
       setError(null)
       
       try {
-        await Promise.all([
-          loadCategories(),
-          loadActivities(),
-          loadIdeas()
-        ])
+        await loadCategories()
+        await loadActivities()
+        await loadIdeas()
       } catch (err) {
         console.error('Error loading initial data:', err)
         setError('Failed to load data')
@@ -221,8 +222,11 @@ export function useOffWorkData() {
     createIdea,
     convertIdeaToActivity,
     // Funções de conveniência
-    getActivitiesByCategory: (categoryName: string) => 
-      safeActivities.filter(activity => activity.offwork_categories?.name === categoryName),
+    getActivitiesByCategory: (categoryName: string) => {
+      return safeActivities.filter(activity => 
+        activity.offwork_categories?.name === categoryName
+      )
+    },
     getIdeasByCategory: (categoryName: string) => 
       safeIdeas.filter(idea => idea.offwork_categories?.name === categoryName),
     getCategoryByName: (name: string) => 

@@ -292,9 +292,6 @@ export default function PlanningPage() {
     reloadData
   } = usePlanningData()
 
-  // Debug: Log do estado de metas
-  console.log('🎯 Page: Estado atual de metas:', goals)
-  console.log('🎯 Page: Função setGoals disponível:', !!setGoals)
 
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
@@ -342,6 +339,7 @@ export default function PlanningPage() {
     getIdeasByCategory,
     getCategoryByName
   } = useOffWorkData()
+
 
   const [showEditGoalModal, setShowEditGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
@@ -1881,11 +1879,20 @@ export default function PlanningPage() {
         {offWorkExpanded && (
           <div className="px-6 pb-6 border-t border-gray-100">
             <div className="space-y-3">
-              {offWorkCategories.map((category) => (
+              {offWorkLoading ? (
+                <div className="text-center text-gray-500 py-4">
+                  <p>Carregando categorias Off Work...</p>
+                </div>
+              ) : offWorkCategories.length === 0 ? (
+                <div className="text-center text-gray-500 py-4">
+                  <p>Nenhuma categoria encontrada.</p>
+                </div>
+              ) : (
+                offWorkCategories.map((category) => (
                 <OffWorkCategoryCard
                   key={category.id}
                   category={category}
-                  activities={offWorkLoading ? [] : getActivitiesByCategory(category.name)}
+                activities={offWorkLoading ? [] : getActivitiesByCategory(category.name)}
                   isExpanded={
                     (category.name === 'Viagens' && viagensExpanded) ||
                     (category.name === 'Mini Aventuras' && miniAventurasExpanded) ||
@@ -1927,7 +1934,8 @@ export default function PlanningPage() {
                   onCreateActivity={createActivity}
                   loading={offWorkLoading}
                 />
-              ))}
+              ))
+            )}
             </div>
           </div>
         )}
