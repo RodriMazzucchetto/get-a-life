@@ -314,6 +314,9 @@ export default function PlanningPage() {
 
   // Estados para metas
   const [goalsExpanded, setGoalsExpanded] = useState(false)
+  
+  // Estados para Off Work
+  const [offWorkExpanded, setOffWorkExpanded] = useState(false)
 
   const [showEditGoalModal, setShowEditGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
@@ -809,6 +812,33 @@ export default function PlanningPage() {
       seedDefaultReminders()
     }
   }, [showRemindersModal, seedDefaultReminders])
+
+  // Estado para controlar se os dados já foram separados
+  const [dataSeparated, setDataSeparated] = useState(false)
+
+  // Separar todos baseado no status quando os dados são carregados
+  useEffect(() => {
+    if (todos.length > 0 && !dataSeparated) {
+      console.log('🔄 Separando todos baseado no status:', todos)
+      
+      // Separar itens em progresso
+      const inProgressItems = todos.filter(todo => todo.status === 'in_progress')
+      setInProgressTodos(inProgressItems)
+      console.log('🚀 Itens em progresso:', inProgressItems)
+      
+      // Separar itens do backlog
+      const backlogItems = todos.filter(todo => todo.status === 'backlog')
+      setBacklogTodos(backlogItems)
+      console.log('📋 Itens do backlog:', backlogItems)
+      
+      // Manter apenas itens da semana atual no array principal
+      const currentWeekItems = todos.filter(todo => todo.status === 'current_week')
+      setTodos(currentWeekItems)
+      console.log('📅 Itens da semana atual:', currentWeekItems)
+      
+      setDataSeparated(true)
+    }
+  }, [todos, dataSeparated])
 
   // Funções para to-dos
   const handleCreateTodo = async () => {
@@ -1774,6 +1804,74 @@ export default function PlanningPage() {
                 />
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Elemento de Off Work */}
+      <div className="bg-white rounded-lg shadow border border-gray-200">
+        <div 
+          className="p-6 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+          onClick={() => setOffWorkExpanded(!offWorkExpanded)}
+        >
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                  <div className="w-4 h-4 bg-white rounded-full"></div>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Off Work</h2>
+                <p className="text-sm text-gray-600">
+                  Atividades e ideias para o tempo livre
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // Aqui você pode adicionar a lógica para criar nova atividade off work
+                  console.log('Criar nova atividade Off Work')
+                }}
+                className="inline-flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+                title="Criar Nova Atividade Off Work"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
+                <svg className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${offWorkExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Conteúdo expandido */}
+        {offWorkExpanded && (
+          <div className="px-6 pb-6 border-t border-gray-100">
+            <div className="py-8 text-center">
+              <div className="text-gray-400 text-4xl mb-4">🎨</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma atividade criada</h3>
+              <p className="text-gray-600 mb-4">Você ainda não tem atividades off work definidas. Use o botão acima para criar sua primeira atividade.</p>
+              <button
+                onClick={() => {
+                  // Aqui você pode adicionar a lógica para criar nova atividade off work
+                  console.log('Criar primeira atividade Off Work')
+                }}
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Criar Primeira Atividade
+              </button>
+            </div>
           </div>
         )}
       </div>
