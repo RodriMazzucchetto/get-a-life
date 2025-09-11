@@ -127,6 +127,9 @@ export interface OnboardingStepProps {
   totalSteps: number
 }
 
+// Re-export Off Work types
+export * from './offwork'
+
 // Database types
 export interface Database {
   public: {

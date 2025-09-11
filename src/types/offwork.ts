@@ -1,109 +1,83 @@
-// Tipos para funcionalidade Off Work
-
-export type Category = 'crescimento' | 'mini-aventuras' | 'lifestyle' | 'esporte' | 'social' | 'relacionamentos' | 'hobbies' | 'viagens';
-
-export interface Subcategory {
-  id: string;
-  name: string;
-  category: Category;
-  created_at: string;
+export interface OffWorkCategory {
+  id: string
+  name: string
+  color: string
+  description?: string
+  icon?: string
+  activity_count?: number
+  created_at: string
+  updated_at: string
 }
 
-export interface Idea {
-  id: string;
-  title: string;
-  category: Category;
-  subcategory_id?: string;
-  subcategory?: Subcategory;
-  created_at: string;
+export interface OffWorkActivity {
+  id: string
+  user_id: string
+  category_id: string
+  title: string
+  description?: string
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  priority: 'low' | 'medium' | 'high'
+  estimated_duration?: number
+  actual_duration?: number
+  due_date?: string
+  completed_at?: string
+  tags?: string[]
+  metadata?: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  offwork_categories?: OffWorkCategory
 }
 
-export interface WeekSelection {
-  id: string;
-  idea_id: string;
-  week_start: string;
-  selected_at: string;
+export interface OffWorkIdea {
+  id: string
+  user_id: string
+  category_id: string
+  title: string
+  description?: string
+  source?: string
+  status: 'idea' | 'planned' | 'in_progress' | 'completed' | 'cancelled'
+  priority: 'low' | 'medium' | 'high'
+  estimated_duration?: number
+  tags?: string[]
+  metadata?: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  offwork_categories?: OffWorkCategory
 }
 
-export interface DayAssignment {
-  id: string;
-  idea_id: string;
-  date: string;
-  assigned_at: string;
+export interface CreateActivityData {
+  category_id: string
+  title: string
+  description?: string
+  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  priority?: 'low' | 'medium' | 'high'
+  estimated_duration?: number
+  due_date?: string
+  tags?: string[]
+  metadata?: Record<string, unknown>
 }
 
-export interface IdeaWithSelection extends Idea {
-  isSelected: boolean;
-  assignedDate?: string;
+export interface UpdateActivityData {
+  title?: string
+  description?: string
+  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  priority?: 'low' | 'medium' | 'high'
+  estimated_duration?: number
+  actual_duration?: number
+  due_date?: string
+  completed_at?: string
+  tags?: string[]
+  metadata?: Record<string, unknown>
 }
 
-export interface DayData {
-  date: string;
-  label: string;
-  shortLabel: string;
-  assignments: IdeaWithSelection[];
+export interface CreateIdeaData {
+  category_id: string
+  title: string
+  description?: string
+  status?: 'idea' | 'planned' | 'in_progress' | 'completed' | 'cancelled'
+  priority?: 'low' | 'medium' | 'high'
+  estimated_duration?: number
+  tags?: string[]
+  metadata?: Record<string, unknown>
+  source?: string
 }
-
-export interface WeekData {
-  weekStart: string;
-  days: DayData[];
-  selectedIdeas: IdeaWithSelection[];
-  unassignedIdeas: IdeaWithSelection[];
-}
-
-// Configurações de categoria baseadas no mapa mental "Getting a Life"
-export const CATEGORY_CONFIG: Record<Category, { 
-  label: string; 
-  color: string; 
-  icon: string; 
-  bgColor: string;
-}> = {
-  crescimento: {
-    label: 'Crescimento',
-    color: 'text-pink-600',
-    icon: '🌱',
-    bgColor: 'bg-pink-50'
-  },
-  'mini-aventuras': {
-    label: 'Mini Aventuras',
-    color: 'text-yellow-600',
-    icon: '🎯',
-    bgColor: 'bg-yellow-50'
-  },
-  lifestyle: {
-    label: 'Lifestyle',
-    color: 'text-green-600',
-    icon: '✨',
-    bgColor: 'bg-green-50'
-  },
-  esporte: {
-    label: 'Esporte',
-    color: 'text-blue-600',
-    icon: '🏃‍♂️',
-    bgColor: 'bg-blue-50'
-  },
-  social: {
-    label: 'Social',
-    color: 'text-orange-600',
-    icon: '🤝',
-    bgColor: 'bg-orange-50'
-  },
-  relacionamentos: {
-    label: 'Relacionamentos',
-    color: 'text-red-600',
-    icon: '💕',
-    bgColor: 'bg-red-50'
-  },
-  hobbies: {
-    label: 'Hobbies',
-    color: 'text-purple-600',
-    icon: '🎨',
-    bgColor: 'bg-purple-50'
-  },
-  viagens: {
-    label: 'Viagens',
-    color: 'text-indigo-600',
-    icon: '✈️',
-    bgColor: 'bg-indigo-50'
-  }
-};

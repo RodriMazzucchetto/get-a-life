@@ -11,6 +11,8 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
+import { useOffWorkData } from '@/hooks/useOffWorkData'
+import { OffWorkCategoryCard } from '@/components/offwork/OffWorkCategoryCard'
 import {
   DndContext,
   closestCenter,
@@ -317,6 +319,29 @@ export default function PlanningPage() {
   
   // Estados para Off Work
   const [offWorkExpanded, setOffWorkExpanded] = useState(false)
+  
+  // Estados para categorias Off Work
+  const [viagensExpanded, setViagensExpanded] = useState(false)
+  const [miniAventurasExpanded, setMiniAventurasExpanded] = useState(false)
+  const [esporteExpanded, setEsporteExpanded] = useState(false)
+  const [crescimentoExpanded, setCrescimentoExpanded] = useState(false)
+  const [socialExpanded, setSocialExpanded] = useState(false)
+  const [relacionamentosExpanded, setRelacionamentosExpanded] = useState(false)
+  const [lifestyleExpanded, setLifestyleExpanded] = useState(false)
+  const [hobbiesExpanded, setHobbiesExpanded] = useState(false)
+
+  // Hook para dados Off Work
+  const {
+    categories: offWorkCategories,
+    activities: offWorkActivities,
+    ideas: offWorkIdeas,
+    loading: offWorkLoading,
+    createActivity,
+    createIdea,
+    getActivitiesByCategory,
+    getIdeasByCategory,
+    getCategoryByName
+  } = useOffWorkData()
 
   const [showEditGoalModal, setShowEditGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
@@ -1855,22 +1880,54 @@ export default function PlanningPage() {
         {/* Conteúdo expandido */}
         {offWorkExpanded && (
           <div className="px-6 pb-6 border-t border-gray-100">
-            <div className="py-8 text-center">
-              <div className="text-gray-400 text-4xl mb-4">🎨</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma atividade criada</h3>
-              <p className="text-gray-600 mb-4">Você ainda não tem atividades off work definidas. Use o botão acima para criar sua primeira atividade.</p>
-              <button
-                onClick={() => {
-                  // Aqui você pode adicionar a lógica para criar nova atividade off work
-                  console.log('Criar primeira atividade Off Work')
-                }}
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Criar Primeira Atividade
-              </button>
+            <div className="space-y-3">
+              {offWorkCategories.map((category) => (
+                <OffWorkCategoryCard
+                  key={category.id}
+                  category={category}
+                  activities={getActivitiesByCategory(category.name)}
+                  isExpanded={
+                    (category.name === 'Viagens' && viagensExpanded) ||
+                    (category.name === 'Mini Aventuras' && miniAventurasExpanded) ||
+                    (category.name === 'Esporte' && esporteExpanded) ||
+                    (category.name === 'Crescimento' && crescimentoExpanded) ||
+                    (category.name === 'Social' && socialExpanded) ||
+                    (category.name === 'Relacionamentos' && relacionamentosExpanded) ||
+                    (category.name === 'Lifestyle' && lifestyleExpanded) ||
+                    (category.name === 'Hobbies' && hobbiesExpanded)
+                  }
+                  onToggle={() => {
+                    switch (category.name) {
+                      case 'Viagens':
+                        setViagensExpanded(!viagensExpanded)
+                        break
+                      case 'Mini Aventuras':
+                        setMiniAventurasExpanded(!miniAventurasExpanded)
+                        break
+                      case 'Esporte':
+                        setEsporteExpanded(!esporteExpanded)
+                        break
+                      case 'Crescimento':
+                        setCrescimentoExpanded(!crescimentoExpanded)
+                        break
+                      case 'Social':
+                        setSocialExpanded(!socialExpanded)
+                        break
+                      case 'Relacionamentos':
+                        setRelacionamentosExpanded(!relacionamentosExpanded)
+                        break
+                      case 'Lifestyle':
+                        setLifestyleExpanded(!lifestyleExpanded)
+                        break
+                      case 'Hobbies':
+                        setHobbiesExpanded(!hobbiesExpanded)
+                        break
+                    }
+                  }}
+                  onCreateActivity={createActivity}
+                  loading={offWorkLoading}
+                />
+              ))}
             </div>
           </div>
         )}

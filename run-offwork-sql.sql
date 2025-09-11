@@ -1,5 +1,4 @@
--- Script para criar estrutura de banco de dados para Off Work
--- Categorias e Atividades Off Work
+-- Execute este script no Supabase SQL Editor para criar as tabelas Off Work
 
 -- 1. Tabela de categorias Off Work
 CREATE TABLE IF NOT EXISTS offwork_categories (
