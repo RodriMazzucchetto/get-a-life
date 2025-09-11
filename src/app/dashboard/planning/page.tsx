@@ -1889,53 +1889,53 @@ export default function PlanningPage() {
                 </div>
               ) : (
                 offWorkCategories.map((category) => (
-                <OffWorkCategoryCard
-                  key={category.id}
-                  category={category}
-                activities={offWorkLoading ? [] : getActivitiesByCategory(category.name)}
-                  isExpanded={
-                    (category.name === 'Viagens' && viagensExpanded) ||
-                    (category.name === 'Mini Aventuras' && miniAventurasExpanded) ||
-                    (category.name === 'Esporte' && esporteExpanded) ||
-                    (category.name === 'Crescimento' && crescimentoExpanded) ||
-                    (category.name === 'Social' && socialExpanded) ||
-                    (category.name === 'Relacionamentos' && relacionamentosExpanded) ||
-                    (category.name === 'Lifestyle' && lifestyleExpanded) ||
-                    (category.name === 'Hobbies' && hobbiesExpanded)
-                  }
-                  onToggle={() => {
-                    switch (category.name) {
-                      case 'Viagens':
-                        setViagensExpanded(!viagensExpanded)
-                        break
-                      case 'Mini Aventuras':
-                        setMiniAventurasExpanded(!miniAventurasExpanded)
-                        break
-                      case 'Esporte':
-                        setEsporteExpanded(!esporteExpanded)
-                        break
-                      case 'Crescimento':
-                        setCrescimentoExpanded(!crescimentoExpanded)
-                        break
-                      case 'Social':
-                        setSocialExpanded(!socialExpanded)
-                        break
-                      case 'Relacionamentos':
-                        setRelacionamentosExpanded(!relacionamentosExpanded)
-                        break
-                      case 'Lifestyle':
-                        setLifestyleExpanded(!lifestyleExpanded)
-                        break
-                      case 'Hobbies':
-                        setHobbiesExpanded(!hobbiesExpanded)
-                        break
+                  <OffWorkCategoryCard
+                    key={category.id}
+                    category={category}
+                    activities={offWorkLoading ? [] : getActivitiesByCategory(category.name)}
+                    isExpanded={
+                      (category.name === 'Viagens' && viagensExpanded) ||
+                      (category.name === 'Mini Aventuras' && miniAventurasExpanded) ||
+                      (category.name === 'Esporte' && esporteExpanded) ||
+                      (category.name === 'Crescimento' && crescimentoExpanded) ||
+                      (category.name === 'Social' && socialExpanded) ||
+                      (category.name === 'Relacionamentos' && relacionamentosExpanded) ||
+                      (category.name === 'Lifestyle' && lifestyleExpanded) ||
+                      (category.name === 'Hobbies' && hobbiesExpanded)
                     }
-                  }}
-                  onCreateActivity={createActivity}
-                  loading={offWorkLoading}
-                />
-              ))
-            )}
+                    onToggle={() => {
+                      switch (category.name) {
+                        case 'Viagens':
+                          setViagensExpanded(!viagensExpanded)
+                          break
+                        case 'Mini Aventuras':
+                          setMiniAventurasExpanded(!miniAventurasExpanded)
+                          break
+                        case 'Esporte':
+                          setEsporteExpanded(!esporteExpanded)
+                          break
+                        case 'Crescimento':
+                          setCrescimentoExpanded(!crescimentoExpanded)
+                          break
+                        case 'Social':
+                          setSocialExpanded(!socialExpanded)
+                          break
+                        case 'Relacionamentos':
+                          setRelacionamentosExpanded(!relacionamentosExpanded)
+                          break
+                        case 'Lifestyle':
+                          setLifestyleExpanded(!lifestyleExpanded)
+                          break
+                        case 'Hobbies':
+                          setHobbiesExpanded(!hobbiesExpanded)
+                          break
+                      }
+                    }}
+                    onCreateActivity={createActivity}
+                    loading={offWorkLoading}
+                  />
+                ))
+              )}
             </div>
           </div>
         )}

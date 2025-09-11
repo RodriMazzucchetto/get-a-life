@@ -27,7 +27,11 @@ export async function GET(request: NextRequest) {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
+    console.log('Auth check - User:', user?.id)
+    console.log('Auth check - Error:', authError)
+    
     if (authError || !user) {
+      console.log('Auth failed - returning 401')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -61,7 +65,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 })
     }
 
-    console.log('Activities API: Returning', data?.length || 0, 'activities')
     return NextResponse.json({ activities: data })
   } catch (error) {
     console.error('Error in activities API:', error)

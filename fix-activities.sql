@@ -11,7 +11,7 @@
 -- CRESCIMENTO - Pessoal
 INSERT INTO offwork_activities (user_id, category_id, title, description, tags, status, priority) 
 SELECT 
-  'SEU_USER_ID_AQUI'::uuid,  -- SUBSTITUA pelo seu user_id real
+  'd850ecfc-eb14-45fd-8958-907c003576bb'::uuid,  -- SUBSTITUA pelo seu user_id real
   id,
   'Terapia ou coaching',
   'Sessões de terapia ou coaching para desenvolvimento pessoal',
@@ -23,7 +23,7 @@ FROM offwork_categories WHERE name = 'Crescimento';
 -- CRESCIMENTO - Profissional
 INSERT INTO offwork_activities (user_id, category_id, title, description, tags, status, priority) 
 SELECT 
-  'SEU_USER_ID_AQUI'::uuid,  -- SUBSTITUA pelo seu user_id real
+  'd850ecfc-eb14-45fd-8958-907c003576bb'::uuid,  -- SUBSTITUA pelo seu user_id real
   id,
   'Soft skills - Cursos',
   'Cursos de desenvolvimento de soft skills',
