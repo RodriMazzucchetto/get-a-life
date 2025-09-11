@@ -1885,7 +1885,7 @@ export default function PlanningPage() {
                 <OffWorkCategoryCard
                   key={category.id}
                   category={category}
-                  activities={getActivitiesByCategory(category.name)}
+                  activities={offWorkLoading ? [] : getActivitiesByCategory(category.name)}
                   isExpanded={
                     (category.name === 'Viagens' && viagensExpanded) ||
                     (category.name === 'Mini Aventuras' && miniAventurasExpanded) ||

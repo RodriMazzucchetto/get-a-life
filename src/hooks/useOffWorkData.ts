@@ -11,18 +11,10 @@ export function useOffWorkData() {
   // Carregar categorias
   const loadCategories = useCallback(async () => {
     try {
-      // Categorias mockadas para funcionar sem banco
-      const mockCategories = [
-        { id: '1', name: 'Viagens', color: 'blue', description: 'Atividades relacionadas a viagens e turismo', icon: '🌍', activity_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '2', name: 'Mini Aventuras', color: 'green', description: 'Pequenas aventuras e experiências locais', icon: '🌱', activity_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '3', name: 'Esporte', color: 'orange', description: 'Atividades esportivas e exercícios', icon: '⚽', activity_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '4', name: 'Crescimento', color: 'purple', description: 'Atividades de desenvolvimento pessoal', icon: '📈', activity_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '5', name: 'Social', color: 'cyan', description: 'Atividades sociais e networking', icon: '👥', activity_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '6', name: 'Relacionamentos', color: 'pink', description: 'Atividades para fortalecer relacionamentos', icon: '💕', activity_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '7', name: 'Lifestyle', color: 'indigo', description: 'Atividades de estilo de vida e bem-estar', icon: '🎨', activity_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '8', name: 'Hobbies', color: 'yellow', description: 'Hobbies e passatempos pessoais', icon: '🎯', activity_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
-      ]
-      setCategories(mockCategories)
+      const response = await fetch('/api/offwork/categories')
+      if (!response.ok) throw new Error('Failed to fetch categories')
+      const data = await response.json()
+      setCategories(data)
     } catch (err) {
       console.error('Error loading categories:', err)
       setError('Failed to load categories')
@@ -32,8 +24,14 @@ export function useOffWorkData() {
   // Carregar atividades
   const loadActivities = useCallback(async (categoryName?: string) => {
     try {
-      // Por enquanto, retorna array vazio - será implementado quando o banco estiver pronto
-      setActivities([])
+      const url = categoryName 
+        ? `/api/offwork/activities?category=${encodeURIComponent(categoryName)}`
+        : '/api/offwork/activities'
+      
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Failed to fetch activities')
+      const data = await response.json()
+      setActivities(data)
     } catch (err) {
       console.error('Error loading activities:', err)
       setError('Failed to load activities')
@@ -43,8 +41,14 @@ export function useOffWorkData() {
   // Carregar ideias
   const loadIdeas = useCallback(async (categoryName?: string) => {
     try {
-      // Por enquanto, retorna array vazio - será implementado quando o banco estiver pronto
-      setIdeas([])
+      const url = categoryName 
+        ? `/api/offwork/ideas?category=${encodeURIComponent(categoryName)}`
+        : '/api/offwork/ideas'
+      
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Failed to fetch ideas')
+      const data = await response.json()
+      setIdeas(data)
     } catch (err) {
       console.error('Error loading ideas:', err)
       setError('Failed to load ideas')
@@ -54,25 +58,19 @@ export function useOffWorkData() {
   // Criar atividade
   const createActivity = useCallback(async (activityData: CreateActivityData) => {
     try {
-      // Por enquanto, apenas simula a criação - será implementado quando o banco estiver pronto
-      const mockActivity: OffWorkActivity = {
-        id: Date.now().toString(),
-        user_id: 'mock-user',
-        category_id: activityData.category_id,
-        title: activityData.title,
-        description: activityData.description,
-        status: activityData.status || 'pending',
-        priority: activityData.priority || 'medium',
-        estimated_duration: activityData.estimated_duration,
-        due_date: activityData.due_date,
-        tags: activityData.tags || [],
-        metadata: activityData.metadata || {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
+      const response = await fetch('/api/offwork/activities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(activityData),
+      })
       
-      setActivities(prev => [mockActivity, ...prev])
-      return mockActivity
+      if (!response.ok) throw new Error('Failed to create activity')
+      const data = await response.json()
+      
+      setActivities(prev => [data, ...prev])
+      return data
     } catch (err) {
       console.error('Error creating activity:', err)
       setError('Failed to create activity')
@@ -83,24 +81,39 @@ export function useOffWorkData() {
   // Atualizar atividade
   const updateActivity = useCallback(async (id: string, updateData: UpdateActivityData) => {
     try {
-      // Por enquanto, apenas simula a atualização
+      const response = await fetch(`/api/offwork/activities/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      })
+      
+      if (!response.ok) throw new Error('Failed to update activity')
+      const data = await response.json()
+      
       setActivities(prev => 
         prev.map(activity => 
-          activity.id === id ? { ...activity, ...updateData } : activity
+          activity.id === id ? data : activity
         )
       )
-      return activities.find(a => a.id === id)!
+      return data
     } catch (err) {
       console.error('Error updating activity:', err)
       setError('Failed to update activity')
       throw err
     }
-  }, [activities])
+  }, [])
 
   // Deletar atividade
   const deleteActivity = useCallback(async (id: string) => {
     try {
-      // Por enquanto, apenas simula a deleção
+      const response = await fetch(`/api/offwork/activities/${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) throw new Error('Failed to delete activity')
+      
       setActivities(prev => prev.filter(activity => activity.id !== id))
     } catch (err) {
       console.error('Error deleting activity:', err)
@@ -112,25 +125,19 @@ export function useOffWorkData() {
   // Criar ideia
   const createIdea = useCallback(async (ideaData: CreateIdeaData) => {
     try {
-      // Por enquanto, apenas simula a criação
-      const mockIdea: OffWorkIdea = {
-        id: Date.now().toString(),
-        user_id: 'mock-user',
-        category_id: ideaData.category_id,
-        title: ideaData.title,
-        description: ideaData.description,
-        status: ideaData.status || 'idea',
-        priority: ideaData.priority || 'medium',
-        estimated_duration: ideaData.estimated_duration,
-        tags: ideaData.tags || [],
-        metadata: ideaData.metadata || {},
-        source: ideaData.source || 'manual',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
+      const response = await fetch('/api/offwork/ideas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ideaData),
+      })
       
-      setIdeas(prev => [mockIdea, ...prev])
-      return mockIdea
+      if (!response.ok) throw new Error('Failed to create idea')
+      const data = await response.json()
+      
+      setIdeas(prev => [data, ...prev])
+      return data
     } catch (err) {
       console.error('Error creating idea:', err)
       setError('Failed to create idea')
@@ -194,10 +201,15 @@ export function useOffWorkData() {
     loadData()
   }, [loadCategories, loadActivities, loadIdeas])
 
+  // Garantir que os estados sejam sempre arrays
+  const safeActivities = Array.isArray(activities) ? activities : []
+  const safeIdeas = Array.isArray(ideas) ? ideas : []
+  const safeCategories = Array.isArray(categories) ? categories : []
+
   return {
-    categories,
-    activities,
-    ideas,
+    categories: safeCategories,
+    activities: safeActivities,
+    ideas: safeIdeas,
     loading,
     error,
     loadCategories,
@@ -210,10 +222,10 @@ export function useOffWorkData() {
     convertIdeaToActivity,
     // Funções de conveniência
     getActivitiesByCategory: (categoryName: string) => 
-      activities.filter(activity => activity.offwork_categories?.name === categoryName),
+      safeActivities.filter(activity => activity.offwork_categories?.name === categoryName),
     getIdeasByCategory: (categoryName: string) => 
-      ideas.filter(idea => idea.offwork_categories?.name === categoryName),
+      safeIdeas.filter(idea => idea.offwork_categories?.name === categoryName),
     getCategoryByName: (name: string) => 
-      categories.find(category => category.name === name),
+      safeCategories.find(category => category.name === name),
   }
 }
