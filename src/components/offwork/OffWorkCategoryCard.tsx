@@ -80,29 +80,6 @@ export function OffWorkCategoryCard({
                       {activity.description && (
                         <p className="text-sm text-gray-600 mt-1">{activity.description}</p>
                       )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          activity.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          activity.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {activity.status === 'completed' ? 'Concluída' :
-                           activity.status === 'in_progress' ? 'Em andamento' : 'Pendente'}
-                        </span>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          activity.priority === 'high' ? 'bg-red-100 text-red-800' :
-                          activity.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {activity.priority === 'high' ? 'Alta' :
-                           activity.priority === 'medium' ? 'Média' : 'Baixa'}
-                        </span>
-                        {activity.estimated_duration && (
-                          <span className="text-xs text-gray-500">
-                            {activity.estimated_duration}min
-                          </span>
-                        )}
-                      </div>
                       {activity.tags && activity.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {activity.tags.map((tag, index) => (
