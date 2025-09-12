@@ -65,6 +65,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 })
     }
 
+    console.log('🔍 API - Total activities fetched:', data?.length)
+    if (data && data.length > 0) {
+      console.log('🔍 API - First activity is_recurring:', data[0].is_recurring)
+      console.log('🔍 API - First activity priority:', data[0].priority)
+    }
+
     return NextResponse.json({ activities: data })
   } catch (error) {
     console.error('Error in activities API:', error)

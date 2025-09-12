@@ -335,6 +335,8 @@ export default function PlanningPage() {
     loading: offWorkLoading,
     createActivity,
     createIdea,
+    prioritizeActivity,
+    markActivityAsRecurring,
     getActivitiesByCategory,
     getIdeasByCategory,
     getCategoryByName
@@ -1873,6 +1875,113 @@ export default function PlanningPage() {
               </div>
             </div>
           </div>
+
+          {/* Atividades Recorrentes e Priorizadas - Sempre visíveis */}
+          <div className="mt-4 space-y-3">
+            {/* Atividades Recorrentes */}
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <h3 className="font-semibold text-gray-800 text-sm">Atividades Recorrentes</h3>
+              </div>
+              {(() => {
+                const recurringActivities = offWorkActivities.filter(activity => activity.is_recurring);
+                console.log('🔄 Total activities:', offWorkActivities.length);
+                console.log('🔄 Recurring activities:', recurringActivities.length);
+                console.log('🔄 Recurring activities data:', recurringActivities);
+                console.log('🔄 All activities with is_recurring:', offWorkActivities.map(a => ({ id: a.id, title: a.title, is_recurring: a.is_recurring, priority: a.priority })));
+                console.log('🔄 First 3 activities details:', offWorkActivities.slice(0, 3));
+                return recurringActivities.length > 0;
+              })() ? (
+                <div className="space-y-2">
+                  {offWorkActivities.filter(activity => activity.is_recurring).map((activity) => (
+                    <div key={activity.id} className="group p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-gray-900 truncate">{activity.title}</h4>
+                            {activity.description && (
+                              <span className="text-sm text-gray-500 truncate">• {activity.description}</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                          {/* Tags de subcategoria */}
+                          {activity.tags && activity.tags.length > 0 && (
+                            <div className="flex gap-1">
+                              {activity.tags.map((tag, index) => (
+                                <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Tag de status */}
+                          <div className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full border border-green-200">
+                            Recorrente
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-600 italic">
+                  Nenhuma atividade recorrente definida ainda
+                </div>
+              )}
+            </div>
+
+            {/* Atividades Priorizadas */}
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <h3 className="font-semibold text-gray-800 text-sm">Atividades Priorizadas</h3>
+              </div>
+              {offWorkActivities.filter(activity => activity.priority === 'high').length > 0 ? (
+                <div className="space-y-2">
+                  {offWorkActivities.filter(activity => activity.priority === 'high').map((activity) => (
+                    <div key={activity.id} className="group p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-gray-900 truncate">{activity.title}</h4>
+                            {activity.description && (
+                              <span className="text-sm text-gray-500 truncate">• {activity.description}</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                          {/* Tags de subcategoria */}
+                          {activity.tags && activity.tags.length > 0 && (
+                            <div className="flex gap-1">
+                              {activity.tags.map((tag, index) => (
+                                <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Tag de status */}
+                          <div className="text-xs text-yellow-600 font-medium bg-yellow-50 px-2 py-1 rounded-full border border-yellow-200">
+                            Priorizada
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-600 italic">
+                  Clique nas atividades do Off Work para priorizá-las
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Conteúdo expandido */}
@@ -1892,7 +2001,9 @@ export default function PlanningPage() {
                   <OffWorkCategoryCard
                     key={category.id}
                     category={category}
-                    activities={offWorkLoading ? [] : getActivitiesByCategory(category.name)}
+                    activities={offWorkLoading ? [] : getActivitiesByCategory(category.name).filter(activity => 
+                      !activity.is_recurring && activity.priority !== 'high'
+                    )}
                     isExpanded={
                       (category.name === 'Viagens' && viagensExpanded) ||
                       (category.name === 'Mini Aventuras' && miniAventurasExpanded) ||
@@ -1931,7 +2042,8 @@ export default function PlanningPage() {
                           break
                       }
                     }}
-                    onCreateActivity={createActivity}
+                    onPrioritizeActivity={prioritizeActivity}
+                    onMarkRecurring={markActivityAsRecurring}
                     loading={offWorkLoading}
                   />
                 ))
@@ -2004,6 +2116,7 @@ export default function PlanningPage() {
             </div>
           </div>
         </div>
+
 
         {/* Container para os blocos lado a lado */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -3009,6 +3122,7 @@ export default function PlanningPage() {
     </div>
   )
 }
+
 // TESTE
 // FORCE VERCEL UPDATE
 

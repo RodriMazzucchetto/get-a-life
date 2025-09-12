@@ -17,6 +17,7 @@ export interface OffWorkActivity {
   description?: string
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
   priority: 'low' | 'medium' | 'high'
+  is_recurring?: boolean
   estimated_duration?: number
   actual_duration?: number
   due_date?: string

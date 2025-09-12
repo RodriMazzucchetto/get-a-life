@@ -181,6 +181,71 @@ export function useOffWorkData() {
     }
   }, [ideas, createActivity])
 
+  // Priorizar atividade (mover para seção de priorizadas)
+  const prioritizeActivity = useCallback(async (activityId: string) => {
+    try {
+      const response = await fetch(`/api/offwork/activities/${activityId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priority: 'high',
+          status: 'pending'
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to prioritize activity')
+      }
+
+      // Recarregar atividades para refletir a mudança
+      await loadActivities()
+      
+      return true
+    } catch (err) {
+      console.error('Error prioritizing activity:', err)
+      throw err
+    }
+  }, [loadActivities])
+
+  // Marcar atividade como recorrente
+  const markActivityAsRecurring = useCallback(async (activityId: string) => {
+    try {
+      console.log('🔄 Marking activity as recurring:', activityId)
+      
+      const response = await fetch(`/api/offwork/activities/${activityId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          is_recurring: true,
+          status: 'pending'
+        }),
+      })
+
+      console.log('🔄 Response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('🔄 Error response:', errorText)
+        throw new Error('Failed to mark activity as recurring')
+      }
+
+      console.log('🔄 Success! Reloading activities...')
+      
+      // Recarregar atividades para refletir a mudança
+      await loadActivities()
+      
+      console.log('🔄 Activities reloaded successfully')
+      return true
+    } catch (err) {
+      console.error('Error marking activity as recurring:', err)
+      throw err
+    }
+  }, [loadActivities])
+
   // Carregar dados iniciais
   useEffect(() => {
     const loadData = async () => {
@@ -221,6 +286,8 @@ export function useOffWorkData() {
     deleteActivity,
     createIdea,
     convertIdeaToActivity,
+    prioritizeActivity,
+    markActivityAsRecurring,
     // Funções de conveniência
     getActivitiesByCategory: (categoryName: string) => {
       return safeActivities.filter(activity => 

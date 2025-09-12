@@ -8,7 +8,9 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const { title, description, status, priority, estimated_duration, actual_duration, due_date, completed_at, tags, metadata } = body
+    console.log('🔍 API UPDATE - Body received:', body)
+    const { title, description, status, priority, is_recurring, estimated_duration, actual_duration, due_date, completed_at, tags, metadata } = body
+    console.log('🔍 API UPDATE - is_recurring value:', is_recurring)
 
     const cookieStore = await cookies()
     const supabase = createServerClient(
@@ -40,6 +42,10 @@ export async function PUT(
     if (description !== undefined) updateData.description = description
     if (status !== undefined) updateData.status = status
     if (priority !== undefined) updateData.priority = priority
+    if (is_recurring !== undefined) {
+      updateData.is_recurring = is_recurring
+      console.log('🔍 API UPDATE - Adding is_recurring to updateData:', updateData.is_recurring)
+    }
     if (estimated_duration !== undefined) updateData.estimated_duration = estimated_duration
     if (actual_duration !== undefined) updateData.actual_duration = actual_duration
     if (due_date !== undefined) updateData.due_date = due_date ? new Date(due_date).toISOString() : null
@@ -47,6 +53,7 @@ export async function PUT(
     if (tags !== undefined) updateData.tags = tags
     if (metadata !== undefined) updateData.metadata = metadata
 
+    console.log('🔍 API UPDATE - Final updateData:', updateData)
     const { data, error } = await supabase
       .from('offwork_activities')
       .update(updateData)
@@ -62,6 +69,9 @@ export async function PUT(
         )
       `)
       .single()
+    
+    console.log('🔍 API UPDATE - Supabase response data:', data)
+    console.log('🔍 API UPDATE - Supabase response error:', error)
 
     if (error) {
       console.error('Error updating activity:', error)
