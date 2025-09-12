@@ -246,6 +246,72 @@ export function useOffWorkData() {
     }
   }, [loadActivities])
 
+  // Remover priorização de atividade
+  const removeActivityPriority = useCallback(async (activityId: string) => {
+    try {
+      console.log('⭐ Removing priority from activity:', activityId)
+      
+      const response = await fetch(`/api/offwork/activities/${activityId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priority: 'medium',
+          status: 'pending'
+        }),
+      })
+
+      console.log('⭐ Response status:', response.status)
+
+      if (!response.ok) {
+        throw new Error('Failed to remove activity priority')
+      }
+
+      console.log('⭐ Success! Reloading activities...')
+      await loadActivities()
+      console.log('⭐ Activities reloaded successfully')
+      
+      return true
+    } catch (err) {
+      console.error('Error removing activity priority:', err)
+      throw err
+    }
+  }, [loadActivities])
+
+  // Remover recorrência de atividade
+  const removeActivityRecurring = useCallback(async (activityId: string) => {
+    try {
+      console.log('🔄 Removing recurring from activity:', activityId)
+      
+      const response = await fetch(`/api/offwork/activities/${activityId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          is_recurring: false,
+          status: 'pending'
+        }),
+      })
+
+      console.log('🔄 Response status:', response.status)
+
+      if (!response.ok) {
+        throw new Error('Failed to remove activity recurring')
+      }
+
+      console.log('🔄 Success! Reloading activities...')
+      await loadActivities()
+      console.log('🔄 Activities reloaded successfully')
+      
+      return true
+    } catch (err) {
+      console.error('Error removing activity recurring:', err)
+      throw err
+    }
+  }, [loadActivities])
+
   // Carregar dados iniciais
   useEffect(() => {
     const loadData = async () => {
@@ -288,6 +354,8 @@ export function useOffWorkData() {
     convertIdeaToActivity,
     prioritizeActivity,
     markActivityAsRecurring,
+    removeActivityPriority,
+    removeActivityRecurring,
     // Funções de conveniência
     getActivitiesByCategory: (categoryName: string) => {
       return safeActivities.filter(activity => 
