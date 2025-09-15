@@ -1,27 +1,23 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { OffWorkActivity, OffWorkCategory } from '@/types/offwork'
+import { OffWorkIdea } from '@/types/offwork'
 
-interface ActivityModalProps {
+interface IdeaModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (activity: Partial<OffWorkActivity>) => Promise<void>
-  category: OffWorkCategory | null
-  categories: OffWorkCategory[]
-  activity?: OffWorkActivity | null
+  onSave: (idea: Partial<OffWorkIdea>) => Promise<void>
+  idea?: OffWorkIdea | null
   mode: 'create' | 'edit'
 }
 
-export default function ActivityModal({ 
+export default function IdeaModal({ 
   isOpen, 
   onClose, 
   onSave, 
-  category, 
-  categories,
-  activity, 
+  idea, 
   mode 
-}: ActivityModalProps) {
+}: IdeaModalProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -29,22 +25,20 @@ export default function ActivityModal({
     estimated_duration: '',
     due_date: ''
   })
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
   const [newTag, setNewTag] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Reset form when modal opens/closes or activity changes
+  // Reset form when modal opens/closes or idea changes
   useEffect(() => {
     if (isOpen) {
-      if (mode === 'edit' && activity) {
+      if (mode === 'edit' && idea) {
         setFormData({
-          title: activity.title || '',
-          description: activity.description || '',
-          tags: activity.tags || [],
-          estimated_duration: activity.estimated_duration?.toString() || '',
-          due_date: activity.due_date ? new Date(activity.due_date).toISOString().split('T')[0] : ''
+          title: idea.title || '',
+          description: idea.description || '',
+          tags: idea.tags || [],
+          estimated_duration: idea.estimated_duration?.toString() || '',
+          due_date: idea.due_date ? new Date(idea.due_date).toISOString().split('T')[0] : ''
         })
-        setSelectedCategoryId(activity.category_id || '')
       } else {
         setFormData({
           title: '',
@@ -53,41 +47,31 @@ export default function ActivityModal({
           estimated_duration: '',
           due_date: ''
         })
-        // Se há uma categoria específica passada (modo create), usar ela
-        if (category) {
-          setSelectedCategoryId(category.id)
-        } else if (categories.length > 0) {
-          // Se não há categoria específica, usar a primeira disponível
-          setSelectedCategoryId(categories[0].id)
-        }
       }
     }
-  }, [isOpen, mode, activity, category, categories])
+  }, [isOpen, mode, idea])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedCategoryId) {
-      alert('Por favor, selecione uma categoria')
+    if (!formData.title.trim()) {
+      alert('Por favor, preencha o título da ideia')
       return
     }
 
     setLoading(true)
     try {
-      const activityData: Partial<OffWorkActivity> = {
+      const ideaData: Partial<OffWorkIdea> = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         tags: formData.tags,
-        category_id: selectedCategoryId,
-        status: 'pending',
-        priority: 'medium',
         estimated_duration: formData.estimated_duration ? parseInt(formData.estimated_duration) : undefined,
         due_date: formData.due_date ? new Date(formData.due_date).toISOString() : undefined
       }
 
-      await onSave(activityData)
+      await onSave(ideaData)
       // O modal será fechado pelo componente pai após salvar com sucesso
     } catch (error) {
-      console.error('Error saving activity:', error)
+      console.error('Error saving idea:', error)
     } finally {
       setLoading(false)
     }
@@ -118,7 +102,7 @@ export default function ActivityModal({
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">
-              {mode === 'create' ? 'Nova Atividade' : 'Editar Atividade'}
+              {mode === 'create' ? 'Nova Ideia' : 'Editar Ideia'}
             </h2>
             <button
               onClick={onClose}
@@ -128,25 +112,6 @@ export default function ActivityModal({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Categoria *
-            </label>
-            <select
-              value={selectedCategoryId}
-              onChange={(e) => setSelectedCategoryId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              <option value="">Selecione uma categoria</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -179,7 +144,7 @@ export default function ActivityModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tags (Subcategorias)
+                Tags
               </label>
               <div className="flex gap-2 mb-2">
                 <input
@@ -188,7 +153,7 @@ export default function ActivityModal({
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: Físicas, Culturais..."
+                  placeholder="Ex: Esporte, Físico..."
                 />
                 <button
                   type="button"
@@ -262,7 +227,7 @@ export default function ActivityModal({
                 disabled={loading || !formData.title.trim()}
                 className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? 'Salvando...' : (mode === 'create' ? 'Criar Atividade' : 'Salvar Alterações')}
+                {loading ? 'Salvando...' : (mode === 'create' ? 'Criar Ideia' : 'Salvar Alterações')}
               </button>
             </div>
           </form>
@@ -271,4 +236,3 @@ export default function ActivityModal({
     </div>
   )
 }
-

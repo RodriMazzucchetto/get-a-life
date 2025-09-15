@@ -11,10 +11,9 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
-import { useOffWorkData } from '@/hooks/useOffWorkData'
-import { OffWorkCategoryCard } from '@/components/offwork/OffWorkCategoryCard'
-import ActivityModal from '@/components/offwork/ActivityModal'
-import { OffWorkActivity, CreateActivityData } from '@/types/offwork'
+import { useOffWorkIdeas } from '@/hooks/useOffWorkIdeas'
+import IdeaModal from '@/components/offwork/IdeaModal'
+import { OffWorkIdea, CreateIdeaData } from '@/types/offwork'
 import {
   DndContext,
   closestCenter,
@@ -331,32 +330,25 @@ export default function PlanningPage() {
 
   // Hook para dados Off Work
   const {
-    categories: offWorkCategories,
-    activities: offWorkActivities,
     ideas: offWorkIdeas,
     loading: offWorkLoading,
-    createActivity,
-    updateActivity,
-    deleteActivity,
     createIdea,
-    prioritizeActivity,
-    markActivityAsRecurring,
-    removeActivityPriority,
-    removeActivityRecurring,
-    getActivitiesByCategory,
-    getIdeasByCategory,
-    getCategoryByName
-  } = useOffWorkData()
+    updateIdea,
+    deleteIdea,
+    prioritizeIdea,
+    removePriority,
+    getPrioritizedIdeas,
+    getRegularIdeas
+  } = useOffWorkIdeas()
 
 
   const [showEditGoalModal, setShowEditGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   
-  // Estados para modal de atividades Off Work
-  const [showActivityModal, setShowActivityModal] = useState(false)
-  const [activityModalMode, setActivityModalMode] = useState<'create' | 'edit'>('create')
-  const [editingActivity, setEditingActivity] = useState<OffWorkActivity | null>(null)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  // Estados para modal de ideias Off Work
+  const [showIdeaModal, setShowIdeaModal] = useState(false)
+  const [ideaModalMode, setIdeaModalMode] = useState<'create' | 'edit'>('create')
+  const [editingIdea, setEditingIdea] = useState<OffWorkIdea | null>(null)
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -729,56 +721,56 @@ export default function PlanningPage() {
     }
   ]
 
-  // Funções para gerenciar atividades Off Work
-  const handleCreateActivity = (categoryId: string) => {
-    setSelectedCategoryId(categoryId)
-    setActivityModalMode('create')
-    setEditingActivity(null)
-    setShowActivityModal(true)
+  // Funções para gerenciar ideias Off Work
+  const handleCreateIdea = () => {
+    setIdeaModalMode('create')
+    setEditingIdea(null)
+    setShowIdeaModal(true)
   }
 
-  const handleEditActivity = (activity: OffWorkActivity) => {
-    setEditingActivity(activity)
-    setActivityModalMode('edit')
-    setShowActivityModal(true)
+  const handleEditIdea = (idea: OffWorkIdea) => {
+    setEditingIdea(idea)
+    setIdeaModalMode('edit')
+    setShowIdeaModal(true)
   }
 
-  const handleDeleteActivity = async (activityId: string) => {
+  const handleDeleteIdea = async (ideaId: string) => {
     try {
-      await deleteActivity(activityId)
+      await deleteIdea(ideaId)
     } catch (error) {
-      console.error('Error deleting activity:', error)
+      console.error('Error deleting idea:', error)
     }
   }
 
-  const handleSaveActivity = async (activityData: Partial<OffWorkActivity>) => {
+  const handleSaveIdea = async (ideaData: Partial<OffWorkIdea>) => {
     try {
-      console.log('🔄 Planning page - Saving activity:', activityData)
-      console.log('🔄 Planning page - Mode:', activityModalMode)
-      console.log('🔄 Planning page - Selected category ID:', selectedCategoryId)
-      
-      if (activityModalMode === 'create') {
-        const activityToCreate = {
-          ...activityData,
-          category_id: activityData.category_id // Usar o category_id do modal, não o selectedCategoryId
-        } as CreateActivityData
-        
-        console.log('🔄 Planning page - Creating activity with:', activityToCreate)
-        await createActivity(activityToCreate)
-        // Fechar modal após criar
-        setShowActivityModal(false)
-        setSelectedCategoryId(null)
-      } else if (activityModalMode === 'edit' && editingActivity) {
-        console.log('🔄 Planning page - Updating activity:', editingActivity.id)
-        await updateActivity(editingActivity.id, activityData)
-        // Fechar modal após editar
-        setShowActivityModal(false)
-        setEditingActivity(null)
+      if (ideaModalMode === 'create') {
+        await createIdea(ideaData as CreateIdeaData)
+        setShowIdeaModal(false)
+      } else if (ideaModalMode === 'edit' && editingIdea) {
+        await updateIdea(editingIdea.id, ideaData)
+        setShowIdeaModal(false)
+        setEditingIdea(null)
       }
     } catch (error) {
-      console.error('Error saving activity:', error)
-      // Não fechar modal em caso de erro para permitir correção
+      console.error('Error saving idea:', error)
       throw error
+    }
+  }
+
+  const handlePrioritizeIdea = async (ideaId: string) => {
+    try {
+      await prioritizeIdea(ideaId)
+    } catch (error) {
+      console.error('Error prioritizing idea:', error)
+    }
+  }
+
+  const handleRemovePriority = async (ideaId: string) => {
+    try {
+      await removePriority(ideaId)
+    } catch (error) {
+      console.error('Error removing priority:', error)
     }
   }
 
@@ -1921,16 +1913,9 @@ export default function PlanningPage() {
             
             <div className="flex items-center gap-3">
               <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  // Abrir modal de criação diretamente - o usuário escolherá a categoria no modal
-                  setSelectedCategoryId(null) // Reset para permitir seleção livre
-                  setActivityModalMode('create')
-                  setEditingActivity(null)
-                  setShowActivityModal(true)
-                }}
+                onClick={handleCreateIdea}
                 className="inline-flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
-                title="Criar Nova Atividade Off Work"
+                title="Nova Ideia"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1944,90 +1929,34 @@ export default function PlanningPage() {
             </div>
           </div>
 
-          {/* Atividades Recorrentes e Priorizadas - Sempre visíveis */}
-          <div className="mt-4 space-y-3">
-            {/* Atividades Recorrentes */}
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <h3 className="font-semibold text-gray-800 text-sm">Atividades Recorrentes</h3>
-              </div>
-              {offWorkActivities.filter(activity => activity.is_recurring).length > 0 ? (
-                <div className="space-y-2">
-                  {offWorkActivities.filter(activity => activity.is_recurring).map((activity) => (
-                    <div key={activity.id} className="group p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-gray-900 truncate">{activity.title}</h4>
-                            {activity.description && (
-                              <span className="text-sm text-gray-500 truncate">• {activity.description}</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                          {/* Tags de subcategoria */}
-                          {activity.tags && activity.tags.length > 0 && (
-                            <div className="flex gap-1">
-                              {activity.tags.map((tag, index) => (
-                                <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          
-                          {/* Botão para remover recorrência */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeActivityRecurring(activity.id)
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200"
-                            title="Remover recorrência"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-gray-600 italic">
-                  Nenhuma atividade recorrente definida ainda
-                </div>
-              )}
-            </div>
-
-            {/* Atividades Priorizadas */}
+          {/* Ideias da Semana - Sempre visíveis */}
+          <div className="mb-4">
             <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <h3 className="font-semibold text-gray-800 text-sm">Atividades Priorizadas</h3>
+                <h3 className="font-semibold text-gray-800 text-sm">Ideias da Semana</h3>
               </div>
-              {offWorkActivities.filter(activity => activity.priority === 'high').length > 0 ? (
+              {offWorkLoading ? (
+                <div className="text-sm text-gray-500 italic">Carregando...</div>
+              ) : getPrioritizedIdeas().length > 0 ? (
                 <div className="space-y-2">
-                  {offWorkActivities.filter(activity => activity.priority === 'high').map((activity) => (
-                    <div key={activity.id} className="group p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
+                  {getPrioritizedIdeas().map((idea) => (
+                    <div key={idea.id} className="group p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
                       <div className="flex justify-between items-center">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-gray-900 truncate">{activity.title}</h4>
-                            {activity.description && (
-                              <span className="text-sm text-gray-500 truncate">• {activity.description}</span>
+                            <h4 className="font-medium text-gray-900 truncate">{idea.title}</h4>
+                            {idea.description && (
+                              <span className="text-sm text-gray-500 truncate">• {idea.description}</span>
                             )}
                           </div>
                         </div>
                         
                         <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                          {/* Tags de subcategoria */}
-                          {activity.tags && activity.tags.length > 0 && (
+                          {/* Tags */}
+                          {idea.tags && idea.tags.length > 0 && (
                             <div className="flex gap-1">
-                              {activity.tags.map((tag, index) => (
+                              {idea.tags.map((tag, index) => (
                                 <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
                                   {tag}
                                 </span>
@@ -2039,13 +1968,13 @@ export default function PlanningPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              removeActivityPriority(activity.id)
+                              handleRemovePriority(idea.id)
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200"
-                            title="Remover priorização"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-all duration-200"
+                            title="Remover da semana"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                             </svg>
                           </button>
                         </div>
@@ -2055,11 +1984,22 @@ export default function PlanningPage() {
                 </div>
               ) : (
                 <div className="text-sm text-gray-600 italic">
-                  Clique nas atividades do Off Work para priorizá-las
+                  Nenhuma ideia priorizada para esta semana ainda
                 </div>
               )}
             </div>
           </div>
+
+          {/* Botão para expandir lista completa */}
+          <button
+            onClick={() => setOffWorkExpanded(!offWorkExpanded)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+          >
+            <span>{offWorkExpanded ? 'Ocultar' : 'Ver'} todas as ideias</span>
+            <svg className={`h-4 w-4 transition-transform duration-200 ${offWorkExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
 
         {/* Conteúdo expandido */}
@@ -2070,64 +2010,80 @@ export default function PlanningPage() {
                 <div className="text-center text-gray-500 py-4">
                   <p>Carregando categorias Off Work...</p>
                 </div>
-              ) : offWorkCategories.length === 0 ? (
-                <div className="text-center text-gray-500 py-4">
-                  <p>Nenhuma categoria encontrada.</p>
-                </div>
-              ) : (
-                offWorkCategories.map((category) => (
-                  <OffWorkCategoryCard
-                    key={category.id}
-                    category={category}
-                    activities={offWorkLoading ? [] : getActivitiesByCategory(category.name).filter(activity => 
-                      !activity.is_recurring && activity.priority !== 'high'
-                    )}
-                    isExpanded={
-                      (category.name === 'Viagens' && viagensExpanded) ||
-                      (category.name === 'Mini Aventuras' && miniAventurasExpanded) ||
-                      (category.name === 'Esporte' && esporteExpanded) ||
-                      (category.name === 'Crescimento' && crescimentoExpanded) ||
-                      (category.name === 'Social' && socialExpanded) ||
-                      (category.name === 'Relacionamentos' && relacionamentosExpanded) ||
-                      (category.name === 'Lifestyle' && lifestyleExpanded) ||
-                      (category.name === 'Hobbies' && hobbiesExpanded)
-                    }
-                    onToggle={() => {
-                      switch (category.name) {
-                        case 'Viagens':
-                          setViagensExpanded(!viagensExpanded)
-                          break
-                        case 'Mini Aventuras':
-                          setMiniAventurasExpanded(!miniAventurasExpanded)
-                          break
-                        case 'Esporte':
-                          setEsporteExpanded(!esporteExpanded)
-                          break
-                        case 'Crescimento':
-                          setCrescimentoExpanded(!crescimentoExpanded)
-                          break
-                        case 'Social':
-                          setSocialExpanded(!socialExpanded)
-                          break
-                        case 'Relacionamentos':
-                          setRelacionamentosExpanded(!relacionamentosExpanded)
-                          break
-                        case 'Lifestyle':
-                          setLifestyleExpanded(!lifestyleExpanded)
-                          break
-                        case 'Hobbies':
-                          setHobbiesExpanded(!hobbiesExpanded)
-                          break
-                      }
-                    }}
-                    onPrioritizeActivity={prioritizeActivity}
-                    onMarkRecurring={markActivityAsRecurring}
-                    onCreateActivity={handleCreateActivity}
-                    onEditActivity={handleEditActivity}
-                    onDeleteActivity={handleDeleteActivity}
-                    loading={offWorkLoading}
-                  />
+              ) : getRegularIdeas().length > 0 ? (
+                getRegularIdeas().map((idea) => (
+                  <div key={idea.id} className="group p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 border border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-gray-900 truncate">{idea.title}</h4>
+                          {idea.description && (
+                            <span className="text-sm text-gray-500 truncate">• {idea.description}</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                        {/* Tags */}
+                        {idea.tags && idea.tags.length > 0 && (
+                          <div className="flex gap-1">
+                            {idea.tags.map((tag, index) => (
+                              <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Botões de ação */}
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handlePrioritizeIdea(idea.id)
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
+                            title="Priorizar para esta semana"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditIdea(idea)
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Editar ideia"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm('Tem certeza que deseja remover esta ideia?')) {
+                                handleDeleteIdea(idea.id)
+                              }
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Remover ideia"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  <p>Nenhuma ideia criada ainda. Clique no botão &quot;+&quot; para criar sua primeira ideia!</p>
+                </div>
               )}
             </div>
           </div>
@@ -3201,15 +3157,13 @@ export default function PlanningPage() {
         onDeleteGoal={handleDeleteGoal}
       />
 
-      {/* Modal para gerenciar atividades Off Work */}
-      <ActivityModal
-        isOpen={showActivityModal}
-        onClose={() => setShowActivityModal(false)}
-        onSave={handleSaveActivity}
-        category={selectedCategoryId ? offWorkCategories.find(c => c.id === selectedCategoryId) || null : null}
-        categories={offWorkCategories}
-        activity={editingActivity}
-        mode={activityModalMode}
+      {/* Modal para gerenciar ideias Off Work */}
+      <IdeaModal
+        isOpen={showIdeaModal}
+        onClose={() => setShowIdeaModal(false)}
+        onSave={handleSaveIdea}
+        idea={editingIdea}
+        mode={ideaModalMode}
       />
     </div>
   )
