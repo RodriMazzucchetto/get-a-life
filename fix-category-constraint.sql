@@ -15,3 +15,4 @@ CHECK (category IN (
 -- (Execute o setup-hierarchical-tables.sql após este)
 
 
+

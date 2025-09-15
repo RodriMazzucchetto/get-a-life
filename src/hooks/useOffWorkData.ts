@@ -61,6 +61,7 @@ export function useOffWorkData() {
   // Criar atividade
   const createActivity = useCallback(async (activityData: CreateActivityData) => {
     try {
+      console.log('🔄 Creating activity with data:', activityData)
       const response = await fetch('/api/offwork/activities', {
         method: 'POST',
         headers: {
@@ -70,9 +71,17 @@ export function useOffWorkData() {
       })
       
       if (!response.ok) throw new Error('Failed to create activity')
-      const data = await response.json()
+      const result = await response.json()
+      console.log('✅ Activity created, API response:', result)
+      const data = result.activity || result
+      console.log('✅ Activity data to add to state:', data)
       
-      setActivities(prev => [data, ...prev])
+      setActivities(prev => {
+        console.log('📝 Current activities before adding new one:', prev.length)
+        const newActivities = [data, ...prev]
+        console.log('📝 New activities array length:', newActivities.length)
+        return newActivities
+      })
       return data
     } catch (err) {
       console.error('Error creating activity:', err)
@@ -93,7 +102,8 @@ export function useOffWorkData() {
       })
       
       if (!response.ok) throw new Error('Failed to update activity')
-      const data = await response.json()
+      const result = await response.json()
+      const data = result.activity || result
       
       setActivities(prev => 
         prev.map(activity => 

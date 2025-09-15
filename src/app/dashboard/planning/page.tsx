@@ -13,6 +13,8 @@ import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
 import { useOffWorkData } from '@/hooks/useOffWorkData'
 import { OffWorkCategoryCard } from '@/components/offwork/OffWorkCategoryCard'
+import ActivityModal from '@/components/offwork/ActivityModal'
+import { OffWorkActivity, CreateActivityData } from '@/types/offwork'
 import {
   DndContext,
   closestCenter,
@@ -334,6 +336,8 @@ export default function PlanningPage() {
     ideas: offWorkIdeas,
     loading: offWorkLoading,
     createActivity,
+    updateActivity,
+    deleteActivity,
     createIdea,
     prioritizeActivity,
     markActivityAsRecurring,
@@ -347,6 +351,12 @@ export default function PlanningPage() {
 
   const [showEditGoalModal, setShowEditGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  
+  // Estados para modal de atividades Off Work
+  const [showActivityModal, setShowActivityModal] = useState(false)
+  const [activityModalMode, setActivityModalMode] = useState<'create' | 'edit'>('create')
+  const [editingActivity, setEditingActivity] = useState<OffWorkActivity | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -718,6 +728,59 @@ export default function PlanningPage() {
       updated_at: new Date().toISOString()
     }
   ]
+
+  // Funções para gerenciar atividades Off Work
+  const handleCreateActivity = (categoryId: string) => {
+    setSelectedCategoryId(categoryId)
+    setActivityModalMode('create')
+    setEditingActivity(null)
+    setShowActivityModal(true)
+  }
+
+  const handleEditActivity = (activity: OffWorkActivity) => {
+    setEditingActivity(activity)
+    setActivityModalMode('edit')
+    setShowActivityModal(true)
+  }
+
+  const handleDeleteActivity = async (activityId: string) => {
+    try {
+      await deleteActivity(activityId)
+    } catch (error) {
+      console.error('Error deleting activity:', error)
+    }
+  }
+
+  const handleSaveActivity = async (activityData: Partial<OffWorkActivity>) => {
+    try {
+      console.log('🔄 Planning page - Saving activity:', activityData)
+      console.log('🔄 Planning page - Mode:', activityModalMode)
+      console.log('🔄 Planning page - Selected category ID:', selectedCategoryId)
+      
+      if (activityModalMode === 'create') {
+        const activityToCreate = {
+          ...activityData,
+          category_id: activityData.category_id // Usar o category_id do modal, não o selectedCategoryId
+        } as CreateActivityData
+        
+        console.log('🔄 Planning page - Creating activity with:', activityToCreate)
+        await createActivity(activityToCreate)
+        // Fechar modal após criar
+        setShowActivityModal(false)
+        setSelectedCategoryId(null)
+      } else if (activityModalMode === 'edit' && editingActivity) {
+        console.log('🔄 Planning page - Updating activity:', editingActivity.id)
+        await updateActivity(editingActivity.id, activityData)
+        // Fechar modal após editar
+        setShowActivityModal(false)
+        setEditingActivity(null)
+      }
+    } catch (error) {
+      console.error('Error saving activity:', error)
+      // Não fechar modal em caso de erro para permitir correção
+      throw error
+    }
+  }
 
   // Funções para iniciativas
   const handleAddInitiative = () => {
@@ -1860,8 +1923,11 @@ export default function PlanningPage() {
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  // Aqui você pode adicionar a lógica para criar nova atividade off work
-                  console.log('Criar nova atividade Off Work')
+                  // Abrir modal de criação diretamente - o usuário escolherá a categoria no modal
+                  setSelectedCategoryId(null) // Reset para permitir seleção livre
+                  setActivityModalMode('create')
+                  setEditingActivity(null)
+                  setShowActivityModal(true)
                 }}
                 className="inline-flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
                 title="Criar Nova Atividade Off Work"
@@ -2056,6 +2122,9 @@ export default function PlanningPage() {
                     }}
                     onPrioritizeActivity={prioritizeActivity}
                     onMarkRecurring={markActivityAsRecurring}
+                    onCreateActivity={handleCreateActivity}
+                    onEditActivity={handleEditActivity}
+                    onDeleteActivity={handleDeleteActivity}
                     loading={offWorkLoading}
                   />
                 ))
@@ -3130,6 +3199,17 @@ export default function PlanningPage() {
         onCreateGoal={handleCreateGoalNew}
         onUpdateGoal={handleUpdateGoalNew}
         onDeleteGoal={handleDeleteGoal}
+      />
+
+      {/* Modal para gerenciar atividades Off Work */}
+      <ActivityModal
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        onSave={handleSaveActivity}
+        category={selectedCategoryId ? offWorkCategories.find(c => c.id === selectedCategoryId) || null : null}
+        categories={offWorkCategories}
+        activity={editingActivity}
+        mode={activityModalMode}
       />
     </div>
   )

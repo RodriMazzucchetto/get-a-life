@@ -163,3 +163,4 @@ SELECT 'Experiências sensoriais únicas', 'mini-aventuras', id FROM subcategory
 ON CONFLICT DO NOTHING;
 
 
+
