@@ -80,17 +80,23 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔄 Inserting idea into database')
+    const insertData: any = {
+      user_id: user.id,
+      title,
+      description,
+      tags: tags || [],
+      estimated_duration,
+      is_prioritized: false
+    }
+    
+    // Só adiciona due_date se for fornecido
+    if (due_date) {
+      insertData.due_date = new Date(due_date).toISOString()
+    }
+    
     const { data, error } = await supabase
       .from('offwork_ideas')
-      .insert({
-        user_id: user.id,
-        title,
-        description,
-        tags: tags || [],
-        estimated_duration,
-        due_date: due_date ? new Date(due_date).toISOString() : null,
-        is_prioritized: false
-      })
+      .insert(insertData)
       .select()
       .single()
 
