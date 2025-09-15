@@ -22,6 +22,7 @@ export function useOffWorkIdeas() {
   // Criar ideia
   const createIdea = useCallback(async (ideaData: CreateIdeaData) => {
     try {
+      console.log('🔄 Creating idea with data:', ideaData)
       const response = await fetch('/api/offwork/ideas', {
         method: 'POST',
         headers: {
@@ -30,14 +31,22 @@ export function useOffWorkIdeas() {
         body: JSON.stringify(ideaData),
       })
       
-      if (!response.ok) throw new Error('Failed to create idea')
+      console.log('🔄 Response status:', response.status)
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('🔄 Response error:', errorText)
+        throw new Error(`Failed to create idea: ${response.status} ${errorText}`)
+      }
+      
       const result = await response.json()
+      console.log('🔄 Response result:', result)
       const data = result.idea || result
       
       setIdeas(prev => [data, ...prev])
+      console.log('✅ Idea created successfully:', data)
       return data
     } catch (err) {
-      console.error('Error creating idea:', err)
+      console.error('❌ Error creating idea:', err)
       setError('Failed to create idea')
       throw err
     }

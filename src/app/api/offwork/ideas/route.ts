@@ -48,7 +48,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔄 POST /api/offwork/ideas - Starting')
     const body = await request.json()
+    console.log('🔄 Request body:', body)
     const { title, description, tags, estimated_duration, due_date } = body
 
     const cookieStore = await cookies()
@@ -70,11 +72,14 @@ export async function POST(request: NextRequest) {
     )
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
+    console.log('🔄 Auth check - User:', user?.id, 'Error:', authError)
     
     if (authError || !user) {
+      console.log('❌ Unauthorized access')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    console.log('🔄 Inserting idea into database')
     const { data, error } = await supabase
       .from('offwork_ideas')
       .insert({
@@ -90,13 +95,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating idea:', error)
-      return NextResponse.json({ error: 'Failed to create idea' }, { status: 500 })
+      console.error('❌ Error creating idea:', error)
+      return NextResponse.json({ error: 'Failed to create idea', details: error.message }, { status: 500 })
     }
 
+    console.log('✅ Idea created successfully:', data)
     return NextResponse.json({ idea: data }, { status: 201 })
   } catch (error) {
-    console.error('Error in create idea API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('❌ Error in create idea API:', error)
+    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })
   }
 }
