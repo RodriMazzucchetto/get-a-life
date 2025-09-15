@@ -107,6 +107,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ idea: data }, { status: 201 })
   } catch (error) {
     console.error('❌ Error in create idea API:', error)
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
   }
 }
