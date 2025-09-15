@@ -22,8 +22,7 @@ export default function IdeaModal({
     title: '',
     description: '',
     tags: [] as string[],
-    estimated_duration: '',
-    due_date: ''
+    estimated_duration: ''
   })
   const [newTag, setNewTag] = useState('')
   const [loading, setLoading] = useState(false)
@@ -36,16 +35,14 @@ export default function IdeaModal({
           title: idea.title || '',
           description: idea.description || '',
           tags: idea.tags || [],
-          estimated_duration: idea.estimated_duration?.toString() || '',
-          due_date: idea.due_date ? new Date(idea.due_date).toISOString().split('T')[0] : ''
+          estimated_duration: idea.estimated_duration?.toString() || ''
         })
       } else {
         setFormData({
           title: '',
           description: '',
           tags: [],
-          estimated_duration: '',
-          due_date: ''
+          estimated_duration: ''
         })
       }
     }
@@ -64,8 +61,7 @@ export default function IdeaModal({
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         tags: formData.tags,
-        estimated_duration: formData.estimated_duration ? parseInt(formData.estimated_duration) : undefined,
-        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : undefined
+        estimated_duration: formData.estimated_duration ? parseInt(formData.estimated_duration) : undefined
       }
 
       await onSave(ideaData)
@@ -186,32 +182,18 @@ export default function IdeaModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Duração (min)
-                </label>
-                <input
-                  type="number"
-                  value={formData.estimated_duration}
-                  onChange={(e) => setFormData(prev => ({ ...prev, estimated_duration: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="60"
-                  min="1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Data limite
-                </label>
-                <input
-                  type="date"
-                  value={formData.due_date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Duração estimada (minutos)
+              </label>
+              <input
+                type="number"
+                value={formData.estimated_duration}
+                onChange={(e) => setFormData(prev => ({ ...prev, estimated_duration: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ex: 60"
+                min="1"
+              />
             </div>
 
             <div className="flex gap-3 pt-4">

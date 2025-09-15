@@ -7,7 +7,6 @@ export interface OffWorkIdea {
   is_prioritized: boolean
   tags?: string[]
   estimated_duration?: number
-  due_date?: string
   completed_at?: string
   created_at: string
   updated_at: string
@@ -18,7 +17,6 @@ export interface CreateIdeaData {
   description?: string
   tags?: string[]
   estimated_duration?: number
-  due_date?: string
 }
 
 export interface UpdateIdeaData {
@@ -27,6 +25,5 @@ export interface UpdateIdeaData {
   is_prioritized?: boolean
   tags?: string[]
   estimated_duration?: number
-  due_date?: string
   completed_at?: string
 }

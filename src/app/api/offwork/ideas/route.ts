@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.log('🔄 POST /api/offwork/ideas - Starting')
     const body = await request.json()
     console.log('🔄 Request body:', body)
-    const { title, description, tags, estimated_duration, due_date } = body
+    const { title, description, tags, estimated_duration } = body
 
     const cookieStore = await cookies()
     const supabase = createServerClient(
@@ -80,19 +80,17 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔄 Inserting idea into database')
-    const insertData: any = {
+    // Criar dados mínimos para inserção - apenas campos obrigatórios
+    const insertData = {
       user_id: user.id,
-      title,
-      description,
+      title: title.trim(),
+      description: description?.trim() || null,
       tags: tags || [],
-      estimated_duration,
+      estimated_duration: estimated_duration || null,
       is_prioritized: false
     }
     
-    // Só adiciona due_date se for fornecido
-    if (due_date) {
-      insertData.due_date = new Date(due_date).toISOString()
-    }
+    console.log('🔄 Insert data:', insertData)
     
     const { data, error } = await supabase
       .from('offwork_ideas')
