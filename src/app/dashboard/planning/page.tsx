@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import { PlusIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
@@ -23,6 +23,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  useDroppable,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -287,18 +288,52 @@ export default function PlanningPage() {
     )
   }
 
+  // DroppableColumn Component
+  function DroppableColumn({id, children, className}: {id: 'backlog'|'current_week'|'in_progress', children: React.ReactNode, className?: string}) {
+    const {setNodeRef, isOver} = useDroppable({id})
+    return (
+      <div ref={setNodeRef} data-col={id} className={className} style={{background: isOver ? 'rgba(0,0,0,0.04)' : undefined}}>
+        {children}
+      </div>
+    )
+  }
+
+  // SortableItem Component
+  function SortableItemBase({id, children}:{id:string, children:React.ReactNode}) {
+    const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id})
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.6 : 1,
+      willChange: 'transform'
+    } as React.CSSProperties
+    return (
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        {children}
+      </div>
+    )
+  }
+  const SortableItem = memo(SortableItemBase)
+
   // Containers estáveis
   const CONTAINERS = ['backlog','current_week','in_progress'] as const
   type ContainerId = typeof CONTAINERS[number]
 
 
-  // Função para detectar container de destino
+  // Função para detectar container de destino (CORRIGIDA)
   function findContainer(id: string | ContainerId): ContainerId | null {
     if (CONTAINERS.includes(id as ContainerId)) return id as ContainerId
-    if (backlogSet.has(id as string)) return 'backlog'
-    if (currentSet.has(id as string)) return 'current_week'
-    if (inprogSet.has(id as string)) return 'in_progress'
+    if (backlogIds.includes(id as string)) return 'backlog'
+    if (currentIds.includes(id as string)) return 'current_week'
+    if (inprogIds.includes(id as string)) return 'in_progress'
     return null
+  }
+
+  // Adaptador computeRank único
+  function computeRank(prev?: string, next?: string): string {
+    return prev && next ? betweenRanks(prev, next) : 
+           (prev ? betweenRanks(prev, null) : 
+           (next ? betweenRanks(null, next) : 'a0'))
   }
 
 
@@ -452,21 +487,6 @@ export default function PlanningPage() {
     tags: [] as { name: string; color: string }[],
     projectId: undefined as string | undefined
   })
-  // Arrays derivados usando fonte única de verdade
-  const inProgressTodos = useMemo(() => 
-    todos.filter(todo => todo.status === 'in_progress')
-      .sort((a, b) => {
-        // Ordenação LexoRank: não pausados primeiro, depois pausados, depois por rank
-        if (a.onHold !== b.onHold) {
-          return a.onHold ? 1 : -1
-        }
-        if (a.rank && b.rank) {
-          return a.rank.localeCompare(b.rank)
-        }
-        return 0
-      }), 
-    [todos]
-  )
 
   // Estados para backlog
   const [showBacklogCreateForm, setShowBacklogCreateForm] = useState(false)
@@ -485,9 +505,12 @@ export default function PlanningPage() {
   const backlogTodos = useMemo(() => 
     todos.filter(todo => todo.status === 'backlog')
       .sort((a, b) => {
-        // Ordenação LexoRank: não pausados primeiro, depois pausados, depois por rank
+        // Ordenação única: on_hold ASC, priority DESC, rank ASC
         if (a.onHold !== b.onHold) {
           return a.onHold ? 1 : -1
+        }
+        if (a.isHighPriority !== b.isHighPriority) {
+          return a.isHighPriority ? -1 : 1
         }
         if (a.rank && b.rank) {
           return a.rank.localeCompare(b.rank)
@@ -497,13 +520,16 @@ export default function PlanningPage() {
     [todos]
   )
 
-  // Arrays derivados para os containers
+  // Arrays derivados para os containers (ORDENAÇÃO ÚNICA)
   const currentWeekTodos = useMemo(() => 
     todos.filter(todo => todo.status === 'current_week')
       .sort((a, b) => {
-        // Ordenação LexoRank: não pausados primeiro, depois pausados, depois por rank
+        // Ordenação única: on_hold ASC, priority DESC, rank ASC
         if (a.onHold !== b.onHold) {
           return a.onHold ? 1 : -1
+        }
+        if (a.isHighPriority !== b.isHighPriority) {
+          return a.isHighPriority ? -1 : 1
         }
         if (a.rank && b.rank) {
           return a.rank.localeCompare(b.rank)
@@ -512,6 +538,29 @@ export default function PlanningPage() {
       }), 
     [todos]
   )
+
+  const inProgressTodos = useMemo(() => 
+    todos.filter(todo => todo.status === 'in_progress')
+      .sort((a, b) => {
+        // Ordenação única: on_hold ASC, priority DESC, rank ASC
+        if (a.onHold !== b.onHold) {
+          return a.onHold ? 1 : -1
+        }
+        if (a.isHighPriority !== b.isHighPriority) {
+          return a.isHighPriority ? -1 : 1
+        }
+        if (a.rank && b.rank) {
+          return a.rank.localeCompare(b.rank)
+        }
+        return 0
+      }), 
+    [todos]
+  )
+
+  // Arrays de IDs para SortableContext (ALINHADOS COM DOM)
+  const backlogIds = useMemo(()=> backlogTodos.map(t=>t.id), [backlogTodos])
+  const currentIds = useMemo(()=> currentWeekTodos.map(t=>t.id), [currentWeekTodos])
+  const inprogIds = useMemo(()=> inProgressTodos.map(t=>t.id), [inProgressTodos])
 
   // Sets estáveis para performance
   const backlogSet = useMemo(()=>new Set(backlogTodos.map(t=>t.id)),[backlogTodos])
@@ -1375,7 +1424,7 @@ export default function PlanningPage() {
   }
 
   // Função unificada de drag & drop usando LexoRank
-  // Função unificada de drag & drop com guards e debug
+  // Função unificada de drag & drop com guards e debug (CORRIGIDA)
   function handleDragEnd(e: DragEndEvent) {
     const {active, over} = e
     if (!over) return
@@ -1387,31 +1436,28 @@ export default function PlanningPage() {
     const to = findContainer(overId)
     if (!from || !to) return
 
-    const destList = listByContainer[to]
+    const dest = listByContainer[to]
     let newRank: string
 
-    // Soltou no container vazio → fim da lista
     if (CONTAINERS.includes(overId as ContainerId)) {
-      const last = destList.at(-1) || null
-      newRank = last ? betweenRanks(last.rank || null, null) : 'a0'
+      // caiu na coluna (área vazia) → fim
+      const last = dest.at(-1)
+      newRank = computeRank(last?.rank, undefined)
       setDbg({active:activeId,over:overId,from,to,prev:last?.rank||null,next:null})
     } else {
-      const {prev, next} = safeNeighbours(destList, overId)
-      if (prev && next) newRank = betweenRanks(prev.rank || null, next.rank || null)
-      else if (!prev && next) newRank = betweenRanks(null, next.rank || null)
-      else if (prev && !next) newRank = betweenRanks(prev.rank || null, null)
-      else newRank = 'a0'
+      const {prev, next} = safeNeighbours(dest, overId)
+      newRank = computeRank(prev?.rank, next?.rank)
       setDbg({active:activeId,over:overId,from,to,prev:prev?.rank||null,next:next?.rank||null})
     }
 
-    const payload: Partial<Todo> = { rank: newRank }
-    if (from !== to) {
-      payload.status = to
-      payload.onHold = false // moveu de bloco → tira de pausa
+    const patch: Partial<Todo> = { rank: newRank }
+    if (from !== to) { 
+      patch.status = to
+      patch.onHold = false 
     }
 
-    // Update otimista + rollback
-    updateTodo(activeId, payload).catch(error => {
+    // mutation única (otimista + rollback se falhar)
+    updateTodo(activeId, patch).catch(error => {
       console.error('❌ Erro no drag & drop:', error)
       // Rollback automático será feito pelo estado local
     })
