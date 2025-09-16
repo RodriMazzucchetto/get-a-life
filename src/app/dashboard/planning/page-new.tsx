@@ -1,10 +1,10 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { TodoBoard } from '@/components/TodoBoard'
 import { usePlanningData } from '@/hooks/usePlanningData'
 
-export default function PlanningPage() {
+export default function PlanningPageNew() {
   const { projects, goals, reminders, isLoading } = usePlanningData()
 
   return (
@@ -20,19 +20,19 @@ export default function PlanningPage() {
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-500">
                 {projects.length} projetos • {goals.length} metas • {reminders.length} lembretes
-          </div>
-        </div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto py-6">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-gray-500">Carregando...</div>
-              </div>
-            ) : (
+          </div>
+        ) : (
           <TodoBoard />
         )}
       </div>
@@ -43,7 +43,7 @@ export default function PlanningPage() {
           <div>Nova Arquitetura ✅</div>
           <div>Single Source of Truth</div>
           <div>DnD Simplificado</div>
-                </div>
+        </div>
       )}
     </div>
   )
