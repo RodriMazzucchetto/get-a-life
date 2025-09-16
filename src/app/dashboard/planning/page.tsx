@@ -1465,8 +1465,29 @@ export default function PlanningPage() {
         onHoldReason: undefined
       })
       
-      // Recarregar dados para aplicar a nova ordenação do backend
-      await reloadData()
+      // Atualizar estado local imediatamente sem recarregar todos os dados
+      // Encontrar o todo em todos os arrays e atualizar apenas o campo onHold
+      if (todos.find(t => t.id === todo.id)) {
+        setTodos(todos.map(t => 
+          t.id === todo.id 
+            ? { ...t, onHold: false, onHoldReason: undefined } 
+            : t
+        ))
+      }
+      if (inProgressTodos.find(t => t.id === todo.id)) {
+        setInProgressTodos(inProgressTodos.map(t => 
+          t.id === todo.id 
+            ? { ...t, onHold: false, onHoldReason: undefined } 
+            : t
+        ))
+      }
+      if (backlogTodos.find(t => t.id === todo.id)) {
+        setBacklogTodos(backlogTodos.map(t => 
+          t.id === todo.id 
+            ? { ...t, onHold: false, onHoldReason: undefined } 
+            : t
+        ))
+      }
     } else {
       // Se não está em espera, abrir modal para colocar em espera
       setTodoToPutOnHold(todo)
@@ -1483,8 +1504,29 @@ export default function PlanningPage() {
         onHoldReason: on_hold_reason.trim()
       })
 
-      // Recarregar dados para aplicar a nova ordenação do backend
-      await reloadData()
+      // Atualizar estado local imediatamente sem recarregar todos os dados
+      // Encontrar o todo em todos os arrays e atualizar apenas o campo onHold
+      if (todos.find(t => t.id === todoToPutOnHold.id)) {
+        setTodos(todos.map(t => 
+          t.id === todoToPutOnHold.id 
+            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
+            : t
+        ))
+      }
+      if (inProgressTodos.find(t => t.id === todoToPutOnHold.id)) {
+        setInProgressTodos(inProgressTodos.map(t => 
+          t.id === todoToPutOnHold.id 
+            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
+            : t
+        ))
+      }
+      if (backlogTodos.find(t => t.id === todoToPutOnHold.id)) {
+        setBacklogTodos(backlogTodos.map(t => 
+          t.id === todoToPutOnHold.id 
+            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
+            : t
+        ))
+      }
 
       setShowOnHoldModal(false)
       setTodoToPutOnHold(null)
