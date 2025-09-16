@@ -13,6 +13,7 @@ import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
 import { useOffWorkIdeas } from '@/hooks/useOffWorkIdeas'
 import IdeaModal from '@/components/offwork/IdeaModal'
+import PomodoroTimer from '@/components/Timer/PomodoroTimer'
 import { OffWorkIdea, CreateIdeaData } from '@/types/offwork'
 import {
   DndContext,
@@ -2156,6 +2157,15 @@ export default function PlanningPage() {
                     <p className="text-sm text-gray-600">Tarefas que estão sendo trabalhadas</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Timer Pomodoro */}
+              <div className="mb-6">
+                <PomodoroTimer 
+                  onCycleComplete={(cycles) => {
+                    console.log(`Ciclo completado! Total de ciclos hoje: ${cycles}`)
+                  }}
+                />
               </div>
 
               {/* Conteúdo dos to-dos */}
