@@ -988,29 +988,36 @@ export default function PlanningPage() {
 
   // Função para alternar prioridade
   const handleTogglePriority = async (todoId: string) => {
-    // Encontrar a tarefa atual em todos os arrays
-    const currentTodo = todos.find(t => t.id === todoId) || 
-                       inProgressTodos.find(t => t.id === todoId) || 
-                       backlogTodos.find(t => t.id === todoId)
+    // Encontrar a tarefa atual (fonte única de verdade)
+    const currentTodo = todos.find(t => t.id === todoId)
     
     if (currentTodo) {
-      await updateTodo(todoId, {
-        isHighPriority: !currentTodo.isHighPriority
-      })
+      const newPriority = !currentTodo.isHighPriority
       
-      // Atualizar estado local imediatamente
-      if (todos.find(t => t.id === todoId)) {
-        setTodos(todos.map(t => 
-          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-        ))
-      } else if (inProgressTodos.find(t => t.id === todoId)) {
-        setTodos(todos.map(t => 
-          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-        ))
-      } else if (backlogTodos.find(t => t.id === todoId)) {
-        setTodos(todos.map(t => 
-          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-        ))
+      try {
+        // 1. Atualizar estado local otimisticamente
+        setTodos(prevTodos => 
+          prevTodos.map(t => 
+            t.id === todoId ? { ...t, isHighPriority: newPriority } : t
+          )
+        )
+        
+        // 2. Mutation única no banco
+        await updateTodo(todoId, {
+          isHighPriority: newPriority
+        })
+        
+        console.log('✅ Prioridade alterada:', { todoId, newPriority })
+        
+      } catch (error) {
+        console.error('❌ Erro ao alterar prioridade:', error)
+        
+        // 3. Rollback em caso de erro
+        setTodos(prevTodos => 
+          prevTodos.map(t => 
+            t.id === todoId ? { ...t, isHighPriority: currentTodo.isHighPriority } : t
+          )
+        )
       }
     }
   }
@@ -2021,7 +2028,7 @@ export default function PlanningPage() {
                 </div>
               )}
             </div>
-          </div>
+            </div>
 
           {/* Botão para expandir lista completa */}
           <button
@@ -2033,7 +2040,7 @@ export default function PlanningPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-        </div>
+              </div>
 
         {/* Conteúdo expandido */}
         {offWorkExpanded && (
@@ -2046,28 +2053,28 @@ export default function PlanningPage() {
               ) : getRegularIdeas().length > 0 ? (
                 getRegularIdeas().map((idea) => (
                   <div key={idea.id} className="group p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 border border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
                           <h4 className="font-medium text-gray-900 truncate">{idea.title}</h4>
                           {idea.description && (
                             <span className="text-sm text-gray-500 truncate">• {idea.description}</span>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                        
+                        <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                         {/* Tags */}
                         {idea.tags && idea.tags.length > 0 && (
-                          <div className="flex gap-1">
+                            <div className="flex gap-1">
                             {idea.tags.map((tag, index) => (
-                              <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        
+                                <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          
                         {/* Botões de ação */}
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
                           <button
@@ -2111,7 +2118,7 @@ export default function PlanningPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                </div>
                 ))
               ) : (
                 <div className="text-center text-gray-500 py-4">
@@ -2127,7 +2134,7 @@ export default function PlanningPage() {
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        onDragEnd={handleDragEndBetweenBlocks}
+        onDragEnd={handleDragEnd}
       >
         {/* Bloco Em Progresso - Full Width */}
         <div className="mb-6">
