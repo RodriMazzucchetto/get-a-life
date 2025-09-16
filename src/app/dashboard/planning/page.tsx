@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { PlusIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
@@ -291,7 +291,10 @@ export default function PlanningPage() {
     completeReminder,
     deleteReminder,
     seedDefaultReminders,
-    reloadData
+    reloadData,
+    betweenRanks,
+    afterRank,
+    beforeRank
   } = usePlanningData()
 
 
@@ -404,7 +407,21 @@ export default function PlanningPage() {
     tags: [] as { name: string; color: string }[],
     projectId: undefined as string | undefined
   })
-  const [inProgressTodos, setInProgressTodos] = useState<Todo[]>([])
+  // Arrays derivados usando fonte única de verdade
+  const inProgressTodos = useMemo(() => 
+    todos.filter(todo => todo.status === 'in_progress')
+      .sort((a, b) => {
+        // Ordenação LexoRank: não pausados primeiro, depois pausados, depois por rank
+        if (a.onHold !== b.onHold) {
+          return a.onHold ? 1 : -1
+        }
+        if (a.rank && b.rank) {
+          return a.rank.localeCompare(b.rank)
+        }
+        return 0
+      }), 
+    [todos]
+  )
 
   // Estados para backlog
   const [showBacklogCreateForm, setShowBacklogCreateForm] = useState(false)
@@ -420,98 +437,22 @@ export default function PlanningPage() {
     tags: [] as { name: string; color: string }[],
     projectId: undefined as string | undefined
   })
-  const [backlogTodos, setBacklogTodos] = useState<Todo[]>([
-    {
-      id: '20',
-      title: 'Criar uma ferramenta de auto orçamento',
-      description: 'Desenvolver ferramenta automatizada para criação de orçamentos',
-      priority: 'medium',
-      category: 'KimonoLab',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 1000,
-      tags: [{ name: 'KimonoLab', color: '#EF4444' }],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '21',
-      title: 'Fazer uma análise de posicionamento',
-      description: 'Realizar análise completa de posicionamento no mercado',
-      priority: 'medium',
-      category: 'Zentrix BS',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 2000,
-      tags: [{ name: 'Zentrix BS', color: '#8B5CF6' }],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '22',
-      title: 'Criar uma ferramenta de planejamento',
-      description: 'A IA sugere os ingredientes e cria receitas personalizadas',
-      priority: 'low',
-      category: 'Miscellaneous',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 3000,
-      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString(), 
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '23',
-      title: 'Criar uma ferramenta de previsão',
-      description: 'Ferramenta com IA que busca e analisa dados de mercado',
-      priority: 'low',
-      category: 'Miscellaneous',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 3000,
-      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString(), 
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '24',
-      title: 'Criar ferramenta para traçar melhor rota',
-      description: 'Você compartilha a simulação e a IA sugere melhorias',
-      priority: 'low',
-      category: 'Miscellaneous',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 4000,
-      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString(), 
-      updated_at: new Date().toISOString()
-    }
-  ])
+  const backlogTodos = useMemo(() => 
+    todos.filter(todo => todo.status === 'backlog')
+      .sort((a, b) => {
+        // Ordenação LexoRank: não pausados primeiro, depois pausados, depois por rank
+        if (a.onHold !== b.onHold) {
+          return a.onHold ? 1 : -1
+        }
+        if (a.rank && b.rank) {
+          return a.rank.localeCompare(b.rank)
+        }
+        return 0
+      }), 
+    [todos]
+  )
+
+  // Mock data removido - agora vem do banco
 
   // Funções de projetos REMOVIDAS - será reimplementado do zero
 
@@ -901,26 +842,12 @@ export default function PlanningPage() {
 
   // Separar todos baseado no status quando os dados são carregados
   useEffect(() => {
-    if (todos.length > 0 && !dataSeparated) {
-      console.log('🔄 Separando todos baseado no status:', todos)
-      
-      // Separar itens em progresso
-      const inProgressItems = todos.filter(todo => todo.status === 'in_progress')
-      setInProgressTodos(inProgressItems)
-      console.log('🚀 Itens em progresso:', inProgressItems)
-      
-      // Separar itens do backlog
-      const backlogItems = todos.filter(todo => todo.status === 'backlog')
-      setBacklogTodos(backlogItems)
-      console.log('📋 Itens do backlog:', backlogItems)
-      
-      // Manter apenas itens da semana atual no array principal
-      const currentWeekItems = todos.filter(todo => todo.status === 'current_week')
-      setTodos(currentWeekItems)
-      console.log('📅 Itens da semana atual:', currentWeekItems)
-      
-      setDataSeparated(true)
-    }
+    // Arrays derivados são calculados automaticamente via useMemo
+    console.log('🔄 Arrays derivados calculados automaticamente:', { 
+      inProgress: inProgressTodos.length, 
+      backlog: backlogTodos.length,
+      currentWeek: todos.filter(t => t.status === 'current_week').length
+    })
   }, [todos, dataSeparated])
 
   // Funções para to-dos
@@ -1006,9 +933,11 @@ export default function PlanningPage() {
         if (todos.find(t => t.id === todoId)) {
           setTodos(todos.filter(t => t.id !== todoId))
         } else if (inProgressTodos.find(t => t.id === todoId)) {
-          setInProgressTodos(inProgressTodos.filter(t => t.id !== todoId))
+          // Remover do array principal - os derivados serão atualizados automaticamente
+          setTodos(todos.filter(t => t.id !== todoId))
         } else if (backlogTodos.find(t => t.id === todoId)) {
-          setBacklogTodos(backlogTodos.filter(t => t.id !== todoId))
+          // Remover do array principal - os derivados serão atualizados automaticamente
+          setTodos(todos.filter(t => t.id !== todoId))
         }
       } else {
         // Se foi desmarcado como concluído, atualizar o status
@@ -1017,11 +946,13 @@ export default function PlanningPage() {
             t.id === todoId ? { ...t, completed: newCompletedStatus } : t
           ))
         } else if (inProgressTodos.find(t => t.id === todoId)) {
-          setInProgressTodos(inProgressTodos.map(t => 
+          // Atualizar no array principal - os derivados serão atualizados automaticamente
+          setTodos(todos.map(t => 
             t.id === todoId ? { ...t, completed: newCompletedStatus } : t
           ))
         } else if (backlogTodos.find(t => t.id === todoId)) {
-          setBacklogTodos(backlogTodos.map(t => 
+          // Atualizar no array principal - os derivados serão atualizados automaticamente
+          setTodos(todos.map(t => 
             t.id === todoId ? { ...t, completed: newCompletedStatus } : t
           ))
         }
@@ -1039,8 +970,8 @@ export default function PlanningPage() {
         
         // Remover de todos os estados locais para manter sincronização
         setTodos(prev => prev.filter(t => t.id !== todoId))
-        setBacklogTodos(prev => prev.filter(t => t.id !== todoId))
-        setInProgressTodos(prev => prev.filter(t => t.id !== todoId))
+        // setBacklogTodos(prev => prev.filter(t => t.id !== todoId))
+        // setInProgressTodos(prev => prev.filter(t => t.id !== todoId))
         
         // Limpar editingTodo se estiver editando o item deletado
         if (editingTodo && editingTodo.id === todoId) {
@@ -1073,11 +1004,11 @@ export default function PlanningPage() {
           t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
         ))
       } else if (inProgressTodos.find(t => t.id === todoId)) {
-        setInProgressTodos(inProgressTodos.map(t => 
+        setTodos(todos.map(t => 
           t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
         ))
       } else if (backlogTodos.find(t => t.id === todoId)) {
-        setBacklogTodos(backlogTodos.map(t => 
+        setTodos(todos.map(t => 
           t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
         ))
       }
@@ -1135,11 +1066,11 @@ export default function PlanningPage() {
       if (activeTodoInTodos) {
         await updateTodo(activeId, { status: 'backlog' })
         setTodos(todos.filter(t => t.id !== activeId))
-        setBacklogTodos([...backlogTodos, activeTodoInTodos])
+        // setBacklogTodos([...backlogTodos, activeTodoInTodos])
       } else if (activeTodoInProgress) {
         await updateTodo(activeId, { status: 'backlog' })
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
-        setBacklogTodos([...backlogTodos, activeTodoInProgress])
+        // setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        // setBacklogTodos([...backlogTodos, activeTodoInProgress])
       }
       return
     }
@@ -1158,7 +1089,7 @@ export default function PlanningPage() {
       // Mover do Backlog ou Em Progresso para a Semana Atual
       if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'current_week' })
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        // setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
         
         // Encontrar a posição do item de destino e inserir antes dele
         const targetIndex = todos.findIndex(t => t.id === overId)
@@ -1167,7 +1098,7 @@ export default function PlanningPage() {
         setTodos(newTodos)
       } else if (activeTodoInProgress) {
         await updateTodo(activeId, { status: 'current_week' })
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        // setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
         
         // Encontrar a posição do item de destino e inserir antes dele
         const targetIndex = todos.findIndex(t => t.id === overId)
@@ -1185,11 +1116,11 @@ export default function PlanningPage() {
       if (activeTodoInTodos) {
         await updateTodo(activeId, { status: 'in_progress' })
         setTodos(todos.filter(t => t.id !== activeId))
-        setInProgressTodos([...inProgressTodos, activeTodoInTodos])
+        // setInProgressTodos([...inProgressTodos, activeTodoInTodos])
       } else if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'in_progress' })
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-        setInProgressTodos([...inProgressTodos, activeTodoInBacklog])
+        // setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        // setInProgressTodos([...inProgressTodos, activeTodoInBacklog])
       }
       return
     }
@@ -1199,12 +1130,12 @@ export default function PlanningPage() {
       // Mover do Backlog ou Em Progresso para a Semana Atual
       if (activeTodoInBacklog) {
         await updateTodo(activeId, { status: 'current_week' })
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
+        // setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
         // Para grupos de tags, adicionar no final da lista
         setTodos([...todos, activeTodoInBacklog])
       } else if (activeTodoInProgress) {
         await updateTodo(activeId, { status: 'current_week' })
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
+        // setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
         // Para grupos de tags, adicionar no final da lista
         setTodos([...todos, activeTodoInProgress])
       }
@@ -1276,7 +1207,7 @@ export default function PlanningPage() {
       )
       
       // Atualizar estado local
-      setBacklogTodos(reorderedBacklog)
+      // setBacklogTodos(reorderedBacklog)
       
                     // Persistir nova ordem no banco
               const movedTodo = reorderedBacklog.find(t => t.id === activeId)
@@ -1323,7 +1254,7 @@ export default function PlanningPage() {
       )
       
       // Atualizar estado local
-      setInProgressTodos(reorderedInProgress)
+      // setInProgressTodos(reorderedInProgress)
       
                     // Persistir nova ordem no banco
               const movedTodo = reorderedInProgress.find(t => t.id === activeId)
@@ -1364,17 +1295,95 @@ export default function PlanningPage() {
     }
   }
 
-  // Função para drag and drop (mantida para compatibilidade)
-  const handleDragEnd = (event: DragEndEvent) => {
+  // Função unificada de drag & drop usando LexoRank
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
-    if (active.id !== over?.id) {
-      setTodos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over?.id)
+    if (!active || !over || active.id === over.id) {
+      return
+    }
 
-        return arrayMove(items, oldIndex, newIndex)
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    console.log('🔄 Drag & Drop:', { activeId, overId })
+
+    try {
+      // Encontrar o item ativo
+      const activeTodo = todos.find(todo => todo.id === activeId)
+      if (!activeTodo) {
+        console.error('❌ Item ativo não encontrado:', activeId)
+        return
+      }
+
+      // Encontrar o item de destino
+      const overTodo = todos.find(todo => todo.id === overId)
+      if (!overTodo) {
+        console.error('❌ Item de destino não encontrado:', overId)
+        return
+      }
+
+      console.log('📊 Itens encontrados:', { 
+        active: { id: activeTodo.id, title: activeTodo.title, status: activeTodo.status, rank: activeTodo.rank },
+        over: { id: overTodo.id, title: overTodo.title, status: overTodo.status, rank: overTodo.rank }
       })
+
+      // Se estão no mesmo status, é reordenação dentro do bloco
+      if (activeTodo.status === overTodo.status) {
+        console.log('🔄 Reordenação dentro do mesmo bloco')
+        
+        // Calcular novo rank entre os itens adjacentes
+        const newRank = betweenRanks(overTodo.rank || null, null)
+        
+        // Atualizar no banco
+        await updateTodo(activeId, { rank: newRank })
+        
+        // Atualizar estado local otimisticamente
+        setTodos(prevTodos => 
+          prevTodos.map(todo => 
+            todo.id === activeId ? { ...todo, rank: newRank } : todo
+          )
+        )
+        
+        console.log('✅ Reordenação concluída:', { activeId, newRank })
+        
+      } else {
+        // Mudança de status (entre blocos)
+        console.log('🔄 Mudança entre blocos:', { from: activeTodo.status, to: overTodo.status })
+        
+        // Calcular novo rank no bloco de destino
+        const newRank = betweenRanks(overTodo.rank || null, null)
+        
+        // Atualizar no banco
+        await updateTodo(activeId, { 
+          status: overTodo.status, 
+          rank: newRank,
+          onHold: false // Tirar de pausa ao mover entre blocos
+        })
+        
+        // Atualizar estado local otimisticamente
+        setTodos(prevTodos => 
+          prevTodos.map(todo => 
+            todo.id === activeId ? { 
+              ...todo, 
+              status: overTodo.status, 
+              rank: newRank,
+              onHold: false
+            } : todo
+          )
+        )
+        
+        console.log('✅ Mudança de bloco concluída:', { 
+          activeId, 
+          newStatus: overTodo.status, 
+          newRank 
+        })
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro no drag & drop:', error)
+      // Em caso de erro, recarregar dados do banco
+      await reloadData()
     }
   }
 
@@ -1437,10 +1446,10 @@ export default function PlanningPage() {
       
       // Se foi marcado como concluído, remover da lista imediatamente
       if (newCompletedStatus) {
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== todoId))
+        // setInProgressTodos(inProgressTodos.filter(t => t.id !== todoId))
       } else {
         // Se foi desmarcado como concluído, atualizar o status no estado local
-        setInProgressTodos(inProgressTodos.map(t => 
+        setTodos(todos.map(t => 
           t.id === todoId ? { ...t, completed: newCompletedStatus } : t
         ))
       }
@@ -1457,38 +1466,31 @@ export default function PlanningPage() {
     }
   }
 
-  // Funções para gerenciar status "Em Espera"
+  // Funções para gerenciar status "Em Espera" usando LexoRank
   const handlePutTodoOnHold = async (todo: Todo) => {
     if (todo.onHold) {
-      // Se já está em espera, remover da espera usando API
+      // Se já está em espera, remover da espera e ir para o final dos não pausados
+      console.log('🔄 Removendo da pausa:', todo.title)
+      
+      const newRank = afterRank(todos, todo.status, false)
+      
       await updateTodo(todo.id, {
         onHold: false,
-        onHoldReason: undefined
+        onHoldReason: undefined,
+        rank: newRank
       })
       
-      // Atualizar estado local imediatamente sem recarregar todos os dados
-      // Encontrar o todo em todos os arrays e atualizar apenas o campo onHold
-      if (todos.find(t => t.id === todo.id)) {
-        setTodos(todos.map(t => 
+      // Atualizar estado local otimisticamente
+      setTodos(prevTodos => 
+        prevTodos.map(t => 
           t.id === todo.id 
-            ? { ...t, onHold: false, onHoldReason: undefined } 
+            ? { ...t, onHold: false, onHoldReason: undefined, rank: newRank } 
             : t
-        ))
-      }
-      if (inProgressTodos.find(t => t.id === todo.id)) {
-        setInProgressTodos(inProgressTodos.map(t => 
-          t.id === todo.id 
-            ? { ...t, onHold: false, onHoldReason: undefined } 
-            : t
-        ))
-      }
-      if (backlogTodos.find(t => t.id === todo.id)) {
-        setBacklogTodos(backlogTodos.map(t => 
-          t.id === todo.id 
-            ? { ...t, onHold: false, onHoldReason: undefined } 
-            : t
-        ))
-      }
+        )
+      )
+      
+      console.log('✅ Removido da pausa e colocado no final dos não pausados:', { todoId: todo.id, newRank })
+      
     } else {
       // Se não está em espera, abrir modal para colocar em espera
       setTodoToPutOnHold(todo)
@@ -1499,35 +1501,28 @@ export default function PlanningPage() {
 
   const handleConfirmOnHold = async () => {
     if (todoToPutOnHold && on_hold_reason.trim()) {
+      console.log('🔄 Colocando em pausa:', todoToPutOnHold.title)
+      
+      // Calcular novo rank para ir para o final dos itens pausados
+      const newRank = afterRank(todos, todoToPutOnHold.status, true)
+      
       // Usar API para salvar no banco
       await updateTodo(todoToPutOnHold.id, {
         onHold: true,
-        onHoldReason: on_hold_reason.trim()
+        onHoldReason: on_hold_reason.trim(),
+        rank: newRank
       })
 
-      // Atualizar estado local imediatamente sem recarregar todos os dados
-      // Encontrar o todo em todos os arrays e atualizar apenas o campo onHold
-      if (todos.find(t => t.id === todoToPutOnHold.id)) {
-        setTodos(todos.map(t => 
+      // Atualizar estado local otimisticamente
+      setTodos(prevTodos => 
+        prevTodos.map(t => 
           t.id === todoToPutOnHold.id 
-            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
+            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim(), rank: newRank } 
             : t
-        ))
-      }
-      if (inProgressTodos.find(t => t.id === todoToPutOnHold.id)) {
-        setInProgressTodos(inProgressTodos.map(t => 
-          t.id === todoToPutOnHold.id 
-            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
-            : t
-        ))
-      }
-      if (backlogTodos.find(t => t.id === todoToPutOnHold.id)) {
-        setBacklogTodos(backlogTodos.map(t => 
-          t.id === todoToPutOnHold.id 
-            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
-            : t
-        ))
-      }
+        )
+      )
+
+      console.log('✅ Colocado em pausa e movido para o final:', { todoId: todoToPutOnHold.id, newRank })
 
       setShowOnHoldModal(false)
       setTodoToPutOnHold(null)
@@ -1551,7 +1546,7 @@ export default function PlanningPage() {
       await updateTodo(todo.id, { status: 'current_week' })
       
       // Atualizar estado local imediatamente
-      setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
+      // setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
       
       // Verificar se o todo tem uma posição original armazenada
       const todoWithOriginalPosition = todo as Todo & { originalPosition?: number }
@@ -1583,10 +1578,10 @@ export default function PlanningPage() {
         const todoWithPosition = { ...todo, originalPosition: originalIndex, status: 'in_progress' as const }
         
         setTodos(todos.filter(t => t.id !== todo.id))
-        setInProgressTodos([...inProgressTodos, todoWithPosition])
+        // setInProgressTodos([...inProgressTodos, todoWithPosition])
       } else if (isInBacklog) {
-        setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
-        setInProgressTodos([...inProgressTodos, { ...todo, status: 'in_progress' as const }])
+        // setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
+        // setInProgressTodos([...inProgressTodos, { ...todo, status: 'in_progress' as const }])
       }
     }
   }
@@ -1603,8 +1598,8 @@ export default function PlanningPage() {
         
         // Remover de todos os estados locais para manter sincronização
         setTodos(prev => prev.filter(t => t.id !== todo.id))
-        setBacklogTodos(prev => prev.filter(t => t.id !== todo.id))
-        setInProgressTodos(prev => prev.filter(t => t.id !== todo.id))
+        // setBacklogTodos(prev => prev.filter(t => t.id !== todo.id))
+        // setInProgressTodos(prev => prev.filter(t => t.id !== todo.id))
         
         console.log('✅ Todo removido de todos os estados locais')
       } else {
@@ -1678,8 +1673,8 @@ export default function PlanningPage() {
         
         // Remover de todos os estados locais para manter sincronização
         setTodos(prev => prev.filter(t => t.id !== todoId))
-        setBacklogTodos(prev => prev.filter(t => t.id !== todoId))
-        setInProgressTodos(prev => prev.filter(t => t.id !== todoId))
+        // setBacklogTodos(prev => prev.filter(t => t.id !== todoId))
+        // setInProgressTodos(prev => prev.filter(t => t.id !== todoId))
         
         console.log('✅ Todo removido de todos os estados locais')
       } else {
@@ -1702,12 +1697,7 @@ export default function PlanningPage() {
     const { active, over } = event
 
     if (active.id !== over?.id) {
-      setBacklogTodos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over?.id)
-
-        return arrayMove(items, oldIndex, newIndex)
-      })
+      // Função removida - drag & drop agora é unificado
     }
   }
 

@@ -43,6 +43,7 @@ export interface DBTodo {
   on_hold_reason?: string
   status: 'backlog' | 'in_progress' | 'current_week'
   pos: number // Nova coluna para ordenação persistente
+  rank?: string // Campo para ordenação LexoRank
   // RELACIONAMENTOS OPCIONAIS (podem ser NULL)
   project_id?: string
   goal_id?: string
@@ -657,6 +658,7 @@ export function fromDbTodo(row: DBTodo): Todo {
     onHoldReason: row.on_hold_reason,
     status: row.status,
     pos: row.pos, // Coluna pos agora existe no banco
+    rank: row.rank, // Campo rank para ordenação LexoRank
     tags: [], // Tags serão implementadas do zero
     // RELACIONAMENTOS OPCIONAIS
     projectId: row.project_id,
@@ -684,6 +686,7 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
   if (patch.status !== undefined) out.status = patch.status;
   if (patch.pos !== undefined) out.pos = patch.pos; // Coluna pos agora existe no banco
+  if (patch.rank !== undefined) out.rank = patch.rank; // Campo rank para ordenação LexoRank
   // if (patch.created_at !== undefined) out.created_at = patch.created_at; // Não precisamos mais atualizar created_at
   
   // RELACIONAMENTOS OPCIONAIS
@@ -713,6 +716,7 @@ export interface Todo {
   onHoldReason?: string;
   status: 'backlog' | 'in_progress' | 'current_week';
   pos: number; // Nova coluna para ordenação persistente
+  rank?: string; // Campo para ordenação LexoRank
   tags?: { name: string; color: string }[];
   // RELACIONAMENTOS OPCIONAIS
   projectId?: string;

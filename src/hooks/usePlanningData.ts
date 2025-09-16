@@ -88,6 +88,9 @@ export function usePlanningData() {
       const todosData = await todosService.getTodos(user.id)
       console.log('📊 Hook: Todos carregados do banco:', todosData)
       
+      // MIGRAÇÃO: Verificar se campo rank existe e inicializar se necessário
+      await migrateRankField(todosData, user.id)
+      
       const todosConverted = todosData.map(fromDbTodo)
       console.log('✅ Hook: Todos convertidos:', todosConverted)
       
@@ -544,6 +547,159 @@ export function usePlanningData() {
   // Estados de loading consolidados
   const isLoading = loadingProjects || loadingTags || loadingTodos || loadingGoals || loadingInitiatives || loadingReminders
 
+  // Funções LexoRank para ordenação estável
+  const betweenRanks = (prevRank: string | null, nextRank: string | null): string => {
+    // Se não há rank anterior, usar "0|00000:00000"
+    if (!prevRank) prevRank = '0|00000:00000'
+    
+    // Se não há rank próximo, usar "0|99999:00000"
+    if (!nextRank) nextRank = '0|99999:00000'
+    
+    // Extrair número da parte principal (ex: "0|00001:00000" -> 1)
+    const prevParts = prevRank.split('|')
+    const nextParts = nextRank.split('|')
+    
+    const prevNum = parseInt(prevParts[1].substring(0, 5))
+    const nextNum = parseInt(nextParts[1].substring(0, 5))
+    
+    // Calcular novo número (média simples)
+    const newNum = Math.floor((prevNum + nextNum) / 2)
+    
+    // Se os números são muito próximos, usar subdivisão
+    if (nextNum - prevNum <= 1) {
+      return prevParts[0] + '|' + prevNum.toString().padStart(5, '0') + ':00001'
+    } else {
+      return prevParts[0] + '|' + newNum.toString().padStart(5, '0') + ':00000'
+    }
+  }
+
+  const afterRank = (todosList: Todo[], status: string, onHold: boolean): string => {
+    // Buscar último rank do status/on_hold especificado
+    const filteredTodos = todosList.filter(todo => 
+      todo.status === status && todo.onHold === onHold && todo.rank
+    )
+    
+    if (filteredTodos.length === 0) {
+      return '0|00001:00000'
+    }
+    
+    // Ordenar por rank e pegar o último
+    const lastTodo = filteredTodos.sort((a, b) => {
+      if (!a.rank || !b.rank) return 0
+      return a.rank.localeCompare(b.rank)
+    }).pop()
+    
+    if (!lastTodo?.rank) {
+      return '0|00001:00000'
+    }
+    
+    // Extrair número e incrementar
+    const parts = lastTodo.rank.split('|')
+    const lastNum = parseInt(parts[1].substring(0, 5))
+    return parts[0] + '|' + (lastNum + 1).toString().padStart(5, '0') + ':00000'
+  }
+
+  const beforeRank = (todosList: Todo[], status: string, onHold: boolean): string => {
+    // Buscar primeiro rank do status/on_hold especificado
+    const filteredTodos = todosList.filter(todo => 
+      todo.status === status && todo.onHold === onHold && todo.rank
+    )
+    
+    if (filteredTodos.length === 0) {
+      return '0|00001:00000'
+    }
+    
+    // Ordenar por rank e pegar o primeiro
+    const firstTodo = filteredTodos.sort((a, b) => {
+      if (!a.rank || !b.rank) return 0
+      return a.rank.localeCompare(b.rank)
+    })[0]
+    
+    if (!firstTodo?.rank) {
+      return '0|00001:00000'
+    }
+    
+    // Extrair número e decrementar
+    const parts = firstTodo.rank.split('|')
+    const firstNum = parseInt(parts[1].substring(0, 5))
+    
+    // Se seria menor que 1, usar subdivisão
+    if (firstNum <= 1) {
+      return parts[0] + '|00000:00001'
+    } else {
+      return parts[0] + '|' + (firstNum - 1).toString().padStart(5, '0') + ':00000'
+    }
+  }
+
+  // Função para migrar campo rank
+  const migrateRankField = async (todosData: DBTodo[], userId: string) => {
+    try {
+      // Verificar se algum todo já tem rank
+      const hasRank = todosData.some(todo => todo.rank && todo.rank !== '0|00000:00000')
+      
+      if (hasRank) {
+        console.log('✅ Campo rank já existe e tem valores')
+        return
+      }
+
+      console.log('🔄 Iniciando migração do campo rank...')
+
+      // Buscar todos os todos ordenados por status e pos
+      const { createClient } = await import('@/lib/supabase')
+      const supabase = createClient()
+      
+      const { data: allTodos, error } = await supabase
+        .from('todos')
+        .select('id, status, pos, title')
+        .eq('user_id', userId)
+        .order('status')
+        .order('pos')
+
+      if (error) {
+        console.error('❌ Erro ao buscar todos para migração:', error)
+        return
+      }
+
+      if (!allTodos || allTodos.length === 0) {
+        console.log('✅ Nenhum todo encontrado para migrar')
+        return
+      }
+
+      console.log(`📝 Encontrados ${allTodos.length} todos para migrar`)
+
+      // Atualizar ranks sequencialmente
+      let counter = 1
+      const updates = []
+
+      for (const todo of allTodos) {
+        try {
+          const rank = `0|${counter.toString().padStart(5, '0')}:00000`
+          
+          const { error: updateError } = await supabase
+            .from('todos')
+            .update({ rank })
+            .eq('id', todo.id)
+            .eq('user_id', userId)
+
+          if (updateError) {
+            console.error(`❌ Erro ao atualizar todo ${todo.id}:`, updateError)
+          } else {
+            updates.push({ id: todo.id, title: todo.title, rank })
+            console.log(`✅ Todo ${counter}/${allTodos.length} migrado: ${todo.title}`)
+          }
+        } catch (error) {
+          console.error(`❌ Erro inesperado ao atualizar todo ${todo.id}:`, error)
+        }
+        
+        counter++
+      }
+
+      console.log(`✅ Migração concluída! ${updates.length} todos migrados`)
+    } catch (error) {
+      console.error('❌ Erro geral na migração:', error)
+    }
+  }
+
   return {
     // Estado
     projects,
@@ -646,6 +802,11 @@ export function usePlanningData() {
     seedDefaultReminders,
     
     // Recarregar dados
-    reloadData: loadAllData
+    reloadData: loadAllData,
+    
+    // Funções LexoRank
+    betweenRanks,
+    afterRank,
+    beforeRank
   }
 }
