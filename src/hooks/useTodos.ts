@@ -165,6 +165,7 @@ export function useTodos() {
         onHold: row.on_hold,
         onHoldReason: row.on_hold_reason,
         status: row.status,
+        pos: row.pos || 0, // Adicionar campo pos obrigatório
         rank: row.rank,
         tags: [], // TODO: implementar tags
         projectId: row.project_id,
