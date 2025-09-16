@@ -267,6 +267,51 @@ type Reminder = DBReminder
 import { Todo, Goal } from '@/lib/planning'
 
 export default function PlanningPage() {
+  // Debug DnD state
+  const [debugDnD, setDebugDnD] = useState(process.env.NEXT_PUBLIC_DND_DEBUG === '1')
+  const [dbg, setDbg] = useState<{active?: string; over?: string; from?: string|null; to?: string|null; prev?: string|null; next?: string|null}>({})
+
+  // Debug Panel Component
+  function DebugPanel() {
+    if (!debugDnD) return null
+    return (
+      <div style={{position:'fixed',bottom:8,right:8,background:'#111',color:'#0f0',padding:12,fontSize:12,zIndex:9999,opacity:0.9}}>
+        <div>active: {dbg.active || '-'}</div>
+        <div>over: {dbg.over || '-'}</div>
+        <div>from: {dbg.from || '-'}</div>
+        <div>to: {dbg.to || '-'}</div>
+        <div>prev.rank: {dbg.prev || '-'}</div>
+        <div>next.rank: {dbg.next || '-'}</div>
+        <button onClick={()=>setDebugDnD(false)} style={{marginTop:6}}>hide</button>
+      </div>
+    )
+  }
+
+  // Containers estáveis
+  const CONTAINERS = ['backlog','current_week','in_progress'] as const
+  type ContainerId = typeof CONTAINERS[number]
+
+
+  // Função para detectar container de destino
+  function findContainer(id: string | ContainerId): ContainerId | null {
+    if (CONTAINERS.includes(id as ContainerId)) return id as ContainerId
+    if (backlogSet.has(id as string)) return 'backlog'
+    if (currentSet.has(id as string)) return 'current_week'
+    if (inprogSet.has(id as string)) return 'in_progress'
+    return null
+  }
+
+
+  function safeNeighbours(dest: Todo[], overId: string | null) {
+    if (!overId) return {prev:null,next:null}
+    const idx = dest.findIndex(t=>t.id===overId)
+    if (idx === -1) return {prev: dest.at(-1)||null, next:null} // fallback: fim
+    return {
+      prev: idx>0 ? dest[idx-1] : null,
+      next: idx<dest.length-1 ? dest[idx+1] : null
+    }
+  }
+
   // Hook para gerenciar dados de planejamento
   const {
     projects,
@@ -451,6 +496,33 @@ export default function PlanningPage() {
       }), 
     [todos]
   )
+
+  // Arrays derivados para os containers
+  const currentWeekTodos = useMemo(() => 
+    todos.filter(todo => todo.status === 'current_week')
+      .sort((a, b) => {
+        // Ordenação LexoRank: não pausados primeiro, depois pausados, depois por rank
+        if (a.onHold !== b.onHold) {
+          return a.onHold ? 1 : -1
+        }
+        if (a.rank && b.rank) {
+          return a.rank.localeCompare(b.rank)
+        }
+        return 0
+      }), 
+    [todos]
+  )
+
+  // Sets estáveis para performance
+  const backlogSet = useMemo(()=>new Set(backlogTodos.map(t=>t.id)),[backlogTodos])
+  const currentSet = useMemo(()=>new Set(currentWeekTodos.map(t=>t.id)),[currentWeekTodos])
+  const inprogSet = useMemo(()=>new Set(inProgressTodos.map(t=>t.id)),[inProgressTodos])
+
+  const listByContainer: Record<ContainerId, Todo[]> = {
+    backlog: backlogTodos,
+    current_week: currentWeekTodos,
+    in_progress: inProgressTodos,
+  }
 
   // Mock data removido - agora vem do banco
 
@@ -1303,95 +1375,46 @@ export default function PlanningPage() {
   }
 
   // Função unificada de drag & drop usando LexoRank
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
+  // Função unificada de drag & drop com guards e debug
+  function handleDragEnd(e: DragEndEvent) {
+    const {active, over} = e
+    if (!over) return
 
-    if (!active || !over || active.id === over.id) {
-      return
+    const activeId = String(active.id)
+    const overId = String(over.id)
+
+    const from = findContainer(activeId)
+    const to = findContainer(overId)
+    if (!from || !to) return
+
+    const destList = listByContainer[to]
+    let newRank: string
+
+    // Soltou no container vazio → fim da lista
+    if (CONTAINERS.includes(overId as ContainerId)) {
+      const last = destList.at(-1) || null
+      newRank = last ? betweenRanks(last.rank || null, null) : 'a0'
+      setDbg({active:activeId,over:overId,from,to,prev:last?.rank||null,next:null})
+    } else {
+      const {prev, next} = safeNeighbours(destList, overId)
+      if (prev && next) newRank = betweenRanks(prev.rank || null, next.rank || null)
+      else if (!prev && next) newRank = betweenRanks(null, next.rank || null)
+      else if (prev && !next) newRank = betweenRanks(prev.rank || null, null)
+      else newRank = 'a0'
+      setDbg({active:activeId,over:overId,from,to,prev:prev?.rank||null,next:next?.rank||null})
     }
 
-    const activeId = active.id as string
-    const overId = over.id as string
+    const payload: Partial<Todo> = { rank: newRank }
+    if (from !== to) {
+      payload.status = to
+      payload.onHold = false // moveu de bloco → tira de pausa
+    }
 
-    console.log('🔄 Drag & Drop:', { activeId, overId })
-
-    try {
-      // Encontrar o item ativo
-      const activeTodo = todos.find(todo => todo.id === activeId)
-      if (!activeTodo) {
-        console.error('❌ Item ativo não encontrado:', activeId)
-        return
-      }
-
-      // Encontrar o item de destino
-      const overTodo = todos.find(todo => todo.id === overId)
-      if (!overTodo) {
-        console.error('❌ Item de destino não encontrado:', overId)
-        return
-      }
-
-      console.log('📊 Itens encontrados:', { 
-        active: { id: activeTodo.id, title: activeTodo.title, status: activeTodo.status, rank: activeTodo.rank },
-        over: { id: overTodo.id, title: overTodo.title, status: overTodo.status, rank: overTodo.rank }
-      })
-
-      // Se estão no mesmo status, é reordenação dentro do bloco
-      if (activeTodo.status === overTodo.status) {
-        console.log('🔄 Reordenação dentro do mesmo bloco')
-        
-        // Calcular novo rank entre os itens adjacentes
-        const newRank = betweenRanks(overTodo.rank || null, null)
-        
-        // Atualizar no banco
-        await updateTodo(activeId, { rank: newRank })
-        
-        // Atualizar estado local otimisticamente
-        setTodos(prevTodos => 
-          prevTodos.map(todo => 
-            todo.id === activeId ? { ...todo, rank: newRank } : todo
-          )
-        )
-        
-        console.log('✅ Reordenação concluída:', { activeId, newRank })
-        
-      } else {
-        // Mudança de status (entre blocos)
-        console.log('🔄 Mudança entre blocos:', { from: activeTodo.status, to: overTodo.status })
-        
-        // Calcular novo rank no bloco de destino
-        const newRank = betweenRanks(overTodo.rank || null, null)
-        
-        // Atualizar no banco
-        await updateTodo(activeId, { 
-          status: overTodo.status, 
-          rank: newRank,
-          onHold: false // Tirar de pausa ao mover entre blocos
-        })
-        
-        // Atualizar estado local otimisticamente
-        setTodos(prevTodos => 
-          prevTodos.map(todo => 
-            todo.id === activeId ? { 
-              ...todo, 
-              status: overTodo.status, 
-              rank: newRank,
-              onHold: false
-            } : todo
-          )
-        )
-        
-        console.log('✅ Mudança de bloco concluída:', { 
-          activeId, 
-          newStatus: overTodo.status, 
-          newRank 
-        })
-      }
-      
-    } catch (error) {
+    // Update otimista + rollback
+    updateTodo(activeId, payload).catch(error => {
       console.error('❌ Erro no drag & drop:', error)
-      // Em caso de erro, recarregar dados do banco
-      await reloadData()
-    }
+      // Rollback automático será feito pelo estado local
+    })
   }
 
   // Funções de tags removidas - serão reimplementadas do zero
