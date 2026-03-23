@@ -37,7 +37,7 @@ export function EnvCheck({ children }: { children: React.ReactNode }) {
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-4">Configuração Necessária</h1>
             <p className="text-gray-600 mb-6">
-              Para usar o Get a Life, você precisa configurar as variáveis de ambiente do Supabase.
+              Para usar o TaskArchitect, você precisa configurar as variáveis de ambiente do Supabase.
             </p>
           </div>
           

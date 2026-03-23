@@ -22,7 +22,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Get a Life — Planejamento GTD",
+  title: "TaskArchitect — Planejamento e tarefas",
   description:
     "Organize projetos, metas e tarefas com precisão. Gestão de produtividade para quem arquiteta o próprio tempo.",
 };

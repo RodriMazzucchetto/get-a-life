@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { BRANDING } from "@/lib/branding";
 
 function mapAuthError(message: string): string {
   const m = message.toLowerCase();
@@ -93,13 +94,17 @@ export default function LoginPage() {
 
       <section className="w-full max-w-[440px] z-10">
         <div className="text-center mb-10">
-          <Link href="/" className="inline-block">
-            <h1 className="font-headline font-extrabold text-3xl tracking-tighter text-primary">
-              Get a Life
-            </h1>
+          <Link href="/" className="inline-flex flex-col items-center gap-3">
+            <img
+              src={BRANDING.stacked}
+              alt={BRANDING.name}
+              className="h-24 sm:h-28 w-auto max-w-[min(280px,90vw)] object-contain mx-auto"
+              width={280}
+              height={112}
+            />
           </Link>
-          <p className="font-headline text-on-surface-variant text-sm mt-2 tracking-tight">
-            Precisão atmosférica para o seu fluxo de trabalho
+          <p className="font-headline text-on-surface-variant text-sm mt-4 tracking-tight">
+            Precisão para o seu fluxo de trabalho
           </p>
         </div>
 
@@ -230,7 +235,7 @@ export default function LoginPage() {
             </a>
           </div>
           <p className="font-body text-[10px] text-outline opacity-60 tracking-widest uppercase text-center">
-            © {new Date().getFullYear()} Get a Life. Atmospheric precision.
+            © {new Date().getFullYear()} {BRANDING.name}. Precisão no fluxo de trabalho.
           </p>
         </footer>
       </section>

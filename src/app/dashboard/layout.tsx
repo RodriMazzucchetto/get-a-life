@@ -5,9 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-
-const LOGO_URL =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuB-_anmDvPxPbl2VP7sbiqt5NRqPloEJk_LUSrLXtV7zJlGPn1olLbetOW62p7zetAlruoQBkfV4Ff2UpCW6WEdeioRCF_NTLOk3yZ4dS9fDYbseLPNGOXx3IH4Kj4ZyK-SV9Jyqzfsn2tnRygykH99sy0og8zVK23_yd1K3AOjd-7y8NU_oWM4OBbAp_ILJnQ-SMpXlnRJGkwh9lwH3K-ZhOk1HTNVTiGDbKrqufrouxMaG6ZMIRvhBv6DnW2e2_V8sn0HKLbjldZY";
+import { BRANDING } from "@/lib/branding";
 
 const mainNav: {
   name: string;
@@ -96,13 +94,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-64 z-40 bg-surface-container-low border-r border-outline-variant/15 pt-6 px-4 pb-6">
-        <div className="flex items-center gap-3 mb-8 px-2 pt-2">
+        <div className="flex items-center mb-8 px-1 pt-2">
           <img
-            alt="Get a Life"
-            src={LOGO_URL}
-            className="h-10 w-auto shrink-0"
-            width={120}
-            height={40}
+            alt={BRANDING.name}
+            src={BRANDING.horizontal}
+            className="h-9 w-auto max-w-[200px] object-contain object-left shrink-0"
+            width={200}
+            height={36}
           />
         </div>
         <nav className="flex flex-col gap-1 flex-1">
@@ -177,13 +175,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           <span className="material-symbols-outlined">close</span>
         </button>
-        <div className="flex items-center gap-3 mb-8 px-2">
+        <div className="flex items-center mb-8 px-1">
           <img
-            alt="Get a Life"
-            src={LOGO_URL}
-            className="h-10 w-auto shrink-0"
-            width={120}
-            height={40}
+            alt={BRANDING.name}
+            src={BRANDING.horizontal}
+            className="h-9 w-auto max-w-[200px] object-contain object-left shrink-0"
+            width={200}
+            height={36}
           />
         </div>
         <nav className="flex flex-col gap-1 flex-1">

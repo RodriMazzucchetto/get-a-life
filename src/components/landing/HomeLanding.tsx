@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
+import { BRANDING } from "@/lib/branding";
 
 const HERO_IMG =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCzznl50l-xBvjPPFRpzP4oUVGcc9xhPOqv-dFncaqU0SnqBXTpix9BrluDKtEj823DUaJbZxanOstOYuTpwVzA97R_ZU5c250BijJ6Er-uPEOh5phFxV92MwGid-dDeUBTeIq7gb62SGyfP3J2CunuZqUlqvSn1KHYfdX66j04PjuAsCT4ZXYBM0yl_bqVR4jGcVDbKXorCbKZwgj92v9nf6gj4ipU_fy3yRv2vAfy2HmH2PSEFVLMFuipbAoncocFHsmfn-muLCfA";
@@ -26,11 +27,14 @@ export function HomeLanding({ user }: HomeLandingProps) {
   return (
     <>
       <nav className="bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-md flex justify-between items-center w-full px-6 md:px-8 py-4 max-w-full mx-auto fixed top-0 z-50">
-        <Link
-          href="/"
-          className="text-xl font-bold tracking-tighter text-primary-container font-headline"
-        >
-          Get a Life
+        <Link href="/" className="inline-flex items-center shrink-0">
+          <img
+            src={BRANDING.horizontal}
+            alt={BRANDING.name}
+            className="h-8 sm:h-9 w-auto max-w-[200px] object-contain object-left"
+            width={200}
+            height={36}
+          />
         </Link>
         <div className="hidden md:flex gap-8 items-center font-headline font-semibold text-sm tracking-tight">
           <Link
@@ -103,7 +107,7 @@ export function HomeLanding({ user }: HomeLandingProps) {
               <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-secondary-container/30 to-transparent blur-3xl rounded-full pointer-events-none" />
               <div className="bg-surface-container-lowest rounded-2xl shadow-2xl overflow-hidden ring-1 ring-outline-variant/10">
                 <img
-                  alt="Pré-visualização do painel Get a Life"
+                  alt="Pré-visualização do painel TaskArchitect"
                   className="w-full h-auto object-cover"
                   src={HERO_IMG}
                   width={1200}
@@ -323,7 +327,7 @@ export function HomeLanding({ user }: HomeLandingProps) {
             </a>
           </div>
           <div className="text-center md:text-right">
-            © {new Date().getFullYear()} Get a Life. Atmospheric precision.
+            © {new Date().getFullYear()} {BRANDING.name}. Precisão no fluxo de trabalho.
           </div>
         </div>
       </footer>
