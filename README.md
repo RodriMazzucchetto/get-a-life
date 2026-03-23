@@ -34,12 +34,12 @@ npm install
 Crie um arquivo `.env.local` na raiz do projeto:
 
 ```env
-# Supabase Configuration
+# Supabase — Settings → API
 NEXT_PUBLIC_SUPABASE_URL=sua_url_do_supabase
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
 
-# Google Gemini AI (opcional - para sugestões personalizadas)
-NEXT_PUBLIC_GEMINI_API_KEY=sua_chave_api_do_gemini
+# Google Gemini (opcional) — só servidor; usada em /api/generate-suggestion
+GEMINI_API_KEY=sua_chave_api_do_gemini
 ```
 
 ### 4. Configure o Supabase
@@ -55,7 +55,7 @@ Para usar sugestões personalizadas com IA:
 
 1. Acesse o [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Crie uma nova API key
-3. Adicione a chave ao arquivo `.env.local` como `NEXT_PUBLIC_GEMINI_API_KEY`
+3. Adicione a chave ao arquivo `.env.local` como `GEMINI_API_KEY`
 
 **Nota:** Se não configurar a API do Gemini, o app funcionará normalmente, mas as sugestões serão limitadas.
 
@@ -135,9 +135,31 @@ O projeto está configurado com autenticação completa usando Supabase Auth:
 
 ### Vercel (Recomendado)
 
-1. Conecte seu repositório ao Vercel
-2. Configure as variáveis de ambiente no dashboard do Vercel
-3. Deploy automático a cada push
+1. Conecte o repositório ao Vercel (`vercel link` ou import no dashboard).
+2. Em **Settings → Environment Variables**, defina as mesmas chaves do `.env.local`:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `GEMINI_API_KEY` (se usar sugestões com IA)
+3. Faça **Redeploy** após alterar variáveis.
+
+### Migração: backup do Supabase → projeto novo
+
+Se estiveres a mudar de projeto Supabase (ex. projeto antigo pausado), segue a documentação oficial **[Restore Dashboard backup](https://supabase.com/docs/guides/platform/migrating-within-supabase/dashboard-restore)**:
+
+1. Cria um **novo projeto** no Supabase.
+2. Instala `psql` (cliente PostgreSQL) e obtém a **connection string** em **Connect** (pooler ou direct).
+3. Descarrega o backup no dashboard do projeto antigo; se for `.gz`, descompacta.
+4. Restaura com `psql -d "SUA_CONNECTION_STRING" -f caminho/do/backup` (avisos tipo "already exists" podem ser normais — ver a doc).
+5. No projeto novo: **Authentication → URL configuration** — `Site URL` e **Redirect URLs** com o URL da Vercel e `http://localhost:3000`.
+6. Se usares **Storage**: os metadados podem restaurar; os ficheiros em S3 podem precisar de migração extra (a doc liga para um notebook Colab).
+7. Atualiza as variáveis na Vercel e no `.env.local` com a URL e **anon key** do **projeto novo**.
+
+### Projeto novo sem restore (schema vazio)
+
+1. No dashboard do projeto Supabase: **SQL Editor → New query**.
+2. Cola o conteúdo de [`supabase/migrations/20260323190000_initial_app_schema.sql`](supabase/migrations/20260323190000_initial_app_schema.sql) e executa **Run** (projeto sem tabelas `public` conflituosas; ideal em base nova).
+3. **Authentication → URL configuration**: `Site URL` e redirects com o URL da Vercel e `http://localhost:3000`.
+4. Confirma `.env.local` / Vercel com `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` desse projeto.
 
 ### Outras plataformas
 

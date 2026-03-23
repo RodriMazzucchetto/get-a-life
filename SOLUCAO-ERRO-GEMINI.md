@@ -78,7 +78,7 @@ Selecione uma frente de vida.
 ```
 ❌ GenAI não inicializado - API Key ausente
 ```
-**Solução**: Verifique se `NEXT_PUBLIC_GEMINI_API_KEY` está no `.env.local`
+**Solução**: Verifique se `GEMINI_API_KEY` está no `.env.local` (e reinicie o servidor `npm run dev`)
 
 ### **Erro de Rede**
 ```
