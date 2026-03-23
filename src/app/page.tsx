@@ -1,73 +1,24 @@
-'use client'
+"use client";
 
 import { useAuthContext } from "@/contexts/AuthContext";
-import Link from "next/link";
+import { HomeLanding } from "@/components/landing/HomeLanding";
 
 export default function Home() {
   const { user, loading } = useAuthContext();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-on-surface">
+        <div
+          className="h-12 w-12 rounded-full border-2 border-outline-variant border-t-primary animate-spin"
+          aria-hidden
+        />
+        <p className="text-sm font-medium text-on-surface-variant font-body">
+          A carregar…
+        </p>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6">
-            Planejamento GTD
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-600 mb-8">
-            Projetos, tarefas e metas num só lugar
-          </p>
-          
-          {user ? (
-            <div className="space-y-4">
-              <p className="text-lg text-gray-700">
-                Bem-vindo de volta, {user.email}!
-              </p>
-              <div className="flex gap-4 justify-center">
-                <Link
-                  href="/dashboard/planning"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
-                >
-                  Ir para o planejamento
-                </Link>
-                <Link
-                  href="/auth/logout"
-                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
-                >
-                  Sair
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-lg text-gray-700 mb-8">
-                Entre para organizar o seu planejamento
-              </p>
-              <div className="flex gap-4 justify-center">
-                <Link
-                  href="/auth/login"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
-                >
-                  Entrar
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
-                >
-                  Criar Conta
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  return <HomeLanding user={user} />;
 }
