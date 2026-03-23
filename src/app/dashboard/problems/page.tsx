@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -21,7 +21,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { TrashIcon } from "@heroicons/react/24/outline";
-import ModalOverlay from "@/components/ModalOverlay";
 import { useAuthContext } from "@/contexts/AuthContext";
 import {
   problemsService,
@@ -186,9 +185,9 @@ export default function ProblemsPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createTitle, setCreateTitle] = useState("");
-  const [createProjectId, setCreateProjectId] = useState<string | null>(null);
+  /** Projeto do formulário rápido — "" = sem projeto (igual ao select de tarefas) */
+  const [quickProjectId, setQuickProjectId] = useState("");
+  const quickInputRef = useRef<HTMLInputElement>(null);
 
   const dragDisabled = filterProjectId === "all";
 
@@ -277,25 +276,22 @@ export default function ProblemsPage() {
     return { openCount: open.length, projectWithOpenCount: projectKeys.size };
   }, [problems]);
 
-  const openCreate = useCallback((prefillTitle?: string) => {
-    setCreateTitle(prefillTitle?.trim() ?? "");
-    setCreateProjectId(projects[0]?.id ?? null);
-    setCreateOpen(true);
+  const focusQuickAdd = useCallback(() => {
+    setTab("active");
     setError(null);
-  }, [projects]);
+    requestAnimationFrame(() => quickInputRef.current?.focus());
+  }, []);
 
-  const submitCreate = async () => {
-    if (!user || !createTitle.trim()) return;
+  const submitQuickAdd = async () => {
+    if (!user || !draft.trim()) return;
     setSaving(true);
     setError(null);
     try {
       const row = await problemsService.createProblem(user.id, {
-        title: createTitle.trim(),
-        project_id: createProjectId,
+        title: draft.trim(),
+        project_id: quickProjectId === "" ? null : quickProjectId,
       });
       setProblems((prev) => [...prev, fromDbProblem(row)]);
-      setCreateOpen(false);
-      setCreateTitle("");
       setDraft("");
       setTab("active");
     } catch (e) {
@@ -423,7 +419,7 @@ export default function ProblemsPage() {
             </Link>
             <button
               type="button"
-              onClick={() => openCreate()}
+              onClick={focusQuickAdd}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-primary shadow-sm transition-all hover:bg-primary-container active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-lg">add</span>
@@ -442,30 +438,56 @@ export default function ProblemsPage() {
         </div>
       )}
 
-      {/* Quick entry */}
+      {/* Formulário rápido — título + projeto no mesmo bloco (como tarefas no planejamento) */}
       <section className="mb-10">
-        <div className="group relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-            <span className="material-symbols-outlined text-primary">add_circle</span>
-          </div>
-          <input
-            type="text"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && draft.trim()) {
-                e.preventDefault();
-                openCreate(draft);
-              }
-            }}
-            placeholder="Adicionar novo problema…"
-            disabled={saving}
-            className="block w-full rounded-2xl border-0 bg-surface-container-lowest py-5 pl-12 pr-36 font-headline text-lg shadow-sm ring-1 ring-outline-variant/10 placeholder:text-outline/50 focus:ring-2 focus:ring-primary/20"
-          />
-          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-            <span className="rounded bg-surface-container px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-outline">
-              Enter para definir projeto
-            </span>
+        <div className="rounded-2xl bg-surface-container-lowest p-4 shadow-sm ring-1 ring-outline-variant/10 sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined mt-2 shrink-0 text-primary">add_circle</span>
+            <div className="min-w-0 flex-1">
+              <input
+                ref={quickInputRef}
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && draft.trim()) {
+                    e.preventDefault();
+                    void submitQuickAdd();
+                  }
+                }}
+                placeholder="Adicionar novo problema…"
+                disabled={saving}
+                className="w-full border-0 bg-transparent py-2 font-headline text-lg text-on-surface placeholder:text-outline/50 focus:outline-none focus:ring-0"
+              />
+              <div className="mt-4 flex flex-col gap-3 border-t border-outline-variant/15 pt-4 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-md">
+                  <label htmlFor="quick-problem-project" className="shrink-0 text-sm text-on-surface-variant">
+                    Projeto:
+                  </label>
+                  <select
+                    id="quick-problem-project"
+                    value={quickProjectId}
+                    onChange={(e) => setQuickProjectId(e.target.value)}
+                    className="min-w-0 flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-sm font-medium text-on-surface shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">Sem projeto</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  disabled={saving || !draft.trim()}
+                  onClick={() => void submitQuickAdd()}
+                  className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-on-primary shadow-sm transition-colors hover:bg-primary-container disabled:opacity-50 sm:ml-auto"
+                >
+                  {saving ? "A guardar…" : "Adicionar"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -626,96 +648,13 @@ export default function ProblemsPage() {
       <div className="fixed bottom-8 right-8 z-20 lg:right-10">
         <button
           type="button"
-          onClick={() => openCreate()}
+          onClick={focusQuickAdd}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-2xl transition-transform hover:scale-105 active:scale-95"
           aria-label="Novo problema"
         >
           <span className="material-symbols-outlined text-3xl">add</span>
         </button>
       </div>
-
-      <ModalOverlay isOpen={createOpen} onClose={() => setCreateOpen(false)}>
-        <div
-          className="relative w-full max-w-md rounded-2xl bg-surface-container-lowest p-6 shadow-2xl ring-1 ring-outline-variant/15"
-          aria-labelledby="problem-modal-title"
-        >
-          <h2 id="problem-modal-title" className="font-headline text-lg font-bold text-on-surface">
-            Novo problema
-          </h2>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Escolha a que projeto este problema pertence.
-          </p>
-          <label className="mt-6 block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-            Título
-          </label>
-          <input
-            type="text"
-            value={createTitle}
-            onChange={(e) => setCreateTitle(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-outline-variant/30 bg-background px-4 py-3 text-on-surface shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="Descreva o problema…"
-            autoFocus
-          />
-          <p className="mt-6 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-            Projeto
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setCreateProjectId(null)}
-              className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${
-                createProjectId === null
-                  ? "bg-primary text-on-primary"
-                  : "bg-surface-container-high text-on-surface hover:bg-surface-container"
-              }`}
-            >
-              Sem projeto
-            </button>
-            {projects.map((p) => {
-              const on = createProjectId === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setCreateProjectId(p.id)}
-                  className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${
-                    on ? "text-white shadow-sm" : "bg-surface-container-lowest ring-1 ring-outline-variant/20"
-                  }`}
-                  style={on ? { backgroundColor: p.color } : undefined}
-                >
-                  {projectShortCode(p.name)} — {p.name}
-                </button>
-              );
-            })}
-          </div>
-          {projects.length === 0 && (
-            <p className="mt-4 text-sm text-on-surface-variant">
-              Crie projetos em{" "}
-              <Link href="/dashboard/planning" className="font-semibold text-primary underline">
-                Planejamento
-              </Link>
-              .
-            </p>
-          )}
-          <div className="mt-8 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setCreateOpen(false)}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              disabled={saving || !createTitle.trim()}
-              onClick={() => void submitCreate()}
-              className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-on-primary shadow-sm hover:bg-primary-container disabled:opacity-50"
-            >
-              {saving ? "A guardar…" : "Criar"}
-            </button>
-          </div>
-        </div>
-      </ModalOverlay>
     </div>
   );
 }
