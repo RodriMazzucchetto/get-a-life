@@ -1289,22 +1289,33 @@ export default function PlanningPage() {
 
         {/* Conteúdo expandido */}
         {goalsExpanded && (
-          <div className="px-6 pb-6 border-t border-gray-100">
+          <div className="px-6 pb-6 border-t border-outline-variant/15">
             {goals.length === 0 ? (
-              <div className="py-8 text-center">
-                <div className="text-gray-400 text-4xl mb-4">🎯</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma meta criada</h3>
-                <p className="text-gray-600 mb-4">Você ainda não tem metas definidas. Use o botão abaixo para criar sua primeira meta.</p>
+              <div className="py-8 md:py-12 px-4 flex flex-col items-center justify-center text-center">
+                <div className="w-24 h-24 mb-6 rounded-full bg-surface-container-low flex items-center justify-center relative overflow-hidden ring-1 ring-outline-variant/10">
+                  <img
+                    alt=""
+                    className="w-16 h-16 object-cover z-10 rounded-lg"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2voAUwzAD7ptpQvfdImRg_R6NtEtvgcNhVQL-5zJqXJI1-O4k3EPuy7loSJxsAVNKWdk1q19VCyMVVuCoX5YH75z7-gP7SUTDzjTlOxTzgkVOs2XhD-arVlvAyqxG2jiKTLPJb2LsdBOYTS0AkCOJ6nE13qIbntH8vi1rZS_WXNeBZwFe1mfIWu9lij9LRS62Mkpa02fimyAf0QljOoA5d45UxogWsGujyGyXqVdCglk4d3fKbszQA5BmRNf5pThcFnIw7J8xupJO"
+                    width={64}
+                    height={64}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent pointer-events-none" aria-hidden />
+                </div>
+                <h3 className="font-headline font-bold text-lg text-primary mb-2 max-w-sm">
+                  Defina seus objetivos principais
+                </h3>
+                <p className="text-on-surface-variant text-sm max-w-xs mb-6 leading-relaxed">
+                  Mantenha o foco no que realmente importa criando metas trimestrais ou mensais.
+                </p>
                 <button
+                  type="button"
                   onClick={() => {
                     setEditingGoal(null)
                     setShowGoalModal(true)
                   }}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-headline font-semibold text-sm shadow-md hover:bg-primary-container transition-colors active:scale-[0.98]"
                 >
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
                   Criar Primeira Meta
                 </button>
               </div>
