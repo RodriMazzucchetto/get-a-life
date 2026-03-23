@@ -486,15 +486,25 @@ export const problemsService = {
     data: { title: string; project_id: string | null }
   ): Promise<DBProblem> {
     const supabase = createClient()
+
+    // Posição no fim da lista deste projeto (evita round-trip frágil com .is(null) em alguns setups).
+    let nextPos = Date.now()
     let q = supabase.from('problems').select('pos').eq('user_id', userId)
     if (data.project_id === null) {
-      q = q.is('project_id', null)
+      q = q.filter('project_id', 'is', null)
     } else {
       q = q.eq('project_id', data.project_id)
     }
-    const { data: maxInProject } = await q.order('pos', { ascending: false }).limit(1).maybeSingle()
+    const { data: maxRow, error: maxErr } = await q
+      .order('pos', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-    const nextPos = maxInProject?.pos != null ? maxInProject.pos + 1000 : 1000
+    if (maxErr) {
+      console.error('Erro ao ler posição máxima (problems):', maxErr)
+    } else if (maxRow?.pos != null) {
+      nextPos = maxRow.pos + 1000
+    }
 
     const { data: row, error } = await supabase
       .from('problems')

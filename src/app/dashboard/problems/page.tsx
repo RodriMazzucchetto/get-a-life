@@ -35,6 +35,10 @@ import {
   formatRelativeDaysPt,
   projectPrefixLabel,
 } from "@/lib/problemHelpers";
+import {
+  friendlySchemaHint,
+  getSupabaseErrorMessage,
+} from "@/lib/supabaseErrors";
 
 const NONE = "__none__";
 
@@ -191,7 +195,11 @@ export default function ProblemsPage() {
       setProblems(pr.map(fromDbProblem));
     } catch (e) {
       console.error(e);
-      setError("Não foi possível carregar os dados.");
+      const raw = getSupabaseErrorMessage(e);
+      setError(
+        friendlySchemaHint(raw) ??
+          `Não foi possível carregar os dados: ${raw}`
+      );
     } finally {
       setLoading(false);
     }
@@ -250,7 +258,8 @@ export default function ProblemsPage() {
       );
     } catch (e) {
       console.error(e);
-      setError("Não foi possível reordenar.");
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível reordenar: ${raw}`);
     }
   };
 
@@ -268,7 +277,11 @@ export default function ProblemsPage() {
       setDraft("");
     } catch (e) {
       console.error(e);
-      setError("Não foi possível criar o problema.");
+      const raw = getSupabaseErrorMessage(e);
+      setError(
+        friendlySchemaHint(raw) ??
+          `Não foi possível criar o problema: ${raw}`
+      );
     } finally {
       setSaving(false);
     }
@@ -282,7 +295,8 @@ export default function ProblemsPage() {
       setProblems((prev) => prev.map((x) => (x.id === id ? fromDbProblem(row) : x)));
     } catch (e) {
       console.error(e);
-      setError("Não foi possível atualizar.");
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível atualizar: ${raw}`);
     }
   };
 
@@ -292,7 +306,8 @@ export default function ProblemsPage() {
       setProblems((prev) => prev.filter((p) => p.id !== id));
     } catch (e) {
       console.error(e);
-      setError("Não foi possível excluir.");
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível excluir: ${raw}`);
     }
   };
 
