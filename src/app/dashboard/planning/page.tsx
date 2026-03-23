@@ -11,10 +11,7 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
-import { useOffWorkIdeas } from '@/hooks/useOffWorkIdeas'
-import IdeaModal from '@/components/offwork/IdeaModal'
 import PomodoroTimer from '@/components/Timer/PomodoroTimer'
-import { OffWorkIdea, CreateIdeaData } from '@/types/offwork'
 import {
   DndContext,
   closestCenter,
@@ -315,41 +312,9 @@ export default function PlanningPage() {
 
   // Estados para metas
   const [goalsExpanded, setGoalsExpanded] = useState(false)
-  
-  // Estados para Off Work
-  const [offWorkExpanded, setOffWorkExpanded] = useState(false)
-  
-  // Estados para categorias Off Work
-  const [viagensExpanded, setViagensExpanded] = useState(false)
-  const [miniAventurasExpanded, setMiniAventurasExpanded] = useState(false)
-  const [esporteExpanded, setEsporteExpanded] = useState(false)
-  const [crescimentoExpanded, setCrescimentoExpanded] = useState(false)
-  const [socialExpanded, setSocialExpanded] = useState(false)
-  const [relacionamentosExpanded, setRelacionamentosExpanded] = useState(false)
-  const [lifestyleExpanded, setLifestyleExpanded] = useState(false)
-  const [hobbiesExpanded, setHobbiesExpanded] = useState(false)
-
-  // Hook para dados Off Work
-  const {
-    ideas: offWorkIdeas,
-    loading: offWorkLoading,
-    createIdea,
-    updateIdea,
-    deleteIdea,
-    prioritizeIdea,
-    removePriority,
-    getPrioritizedIdeas,
-    getRegularIdeas
-  } = useOffWorkIdeas()
-
 
   const [showEditGoalModal, setShowEditGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
-  
-  // Estados para modal de ideias Off Work
-  const [showIdeaModal, setShowIdeaModal] = useState(false)
-  const [ideaModalMode, setIdeaModalMode] = useState<'create' | 'edit'>('create')
-  const [editingIdea, setEditingIdea] = useState<OffWorkIdea | null>(null)
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -721,59 +686,6 @@ export default function PlanningPage() {
       updated_at: new Date().toISOString()
     }
   ]
-
-  // Funções para gerenciar ideias Off Work
-  const handleCreateIdea = () => {
-    setIdeaModalMode('create')
-    setEditingIdea(null)
-    setShowIdeaModal(true)
-  }
-
-  const handleEditIdea = (idea: OffWorkIdea) => {
-    setEditingIdea(idea)
-    setIdeaModalMode('edit')
-    setShowIdeaModal(true)
-  }
-
-  const handleDeleteIdea = async (ideaId: string) => {
-    try {
-      await deleteIdea(ideaId)
-    } catch (error) {
-      console.error('Error deleting idea:', error)
-    }
-  }
-
-  const handleSaveIdea = async (ideaData: Partial<OffWorkIdea>) => {
-    try {
-      if (ideaModalMode === 'create') {
-        await createIdea(ideaData as CreateIdeaData)
-        setShowIdeaModal(false)
-      } else if (ideaModalMode === 'edit' && editingIdea) {
-        await updateIdea(editingIdea.id, ideaData)
-        setShowIdeaModal(false)
-        setEditingIdea(null)
-      }
-    } catch (error) {
-      console.error('Error saving idea:', error)
-      throw error
-    }
-  }
-
-  const handlePrioritizeIdea = async (ideaId: string) => {
-    try {
-      await prioritizeIdea(ideaId)
-    } catch (error) {
-      console.error('Error prioritizing idea:', error)
-    }
-  }
-
-  const handleRemovePriority = async (ideaId: string) => {
-    try {
-      await removePriority(ideaId)
-    } catch (error) {
-      console.error('Error removing priority:', error)
-    }
-  }
 
   // Funções para iniciativas
   const handleAddInitiative = () => {
@@ -1933,206 +1845,6 @@ export default function PlanningPage() {
         )}
       </div>
 
-      {/* Elemento de Off Work */}
-      <div className="bg-white rounded-lg shadow border border-gray-200">
-        <div 
-          className="p-6 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-          onClick={() => setOffWorkExpanded(!offWorkExpanded)}
-        >
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                  <div className="w-4 h-4 bg-white rounded-full"></div>
-                </div>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Off Work</h2>
-                <p className="text-sm text-gray-600">
-                  Atividades e ideias para o tempo livre
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleCreateIdea}
-                className="inline-flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
-                title="Nova Ideia"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
-                <svg className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${offWorkExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Ideias da Semana - Sempre visíveis */}
-          <div className="mb-4">
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <h3 className="font-semibold text-gray-800 text-sm">Ideias da Semana</h3>
-              </div>
-              {offWorkLoading ? (
-                <div className="text-sm text-gray-500 italic">Carregando...</div>
-              ) : getPrioritizedIdeas().length > 0 ? (
-                <div className="space-y-2">
-                  {getPrioritizedIdeas().map((idea) => (
-                    <div key={idea.id} className="group p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors duration-200 border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-gray-900 truncate">{idea.title}</h4>
-                            {idea.description && (
-                              <span className="text-sm text-gray-500 truncate">• {idea.description}</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                          {/* Tags */}
-                          {idea.tags && idea.tags.length > 0 && (
-                            <div className="flex gap-1">
-                              {idea.tags.map((tag, index) => (
-                                <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          
-                          {/* Botão para remover priorização */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleRemovePriority(idea.id)
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-all duration-200"
-                            title="Remover da semana"
-                          >
-                            <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-gray-600 italic">
-                  Nenhuma ideia priorizada para esta semana ainda
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Botão para expandir lista completa */}
-          <button
-            onClick={() => setOffWorkExpanded(!offWorkExpanded)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors duration-200"
-          >
-            <span>{offWorkExpanded ? 'Ocultar' : 'Ver'} todas as ideias</span>
-            <svg className={`h-4 w-4 transition-transform duration-200 ${offWorkExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Conteúdo expandido */}
-        {offWorkExpanded && (
-          <div className="px-6 pb-6 border-t border-gray-100">
-            <div className="space-y-3">
-              {offWorkLoading ? (
-                <div className="text-center text-gray-500 py-4">
-                  <p>Carregando categorias Off Work...</p>
-                </div>
-              ) : getRegularIdeas().length > 0 ? (
-                getRegularIdeas().map((idea) => (
-                  <div key={idea.id} className="group p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 border border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium text-gray-900 truncate">{idea.title}</h4>
-                          {idea.description && (
-                            <span className="text-sm text-gray-500 truncate">• {idea.description}</span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                        {/* Tags */}
-                        {idea.tags && idea.tags.length > 0 && (
-                          <div className="flex gap-1">
-                            {idea.tags.map((tag, index) => (
-                              <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {/* Botões de ação */}
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handlePrioritizeIdea(idea.id)
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
-                            title="Priorizar para esta semana"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleEditIdea(idea)
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Editar ideia"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (confirm('Tem certeza que deseja remover esta ideia?')) {
-                                handleDeleteIdea(idea.id)
-                              }
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Remover ideia"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-gray-500 py-4">
-                  <p>Nenhuma ideia criada ainda. Clique no botão &quot;+&quot; para criar sua primeira ideia!</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Container para os blocos com DndContext unificado */}
       <DndContext
         sensors={sensors}
@@ -3209,14 +2921,6 @@ export default function PlanningPage() {
         onDeleteGoal={handleDeleteGoal}
       />
 
-      {/* Modal para gerenciar ideias Off Work */}
-      <IdeaModal
-        isOpen={showIdeaModal}
-        onClose={() => setShowIdeaModal(false)}
-        onSave={handleSaveIdea}
-        idea={editingIdea}
-        mode={ideaModalMode}
-      />
     </div>
   )
 }

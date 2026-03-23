@@ -34,7 +34,7 @@ export default function LoginPage() {
 
     // Se não houve erro, o usuário foi autenticado
     // O middleware ou o contexto de auth vai redirecionar automaticamente
-    router.push('/dashboard')
+    router.push('/dashboard/planning')
   }
 
   return (

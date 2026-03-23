@@ -22,7 +22,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (user) {
-      router.replace('/dashboard')
+      router.replace('/dashboard/planning')
     }
   }, [user, router])
 
@@ -69,12 +69,12 @@ export default function RegisterPage() {
         
         // Se temos usuário e sessão, redireciona imediatamente
         if (data.user && data.session) {
-          router.push('/dashboard')
+          router.push('/dashboard/planning')
         } else {
           // Se não temos sessão (email confirmation required), ainda redireciona
           setNeedsEmailConfirmation(true)
           setTimeout(() => {
-            router.push('/dashboard')
+            router.push('/dashboard/planning')
           }, 2000)
         }
       }

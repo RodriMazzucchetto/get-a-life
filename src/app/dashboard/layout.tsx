@@ -10,14 +10,7 @@ interface DashboardLayoutProps {
 }
 
 const navigation = [
-  { name: 'Home', href: '/dashboard', active: true },
-  { name: 'Minhas Memórias', href: '/dashboard/memories', active: true },
-  { name: 'Viagens', href: '/dashboard/travels', active: true },
   { name: 'Planejamento', href: '/dashboard/planning', active: true },
-  { name: 'Off Work', href: '/dashboard/off-work', active: true },
-  { name: 'Radar da Vida', href: '/dashboard/radar', active: false, comingSoon: true },
-  { name: 'Mini-desafios', href: '/dashboard/challenges', active: false, comingSoon: true },
-  { name: 'Relatórios', href: '/dashboard/reports', active: false, comingSoon: true },
   { name: 'Configurações', href: '/dashboard/settings', active: true },
 ]
 
@@ -38,7 +31,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
-            <h1 className="text-xl font-bold text-gray-900">Get a Life</h1>
+            <h1 className="text-xl font-bold text-gray-900">Planejamento</h1>
             <button
               onClick={() => setSidebarOpen(false)}
               className="text-gray-400 hover:text-gray-600"
@@ -59,11 +52,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 onClick={!item.active ? (e) => e.preventDefault() : undefined}
               >
                 {item.name}
-                {item.comingSoon && (
-                  <span className="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
-                    Em breve
-                  </span>
-                )}
               </Link>
             ))}
           </nav>
@@ -74,7 +62,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
           <div className="flex h-16 items-center px-4">
-            <h1 className="text-xl font-bold text-gray-900">Get a Life</h1>
+            <h1 className="text-xl font-bold text-gray-900">Planejamento</h1>
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => (
@@ -89,11 +77,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 onClick={!item.active ? (e) => e.preventDefault() : undefined}
               >
                 {item.name}
-                {item.comingSoon && (
-                  <span className="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">
-                    Em breve
-                  </span>
-                )}
               </Link>
             ))}
           </nav>

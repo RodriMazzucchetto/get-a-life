@@ -19,10 +19,10 @@ export default function Home() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center max-w-4xl mx-auto">
           <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6">
-            Get a Life
+            Planejamento GTD
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-8">
-            Saia do piloto automático e comece a viver experiências mais significativas no dia a dia
+            Projetos, tarefas e metas num só lugar
           </p>
           
           {user ? (
@@ -32,10 +32,10 @@ export default function Home() {
               </p>
               <div className="flex gap-4 justify-center">
                 <Link
-                  href="/dashboard"
+                  href="/dashboard/planning"
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
                 >
-                  Ir para o Dashboard
+                  Ir para o planejamento
                 </Link>
                 <Link
                   href="/auth/logout"
@@ -48,7 +48,7 @@ export default function Home() {
           ) : (
             <div className="space-y-4">
               <p className="text-lg text-gray-700 mb-8">
-                Descubra atividades personalizadas baseadas no seu humor, localização e tempo livre
+                Entre para organizar o seu planejamento
               </p>
               <div className="flex gap-4 justify-center">
                 <Link

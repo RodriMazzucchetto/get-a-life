@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Get a Life - Viva experiências significativas",
-  description: "Saia do piloto automático e comece a viver experiências mais significativas no dia a dia",
+  title: "Planejamento GTD",
+  description: "Organize projetos, tarefas e metas no seu planejamento.",
 };
 
 export default function RootLayout({

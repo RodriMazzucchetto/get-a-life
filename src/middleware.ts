@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   // If there's a user and they're trying to access auth pages,
   // redirect them to the dashboard
   if (user && (request.nextUrl.pathname.startsWith('/auth'))) {
-    const redirectUrl = new URL('/dashboard', request.url)
+    const redirectUrl = new URL('/dashboard/planning', request.url)
     return NextResponse.redirect(redirectUrl)
   }
 
