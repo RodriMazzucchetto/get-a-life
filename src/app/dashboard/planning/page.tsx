@@ -395,13 +395,14 @@ export default function PlanningPage() {
   )
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
-  const newTaskTitleInputRef = useRef<HTMLInputElement>(null)
+  const weekInlineFormRef = useRef<HTMLDivElement>(null)
+  const backlogInlineFormRef = useRef<HTMLDivElement>(null)
+  const inProgressInlineFormRef = useRef<HTMLDivElement>(null)
   const activeDragTodo = useMemo(() => {
     if (!activeDragId || activeDragId.startsWith('group-')) return undefined
     return todos.find((t) => t.id === activeDragId)
   }, [activeDragId, todos])
 
-  const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showProjectsModal, setShowProjectsModal] = useState(false)
   const [showGoalModal, setShowGoalModal] = useState(false)
@@ -412,13 +413,6 @@ export default function PlanningPage() {
   // Estado de editingTag REMOVIDO
   // Estado de newProject REMOVIDO
   // Estado de newTag REMOVIDO
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
-    dueDate: ''
-  })
-
   // Estados para metas
   const [goalsExpanded, setGoalsExpanded] = useState(false)
 
@@ -643,15 +637,6 @@ export default function PlanningPage() {
     await updateGoal(goalId, { progress: newProgress })
   }
 
-  const handleCreateTask = () => {
-    if (newTask.title.trim()) {
-      // Aqui você pode adicionar a lógica para salvar a tarefa
-      console.log('Nova tarefa:', newTask)
-      setNewTask({ title: '', description: '', priority: 'medium' as 'low' | 'medium' | 'high', dueDate: '' })
-      setShowTaskModal(false)
-    }
-  }
-
   const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
     switch (priority) {
       case 'high':
@@ -793,15 +778,6 @@ export default function PlanningPage() {
       seedDefaultReminders()
     }
   }, [showRemindersModal, seedDefaultReminders])
-
-  useEffect(() => {
-    if (!showTaskModal) return
-    const id = requestAnimationFrame(() => {
-      newTaskTitleInputRef.current?.focus()
-      newTaskTitleInputRef.current?.select()
-    })
-    return () => cancelAnimationFrame(id)
-  }, [showTaskModal])
 
   // Funções para to-dos
   const handleCreateTodo = async () => {
@@ -1148,6 +1124,84 @@ export default function PlanningPage() {
     }
   }
 
+  const openWeekInlineCreate = () => {
+    setShowBacklogCreateForm(false)
+    setShowInProgressCreateForm(false)
+    setShowInlineCreateForm(true)
+  }
+
+  const openBacklogInlineCreate = () => {
+    setShowInlineCreateForm(false)
+    setShowInProgressCreateForm(false)
+    setShowBacklogCreateForm(true)
+  }
+
+  const openInProgressInlineCreate = () => {
+    setShowInlineCreateForm(false)
+    setShowBacklogCreateForm(false)
+    setShowInProgressCreateForm(true)
+  }
+
+  useEffect(() => {
+    if (!showInlineCreateForm) return
+    const onDown = (e: MouseEvent) => {
+      const el = weekInlineFormRef.current
+      if (!el || el.contains(e.target as Node)) return
+      if (!newTodo.title.trim()) handleCancelCreate()
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showInlineCreateForm, newTodo.title])
+
+  useEffect(() => {
+    if (!showInlineCreateForm) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCancelCreate()
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [showInlineCreateForm])
+
+  useEffect(() => {
+    if (!showBacklogCreateForm) return
+    const onDown = (e: MouseEvent) => {
+      const el = backlogInlineFormRef.current
+      if (!el || el.contains(e.target as Node)) return
+      if (!newBacklogTodo.title.trim()) handleCancelBacklogCreate()
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showBacklogCreateForm, newBacklogTodo.title])
+
+  useEffect(() => {
+    if (!showBacklogCreateForm) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCancelBacklogCreate()
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [showBacklogCreateForm])
+
+  useEffect(() => {
+    if (!showInProgressCreateForm) return
+    const onDown = (e: MouseEvent) => {
+      const el = inProgressInlineFormRef.current
+      if (!el || el.contains(e.target as Node)) return
+      if (!newInProgressTodo.title.trim()) handleCancelInProgressCreate()
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showInProgressCreateForm, newInProgressTodo.title])
+
+  useEffect(() => {
+    if (!showInProgressCreateForm) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCancelInProgressCreate()
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [showInProgressCreateForm])
+
   // Configuração dos sensores para drag and drop
   const sensors = useSensors(
   useSensor(PointerSensor),
@@ -1178,7 +1232,12 @@ export default function PlanningPage() {
           </button>
           <button
             type="button"
-            onClick={() => setShowTaskModal(true)}
+            onClick={() => {
+              openWeekInlineCreate()
+              requestAnimationFrame(() => {
+                document.getElementById('semana-atual')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              })
+            }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-headline font-bold rounded-lg shadow-sm hover:opacity-95 transition-all active:scale-[0.98]"
           >
             <PlusIcon className="h-4 w-4 shrink-0" />
@@ -1385,30 +1444,131 @@ export default function PlanningPage() {
                 className="space-y-4 min-h-[12rem] md:min-h-[14rem] max-h-[min(28rem,50vh)] overflow-y-auto pr-1 -mr-1"
               >
                 {inProgressTodos.length === 0 ? (
-                  <div className="py-10 md:py-12 px-4 flex flex-col items-center justify-center text-center bg-gradient-to-b from-primary/[0.02] to-transparent rounded-xl border border-dashed border-outline-variant/40">
-                    <button
-                      type="button"
-                      onClick={() => document.getElementById('pomodoro-section')?.scrollIntoView({ behavior: 'smooth' })}
-                      className="w-20 h-20 md:w-24 md:h-24 mb-5 flex items-center justify-center bg-surface-container-lowest rounded-3xl shadow-md ring-1 ring-outline-variant/10 group hover:scale-105 transition-transform cursor-pointer"
-                      aria-label="Ir ao timer Pomodoro"
-                    >
-                      <span className="material-symbols-outlined text-4xl md:text-5xl text-outline group-hover:text-primary transition-colors">
-                        play_circle
-                      </span>
-                    </button>
-                    <h3 className="font-headline font-bold text-lg text-on-surface mb-2">Nenhuma tarefa em progresso</h3>
-                    <p className="text-on-surface-variant text-sm max-w-md mb-5">
-                      Arraste uma tarefa da semana ou do backlog para cá, ou crie uma nova. O timer Pomodoro fica abaixo para sessões focadas.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowTaskModal(true)}
-                      className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:bg-primary-container transition-all shadow-md active:scale-95 flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-sm">bolt</span>
-                      Nova tarefa rápida
-                    </button>
-                  </div>
+                  showInProgressCreateForm ? (
+                    <>
+                      <div
+                        ref={inProgressInlineFormRef}
+                        className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex gap-1 cursor-move">
+                            <div className="flex flex-col gap-1">
+                              <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                              <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                              <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                              <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                              <div className="w-1 h-1 bg-gray-400 rounded-full" />
+                            </div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            disabled
+                            className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+                          />
+                          <input
+                            type="text"
+                            value={newInProgressTodo.title}
+                            onChange={(e) =>
+                              setNewInProgressTodo({ ...newInProgressTodo, title: e.target.value })
+                            }
+                            placeholder="Título da tarefa..."
+                            className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void handleCreateInProgressTodo()
+                            }}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={handleCancelInProgressCreate}
+                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                            title="Cancelar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="ml-16">
+                          {newInProgressTodo.projectId && projects.find((p) => p.id === newInProgressTodo.projectId) && (
+                            <div className="flex items-center gap-2 mb-3">
+                              <span
+                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                                style={{
+                                  backgroundColor:
+                                    projects.find((p) => p.id === newInProgressTodo.projectId)?.color ||
+                                    '#3B82F6',
+                                }}
+                              >
+                                {projects.find((p) => p.id === newInProgressTodo.projectId)?.name}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setNewInProgressTodo({ ...newInProgressTodo, projectId: undefined })
+                                  }
+                                  className="ml-2 text-white hover:text-gray-200"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-600">Projeto:</label>
+                            <select
+                              value={newInProgressTodo.projectId || ''}
+                              onChange={(e) =>
+                                setNewInProgressTodo({
+                                  ...newInProgressTodo,
+                                  projectId: e.target.value || undefined,
+                                })
+                              }
+                              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option value="">Sem projeto</option>
+                              {projects.map((project) => (
+                                <option key={project.id} value={project.id}>
+                                  {project.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className="min-h-[10rem] rounded-xl border border-dashed border-outline-variant/50 bg-surface-container-low/20"
+                        aria-label="Área para soltar tarefas em progresso"
+                      />
+                    </>
+                  ) : (
+                    <div className="py-10 md:py-12 px-4 flex flex-col items-center justify-center text-center bg-gradient-to-b from-primary/[0.02] to-transparent rounded-xl border border-dashed border-outline-variant/40">
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById('pomodoro-section')?.scrollIntoView({ behavior: 'smooth' })}
+                        className="w-20 h-20 md:w-24 md:h-24 mb-5 flex items-center justify-center bg-surface-container-lowest rounded-3xl shadow-md ring-1 ring-outline-variant/10 group hover:scale-105 transition-transform cursor-pointer"
+                        aria-label="Ir ao timer Pomodoro"
+                      >
+                        <span className="material-symbols-outlined text-4xl md:text-5xl text-outline group-hover:text-primary transition-colors">
+                          play_circle
+                        </span>
+                      </button>
+                      <h3 className="font-headline font-bold text-lg text-on-surface mb-2">Nenhuma tarefa em progresso</h3>
+                      <p className="text-on-surface-variant text-sm max-w-md mb-5">
+                        Arraste uma tarefa da semana ou do backlog para cá, ou crie uma nova. O timer Pomodoro fica abaixo para sessões focadas.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => openInProgressInlineCreate()}
+                        className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:bg-primary-container transition-all shadow-md active:scale-95 flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                        Nova Tarefa
+                      </button>
+                    </div>
+                  )
                 ) : (
                   <SortableContext
                     items={inProgressTodos.sort(sortTodosByPriorityAndPos).map((todo) => todo.id)}
@@ -1453,7 +1613,7 @@ export default function PlanningPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Seção de Semana Atual */}
-          <div className="flex flex-col gap-4 h-full">
+          <div className="flex flex-col gap-4 h-full" id="semana-atual">
             <div className="flex justify-between items-center gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <h2 className="font-headline font-bold text-on-surface truncate">Semana Atual</h2>
@@ -1463,7 +1623,7 @@ export default function PlanningPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowInlineCreateForm(true)}
+                onClick={() => openWeekInlineCreate()}
                 className="text-primary text-sm font-bold flex items-center gap-1 hover:underline shrink-0"
               >
                 <span className="material-symbols-outlined text-sm">add</span>
@@ -1477,7 +1637,7 @@ export default function PlanningPage() {
               {!showInlineCreateForm && weekTodos.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setShowInlineCreateForm(true)}
+                  onClick={() => openWeekInlineCreate()}
                   className="w-full mb-4 px-4 py-3 bg-surface-container-lowest border border-dashed border-outline-variant rounded-xl hover:bg-surface-container-high/80 transition-colors flex items-center justify-center gap-2 text-on-surface font-medium"
                 >
                   <span className="material-symbols-outlined text-lg">add</span>
@@ -1487,7 +1647,7 @@ export default function PlanningPage() {
 
               {/* Formulário inline para criar nova tarefa */}
               {showInlineCreateForm && (
-                <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+                <div ref={weekInlineFormRef} className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
                   {/* Primeira linha: Título e botão fechar */}
                   <div className="flex items-center gap-3 mb-3">
                     {/* Drag handle */}
@@ -1584,11 +1744,11 @@ export default function PlanningPage() {
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => setShowInlineCreateForm(true)}
+                    onClick={() => openWeekInlineCreate()}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
-                        setShowInlineCreateForm(true)
+                        openWeekInlineCreate()
                       }
                     }}
                     className="border-2 border-dashed border-outline-variant rounded-xl min-h-[16rem] flex flex-col items-center justify-center bg-surface-container-low/30 group cursor-pointer hover:bg-surface-container-low transition-all"
@@ -1645,7 +1805,7 @@ export default function PlanningPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowBacklogCreateForm(true)}
+                onClick={() => openBacklogInlineCreate()}
                 className="text-primary text-sm font-bold flex items-center gap-1 hover:underline shrink-0"
               >
                 <span className="material-symbols-outlined text-sm">add</span>
@@ -1658,7 +1818,7 @@ export default function PlanningPage() {
               {!showBacklogCreateForm && backlogTodos.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setShowBacklogCreateForm(true)}
+                  onClick={() => openBacklogInlineCreate()}
                   className="w-full mb-4 px-4 py-3 bg-surface-container-lowest border border-dashed border-outline-variant rounded-xl hover:bg-surface-container-high/80 transition-colors flex items-center justify-center gap-2 text-on-surface font-medium"
                 >
                   <span className="material-symbols-outlined text-lg">add</span>
@@ -1668,7 +1828,7 @@ export default function PlanningPage() {
 
               {/* Formulário inline para criar nova tarefa */}
               {showBacklogCreateForm && (
-                <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+                <div ref={backlogInlineFormRef} className="mb-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
                   <div className="flex items-center gap-3">
                     {/* Drag handle */}
                     <div className="flex gap-1 cursor-move">
@@ -1728,7 +1888,7 @@ export default function PlanningPage() {
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa no backlog</h3>
                     <p className="text-gray-600 mb-4">Adicione tarefas para o futuro para manter tudo organizado.</p>
                     <button
-                      onClick={() => setShowBacklogCreateForm(true)}
+                      onClick={() => openBacklogInlineCreate()}
                       className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                       <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1786,89 +1946,6 @@ export default function PlanningPage() {
       </DndContext>
 
       {/* Modal de Projetos e Tags REMOVIDO - será reimplementado do zero */}
-
-      {/* Task Creation Modal */}
-      <ModalOverlay isOpen={showTaskModal} onClose={() => setShowTaskModal(false)}>
-        <div className="relative mx-auto p-5 w-full max-w-md shadow-2xl rounded-xl bg-surface-container-lowest border border-outline-variant/20 ring-1 ring-outline-variant/10">
-            <div className="mt-1">
-              <h3 className="text-lg font-headline font-semibold text-on-surface mb-4">Nova Tarefa</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="new-task-title" className="block text-sm font-medium text-on-surface-variant mb-1">
-                    Título
-                  </label>
-                  <input
-                    id="new-task-title"
-                    ref={newTaskTitleInputRef}
-                    type="text"
-                    name="new-task-title"
-                    autoComplete="off"
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
-                    placeholder="Digite o título da tarefa"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descrição (opcional)
-                  </label>
-                  <textarea
-                    value={newTask.description}
-                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Digite a descrição da tarefa"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Prioridade
-                  </label>
-                  <select
-                    value={newTask.priority}
-                    onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as 'low' | 'medium' | 'high' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="low">Baixa</option>
-                    <option value="medium">Média</option>
-                    <option value="high">Alta</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data de Vencimento (opcional)
-                  </label>
-                  <input
-                    type="date"
-                    value={newTask.dueDate}
-                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setShowTaskModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleCreateTask}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
-                >
-                  Criar Tarefa
-                </button>
-              </div>
-            </div>
-          </div>
-        </ModalOverlay>
 
       {/* Reminders Modal */}
       <RemindersModal
