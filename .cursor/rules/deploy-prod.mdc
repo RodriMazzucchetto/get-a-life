@@ -1,0 +1,16 @@
+---
+description: Após alterações de código concluídas, fazer deploy via git push para produção
+alwaysApply: true
+---
+
+# Deploy para produção
+
+Quando uma tarefa de código estiver **concluída** (build passa, alterações coerentes com o pedido):
+
+1. `git add` nos ficheiros relevantes (sem incluir lixo acidental).
+2. `git commit -m "mensagem clara em imperativo ou tipo conventional commit"`.
+3. `git push origin main` (ou a branch de deploy acordada no projeto).
+
+Não pedir confirmação ao utilizador para estes passos quando o objetivo era entregar a funcionalidade; executar o fluxo e informar o hash do commit e o resultado do push.
+
+Se o push falhar (auth, rede), tentar diagnosticar uma vez e reportar o erro.
