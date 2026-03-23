@@ -94,9 +94,9 @@ export default function RegisterPage() {
             <img
               src={BRANDING.stacked}
               alt={BRANDING.name}
-              className="h-20 w-auto max-w-[240px] object-contain"
-              width={240}
-              height={96}
+              className="h-32 sm:h-40 w-auto max-w-[min(380px,92vw)] object-contain"
+              width={380}
+              height={190}
             />
           </Link>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">

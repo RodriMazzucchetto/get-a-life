@@ -98,9 +98,9 @@ export default function LoginPage() {
             <img
               src={BRANDING.stacked}
               alt={BRANDING.name}
-              className="h-24 sm:h-28 w-auto max-w-[min(280px,90vw)] object-contain mx-auto"
-              width={280}
-              height={112}
+              className="h-32 sm:h-40 w-auto max-w-[min(380px,92vw)] object-contain mx-auto"
+              width={380}
+              height={190}
             />
           </Link>
           <p className="font-headline text-on-surface-variant text-sm mt-4 tracking-tight">
