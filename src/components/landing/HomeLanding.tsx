@@ -27,13 +27,13 @@ export function HomeLanding({ user }: HomeLandingProps) {
   return (
     <>
       <nav className="bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-md flex justify-between items-center w-full px-6 md:px-8 py-4 max-w-full mx-auto fixed top-0 z-50">
-        <Link href="/" className="inline-flex items-center shrink-0">
+        <Link href="/" className="inline-flex items-center shrink-0 min-w-0">
           <img
             src={BRANDING.horizontal}
             alt={BRANDING.name}
-            className="h-8 sm:h-9 w-auto max-w-[200px] object-contain object-left"
-            width={200}
-            height={36}
+            className="h-14 sm:h-16 md:h-[4.5rem] w-auto max-w-[min(92vw,440px)] object-contain object-left"
+            width={420}
+            height={90}
           />
         </Link>
         <div className="hidden md:flex gap-8 items-center font-headline font-semibold text-sm tracking-tight">

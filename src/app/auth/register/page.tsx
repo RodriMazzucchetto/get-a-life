@@ -88,16 +88,18 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-lg w-full space-y-8">
         <div>
-          <Link href="/" className="flex justify-center mb-6">
-            <img
-              src={BRANDING.stacked}
-              alt={BRANDING.name}
-              className="h-32 sm:h-40 w-auto max-w-[min(380px,92vw)] object-contain"
-              width={380}
-              height={190}
-            />
+          <Link href="/" className="flex justify-center mb-6 w-full">
+            <div className="w-full flex justify-center origin-center scale-[1.2] sm:scale-[1.35] md:scale-150 px-1">
+              <img
+                src={BRANDING.stacked}
+                alt={BRANDING.name}
+                className="h-48 sm:h-56 md:h-64 w-auto max-w-[min(100%,520px)] object-contain"
+                width={520}
+                height={260}
+              />
+            </div>
           </Link>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Crie sua conta

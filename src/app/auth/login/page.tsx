@@ -92,16 +92,18 @@ export default function LoginPage() {
       <div className="absolute top-[-10%] left-[-5%] w-[40%] max-w-md h-[40%] bg-secondary-container/20 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-[30%] max-w-sm h-[30%] bg-tertiary-fixed/10 blur-[100px] rounded-full pointer-events-none" />
 
-      <section className="w-full max-w-[440px] z-10">
+      <section className="w-full max-w-[min(100vw-2rem,560px)] z-10">
         <div className="text-center mb-10">
-          <Link href="/" className="inline-flex flex-col items-center gap-3">
-            <img
-              src={BRANDING.stacked}
-              alt={BRANDING.name}
-              className="h-32 sm:h-40 w-auto max-w-[min(380px,92vw)] object-contain mx-auto"
-              width={380}
-              height={190}
-            />
+          <Link href="/" className="inline-flex flex-col items-center gap-3 w-full">
+            <div className="w-full flex justify-center px-1 origin-center scale-[1.2] sm:scale-[1.35] md:scale-150">
+              <img
+                src={BRANDING.stacked}
+                alt={BRANDING.name}
+                className="h-48 sm:h-56 md:h-64 w-auto max-w-[min(100%,520px)] object-contain mx-auto"
+                width={520}
+                height={260}
+              />
+            </div>
           </Link>
           <p className="font-headline text-on-surface-variant text-sm mt-4 tracking-tight">
             Precisão para o seu fluxo de trabalho
