@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { PlusIcon, ArrowRightIcon, FolderIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, FolderIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
 import { GoalManagementModal } from '@/components/GoalManagementModal'
@@ -59,8 +59,8 @@ function TodoDragOverlayPreview({
   const project = todo.projectId ? projects.find((p) => p.id === todo.projectId) : undefined
   return (
     <div
-      className={`pointer-events-none flex flex-col bg-white rounded-lg shadow-xl cursor-grabbing select-none ${
-        todo.onHold ? 'border-2 border-yellow-400' : 'border border-gray-200'
+      className={`pointer-events-none flex flex-col bg-surface-container-lowest rounded-xl shadow-xl cursor-grabbing select-none ring-1 ring-outline-variant/15 ${
+        todo.onHold ? 'ring-2 ring-yellow-400' : ''
       }`}
     >
       <div className="flex items-center gap-3 p-3">
@@ -151,12 +151,12 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex flex-col bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ${
+      className={`group flex flex-col bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 hover:shadow-md transition-all duration-200 ${
         isDragging ? 'pointer-events-none' : ''
       } ${
         todo.onHold 
-          ? 'border-2 border-yellow-400' 
-          : 'border border-gray-200'
+          ? 'ring-2 ring-yellow-400' 
+          : ''
       }`}
     >
       {/* Linha principal da atividade */}
@@ -235,7 +235,7 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
       {/* Tags no canto direito - removido temporariamente */}
 
       {/* Botões de ação (visíveis apenas no hover da atividade específica) - sobrepostos às tags */}
-      <div className="opacity-0 hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 absolute right-0 top-0 bottom-0 bg-white bg-opacity-90 px-2">
+      <div className="opacity-0 hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 absolute right-0 top-0 bottom-0 bg-surface-container-lowest/95 backdrop-blur-sm px-2">
         {/* Botão de editar */}
         <button
           onClick={() => onEdit(todo)}
@@ -1148,139 +1148,129 @@ export default function PlanningPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="border-b border-gray-200 pb-4">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-blue-600">Planejamento Semanal</h1>
-            <p className="mt-2 text-gray-600">
-              Organize suas tarefas entre backlog e semana atual
-            </p>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 flex-wrap justify-end">
-            <button
-              type="button"
-              onClick={() => setShowProjectsModal(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <FolderIcon className="h-5 w-5 text-blue-600" aria-hidden />
-              Projetos
-            </button>
-
-            {/* New Task Button */}
-            <button
-              onClick={() => setShowTaskModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Nova Tarefa
-            </button>
-            
-            {/* Exit Button */}
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-              <ArrowRightIcon className="h-4 w-4 mr-2" />
-              Sair
-            </button>
-          </div>
+      <header className="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 mb-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between bg-background/95 backdrop-blur-md border-b border-outline-variant/10">
+        <div>
+          <h1 className="font-headline text-xl font-bold tracking-tighter text-primary md:text-2xl">
+            Planejamento Semanal
+          </h1>
+          <p className="text-xs text-on-surface-variant font-medium mt-1 max-w-md">
+            Organize suas tarefas entre backlog e semana atual
+          </p>
         </div>
-      </div>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setShowProjectsModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-outline-variant text-primary bg-surface-container-lowest hover:bg-surface-container-high transition-all active:scale-[0.98]"
+          >
+            <FolderIcon className="h-5 w-5 text-primary shrink-0" aria-hidden />
+            Projetos
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowTaskModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-headline font-bold rounded-lg shadow-sm hover:opacity-95 transition-all active:scale-[0.98]"
+          >
+            <PlusIcon className="h-4 w-4 shrink-0" />
+            Nova Tarefa
+          </button>
+          <div className="hidden sm:block h-6 w-px bg-outline-variant/40" aria-hidden />
+          <button
+            type="button"
+            onClick={() => setShowRemindersModal(true)}
+            className="inline-flex items-center gap-2 p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"
+            title="Lembretes"
+          >
+            <span className="material-symbols-outlined text-[22px]">notifications</span>
+            <span className="text-xs font-bold text-on-surface-variant sm:hidden">{taskStats.reminders}</span>
+          </button>
+        </div>
+      </header>
 
       {boardError && (
         <div
-          className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800"
+          className="rounded-lg bg-error-container px-4 py-3 text-sm text-on-error-container ring-1 ring-outline-variant/10"
           role="alert"
         >
           {boardError}
         </div>
       )}
 
-      {/* Task Category Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {/* Em Progresso */}
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-          <div className="text-center">
-            <p className="text-gray-600 text-sm mb-2">Em Progresso</p>
-            <div className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
-              {taskStats.inProgress}
-            </div>
-          </div>
+      {/* Resumo — cartões */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-2">
+        <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/10 ring-1 ring-outline-variant/5">
+          <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
+            Em Progresso
+          </p>
+          <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.inProgress}</p>
         </div>
-
-        {/* Semana Atual */}
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-          <div className="text-center">
-            <p className="text-gray-600 text-sm mb-2">Semana Atual</p>
-            <div className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
-              {taskStats.currentWeek}
-            </div>
-          </div>
+        <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/10 ring-1 ring-outline-variant/5">
+          <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
+            Semana Atual
+          </p>
+          <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.currentWeek}</p>
         </div>
-
-        {/* Backlog */}
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-          <div className="text-center">
-            <p className="text-gray-600 text-sm mb-2">Backlog</p>
-            <div className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
-              {taskStats.backlog}
-            </div>
-          </div>
+        <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/30 ring-1 ring-outline-variant/5">
+          <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
+            Backlog
+          </p>
+          <p className="text-2xl font-bold font-headline text-primary">{taskStats.backlog}</p>
         </div>
-
-        {/* Concluídas */}
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-          <div className="text-center">
-            <p className="text-gray-600 text-sm mb-2">Concluídas</p>
-            <div className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
-              {taskStats.completed}
-            </div>
-          </div>
+        <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/10 ring-1 ring-outline-variant/5">
+          <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
+            Concluídas
+          </p>
+          <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.completed}</p>
         </div>
-
-        {/* Lembretes - Cliqueável */}
         <button
+          type="button"
           onClick={() => setShowRemindersModal(true)}
-          className="bg-orange-50 rounded-lg shadow p-4 border border-orange-200 hover:bg-orange-100 transition-colors duration-200"
+          className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-tertiary/20 ring-1 ring-outline-variant/5 hover:bg-surface-container-high/80 transition-colors text-left col-span-2 md:col-span-1"
         >
-          <div className="text-center">
-            <p className="text-orange-700 text-sm mb-2">Lembretes</p>
-            <div className="inline-flex items-center justify-center w-8 h-8 bg-orange-100 text-orange-600 rounded-full text-sm font-medium">
-              {taskStats.reminders}
-            </div>
-          </div>
+          <p className="text-xs font-semibold text-tertiary uppercase tracking-wider mb-1">Lembretes</p>
+          <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.reminders}</p>
         </button>
       </div>
 
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetectionStrategy}
+        onDragStart={(e) => setActiveDragId(String(e.active.id))}
+        onDragCancel={() => setActiveDragId(null)}
+        onDragEnd={(e) => {
+          setActiveDragId(null)
+          void handleDragEndBetweenBlocks(e)
+        }}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8 items-stretch">
+          <section className="lg:col-span-7 flex flex-col min-h-0">
       {/* Elemento de Metas */}
-      <div className="bg-white rounded-lg shadow border border-gray-200">
+      <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden flex flex-col h-full min-h-[280px]">
         <div 
-          className="p-6 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+          className="p-5 flex justify-between items-center cursor-pointer hover:bg-surface-container-high/30 transition-colors"
           onClick={() => setGoalsExpanded(!goalsExpanded)}
         >
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-center w-full gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                  <div className="w-4 h-4 bg-white rounded-full"></div>
-                </div>
-              </div>
+              <span className="material-symbols-outlined text-primary text-2xl">ads_click</span>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Metas</h2>
-                <p className="text-sm text-gray-600">
-                  {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}% média` : '0% média'}
-                </p>
+                <h2 className="font-headline font-bold text-lg text-on-surface">Metas</h2>
               </div>
+              <span className="bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0">
+                {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}%` : '0%'} média
+              </span>
             </div>
             
             <div className="flex items-center gap-3">
               {goals.length > 0 && (
                 <button
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
                     setEditingGoal(null)
                     setShowGoalModal(true)
                   }}
-                  className="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                  className="inline-flex items-center justify-center w-8 h-8 bg-primary text-on-primary rounded-full hover:bg-primary-container transition-colors duration-200"
                   title="Criar Nova Meta"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1342,40 +1332,23 @@ export default function PlanningPage() {
           </div>
         )}
       </div>
-
-      {/* Container para os blocos com DndContext unificado */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={collisionDetectionStrategy}
-        onDragStart={(e) => setActiveDragId(String(e.active.id))}
-        onDragCancel={() => setActiveDragId(null)}
-        onDragEnd={(e) => {
-          setActiveDragId(null)
-          void handleDragEndBetweenBlocks(e)
-        }}
-      >
-        {/* Bloco Em Progresso - Full Width */}
-        <div className="mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-purple-100 rounded-lg shadow border border-blue-200">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Em Progresso ({inProgressTodos.length})</h2>
-                    <p className="text-sm text-gray-600">Tarefas que estão sendo trabalhadas</p>
-                  </div>
+          </section>
+          <section className="lg:col-span-5 flex flex-col min-h-0">
+        {/* Bloco Em Progresso */}
+        <div className="mb-0 flex flex-col h-full min-h-[280px]">
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden flex flex-col flex-1">
+            <div className="p-5 flex justify-between items-center border-b border-outline-variant/10">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary text-2xl">timer</span>
+                <div>
+                  <h2 className="font-headline font-bold text-lg text-on-surface">Em Progresso ({inProgressTodos.length})</h2>
+                  <p className="text-xs text-on-surface-variant">Tarefas em foco</p>
                 </div>
               </div>
-
+            </div>
+            <div className="p-4 flex flex-col flex-1">
               {/* Timer Pomodoro */}
-              <div className="mb-6">
+              <div className="mb-4" id="pomodoro-section">
                 <PomodoroTimer 
                   onCycleComplete={(cycles) => {
                     console.log(`Ciclo completado! Total de ciclos hoje: ${cycles}`)
@@ -1386,10 +1359,12 @@ export default function PlanningPage() {
               {/* Conteúdo dos to-dos */}
               <DroppableColumn id={COL_IN_PROGRESS} className="space-y-4">
                 {inProgressTodos.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <div className="text-gray-400 text-4xl mb-4">🚀</div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa em progresso</h3>
-                    <p className="text-gray-600 mb-4">Arraste tarefas da Semana Atual ou Backlog para começar a trabalhar nelas.</p>
+                  <div className="py-6 flex flex-col items-center justify-center text-center flex-1 bg-surface-container-low/40 rounded-xl">
+                    <div className="w-16 h-16 mb-3 flex items-center justify-center bg-surface-container-lowest rounded-2xl shadow-sm ring-1 ring-outline-variant/10">
+                      <span className="material-symbols-outlined text-4xl text-outline">hourglass_empty</span>
+                    </div>
+                    <p className="text-on-surface-variant font-medium text-sm">Nenhuma tarefa em progresso</p>
+                    <p className="text-xs text-on-surface-variant/70 mt-1">Arraste da semana ou do backlog.</p>
                   </div>
                 ) : (
                   <SortableContext
@@ -1419,12 +1394,12 @@ export default function PlanningPage() {
             </div>
           </div>
         </div>
+          </section>
+        </div>
 
-
-        {/* Container para os blocos lado a lado */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Seção de Semana Atual */}
-          <div className="bg-white rounded-lg shadow border border-gray-200">
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden">
             <div className="p-6">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
@@ -1436,8 +1411,8 @@ export default function PlanningPage() {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Semana Atual ({weekTodos.length})</h2>
-                    <p className="text-sm text-gray-600">Tarefas e lembretes pessoais</p>
+                    <h2 className="font-headline text-xl font-bold text-on-surface">Semana Atual ({weekTodos.length})</h2>
+                    <p className="text-sm text-on-surface-variant">Tarefas e lembretes pessoais</p>
                   </div>
                 </div>
               </div>
@@ -1592,7 +1567,7 @@ export default function PlanningPage() {
           </div>
 
           {/* Seção de Backlog */}
-          <div className="bg-white rounded-lg shadow border border-gray-200">
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden">
             <div className="p-6">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
@@ -1604,8 +1579,8 @@ export default function PlanningPage() {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Backlog ({backlogTodos.length})</h2>
-                    <p className="text-sm text-gray-600">Tarefas para o futuro</p>
+                    <h2 className="font-headline text-xl font-bold text-on-surface">Backlog ({backlogTodos.length})</h2>
+                    <p className="text-sm text-on-surface-variant">Tarefas para o futuro</p>
                   </div>
                 </div>
               </div>
@@ -1722,6 +1697,17 @@ export default function PlanningPage() {
             </div>
           </div>
         </div>
+
+        <a
+          href="#pomodoro-section"
+          className="fixed bottom-8 right-6 lg:right-10 z-30 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+          title="Ir ao timer Pomodoro"
+          aria-label="Ir ao timer Pomodoro"
+        >
+          <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+            play_arrow
+          </span>
+        </a>
 
         <DragOverlay adjustScale={false}>
           {activeDragTodo ? (
