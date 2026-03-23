@@ -53,19 +53,6 @@ export function usePlanningData() {
   const [reminders, setReminders] = useState<DBReminder[]>([])
   const [loadingReminders, setLoadingReminders] = useState(true)
 
-  // Carregar dados do banco quando usuário mudar
-  useEffect(() => {
-    if (user) {
-      console.log('🔄 Hook: Usuário detectado, carregando dados...')
-      // Verificar se já temos dados para evitar recarregamento desnecessário
-      if (goals.length === 0 && projects.length === 0) {
-        loadAllData()
-      } else {
-        console.log('🔄 Hook: Dados já carregados, pulando recarregamento')
-      }
-    }
-  }, [user])
-
   // Função para carregar todos os dados
   const loadAllData = useCallback(async () => {
     if (!user) return
@@ -139,6 +126,11 @@ export function usePlanningData() {
       setLoadingReminders(false)
     }
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    loadAllData()
+  }, [user, loadAllData])
 
   // Funções para projetos
   const createProject = useCallback(async (name: string, color: string) => {

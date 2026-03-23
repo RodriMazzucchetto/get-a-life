@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { PlusIcon, ArrowRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { PlusIcon, ArrowRightIcon, FolderIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
 import { GoalManagementModal } from '@/components/GoalManagementModal'
@@ -15,11 +15,13 @@ import PomodoroTimer from '@/components/Timer/PomodoroTimer'
 import {
   DndContext,
   closestCenter,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
+  type CollisionDetection,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -31,6 +33,16 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { DroppableColumn } from '@/components/planning/DroppableColumn'
+import {
+  COL_BACKLOG,
+  COL_CURRENT_WEEK,
+  COL_IN_PROGRESS,
+  appendPosForStatus,
+  columnStatusFromId,
+  computePosAtNewIndex,
+  sortTodosByPriorityAndPos,
+} from '@/lib/todoBoardHelpers'
 
 // Componente para grupo de tags arrastável - será definido depois das funções
 
@@ -188,19 +200,17 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
           <button
             onClick={() => onMoveToProgress(todo)}
             className={`p-2 rounded-md transition-colors ${
-              // Verificar se o item está em progresso (está no array inProgressTodos)
-              // Por enquanto, vamos usar uma lógica simples baseada no título ou ID
-              todo.title.includes('progresso') || todo.id.includes('progress')
+              todo.status === 'in_progress'
                 ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
                 : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
             }`}
             title={
-              todo.title.includes('progresso') || todo.id.includes('progress')
+              todo.status === 'in_progress'
                 ? 'Voltar para Semana Atual'
                 : 'Enviar para Em Progresso'
             }
           >
-            {todo.title.includes('progresso') || todo.id.includes('progress') ? (
+            {todo.status === 'in_progress' ? (
               // Ícone de voltar (quando está em progresso)
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -271,7 +281,6 @@ export default function PlanningPage() {
     goals,
     reminders,
     isLoading,
-    setTodos,
     setGoals,
     setReminders,
     createProject,
@@ -291,6 +300,25 @@ export default function PlanningPage() {
     reloadData
   } = usePlanningData()
 
+  const [boardError, setBoardError] = useState<string | null>(null)
+
+  const showError = useCallback((msg: string) => {
+    setBoardError(msg)
+    setTimeout(() => setBoardError(null), 5000)
+  }, [])
+
+  const weekTodos = useMemo(
+    () => todos.filter((t) => t.status === 'current_week' && !t.completed).sort(sortTodosByPriorityAndPos),
+    [todos]
+  )
+  const backlogTodos = useMemo(
+    () => todos.filter((t) => t.status === 'backlog' && !t.completed).sort(sortTodosByPriorityAndPos),
+    [todos]
+  )
+  const inProgressTodos = useMemo(
+    () => todos.filter((t) => t.status === 'in_progress' && !t.completed).sort(sortTodosByPriorityAndPos),
+    [todos]
+  )
 
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
@@ -369,7 +397,6 @@ export default function PlanningPage() {
     tags: [] as { name: string; color: string }[],
     projectId: undefined as string | undefined
   })
-  const [inProgressTodos, setInProgressTodos] = useState<Todo[]>([])
 
   // Estados para backlog
   const [showBacklogCreateForm, setShowBacklogCreateForm] = useState(false)
@@ -385,98 +412,6 @@ export default function PlanningPage() {
     tags: [] as { name: string; color: string }[],
     projectId: undefined as string | undefined
   })
-  const [backlogTodos, setBacklogTodos] = useState<Todo[]>([
-    {
-      id: '20',
-      title: 'Criar uma ferramenta de auto orçamento',
-      description: 'Desenvolver ferramenta automatizada para criação de orçamentos',
-      priority: 'medium',
-      category: 'KimonoLab',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 1000,
-      tags: [{ name: 'KimonoLab', color: '#EF4444' }],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '21',
-      title: 'Fazer uma análise de posicionamento',
-      description: 'Realizar análise completa de posicionamento no mercado',
-      priority: 'medium',
-      category: 'Zentrix BS',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 2000,
-      tags: [{ name: 'Zentrix BS', color: '#8B5CF6' }],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '22',
-      title: 'Criar uma ferramenta de planejamento',
-      description: 'A IA sugere os ingredientes e cria receitas personalizadas',
-      priority: 'low',
-      category: 'Miscellaneous',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 3000,
-      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString(), 
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '23',
-      title: 'Criar uma ferramenta de previsão',
-      description: 'Ferramenta com IA que busca e analisa dados de mercado',
-      priority: 'low',
-      category: 'Miscellaneous',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 3000,
-      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString(), 
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '24',
-      title: 'Criar ferramenta para traçar melhor rota',
-      description: 'Você compartilha a simulação e a IA sugere melhorias',
-      priority: 'low',
-      category: 'Miscellaneous',
-      dueDate: undefined,
-      completed: false,
-      isHighPriority: false,
-      timeSensitive: false,
-      onHold: false,
-      onHoldReason: undefined,
-      status: 'backlog',
-      pos: 4000,
-      tags: [{ name: 'Miscellaneous', color: '#10B981' }],
-      created_at: new Date().toISOString(), 
-      updated_at: new Date().toISOString()
-    }
-  ])
 
   // Funções de projetos REMOVIDAS - será reimplementado do zero
 
@@ -649,43 +584,13 @@ export default function PlanningPage() {
     }
   }
 
-  // Estatísticas calculadas baseadas nos arrays locais exibidos no frontend
   const taskStats = {
     inProgress: inProgressTodos.length,
-    currentWeek: todos.length,
+    currentWeek: weekTodos.length,
     backlog: backlogTodos.length,
-    completed: todos.filter(t => t.completed).length + 
-               inProgressTodos.filter(t => t.completed).length + 
-               backlogTodos.filter(t => t.completed).length,
-    reminders: reminders.length // Manter lembretes como está
+    completed: todos.filter((t) => t.completed).length,
+    reminders: reminders.length,
   }
-
-  const mockReminders: Reminder[] = [
-    {
-      id: '1',
-      user_id: 'user-1',
-      title: 'Reunião com equipe',
-      description: 'Discussão sobre próximos sprints',
-      due_date: '2024-01-15',
-      priority: 'high',
-      category: 'lembretes',
-      completed: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-    {
-      id: '2',
-      user_id: 'user-1',
-      title: 'Pagar contas',
-      description: 'Verificar boletos pendentes',
-      due_date: '2024-01-20',
-      priority: 'medium',
-      category: 'lembretes',
-      completed: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ]
 
   // Funções para iniciativas
   const handleAddInitiative = () => {
@@ -808,33 +713,6 @@ export default function PlanningPage() {
     }
   }, [showRemindersModal, seedDefaultReminders])
 
-  // Estado para controlar se os dados já foram separados
-  const [dataSeparated, setDataSeparated] = useState(false)
-
-  // Separar todos baseado no status quando os dados são carregados
-  useEffect(() => {
-    if (todos.length > 0 && !dataSeparated) {
-      console.log('🔄 Separando todos baseado no status:', todos)
-      
-      // Separar itens em progresso
-      const inProgressItems = todos.filter(todo => todo.status === 'in_progress')
-      setInProgressTodos(inProgressItems)
-      console.log('🚀 Itens em progresso:', inProgressItems)
-      
-      // Separar itens do backlog
-      const backlogItems = todos.filter(todo => todo.status === 'backlog')
-      setBacklogTodos(backlogItems)
-      console.log('📋 Itens do backlog:', backlogItems)
-      
-      // Manter apenas itens da semana atual no array principal
-      const currentWeekItems = todos.filter(todo => todo.status === 'current_week')
-      setTodos(currentWeekItems)
-      console.log('📅 Itens da semana atual:', currentWeekItems)
-      
-      setDataSeparated(true)
-    }
-  }, [todos, dataSeparated])
-
   // Funções para to-dos
   const handleCreateTodo = async () => {
     if (newTodo.title.trim()) {
@@ -901,394 +779,102 @@ export default function PlanningPage() {
   }
 
   const handleToggleTodoComplete = async (todoId: string) => {
-    // Encontrar a tarefa atual em todos os arrays
-    const currentTodo = todos.find(t => t.id === todoId) || 
-                       inProgressTodos.find(t => t.id === todoId) || 
-                       backlogTodos.find(t => t.id === todoId)
-    
-    if (currentTodo) {
-      const newCompletedStatus = !currentTodo.completed
-      
-      await updateTodo(todoId, {
-        completed: newCompletedStatus
-      })
-      
-      // Se foi marcado como concluído, remover da lista imediatamente
-      if (newCompletedStatus) {
-        if (todos.find(t => t.id === todoId)) {
-          setTodos(todos.filter(t => t.id !== todoId))
-        } else if (inProgressTodos.find(t => t.id === todoId)) {
-          setInProgressTodos(inProgressTodos.filter(t => t.id !== todoId))
-        } else if (backlogTodos.find(t => t.id === todoId)) {
-          setBacklogTodos(backlogTodos.filter(t => t.id !== todoId))
-        }
-      } else {
-        // Se foi desmarcado como concluído, atualizar o status
-        if (todos.find(t => t.id === todoId)) {
-          setTodos(todos.map(t => 
-            t.id === todoId ? { ...t, completed: newCompletedStatus } : t
-          ))
-        } else if (inProgressTodos.find(t => t.id === todoId)) {
-          setInProgressTodos(inProgressTodos.map(t => 
-            t.id === todoId ? { ...t, completed: newCompletedStatus } : t
-          ))
-        } else if (backlogTodos.find(t => t.id === todoId)) {
-          setBacklogTodos(backlogTodos.map(t => 
-            t.id === todoId ? { ...t, completed: newCompletedStatus } : t
-          ))
-        }
-      }
-    }
+    const currentTodo = todos.find((t) => t.id === todoId)
+    if (!currentTodo) return
+    const newCompletedStatus = !currentTodo.completed
+    const result = await updateTodo(todoId, { completed: newCompletedStatus })
+    if (!result) showError('Não foi possível atualizar a tarefa.')
   }
 
   const handleDeleteTodo = async (todoId: string) => {
-    if (confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) {
-      console.log('🗑️ Deletando todo:', todoId)
-      
-      const success = await deleteTodo(todoId)
-      if (success) {
-        console.log('✅ Todo deletado com sucesso, removendo de todos os estados locais')
-        
-        // Remover de todos os estados locais para manter sincronização
-        setTodos(prev => prev.filter(t => t.id !== todoId))
-        setBacklogTodos(prev => prev.filter(t => t.id !== todoId))
-        setInProgressTodos(prev => prev.filter(t => t.id !== todoId))
-        
-        // Limpar editingTodo se estiver editando o item deletado
-        if (editingTodo && editingTodo.id === todoId) {
-          setEditingTodo(null)
-          setShowEditTodoModal(false)
-        }
-        
-        console.log('✅ Todo removido de todos os estados locais')
-      } else {
-        console.log('❌ Falha ao deletar todo')
+    if (!confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) return
+    const success = await deleteTodo(todoId)
+    if (success) {
+      if (editingTodo?.id === todoId) {
+        setEditingTodo(null)
+        setShowEditTodoModal(false)
       }
+    } else {
+      showError('Não foi possível excluir a tarefa.')
     }
   }
 
-  // Função para alternar prioridade
   const handleTogglePriority = async (todoId: string) => {
-    // Encontrar a tarefa atual em todos os arrays
-    const currentTodo = todos.find(t => t.id === todoId) || 
-                       inProgressTodos.find(t => t.id === todoId) || 
-                       backlogTodos.find(t => t.id === todoId)
-    
-    if (currentTodo) {
-      await updateTodo(todoId, {
-        isHighPriority: !currentTodo.isHighPriority
-      })
-      
-      // Atualizar estado local imediatamente
-      if (todos.find(t => t.id === todoId)) {
-        setTodos(todos.map(t => 
-          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-        ))
-      } else if (inProgressTodos.find(t => t.id === todoId)) {
-        setInProgressTodos(inProgressTodos.map(t => 
-          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-        ))
-      } else if (backlogTodos.find(t => t.id === todoId)) {
-        setBacklogTodos(backlogTodos.map(t => 
-          t.id === todoId ? { ...t, isHighPriority: !t.isHighPriority } : t
-        ))
-      }
-    }
+    const currentTodo = todos.find((t) => t.id === todoId)
+    if (!currentTodo) return
+    const result = await updateTodo(todoId, { isHighPriority: !currentTodo.isHighPriority })
+    if (!result) showError('Não foi possível alterar a prioridade.')
   }
 
-  // Função groupTodosByFirstTag REMOVIDA - será reimplementada do zero
-
-  // Função para drag and drop entre blocos
   const handleDragEndBetweenBlocks = async (event: DragEndEvent) => {
     const { active, over } = event
+    if (!over) return
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    if (activeId === overId) return
 
-    if (!active || !over) return
+    const activeTodo = todos.find((t) => t.id === activeId)
+    if (!activeTodo) return
 
-    const activeId = active.id as string
-    const overId = over.id as string
-
-    console.log('🎯 DragEndBetweenBlocks iniciado:', { activeId, overId })
-
-    // Verificar se o item está sendo movido para uma posição diferente
-    if (activeId === overId) {
-      console.log('❌ Mesmo item, cancelando')
+    const columnTarget = columnStatusFromId(overId)
+    if (columnTarget && activeTodo.status !== columnTarget) {
+      const newPos = appendPosForStatus(todos, columnTarget, activeId)
+      const result = await updateTodo(activeId, { status: columnTarget, pos: newPos })
+      if (!result) showError('Não foi possível mover a tarefa.')
       return
     }
 
-    // Encontrar o item ativo em todos os arrays
-    const activeTodoInTodos = todos.find(t => t.id === activeId)
-    const activeTodoInBacklog = backlogTodos.find(t => t.id === activeId)
-    const activeTodoInProgress = inProgressTodos.find(t => t.id === activeId)
-
-    console.log('🔍 Item ativo encontrado em:', {
-      activeTodoInTodos: !!activeTodoInTodos,
-      activeTodoInBacklog: !!activeTodoInBacklog,
-      activeTodoInProgress: !!activeTodoInProgress
-    })
-
-    // Se o item não foi encontrado, não fazer nada
-    if (!activeTodoInTodos && !activeTodoInBacklog && !activeTodoInProgress) {
-      console.log('❌ Item não encontrado em nenhum array')
+    if (overId.startsWith('group-')) {
+      const newPos = appendPosForStatus(todos, 'current_week', activeId)
+      const result = await updateTodo(activeId, { status: 'current_week', pos: newPos })
+      if (!result) showError('Não foi possível mover a tarefa.')
       return
     }
 
-    // Verificar se o item está sendo movido para o backlog (mas não reordenação dentro do mesmo bloco)
-    const overTodoInBacklog = backlogTodos.find(t => t.id === overId)
-    console.log('🔍 Verificando movimentação para backlog:', {
-      overTodoInBacklog: !!overTodoInBacklog,
-      activeTodoInTodos: !!activeTodoInTodos,
-      activeTodoInProgress: !!activeTodoInProgress,
-      activeTodoInBacklog: !!activeTodoInBacklog
-    })
-    
-    if (overTodoInBacklog && (activeTodoInTodos || activeTodoInProgress) && !activeTodoInBacklog) {
-      console.log('✅ Movendo para backlog')
-      // Mover da Semana Atual ou Em Progresso para o Backlog
-      if (activeTodoInTodos) {
-        await updateTodo(activeId, { status: 'backlog' })
-        setTodos(todos.filter(t => t.id !== activeId))
-        setBacklogTodos([...backlogTodos, activeTodoInTodos])
-      } else if (activeTodoInProgress) {
-        await updateTodo(activeId, { status: 'backlog' })
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
-        setBacklogTodos([...backlogTodos, activeTodoInProgress])
+    const overTodo = todos.find((t) => t.id === overId)
+    if (!overTodo) return
+
+    if (activeTodo.status === overTodo.status) {
+      const col = todos
+        .filter((t) => t.status === activeTodo.status && !t.completed)
+        .sort(sortTodosByPriorityAndPos)
+      const oldIdx = col.findIndex((t) => t.id === activeId)
+      const newIdx = col.findIndex((t) => t.id === overId)
+      if (oldIdx < 0 || newIdx < 0) return
+      const reordered = arrayMove(col, oldIdx, newIdx)
+      const newPos = computePosAtNewIndex(reordered, activeId)
+      if (newPos === null) return
+      const result = await updateTodo(activeId, { pos: newPos, status: activeTodo.status })
+      if (!result) showError('Não foi possível reordenar.')
+      return
+    }
+
+    const newStatus = overTodo.status
+    const targetCol = todos
+      .filter((t) => t.status === newStatus && !t.completed && t.id !== activeId)
+      .sort(sortTodosByPriorityAndPos)
+    const overIndex = targetCol.findIndex((t) => t.id === overId)
+    let newPos: number
+    if (overIndex <= 0) {
+      const first = targetCol[0]
+      newPos = first ? first.pos - 500 : 1000
+    } else {
+      const prev = targetCol[overIndex - 1]
+      const next = targetCol[overIndex]
+      newPos = Math.round((prev.pos + next.pos) / 2)
+      if (newPos <= prev.pos || newPos >= next.pos) {
+        newPos = prev.pos + (next.pos - prev.pos) / 2
       }
-      return
     }
-
-    // Verificar se o item está sendo movido para a semana atual (mas não reordenação dentro do mesmo bloco)
-    const overTodoInTodos = todos.find(t => t.id === overId)
-    console.log('🔍 Verificando movimentação para semana atual:', {
-      overTodoInTodos: !!overTodoInTodos,
-      activeTodoInBacklog: !!activeTodoInBacklog,
-      activeTodoInProgress: !!activeTodoInProgress,
-      activeTodoInTodos: !!activeTodoInTodos
-    })
-    
-    if (overTodoInTodos && (activeTodoInBacklog || activeTodoInProgress) && !activeTodoInTodos) {
-      console.log('✅ Movendo para semana atual')
-      // Mover do Backlog ou Em Progresso para a Semana Atual
-      if (activeTodoInBacklog) {
-        await updateTodo(activeId, { status: 'current_week' })
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-        
-        // Encontrar a posição do item de destino e inserir antes dele
-        const targetIndex = todos.findIndex(t => t.id === overId)
-        const newTodos = [...todos]
-        newTodos.splice(targetIndex, 0, activeTodoInBacklog)
-        setTodos(newTodos)
-      } else if (activeTodoInProgress) {
-        await updateTodo(activeId, { status: 'current_week' })
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
-        
-        // Encontrar a posição do item de destino e inserir antes dele
-        const targetIndex = todos.findIndex(t => t.id === overId)
-        const newTodos = [...todos]
-        newTodos.splice(targetIndex, 0, activeTodoInProgress)
-        setTodos(newTodos)
-      }
-      return
-    }
-
-    // Verificar se o item está sendo movido para em progresso (mas não reordenação dentro do mesmo bloco)
-    const overTodoInProgress = inProgressTodos.find(t => t.id === overId)
-    if (overTodoInProgress && (activeTodoInTodos || activeTodoInBacklog) && !activeTodoInProgress) {
-      // Mover da Semana Atual ou Backlog para Em Progresso
-      if (activeTodoInTodos) {
-        await updateTodo(activeId, { status: 'in_progress' })
-        setTodos(todos.filter(t => t.id !== activeId))
-        setInProgressTodos([...inProgressTodos, activeTodoInTodos])
-      } else if (activeTodoInBacklog) {
-        await updateTodo(activeId, { status: 'in_progress' })
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-        setInProgressTodos([...inProgressTodos, activeTodoInBacklog])
-      }
-      return
-    }
-
-    // Verificar se o item está sendo movido para um grupo de tags na Semana Atual
-    if (overId.startsWith('group-') && (activeTodoInBacklog || activeTodoInProgress)) {
-      // Mover do Backlog ou Em Progresso para a Semana Atual
-      if (activeTodoInBacklog) {
-        await updateTodo(activeId, { status: 'current_week' })
-        setBacklogTodos(backlogTodos.filter(t => t.id !== activeId))
-        // Para grupos de tags, adicionar no final da lista
-        setTodos([...todos, activeTodoInBacklog])
-      } else if (activeTodoInProgress) {
-        await updateTodo(activeId, { status: 'current_week' })
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== activeId))
-        // Para grupos de tags, adicionar no final da lista
-        setTodos([...todos, activeTodoInProgress])
-      }
-      return
-    }
-
-    // Se não estiver movendo entre blocos, fazer reordenação dentro do mesmo bloco
-    console.log('🔄 Verificando reordenação dentro do mesmo bloco:', {
-      activeId,
-      overId,
-      activeTodoInTodos: !!activeTodoInTodos,
-      activeTodoInBacklog: !!activeTodoInBacklog,
-      activeTodoInProgress: !!activeTodoInProgress
-    })
-    
-    if (activeTodoInTodos) {
-      console.log('📝 Reordenando dentro da Semana Atual')
-      // Reordenação dentro da Semana Atual
-      const reorderedTodos = arrayMove(todos, 
-        todos.findIndex((item) => item.id === activeId),
-        todos.findIndex((item) => item.id === overId)
-      )
-      
-      // Atualizar estado local
-      setTodos(reorderedTodos)
-      
-                    // Persistir nova ordem no banco atualizando pos
-              const movedTodo = reorderedTodos.find(t => t.id === activeId)
-              if (movedTodo) {
-                const newPosition = reorderedTodos.indexOf(movedTodo)
-                
-                // Calcular pos baseado nos vizinhos
-                let newPos
-                if (newPosition === 0) {
-                  // Primeiro item: pos = primeiro vizinho - 1000
-                  const nextTodo = reorderedTodos[1]
-                  newPos = nextTodo ? nextTodo.pos - 1000 : 1000
-                } else if (newPosition === reorderedTodos.length - 1) {
-                  // Último item: pos = último vizinho + 1000
-                  const prevTodo = reorderedTodos[newPosition - 1]
-                  newPos = prevTodo ? prevTodo.pos + 1000 : (newPosition + 1) * 1000
-                } else {
-                  // Item no meio: pos = média entre vizinhos
-                  const prevTodo = reorderedTodos[newPosition - 1]
-                  const nextTodo = reorderedTodos[newPosition + 1]
-                  newPos = Math.round((prevTodo.pos + nextTodo.pos) / 2)
-                  
-                  // Se a média for igual a algum vizinho, usar gaps menores
-                  if (newPos === prevTodo.pos || newPos === nextTodo.pos) {
-                    newPos = prevTodo.pos + Math.round((nextTodo.pos - prevTodo.pos) / 2)
-                  }
-                }
-                
-                console.log('💾 Salvando nova ordem no banco:', { 
-                  activeId, 
-                  newPos, 
-                  position: newPosition,
-                  prevPos: reorderedTodos[newPosition - 1]?.pos,
-                  nextPos: reorderedTodos[newPosition + 1]?.pos
-                })
-                await updateTodo(activeId, { pos: newPos })
-              }
-    } else if (activeTodoInBacklog) {
-      console.log('📝 Reordenando dentro do Backlog')
-      // Reordenação dentro do Backlog
-      const reorderedBacklog = arrayMove(backlogTodos, 
-        backlogTodos.findIndex((item) => item.id === activeId),
-        backlogTodos.findIndex((item) => item.id === overId)
-      )
-      
-      // Atualizar estado local
-      setBacklogTodos(reorderedBacklog)
-      
-                    // Persistir nova ordem no banco
-              const movedTodo = reorderedBacklog.find(t => t.id === activeId)
-              if (movedTodo) {
-                const newPosition = reorderedBacklog.indexOf(movedTodo)
-                
-                // Calcular pos baseado nos vizinhos
-                let newPos
-                if (newPosition === 0) {
-                  // Primeiro item: pos = primeiro vizinho - 1000
-                  const nextTodo = reorderedBacklog[1]
-                  newPos = nextTodo ? nextTodo.pos - 1000 : 1000
-                } else if (newPosition === reorderedBacklog.length - 1) {
-                  // Último item: pos = último vizinho + 1000
-                  const prevTodo = reorderedBacklog[newPosition - 1]
-                  newPos = prevTodo ? prevTodo.pos + 1000 : (newPosition + 1) * 1000
-                } else {
-                  // Item no meio: pos = média entre vizinhos
-                  const prevTodo = reorderedBacklog[newPosition - 1]
-                  const nextTodo = reorderedBacklog[newPosition + 1]
-                  newPos = Math.round((prevTodo.pos + nextTodo.pos) / 2)
-                  
-                  // Se a média for igual a algum vizinho, usar gaps menores
-                  if (newPos === prevTodo.pos || newPos === nextTodo.pos) {
-                    newPos = prevTodo.pos + Math.round((nextTodo.pos - prevTodo.pos) / 2)
-                  }
-                }
-                
-                console.log('💾 Salvando nova ordem no banco (backlog):', { 
-                  activeId, 
-                  newPos, 
-                  position: newPosition,
-                  prevPos: reorderedBacklog[newPosition - 1]?.pos,
-                  nextPos: reorderedBacklog[newPosition + 1]?.pos
-                })
-                await updateTodo(activeId, { pos: newPos })
-              }
-    } else if (activeTodoInProgress) {
-      console.log('📝 Reordenando dentro de Em Progresso')
-      // Reordenação dentro de Em Progresso
-      const reorderedInProgress = arrayMove(inProgressTodos, 
-        inProgressTodos.findIndex((item) => item.id === activeId),
-        inProgressTodos.findIndex((item) => item.id === overId)
-      )
-      
-      // Atualizar estado local
-      setInProgressTodos(reorderedInProgress)
-      
-                    // Persistir nova ordem no banco
-              const movedTodo = reorderedInProgress.find(t => t.id === activeId)
-              if (movedTodo) {
-                const newPosition = reorderedInProgress.indexOf(movedTodo)
-                
-                // Calcular pos baseado nos vizinhos
-                let newPos
-                if (newPosition === 0) {
-                  // Primeiro item: pos = primeiro vizinho - 1000
-                  const nextTodo = reorderedInProgress[1]
-                  newPos = nextTodo ? nextTodo.pos - 1000 : 1000
-                } else if (newPosition === reorderedInProgress.length - 1) {
-                  // Último item: pos = último vizinho + 1000
-                  const prevTodo = reorderedInProgress[newPosition - 1]
-                  newPos = prevTodo ? prevTodo.pos + 1000 : (newPosition + 1) * 1000
-                } else {
-                  // Item no meio: pos = média entre vizinhos
-                  const prevTodo = reorderedInProgress[newPosition - 1]
-                  const nextTodo = reorderedInProgress[newPosition + 1]
-                  newPos = Math.round((prevTodo.pos + nextTodo.pos) / 2)
-                  
-                  // Se a média for igual a algum vizinho, usar gaps menores
-                  if (newPos === prevTodo.pos || newPos === nextTodo.pos) {
-                    newPos = prevTodo.pos + Math.round((nextTodo.pos - prevTodo.pos) / 2)
-                  }
-                }
-                
-                console.log('💾 Salvando nova ordem no banco (in progress):', { 
-                  activeId, 
-                  newPos, 
-                  position: newPosition,
-                  prevPos: reorderedInProgress[newPosition - 1]?.pos,
-                  nextPos: reorderedInProgress[newPosition + 1]?.pos
-                })
-                await updateTodo(activeId, { pos: newPos })
-              }
-    }
+    const result = await updateTodo(activeId, { status: newStatus, pos: newPos })
+    if (!result) showError('Não foi possível mover a tarefa.')
   }
 
-  // Função para drag and drop (mantida para compatibilidade)
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-
-    if (active.id !== over?.id) {
-      setTodos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over?.id)
-
-        return arrayMove(items, oldIndex, newIndex)
-      })
-    }
-  }
+  const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
+    const withPointer = pointerWithin(args)
+    if (withPointer.length > 0) return withPointer
+    return closestCenter(args)
+  }, [])
 
   // Funções de tags removidas - serão reimplementadas do zero
 
@@ -1332,31 +918,10 @@ export default function PlanningPage() {
   }
 
   const handleToggleInProgressTodoComplete = async (todoId: string) => {
-    // Encontrar a tarefa atual
-    const currentTodo = inProgressTodos.find(t => t.id === todoId)
-    if (currentTodo) {
-      const newCompletedStatus = !currentTodo.completed
-      
-      // Atualizar no banco
-      await updateTodo(todoId, {
-        completed: newCompletedStatus
-      })
-      
-      // Atualizar o array global imediatamente para sincronizar o contador
-      setTodos(prev => prev.map(t => 
-        t.id === todoId ? { ...t, completed: newCompletedStatus } : t
-      ))
-      
-      // Se foi marcado como concluído, remover da lista imediatamente
-      if (newCompletedStatus) {
-        setInProgressTodos(inProgressTodos.filter(t => t.id !== todoId))
-      } else {
-        // Se foi desmarcado como concluído, atualizar o status no estado local
-        setInProgressTodos(inProgressTodos.map(t => 
-          t.id === todoId ? { ...t, completed: newCompletedStatus } : t
-        ))
-      }
-    }
+    const currentTodo = todos.find((t) => t.id === todoId)
+    if (!currentTodo) return
+    const result = await updateTodo(todoId, { completed: !currentTodo.completed })
+    if (!result) showError('Não foi possível atualizar a tarefa.')
   }
 
   const handleToggleInProgressPriority = async (todoId: string) => {
@@ -1372,35 +937,11 @@ export default function PlanningPage() {
   // Funções para gerenciar status "Em Espera"
   const handlePutTodoOnHold = async (todo: Todo) => {
     if (todo.onHold) {
-      // Se já está em espera, remover da espera usando API
-      await updateTodo(todo.id, {
+      const result = await updateTodo(todo.id, {
         onHold: false,
-        onHoldReason: undefined
+        onHoldReason: undefined,
       })
-      
-      // Atualizar estado local imediatamente sem recarregar todos os dados
-      // Encontrar o todo em todos os arrays e atualizar apenas o campo onHold
-      if (todos.find(t => t.id === todo.id)) {
-        setTodos(todos.map(t => 
-          t.id === todo.id 
-            ? { ...t, onHold: false, onHoldReason: undefined } 
-            : t
-        ))
-      }
-      if (inProgressTodos.find(t => t.id === todo.id)) {
-        setInProgressTodos(inProgressTodos.map(t => 
-          t.id === todo.id 
-            ? { ...t, onHold: false, onHoldReason: undefined } 
-            : t
-        ))
-      }
-      if (backlogTodos.find(t => t.id === todo.id)) {
-        setBacklogTodos(backlogTodos.map(t => 
-          t.id === todo.id 
-            ? { ...t, onHold: false, onHoldReason: undefined } 
-            : t
-        ))
-      }
+      if (!result) showError('Não foi possível atualizar a tarefa.')
     } else {
       // Se não está em espera, abrir modal para colocar em espera
       setTodoToPutOnHold(todo)
@@ -1411,36 +952,11 @@ export default function PlanningPage() {
 
   const handleConfirmOnHold = async () => {
     if (todoToPutOnHold && on_hold_reason.trim()) {
-      // Usar API para salvar no banco
-      await updateTodo(todoToPutOnHold.id, {
+      const result = await updateTodo(todoToPutOnHold.id, {
         onHold: true,
-        onHoldReason: on_hold_reason.trim()
+        onHoldReason: on_hold_reason.trim(),
       })
-
-      // Atualizar estado local imediatamente sem recarregar todos os dados
-      // Encontrar o todo em todos os arrays e atualizar apenas o campo onHold
-      if (todos.find(t => t.id === todoToPutOnHold.id)) {
-        setTodos(todos.map(t => 
-          t.id === todoToPutOnHold.id 
-            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
-            : t
-        ))
-      }
-      if (inProgressTodos.find(t => t.id === todoToPutOnHold.id)) {
-        setInProgressTodos(inProgressTodos.map(t => 
-          t.id === todoToPutOnHold.id 
-            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
-            : t
-        ))
-      }
-      if (backlogTodos.find(t => t.id === todoToPutOnHold.id)) {
-        setBacklogTodos(backlogTodos.map(t => 
-          t.id === todoToPutOnHold.id 
-            ? { ...t, onHold: true, onHoldReason: on_hold_reason.trim() } 
-            : t
-        ))
-      }
-
+      if (!result) showError('Não foi possível atualizar a tarefa.')
       setShowOnHoldModal(false)
       setTodoToPutOnHold(null)
       setOnHoldReason('')
@@ -1453,76 +969,23 @@ export default function PlanningPage() {
     setOnHoldReason('')
   }
 
-  // Função para mover item para Em Progresso ou voltar para Semana Atual
   const handleMoveToProgress = async (todo: Todo) => {
-    // Verificar se o item está em progresso
-    const isInProgress = inProgressTodos.some(t => t.id === todo.id)
-    
-    if (isInProgress) {
-      // Se está em progresso, voltar para Semana Atual
-      await updateTodo(todo.id, { status: 'current_week' })
-      
-      // Atualizar estado local imediatamente
-      setInProgressTodos(inProgressTodos.filter(t => t.id !== todo.id))
-      
-      // Verificar se o todo tem uma posição original armazenada
-      const todoWithOriginalPosition = todo as Todo & { originalPosition?: number }
-      if (todoWithOriginalPosition.originalPosition !== undefined) {
-        // Restaurar na posição original
-        const newTodos = [...todos]
-        newTodos.splice(todoWithOriginalPosition.originalPosition, 0, todo)
-        setTodos(newTodos)
-      } else {
-        // Se não tem posição original, adicionar no final
-        setTodos([...todos, todo])
-      }
+    if (todo.status === 'in_progress') {
+      const pos = appendPosForStatus(todos, 'current_week', todo.id)
+      const result = await updateTodo(todo.id, { status: 'current_week', pos })
+      if (!result) showError('Não foi possível mover a tarefa.')
     } else {
-      // Se não está em progresso, mover para Em Progresso
-      await updateTodo(todo.id, { status: 'in_progress' })
-      
-      // Atualizar o array global imediatamente para manter sincronização
-      setTodos(prev => prev.map(t => 
-        t.id === todo.id ? { ...t, status: 'in_progress' } : t
-      ))
-      
-      // Atualizar estado local imediatamente
-      const isInTodos = todos.some(t => t.id === todo.id)
-      const isInBacklog = backlogTodos.some(t => t.id === todo.id)
-      
-      if (isInTodos) {
-        // Armazenar a posição original antes de mover
-        const originalIndex = todos.findIndex(t => t.id === todo.id)
-        const todoWithPosition = { ...todo, originalPosition: originalIndex, status: 'in_progress' as const }
-        
-        setTodos(todos.filter(t => t.id !== todo.id))
-        setInProgressTodos([...inProgressTodos, todoWithPosition])
-      } else if (isInBacklog) {
-        setBacklogTodos(backlogTodos.filter(t => t.id !== todo.id))
-        setInProgressTodos([...inProgressTodos, { ...todo, status: 'in_progress' as const }])
-      }
+      const pos = appendPosForStatus(todos, 'in_progress', todo.id)
+      const result = await updateTodo(todo.id, { status: 'in_progress', pos })
+      if (!result) showError('Não foi possível mover a tarefa.')
     }
   }
 
   // Função para deletar item com confirmação de qualquer bloco
   const handleDeleteTodoFromAnyBlock = async (todo: Todo) => {
-    if (confirm('Tem certeza que deseja deletar esta tarefa? Esta ação não pode ser desfeita.')) {
-      console.log('🗑️ Deletando todo de qualquer bloco:', todo.id)
-      
-      // SEMPRE usar API para deletar do banco
-      const success = await deleteTodo(todo.id)
-      if (success) {
-        console.log('✅ Todo deletado com sucesso do banco, removendo de todos os estados locais')
-        
-        // Remover de todos os estados locais para manter sincronização
-        setTodos(prev => prev.filter(t => t.id !== todo.id))
-        setBacklogTodos(prev => prev.filter(t => t.id !== todo.id))
-        setInProgressTodos(prev => prev.filter(t => t.id !== todo.id))
-        
-        console.log('✅ Todo removido de todos os estados locais')
-      } else {
-        console.log('❌ Falha ao deletar todo do banco')
-      }
-    }
+    if (!confirm('Tem certeza que deseja deletar esta tarefa? Esta ação não pode ser desfeita.')) return
+    const success = await deleteTodo(todo.id)
+    if (!success) showError('Não foi possível excluir a tarefa.')
   }
 
   // Funções para backlog
@@ -1580,24 +1043,9 @@ export default function PlanningPage() {
   }
 
   const handleDeleteBacklogTodo = async (todoId: string) => {
-    if (confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) {
-      console.log('🗑️ Deletando todo do backlog:', todoId)
-      
-      // SEMPRE usar API para deletar do banco
-      const success = await deleteTodo(todoId)
-      if (success) {
-        console.log('✅ Todo deletado com sucesso do banco, removendo de todos os estados locais')
-        
-        // Remover de todos os estados locais para manter sincronização
-        setTodos(prev => prev.filter(t => t.id !== todoId))
-        setBacklogTodos(prev => prev.filter(t => t.id !== todoId))
-        setInProgressTodos(prev => prev.filter(t => t.id !== todoId))
-        
-        console.log('✅ Todo removido de todos os estados locais')
-      } else {
-        console.log('❌ Falha ao deletar todo do banco')
-      }
-    }
+    if (!confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) return
+    const success = await deleteTodo(todoId)
+    if (!success) showError('Não foi possível excluir a tarefa.')
   }
 
   const handleToggleBacklogPriority = async (todoId: string) => {
@@ -1610,41 +1058,13 @@ export default function PlanningPage() {
     }
   }
 
-  const handleDragEndBacklog = (event: DragEndEvent) => {
-    const { active, over } = event
-
-    if (active.id !== over?.id) {
-      setBacklogTodos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over?.id)
-
-        return arrayMove(items, oldIndex, newIndex)
-      })
-    }
-  }
-
-  // Funções de tags removidas - serão reimplementadas do zero
-
   // Configuração dos sensores para drag and drop
   const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
+  useSensor(PointerSensor),
+  useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
-
-  // Função para ordenar por prioridade (alta prioridade primeiro)
-  const sortByPriority = (a: Todo, b: Todo) => {
-    // Se um tem alta prioridade e outro não, prioridade alta vem primeiro
-    if (a.isHighPriority && !b.isHighPriority) return -1
-    if (!a.isHighPriority && b.isHighPriority) return 1
-    
-    // Se ambos têm a mesma prioridade, manter ordem original (pos)
-    return a.pos - b.pos
-  }
-
-  // Usar ordem do banco (pos) com priorização por alta prioridade
-  const sortedTodos = todos.filter(todo => !todo.completed).sort(sortByPriority)
 
   return (
     <div className="space-y-6">
@@ -1659,27 +1079,16 @@ export default function PlanningPage() {
           </div>
           
           {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-                            {/* Botão de Gerenciar Projetos */}
+          <div className="flex items-center gap-3 flex-wrap justify-end">
             <button
+              type="button"
               onClick={() => setShowProjectsModal(true)}
-                  className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
-                  title="Gerenciar Projetos"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              <FolderIcon className="h-5 w-5 text-blue-600" aria-hidden />
+              Projetos
             </button>
 
-
-            
-            {/* Google Calendar Button */}
-            <button className="inline-flex items-center px-4 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-white hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-              <ExclamationTriangleIcon className="h-4 w-4 mr-2 text-orange-500" />
-              Google Calendar
-            </button>
-            
             {/* New Task Button */}
             <button
               onClick={() => setShowTaskModal(true)}
@@ -1697,6 +1106,15 @@ export default function PlanningPage() {
           </div>
         </div>
       </div>
+
+      {boardError && (
+        <div
+          className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800"
+          role="alert"
+        >
+          {boardError}
+        </div>
+      )}
 
       {/* Task Category Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -1848,7 +1266,7 @@ export default function PlanningPage() {
       {/* Container para os blocos com DndContext unificado */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={collisionDetectionStrategy}
         onDragEnd={handleDragEndBetweenBlocks}
       >
         {/* Bloco Em Progresso - Full Width */}
@@ -1865,7 +1283,7 @@ export default function PlanningPage() {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Em Progresso ({inProgressTodos.filter(t => !t.completed).length})</h2>
+                    <h2 className="text-xl font-bold text-gray-900">Em Progresso ({inProgressTodos.length})</h2>
                     <p className="text-sm text-gray-600">Tarefas que estão sendo trabalhadas</p>
                   </div>
                 </div>
@@ -1881,8 +1299,8 @@ export default function PlanningPage() {
               </div>
 
               {/* Conteúdo dos to-dos */}
-              <div className="space-y-4">
-                {inProgressTodos.filter(t => !t.completed).length === 0 ? (
+              <DroppableColumn id={COL_IN_PROGRESS} className="space-y-4">
+                {inProgressTodos.length === 0 ? (
                   <div className="py-8 text-center">
                     <div className="text-gray-400 text-4xl mb-4">🚀</div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa em progresso</h3>
@@ -1890,13 +1308,12 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   <SortableContext
-                    items={inProgressTodos.filter(t => !t.completed).sort(sortByPriority).map(todo => todo.id)}
+                    items={inProgressTodos.sort(sortTodosByPriorityAndPos).map((todo) => todo.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-2">
                       {inProgressTodos
-                        .filter(t => !t.completed)
-                        .sort(sortByPriority)
+                        .sort(sortTodosByPriorityAndPos)
                         .map((todo) => (
                           <SortableTodoItem
                             key={todo.id}
@@ -1913,7 +1330,7 @@ export default function PlanningPage() {
                     </div>
                   </SortableContext>
                 )}
-              </div>
+              </DroppableColumn>
             </div>
           </div>
         </div>
@@ -1934,7 +1351,7 @@ export default function PlanningPage() {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Semana Atual ({sortedTodos.length})</h2>
+                    <h2 className="text-xl font-bold text-gray-900">Semana Atual ({weekTodos.length})</h2>
                     <p className="text-sm text-gray-600">Tarefas e lembretes pessoais</p>
                   </div>
                 </div>
@@ -2047,8 +1464,8 @@ export default function PlanningPage() {
               )}
 
               {/* Conteúdo dos to-dos - lista direta sem agrupamento (igual ao Backlog) */}
-              <div className="space-y-4">
-                {sortedTodos.length === 0 ? (
+              <DroppableColumn id={COL_CURRENT_WEEK} className="space-y-4">
+                {weekTodos.length === 0 ? (
                   <div className="py-8 text-center">
                     <div className="text-gray-400 text-4xl mb-4">📝</div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa criada</h3>
@@ -2065,11 +1482,11 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                       <SortableContext
-                    items={sortedTodos.map(todo => todo.id)}
+                    items={weekTodos.map(todo => todo.id)}
                         strategy={verticalListSortingStrategy}
                       >
                     <div className="space-y-2">
-                      {sortedTodos.map((todo) => (
+                      {weekTodos.map((todo) => (
                         <SortableTodoItem
                           key={todo.id}
                           todo={todo}
@@ -2085,7 +1502,7 @@ export default function PlanningPage() {
                         </div>
                       </SortableContext>
                 )}
-              </div>
+              </DroppableColumn>
             </div>
           </div>
 
@@ -2102,7 +1519,7 @@ export default function PlanningPage() {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Backlog ({backlogTodos.filter(t => !t.completed).length})</h2>
+                    <h2 className="text-xl font-bold text-gray-900">Backlog ({backlogTodos.length})</h2>
                     <p className="text-sm text-gray-600">Tarefas para o futuro</p>
                   </div>
                 </div>
@@ -2176,8 +1593,8 @@ export default function PlanningPage() {
               )}
 
               {/* Conteúdo dos to-dos */}
-              <div className="space-y-4">
-                {backlogTodos.filter(t => !t.completed).length === 0 ? (
+              <DroppableColumn id={COL_BACKLOG} className="space-y-4">
+                {backlogTodos.length === 0 ? (
                   <div className="py-8 text-center">
                     <div className="text-gray-400 text-4xl mb-4">📋</div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa no backlog</h3>
@@ -2194,13 +1611,12 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   <SortableContext
-                    items={backlogTodos.filter(t => !t.completed).sort(sortByPriority).map(todo => todo.id)}
+                    items={backlogTodos.sort(sortTodosByPriorityAndPos).map((todo) => todo.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-2">
                       {backlogTodos
-                        .filter(t => !t.completed)
-                        .sort(sortByPriority)
+                        .sort(sortTodosByPriorityAndPos)
                         .map((todo) => (
                           <SortableTodoItem
                             key={todo.id}
@@ -2217,7 +1633,7 @@ export default function PlanningPage() {
                     </div>
                   </SortableContext>
                 )}
-              </div>
+              </DroppableColumn>
             </div>
           </div>
         </div>
