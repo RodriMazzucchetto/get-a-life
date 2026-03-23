@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { PlusIcon, FolderIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
@@ -395,7 +395,7 @@ export default function PlanningPage() {
   )
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
-  const [pomodoroDisplay, setPomodoroDisplay] = useState('00:00:00')
+  const newTaskTitleInputRef = useRef<HTMLInputElement>(null)
   const activeDragTodo = useMemo(() => {
     if (!activeDragId || activeDragId.startsWith('group-')) return undefined
     return todos.find((t) => t.id === activeDragId)
@@ -793,6 +793,15 @@ export default function PlanningPage() {
       seedDefaultReminders()
     }
   }, [showRemindersModal, seedDefaultReminders])
+
+  useEffect(() => {
+    if (!showTaskModal) return
+    const id = requestAnimationFrame(() => {
+      newTaskTitleInputRef.current?.focus()
+      newTaskTitleInputRef.current?.select()
+    })
+    return () => cancelAnimationFrame(id)
+  }, [showTaskModal])
 
   // Funções para to-dos
   const handleCreateTodo = async () => {
@@ -1349,7 +1358,7 @@ export default function PlanningPage() {
           void handleDragEndBetweenBlocks(e)
         }}
       >
-        {/* Foco Agora — em progresso + Pomodoro */}
+        {/* Foco Agora — prioridade: tarefas em progresso; timer Pomodoro secundário */}
         <section className="mb-8 relative" id="foco-agora">
           <div className="bg-surface-container-lowest rounded-2xl shadow-lg ring-2 ring-primary/10 overflow-hidden flex flex-col relative">
             <div className="absolute top-3 right-3 md:top-4 md:right-4 z-10" aria-hidden>
@@ -1358,47 +1367,38 @@ export default function PlanningPage() {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
               </span>
             </div>
-            <div className="p-5 md:p-6 flex flex-wrap justify-between items-center gap-4 border-b border-outline-variant/15 bg-primary/5">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="p-5 md:p-6 flex flex-wrap items-center gap-4 border-b border-outline-variant/15 bg-primary/5">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <span className="material-symbols-outlined text-primary text-3xl shrink-0">timer</span>
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-headline font-bold text-xl text-on-surface">Foco Agora</h2>
-                  <p className="text-xs text-on-surface-variant">Tarefa em execução ativa</p>
+                  <p className="text-sm text-on-surface-variant mt-0.5">
+                    Tarefas em execução — arraste para cá ou retome o que já está em progresso
+                  </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-3 py-1 rounded-full tabular-nums">
-                  {pomodoroDisplay}
-                </span>
               </div>
             </div>
 
-            <div className="p-4 md:p-6 flex flex-col flex-1">
-              <div className="mb-4" id="pomodoro-section">
-                <PomodoroTimer
-                  onDisplayTime={setPomodoroDisplay}
-                  onCycleComplete={(cycles) => {
-                    console.log(`Ciclo completado! Total de ciclos hoje: ${cycles}`)
-                  }}
-                />
-              </div>
-
-              <DroppableColumn id={COL_IN_PROGRESS} className="space-y-4">
+            <div className="p-4 md:p-6 flex flex-col flex-1 gap-5">
+              <DroppableColumn
+                id={COL_IN_PROGRESS}
+                className="space-y-4 min-h-[12rem] md:min-h-[14rem] max-h-[min(28rem,50vh)] overflow-y-auto pr-1 -mr-1"
+              >
                 {inProgressTodos.length === 0 ? (
-                  <div className="py-10 md:py-12 px-4 flex flex-col items-center justify-center text-center bg-gradient-to-b from-primary/[0.02] to-transparent rounded-xl">
+                  <div className="py-10 md:py-12 px-4 flex flex-col items-center justify-center text-center bg-gradient-to-b from-primary/[0.02] to-transparent rounded-xl border border-dashed border-outline-variant/40">
                     <button
                       type="button"
                       onClick={() => document.getElementById('pomodoro-section')?.scrollIntoView({ behavior: 'smooth' })}
-                      className="w-24 h-24 mb-6 flex items-center justify-center bg-surface-container-lowest rounded-3xl shadow-md ring-1 ring-outline-variant/10 group hover:scale-105 transition-transform cursor-pointer"
-                      aria-label="Iniciar foco no timer"
+                      className="w-20 h-20 md:w-24 md:h-24 mb-5 flex items-center justify-center bg-surface-container-lowest rounded-3xl shadow-md ring-1 ring-outline-variant/10 group hover:scale-105 transition-transform cursor-pointer"
+                      aria-label="Ir ao timer Pomodoro"
                     >
-                      <span className="material-symbols-outlined text-5xl text-outline group-hover:text-primary transition-colors">
+                      <span className="material-symbols-outlined text-4xl md:text-5xl text-outline group-hover:text-primary transition-colors">
                         play_circle
                       </span>
                     </button>
-                    <h3 className="font-headline font-bold text-lg text-on-surface mb-2">Pronto para começar?</h3>
-                    <p className="text-on-surface-variant text-sm max-w-sm mb-6">
-                      Inicie o cronômetro de uma tarefa na semana atual ou no backlog para manter o foco aqui.
+                    <h3 className="font-headline font-bold text-lg text-on-surface mb-2">Nenhuma tarefa em progresso</h3>
+                    <p className="text-on-surface-variant text-sm max-w-md mb-5">
+                      Arraste uma tarefa da semana ou do backlog para cá, ou crie uma nova. O timer Pomodoro fica abaixo para sessões focadas.
                     </p>
                     <button
                       type="button"
@@ -1406,7 +1406,7 @@ export default function PlanningPage() {
                       className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:bg-primary-container transition-all shadow-md active:scale-95 flex items-center gap-2"
                     >
                       <span className="material-symbols-outlined text-sm">bolt</span>
-                      Foco rápido
+                      Nova tarefa rápida
                     </button>
                   </div>
                 ) : (
@@ -1434,6 +1434,19 @@ export default function PlanningPage() {
                   </SortableContext>
                 )}
               </DroppableColumn>
+
+              <div
+                id="pomodoro-section"
+                className="border-t border-outline-variant/15 pt-4 shrink-0"
+              >
+                <p className="text-xs font-medium text-on-surface-variant mb-2">Timer Pomodoro (opcional)</p>
+                <PomodoroTimer
+                  compact
+                  onCycleComplete={(cycles) => {
+                    console.log(`Ciclo completado! Total de ciclos hoje: ${cycles}`)
+                  }}
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -1776,20 +1789,24 @@ export default function PlanningPage() {
 
       {/* Task Creation Modal */}
       <ModalOverlay isOpen={showTaskModal} onClose={() => setShowTaskModal(false)}>
-        <div className="relative top-20 mx-auto p-5 w-96 shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Nova Tarefa</h3>
+        <div className="relative mx-auto p-5 w-full max-w-md shadow-2xl rounded-xl bg-surface-container-lowest border border-outline-variant/20 ring-1 ring-outline-variant/10">
+            <div className="mt-1">
+              <h3 className="text-lg font-headline font-semibold text-on-surface mb-4">Nova Tarefa</h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="new-task-title" className="block text-sm font-medium text-on-surface-variant mb-1">
                     Título
                   </label>
                   <input
+                    id="new-task-title"
+                    ref={newTaskTitleInputRef}
                     type="text"
+                    name="new-task-title"
+                    autoComplete="off"
                     value={newTask.title}
                     onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
                     placeholder="Digite o título da tarefa"
                   />
                 </div>

@@ -7,9 +7,11 @@ interface PomodoroTimerProps {
   onCycleComplete?: (cyclesCompleted: number) => void
   /** Formato HH:MM:SS para exibir no cabeçalho “Foco Agora” */
   onDisplayTime?: (formatted: string) => void
+  /** Barra mais discreta (ex.: abaixo da lista de tarefas em “Foco Agora”) */
+  compact?: boolean
 }
 
-export default function PomodoroTimer({ onCycleComplete, onDisplayTime }: PomodoroTimerProps) {
+export default function PomodoroTimer({ onCycleComplete, onDisplayTime, compact = false }: PomodoroTimerProps) {
   // Hook para gerenciar dados do pomodoro
   const { cyclesCompleted, sessionCycles, completeCycle, resetSession } = usePomodoroTimer()
   
@@ -186,12 +188,23 @@ export default function PomodoroTimer({ onCycleComplete, onDisplayTime }: Pomodo
     onDisplayTime?.(formatTimeHms(timeLeft))
   }, [timeLeft, onDisplayTime])
 
+  const shell = compact
+    ? 'flex flex-wrap items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-surface-container-low/80 rounded-lg ring-1 ring-outline-variant/10'
+    : 'flex items-center gap-3 p-3 bg-surface-container-lowest rounded-xl ring-1 ring-outline-variant/10 shadow-sm'
+
   return (
-    <div className="flex items-center gap-3 p-3 bg-surface-container-lowest rounded-xl ring-1 ring-outline-variant/10 shadow-sm">
+    <div className={shell}>
       {/* Ícone do Timer */}
       <div className="flex-shrink-0">
-        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div
+          className={`rounded-full bg-blue-100 flex items-center justify-center ${compact ? 'w-7 h-7' : 'w-8 h-8'}`}
+        >
+          <svg
+            className={`text-blue-600 ${compact ? 'w-3.5 h-3.5' : 'w-4 h-4'}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
@@ -237,10 +250,12 @@ export default function PomodoroTimer({ onCycleComplete, onDisplayTime }: Pomodo
       </div>
 
       {/* Timer Display */}
-      <div className="flex-1 flex items-center justify-center">
-        <span className={`text-sm font-mono ${
-          isRunning ? 'text-blue-600' : isPaused ? 'text-orange-600' : 'text-gray-600'
-        }`}>
+      <div className="flex-1 flex items-center justify-center min-w-[4.5rem]">
+        <span
+          className={`font-mono tabular-nums ${
+            compact ? 'text-xs sm:text-sm' : 'text-sm'
+          } ${isRunning ? 'text-blue-600' : isPaused ? 'text-orange-600' : 'text-gray-600'}`}
+        >
           {formatTime(timeLeft)}
         </span>
       </div>
@@ -279,12 +294,19 @@ export default function PomodoroTimer({ onCycleComplete, onDisplayTime }: Pomodo
       </div>
 
       {/* Contador de Ciclos */}
-      <div className="flex-shrink-0 text-xs text-gray-500">
-        <div className="text-center">
-          <div className="font-medium">{cyclesCompleted}</div>
-          <div className="text-xs">ciclos</div>
+      {!compact && (
+        <div className="flex-shrink-0 text-xs text-gray-500">
+          <div className="text-center">
+            <div className="font-medium">{cyclesCompleted}</div>
+            <div className="text-xs">ciclos</div>
+          </div>
         </div>
-      </div>
+      )}
+      {compact && (
+        <div className="flex-shrink-0 text-[10px] sm:text-xs text-gray-500 tabular-nums">
+          {cyclesCompleted} ciclos
+        </div>
+      )}
     </div>
   )
 }
