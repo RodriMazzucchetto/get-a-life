@@ -94,13 +94,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-64 z-40 bg-surface-container-low border-r border-outline-variant/15 pt-6 px-4 pb-6">
-        <div className="flex items-center mb-8 px-1 pt-2">
+        <div className="flex items-center mb-8 px-1 pt-1 pb-1">
           <img
             alt={BRANDING.name}
             src={BRANDING.horizontal}
-            className="h-9 w-auto max-w-[200px] object-contain object-left shrink-0"
-            width={200}
-            height={36}
+            className="h-14 w-auto max-w-full object-contain object-left shrink-0"
+            width={280}
+            height={56}
           />
         </div>
         <nav className="flex flex-col gap-1 flex-1">
@@ -175,13 +175,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           <span className="material-symbols-outlined">close</span>
         </button>
-        <div className="flex items-center mb-8 px-1">
+        <div className="flex items-center mb-8 px-1 pt-1 pb-1">
           <img
             alt={BRANDING.name}
             src={BRANDING.horizontal}
-            className="h-9 w-auto max-w-[200px] object-contain object-left shrink-0"
-            width={200}
-            height={36}
+            className="h-14 w-auto max-w-full object-contain object-left shrink-0"
+            width={280}
+            height={56}
           />
         </div>
         <nav className="flex flex-col gap-1 flex-1">
