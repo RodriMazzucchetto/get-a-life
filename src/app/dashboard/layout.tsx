@@ -29,6 +29,12 @@ const mainNav: {
     active: (pathname) => pathname === "/dashboard/planning",
   },
   {
+    name: "Problemas",
+    href: "/dashboard/problems",
+    icon: "report_problem",
+    active: (pathname) => pathname === "/dashboard/problems",
+  },
+  {
     name: "Relatórios",
     href: "#",
     icon: "analytics",

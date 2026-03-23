@@ -98,6 +98,27 @@ export interface DBReminder {
   updated_at: string
 }
 
+export interface DBProblem {
+  id: string
+  user_id: string
+  project_id: string | null
+  title: string
+  resolved: boolean
+  pos: number
+  created_at: string
+  updated_at: string
+}
+
+export interface Problem {
+  id: string
+  projectId: string | null
+  title: string
+  resolved: boolean
+  pos: number
+  createdAt: string
+  updatedAt: string
+}
+
 // Serviço de Projetos
 export const projectsService = {
   // Buscar todos os projetos do usuário
@@ -442,6 +463,85 @@ export const todosService = {
       throw error
     }
   }
+}
+
+export const problemsService = {
+  async getProblems(userId: string): Promise<DBProblem[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('problems')
+      .select('*')
+      .eq('user_id', userId)
+      .order('pos', { ascending: true })
+
+    if (error) {
+      console.error('Erro ao buscar problemas:', error)
+      throw error
+    }
+    return data || []
+  },
+
+  async createProblem(
+    userId: string,
+    data: { title: string; project_id: string | null }
+  ): Promise<DBProblem> {
+    const supabase = createClient()
+    let q = supabase.from('problems').select('pos').eq('user_id', userId)
+    if (data.project_id === null) {
+      q = q.is('project_id', null)
+    } else {
+      q = q.eq('project_id', data.project_id)
+    }
+    const { data: maxInProject } = await q.order('pos', { ascending: false }).limit(1).maybeSingle()
+
+    const nextPos = maxInProject?.pos != null ? maxInProject.pos + 1000 : 1000
+
+    const { data: row, error } = await supabase
+      .from('problems')
+      .insert({
+        user_id: userId,
+        title: data.title.trim(),
+        project_id: data.project_id,
+        pos: nextPos,
+        resolved: false,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao criar problema:', error)
+      throw error
+    }
+    return row
+  },
+
+  async updateProblem(problemId: string, updates: Partial<DBProblem>): Promise<DBProblem> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('problems')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', problemId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao atualizar problema:', error)
+      throw error
+    }
+    return data
+  },
+
+  async deleteProblem(problemId: string): Promise<void> {
+    const supabase = createClient()
+    const { error } = await supabase.from('problems').delete().eq('id', problemId)
+    if (error) {
+      console.error('Erro ao deletar problema:', error)
+      throw error
+    }
+  },
 }
 
 // Serviço de Metas
@@ -818,4 +918,16 @@ export function toDbInitiative(initiative: Partial<Initiative>): Partial<DBIniti
   if (initiative.priority !== undefined) out.priority = initiative.priority;
   if (initiative.dueDate !== undefined) out.due_date = initiative.dueDate;
   return out;
+}
+
+export function fromDbProblem(row: DBProblem): Problem {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    title: row.title,
+    resolved: row.resolved,
+    pos: row.pos,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
 }
