@@ -101,9 +101,12 @@ function TodoDragOverlayPreview({
         </div>
         {project && (
           <span
-            className="flex-shrink-0 ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+            className="flex-shrink-0 ml-2 inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-black/10"
             style={{ backgroundColor: project.color || '#3B82F6' }}
           >
+            <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
+              label
+            </span>
             {project.name}
           </span>
         )}
@@ -147,6 +150,8 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
     opacity: isDragging ? 0 : 1,
   }
 
+  const project = todo.projectId ? projects.find((p) => p.id === todo.projectId) : undefined
+
   return (
     <div
       ref={setNodeRef}
@@ -160,12 +165,12 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
       }`}
     >
       {/* Linha principal da atividade */}
-      <div className="group flex items-center gap-3 p-3 relative">
+      <div className="flex items-start gap-3 p-3 relative">
       {/* Drag handle */}
       <div
         {...attributes}
         {...listeners}
-        className="flex gap-1 cursor-move hover:cursor-grab active:cursor-grabbing"
+        className="flex gap-1 cursor-move hover:cursor-grab active:cursor-grabbing shrink-0 mt-0.5"
       >
         {/* Coluna esquerda de 3 pontos */}
         <div className="flex flex-col gap-1">
@@ -181,61 +186,66 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         </div>
       </div>
       
-      {/* Checkbox */}
-      <input
-        type="checkbox"
-        checked={todo.completed}
-        onChange={() => onToggleComplete(todo.id)}
-        className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
-      />
-      
-      {/* Indicador de prioridade */}
-      <div
-        onClick={() => onTogglePriority(todo.id)}
-        className="cursor-pointer transition-colors"
-        title={todo.isHighPriority ? 'Clique para remover prioridade' : 'Clique para marcar como prioridade'}
-      >
-        <svg 
-          className={`w-4 h-4 ${
-            todo.isHighPriority ? 'text-red-500' : 'text-gray-400'
-          }`}
-          fill="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z"/>
-        </svg>
-      </div>
-      
-      {/* Título do to-do */}
-      <div className="flex-1 flex items-center gap-2">
-        <span className="text-sm text-gray-900">{todo.title}</span>
-        
-        {todo.onHold && todo.onHoldReason && (
-          <span 
-            className="text-sm text-yellow-600 truncate max-w-32 cursor-help"
-            title={todo.onHoldReason}
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <div className="flex items-center gap-2 min-w-0 pr-1">
+          {/* Checkbox */}
+          <input
+            type="checkbox"
+            checked={todo.completed}
+            onChange={() => onToggleComplete(todo.id)}
+            className="w-4 h-4 shrink-0 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+          />
+          
+          {/* Indicador de prioridade */}
+          <div
+            onClick={() => onTogglePriority(todo.id)}
+            className="cursor-pointer transition-colors shrink-0"
+            title={todo.isHighPriority ? 'Clique para remover prioridade' : 'Clique para marcar como prioridade'}
           >
-            - Em espera: {todo.onHoldReason.length > 20 ? `${todo.onHoldReason.substring(0, 20)}...` : todo.onHoldReason}
-          </span>
+            <svg 
+              className={`w-4 h-4 ${
+                todo.isHighPriority ? 'text-red-500' : 'text-gray-400'
+              }`}
+              fill="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z"/>
+            </svg>
+          </div>
+          
+          {/* Título do to-do */}
+          <div className="flex-1 flex items-center gap-2 min-w-0">
+            <span className="text-sm text-gray-900 truncate">{todo.title}</span>
+            
+            {todo.onHold && todo.onHoldReason && (
+              <span 
+                className="text-sm text-yellow-600 truncate max-w-[40%] shrink cursor-help"
+                title={todo.onHoldReason}
+              >
+                - Em espera: {todo.onHoldReason.length > 20 ? `${todo.onHoldReason.substring(0, 20)}...` : todo.onHoldReason}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Projeto como tag (cor do projeto) */}
+        {project && (
+          <div className="flex flex-wrap items-center gap-2 pl-0">
+            <span
+              className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white shadow-sm ring-1 ring-black/10"
+              style={{ backgroundColor: project.color || '#3B82F6' }}
+            >
+              <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
+                label
+              </span>
+              {project.name}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Tag do projeto - posicionada no canto direito */}
-      {todo.projectId && projects.find(p => p.id === todo.projectId) && (
-        <div className="flex-shrink-0 ml-2">
-            <span
-              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
-            style={{ backgroundColor: projects.find(p => p.id === todo.projectId)?.color || '#3B82F6' }}
-            >
-            {projects.find(p => p.id === todo.projectId)?.name}
-            </span>
-        </div>
-      )}
-
-      {/* Tags no canto direito - removido temporariamente */}
-
-      {/* Botões de ação (visíveis apenas no hover da atividade específica) - sobrepostos às tags */}
-      <div className="opacity-0 hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 absolute right-0 top-0 bottom-0 bg-surface-container-lowest/95 backdrop-blur-sm px-2">
+      {/* Botões de ação (hover) */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 self-start shrink-0 bg-surface-container-lowest/95 backdrop-blur-sm rounded-md px-1 py-0.5">
         {/* Botão de editar */}
         <button
           onClick={() => onEdit(todo)}
@@ -800,6 +810,7 @@ export default function PlanningPage() {
       if (newTodoData) {
       setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
       setShowInlineCreateForm(false)
+      setShowCreateTodoModal(false)
       }
     }
   }
@@ -1868,6 +1879,7 @@ export default function PlanningPage() {
                     
                     {/* Botão de fechar */}
                     <button
+                      type="button"
                       onClick={handleCancelBacklogCreate}
                       className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
                       title="Cancelar"
@@ -1876,6 +1888,49 @@ export default function PlanningPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
+                  </div>
+                  <div className="ml-16">
+                    {newBacklogTodo.projectId && projects.find((p) => p.id === newBacklogTodo.projectId) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white"
+                          style={{
+                            backgroundColor:
+                              projects.find((p) => p.id === newBacklogTodo.projectId)?.color || '#3B82F6',
+                          }}
+                        >
+                          <span className="material-symbols-outlined text-sm" aria-hidden>
+                            label
+                          </span>
+                          {projects.find((p) => p.id === newBacklogTodo.projectId)?.name}
+                          <button
+                            type="button"
+                            onClick={() => setNewBacklogTodo({ ...newBacklogTodo, projectId: undefined })}
+                            className="ml-1 text-white hover:text-gray-200"
+                            aria-label="Remover projeto"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-600">Projeto:</label>
+                      <select
+                        value={newBacklogTodo.projectId || ''}
+                        onChange={(e) =>
+                          setNewBacklogTodo({ ...newBacklogTodo, projectId: e.target.value || undefined })
+                        }
+                        className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Sem projeto</option>
+                        {projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2264,6 +2319,47 @@ export default function PlanningPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="Ex: Pessoal, Trabalho, Saúde..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Projeto (opcional)
+                </label>
+                {newTodo.projectId && projects.find((p) => p.id === newTodo.projectId) && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white"
+                      style={{
+                        backgroundColor: projects.find((p) => p.id === newTodo.projectId)?.color || '#3B82F6',
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-sm" aria-hidden>
+                        label
+                      </span>
+                      {projects.find((p) => p.id === newTodo.projectId)?.name}
+                      <button
+                        type="button"
+                        onClick={() => setNewTodo({ ...newTodo, projectId: undefined })}
+                        className="ml-1 text-white hover:text-gray-200"
+                        aria-label="Remover projeto"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </div>
+                )}
+                <select
+                  value={newTodo.projectId || ''}
+                  onChange={(e) => setNewTodo({ ...newTodo, projectId: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Sem projeto</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
