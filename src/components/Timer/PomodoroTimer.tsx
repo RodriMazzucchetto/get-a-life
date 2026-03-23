@@ -59,7 +59,7 @@ export default function PomodoroTimer({ onCycleComplete, onDisplayTime, compact 
       if (Notification.permission === 'granted') {
         new Notification('Ciclo Concluído! 🎉', {
           body: `Você completou ${cyclesCompleted + 1} ciclos hoje!`,
-          icon: '/favicon.ico',
+          icon: '/icon.png',
           tag: 'pomodoro-cycle'
         })
       } else if (Notification.permission !== 'denied') {
@@ -67,7 +67,7 @@ export default function PomodoroTimer({ onCycleComplete, onDisplayTime, compact 
           if (permission === 'granted') {
             new Notification('Ciclo Concluído! 🎉', {
               body: `Você completou ${cyclesCompleted + 1} ciclos hoje!`,
-              icon: '/favicon.ico',
+              icon: '/icon.png',
               tag: 'pomodoro-cycle'
             })
           }
