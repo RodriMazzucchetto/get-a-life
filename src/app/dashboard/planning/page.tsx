@@ -14,6 +14,7 @@ import { usePlanningData } from '@/hooks/usePlanningData'
 import PomodoroTimer from '@/components/Timer/PomodoroTimer'
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   pointerWithin,
   KeyboardSensor,
@@ -43,8 +44,82 @@ import {
   computePosAtNewIndex,
   sortTodosByPriorityAndPos,
 } from '@/lib/todoBoardHelpers'
+import { DBReminder, type Todo, type Goal } from '@/lib/planning'
 
 // Componente para grupo de tags arrastável - será definido depois das funções
+
+// Preview do card no cursor (DragOverlay)
+function TodoDragOverlayPreview({
+  todo,
+  projects,
+}: {
+  todo: Todo
+  projects: { id: string; name: string; color: string }[]
+}) {
+  const project = todo.projectId ? projects.find((p) => p.id === todo.projectId) : undefined
+  return (
+    <div
+      className={`pointer-events-none flex flex-col bg-white rounded-lg shadow-xl cursor-grabbing select-none ${
+        todo.onHold ? 'border-2 border-yellow-400' : 'border border-gray-200'
+      }`}
+    >
+      <div className="flex items-center gap-3 p-3">
+        <div className="flex gap-1">
+          <div className="flex flex-col gap-1">
+            <div className="w-1 h-1 bg-gray-400 rounded-full" />
+            <div className="w-1 h-1 bg-gray-400 rounded-full" />
+            <div className="w-1 h-1 bg-gray-400 rounded-full" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="w-1 h-1 bg-gray-400 rounded-full" />
+            <div className="w-1 h-1 bg-gray-400 rounded-full" />
+            <div className="w-1 h-1 bg-gray-400 rounded-full" />
+          </div>
+        </div>
+        <div
+          className={`w-4 h-4 rounded border border-blue-300 shrink-0 ${
+            todo.completed ? 'bg-blue-600' : 'bg-white'
+          }`}
+          aria-hidden
+        />
+        <svg
+          className={`w-4 h-4 shrink-0 ${todo.isHighPriority ? 'text-red-500' : 'text-gray-400'}`}
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden
+        >
+          <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
+        </svg>
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          <span className="text-sm text-gray-900 truncate">{todo.title}</span>
+          {todo.onHold && todo.onHoldReason && (
+            <span className="text-sm text-yellow-600 truncate max-w-32">
+              - Em espera:{' '}
+              {todo.onHoldReason.length > 20 ? `${todo.onHoldReason.substring(0, 20)}...` : todo.onHoldReason}
+            </span>
+          )}
+        </div>
+        {project && (
+          <span
+            className="flex-shrink-0 ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+            style={{ backgroundColor: project.color || '#3B82F6' }}
+          >
+            {project.name}
+          </span>
+        )}
+      </div>
+      {todo.timeSensitive && todo.dueDate && (
+        <div className="px-3 pb-3 border-t border-gray-100">
+          <div className="pt-2 ml-16">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white bg-orange-500">
+              Vence em {new Date(todo.dueDate).toLocaleDateString('pt-BR')}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Componente para item de to-do arrastável
 function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, onEdit, onPutOnHold, onMoveToProgress, onDeleteFromAnyBlock }: {
@@ -69,7 +144,7 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   }
 
   return (
@@ -77,6 +152,8 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
       ref={setNodeRef}
       style={style}
       className={`group flex flex-col bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ${
+        isDragging ? 'pointer-events-none' : ''
+      } ${
         todo.onHold 
           ? 'border-2 border-yellow-400' 
           : 'border border-gray-200'
@@ -268,10 +345,7 @@ interface Task {
   created_at: string
 }
 
-import { DBReminder } from '@/lib/planning'
 type Reminder = DBReminder
-
-import { Todo, Goal } from '@/lib/planning'
 
 export default function PlanningPage() {
   // Hook para gerenciar dados de planejamento
@@ -319,6 +393,12 @@ export default function PlanningPage() {
     () => todos.filter((t) => t.status === 'in_progress' && !t.completed).sort(sortTodosByPriorityAndPos),
     [todos]
   )
+
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const activeDragTodo = useMemo(() => {
+    if (!activeDragId || activeDragId.startsWith('group-')) return undefined
+    return todos.find((t) => t.id === activeDragId)
+  }, [activeDragId, todos])
 
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRemindersModal, setShowRemindersModal] = useState(false)
@@ -1267,7 +1347,12 @@ export default function PlanningPage() {
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetectionStrategy}
-        onDragEnd={handleDragEndBetweenBlocks}
+        onDragStart={(e) => setActiveDragId(String(e.active.id))}
+        onDragCancel={() => setActiveDragId(null)}
+        onDragEnd={(e) => {
+          setActiveDragId(null)
+          void handleDragEndBetweenBlocks(e)
+        }}
       >
         {/* Bloco Em Progresso - Full Width */}
         <div className="mb-6">
@@ -1637,6 +1722,12 @@ export default function PlanningPage() {
             </div>
           </div>
         </div>
+
+        <DragOverlay adjustScale={false}>
+          {activeDragTodo ? (
+            <TodoDragOverlayPreview todo={activeDragTodo} projects={projects} />
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       {/* Modal de Projetos e Tags REMOVIDO - será reimplementado do zero */}
