@@ -438,55 +438,51 @@ export default function ProblemsPage() {
         </div>
       )}
 
-      {/* Formulário rápido — título + projeto no mesmo bloco (como tarefas no planejamento) */}
+      {/* Entrada rápida — barra cinza única (mock Velocity): título + projeto no mesmo elemento */}
       <section className="mb-10">
-        <div className="rounded-2xl bg-surface-container-lowest p-4 shadow-sm ring-1 ring-outline-variant/10 sm:p-5">
-          <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined mt-2 shrink-0 text-primary">add_circle</span>
-            <div className="min-w-0 flex-1">
-              <input
-                ref={quickInputRef}
-                type="text"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && draft.trim()) {
-                    e.preventDefault();
-                    void submitQuickAdd();
-                  }
-                }}
-                placeholder="Adicionar novo problema…"
-                disabled={saving}
-                className="w-full border-0 bg-transparent py-2 font-headline text-lg text-on-surface placeholder:text-outline/50 focus:outline-none focus:ring-0"
-              />
-              <div className="mt-4 flex flex-col gap-3 border-t border-outline-variant/15 pt-4 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-md">
-                  <label htmlFor="quick-problem-project" className="shrink-0 text-sm text-on-surface-variant">
-                    Projeto:
-                  </label>
-                  <select
-                    id="quick-problem-project"
-                    value={quickProjectId}
-                    onChange={(e) => setQuickProjectId(e.target.value)}
-                    className="min-w-0 flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-sm font-medium text-on-surface shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="">Sem projeto</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  disabled={saving || !draft.trim()}
-                  onClick={() => void submitQuickAdd()}
-                  className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-on-primary shadow-sm transition-colors hover:bg-primary-container disabled:opacity-50 sm:ml-auto"
-                >
-                  {saving ? "A guardar…" : "Adicionar"}
-                </button>
-              </div>
+        <div className="group relative rounded-2xl bg-surface-container-lowest shadow-sm ring-1 ring-outline-variant/10">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+            <span className="material-symbols-outlined text-primary">add_circle</span>
+          </div>
+          <div className="flex flex-col gap-3 py-4 pl-12 pr-4 sm:flex-row sm:items-center sm:gap-4 sm:py-3 sm:pr-3">
+            <input
+              ref={quickInputRef}
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && draft.trim()) {
+                  e.preventDefault();
+                  void submitQuickAdd();
+                }
+              }}
+              placeholder="Adicionar novo problema…"
+              disabled={saving}
+              className="min-w-0 flex-1 border-0 bg-transparent py-2 font-headline text-lg text-on-surface placeholder:text-outline/50 focus:outline-none focus:ring-0 sm:py-3"
+            />
+            <div className="flex shrink-0 items-center gap-2 sm:max-w-[min(100%,14rem)]">
+              <label htmlFor="quick-problem-project" className="sr-only">
+                Projeto
+              </label>
+              <select
+                id="quick-problem-project"
+                value={quickProjectId}
+                onChange={(e) => setQuickProjectId(e.target.value)}
+                className="w-full cursor-pointer rounded-lg border-0 bg-surface-container px-3 py-2.5 text-left text-sm font-semibold text-on-surface shadow-inner ring-1 ring-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary/25"
+                title="Projeto deste problema"
+              >
+                <option value="">Sem projeto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {projectShortCode(p.name)} — {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex shrink-0 items-center justify-end sm:justify-start">
+              <span className="rounded bg-surface-container px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-outline">
+                Enter
+              </span>
             </div>
           </div>
         </div>
