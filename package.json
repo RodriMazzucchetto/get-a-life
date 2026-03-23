@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "branding:png": "node scripts/process-branding-logos.mjs",
+    "db:push": "supabase db push",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
