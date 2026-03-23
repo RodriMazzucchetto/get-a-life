@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -13,51 +13,37 @@ const mainNav: {
   name: string;
   href: string;
   icon: string;
-  active: (pathname: string, hash: string) => boolean;
-  disabled?: boolean;
+  /** Item não clicável — funcionalidade futura */
+  future?: boolean;
+  active: (pathname: string) => boolean;
 }[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
     icon: "grid_view",
-    active: (pathname) => pathname === "/dashboard",
-  },
-  {
-    name: "Metas",
-    href: "/dashboard/planning#metas-section",
-    icon: "ads_click",
-    active: (pathname, hash) =>
-      pathname === "/dashboard/planning" && hash === "#metas-section",
+    future: true,
+    active: () => false,
   },
   {
     name: "Tarefas",
     href: "/dashboard/planning",
     icon: "checklist",
-    active: (pathname, hash) =>
-      pathname === "/dashboard/planning" && hash !== "#metas-section",
+    active: (pathname) => pathname === "/dashboard/planning",
   },
   {
     name: "Relatórios",
     href: "#",
     icon: "analytics",
+    future: true,
     active: () => false,
-    disabled: true,
   },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [routeHash, setRouteHash] = useState("");
   const { user, signOut } = useAuthContext();
   const router = useRouter();
-
-  useEffect(() => {
-    setRouteHash(typeof window !== "undefined" ? window.location.hash : "");
-    const onHashChange = () => setRouteHash(window.location.hash);
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, [pathname]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -93,6 +79,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   };
 
+  const futureItemClass =
+    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-on-surface-variant/32 bg-surface-container-high/20 cursor-not-allowed select-none border border-transparent";
+
   return (
     <div className="min-h-screen bg-background text-on-surface font-body">
       {/* Mobile overlay */}
@@ -118,12 +107,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <nav className="flex flex-col gap-1 flex-1">
           {mainNav.map((item) =>
-            item.disabled ? (
+            item.future ? (
               <span
                 key={item.name}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-on-surface-variant/45 cursor-default"
+                title="Em breve"
+                aria-disabled
+                className={futureItemClass}
               >
-                <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                <span className="material-symbols-outlined text-xl opacity-70">{item.icon}</span>
                 {item.name}
               </span>
             ) : (
@@ -132,7 +123,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 label={item.name}
                 icon={item.icon}
-                isActive={item.active(pathname, routeHash)}
+                isActive={item.active(pathname)}
               />
             ),
           )}
@@ -197,12 +188,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <nav className="flex flex-col gap-1 flex-1">
           {mainNav.map((item) =>
-            item.disabled ? (
+            item.future ? (
               <span
                 key={item.name}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-on-surface-variant/45 cursor-default"
+                title="Em breve"
+                aria-disabled
+                className={futureItemClass}
               >
-                <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                <span className="material-symbols-outlined text-xl opacity-70">{item.icon}</span>
                 {item.name}
               </span>
             ) : (
@@ -211,7 +204,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 label={item.name}
                 icon={item.icon}
-                isActive={item.active(pathname, routeHash)}
+                isActive={item.active(pathname)}
                 onNavigate={() => setSidebarOpen(false)}
               />
             ),
