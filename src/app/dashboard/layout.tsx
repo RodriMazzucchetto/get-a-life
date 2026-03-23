@@ -31,7 +31,7 @@ const mainNav: {
   {
     name: "Problemas",
     href: "/dashboard/problems",
-    icon: "report_problem",
+    icon: "error_outline",
     active: (pathname) => pathname === "/dashboard/problems",
   },
   {

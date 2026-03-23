@@ -20,7 +20,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { TrashIcon } from "@heroicons/react/24/outline";
+import ModalOverlay from "@/components/ModalOverlay";
 import { useAuthContext } from "@/contexts/AuthContext";
 import {
   problemsService,
@@ -33,7 +34,7 @@ import {
 import {
   computePosAtNewIndexForProblems,
   formatRelativeDaysPt,
-  projectPrefixLabel,
+  projectShortCode,
 } from "@/lib/problemHelpers";
 import {
   friendlySchemaHint,
@@ -41,10 +42,12 @@ import {
 } from "@/lib/supabaseErrors";
 
 const NONE = "__none__";
+type TabKey = "active" | "resolved" | "archived";
 
-function matchProject(p: Problem, selected: string): boolean {
-  if (selected === NONE) return p.projectId === null;
-  return p.projectId === selected;
+function matchProjectFilter(p: Problem, filter: string): boolean {
+  if (filter === "all") return true;
+  if (filter === NONE) return p.projectId === null;
+  return p.projectId === filter;
 }
 
 function SortableProblemRow({
@@ -53,6 +56,7 @@ function SortableProblemRow({
   projectColor,
   isTopPriority,
   stale,
+  dragDisabled,
   onToggleResolved,
   onDelete,
 }: {
@@ -61,6 +65,7 @@ function SortableProblemRow({
   projectColor: string | null;
   isTopPriority: boolean;
   stale: boolean;
+  dragDisabled: boolean;
   onToggleResolved: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
@@ -71,97 +76,99 @@ function SortableProblemRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: problem.id });
+  } = useSortable({ id: problem.id, disabled: dragDisabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const prefix =
-    projectName != null ? projectPrefixLabel(projectName) : "— ";
+  const short = projectName ? projectShortCode(projectName) : "—";
+  const badgeBg = projectColor ? `${projectColor}22` : undefined;
+  const badgeFg = projectColor || undefined;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex flex-col border-b border-outline-variant/15 last:border-b-0 ${
+      className={`group flex items-center gap-4 rounded-2xl border border-transparent p-5 transition-all hover:border-outline-variant/10 hover:bg-surface-container-low hover:shadow-md ${
         isTopPriority
-          ? "bg-primary-container/30 ring-1 ring-primary/35 shadow-sm"
-          : "bg-surface-container-lowest/80"
-      } ${isDragging ? "opacity-60" : ""}`}
+          ? "bg-primary-container/25 ring-1 ring-primary/30 shadow-sm"
+          : "bg-surface-container-lowest"
+      } ${problem.resolved ? "opacity-60" : ""} ${isDragging ? "opacity-60" : ""}`}
     >
-      <div className="flex items-start gap-3 px-3 py-3.5 sm:px-4">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="mt-1 flex shrink-0 cursor-grab touch-none flex-col gap-0.5 active:cursor-grabbing"
-          aria-label="Arrastar para reordenar"
-        >
-          <span className="grid grid-cols-2 gap-0.5">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <span key={i} className="h-1 w-1 rounded-full bg-on-surface-variant/35" />
-            ))}
+      <div
+        {...(dragDisabled ? {} : attributes)}
+        {...(dragDisabled ? {} : listeners)}
+        className={`drag-handle shrink-0 text-outline/30 transition-colors ${
+          dragDisabled ? "cursor-default opacity-30" : "cursor-grab text-outline/40 hover:text-outline active:cursor-grabbing"
+        }`}
+        aria-hidden={dragDisabled}
+      >
+        <span className="material-symbols-outlined">drag_indicator</span>
+      </div>
+
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={problem.resolved}
+        onClick={() => onToggleResolved(problem.id)}
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+          problem.resolved
+            ? "border-primary bg-primary text-on-primary"
+            : "border-outline-variant group-hover:border-primary/60"
+        }`}
+      >
+        {problem.resolved && (
+          <span className="material-symbols-outlined text-[14px] leading-none">check</span>
+        )}
+      </button>
+
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 flex flex-wrap items-center gap-3">
+          <span
+            className="rounded-md px-2 py-0.5 text-xs font-black tracking-wide"
+            style={{
+              backgroundColor: badgeBg ?? "var(--color-surface-container-high)",
+              color: badgeFg ?? "var(--color-on-surface-variant)",
+            }}
+          >
+            {short}
           </span>
-        </button>
-
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={problem.resolved}
-          onClick={() => onToggleResolved(problem.id)}
-          className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-            problem.resolved
-              ? "border-primary bg-primary text-on-primary"
-              : "border-outline-variant hover:border-primary/60"
-          }`}
-        >
-          {problem.resolved && (
-            <span className="material-symbols-outlined text-[14px] leading-none">check</span>
-          )}
-        </button>
-
-        <div className="min-w-0 flex-1">
-          <p
-            className={`text-sm font-medium leading-snug sm:text-[15px] ${
-              problem.resolved ? "text-on-surface-variant line-through" : "text-on-surface"
+          <h3
+            className={`font-headline text-sm font-medium transition-colors ${
+              problem.resolved
+                ? "text-on-surface-variant line-through"
+                : "text-on-surface group-hover:text-primary"
             }`}
           >
-            <span
-              className="font-bold tracking-wide"
-              style={
-                projectColor
-                  ? { color: projectColor }
-                  : { color: "var(--color-on-surface-variant)" }
-              }
-            >
-              {prefix}
-            </span>
             {problem.title}
-          </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-tertiary-fixed-dim">
-            <span>{formatRelativeDaysPt(problem.createdAt)}</span>
-            {stale && !problem.resolved && (
-              <span
-                className="inline-flex items-center gap-0.5 text-error"
-                title="Aberto há bastante tempo"
-              >
-                <span className="material-symbols-outlined text-[16px]">schedule</span>
-              </span>
-            )}
-          </div>
+          </h3>
         </div>
-
-        <button
-          type="button"
-          onClick={() => onDelete(problem.id)}
-          className="shrink-0 rounded-lg p-1.5 text-on-surface-variant opacity-70 transition-opacity hover:bg-surface-container-high hover:text-error sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
-          aria-label="Excluir problema"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </button>
+        <div className="flex flex-wrap items-center gap-4 text-[11px] text-on-surface-variant/80">
+          <span className="inline-flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px]">schedule</span>
+            {problem.resolved
+              ? `Resolvido ${formatRelativeDaysPt(problem.updatedAt)}`
+              : formatRelativeDaysPt(problem.createdAt)}
+          </span>
+          {stale && !problem.resolved && (
+            <span className="inline-flex items-center gap-1 text-error">
+              <span className="material-symbols-outlined text-[14px]">warning</span>
+              Atenção
+            </span>
+          )}
+        </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => onDelete(problem.id)}
+        className="shrink-0 rounded-lg p-2 text-outline opacity-70 transition-all hover:bg-surface-container-high hover:text-error sm:opacity-0 sm:group-hover:opacity-100"
+        aria-label="Excluir problema"
+      >
+        <TrashIcon className="h-4 w-4" />
+      </button>
     </div>
   );
 }
@@ -171,14 +178,22 @@ export default function ProblemsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(NONE);
+  const [tab, setTab] = useState<TabKey>("active");
+  const [filterProjectId, setFilterProjectId] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createTitle, setCreateTitle] = useState("");
+  const [createProjectId, setCreateProjectId] = useState<string | null>(null);
+
+  const dragDisabled = filterProjectId === "all";
+
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -196,10 +211,7 @@ export default function ProblemsPage() {
     } catch (e) {
       console.error(e);
       const raw = getSupabaseErrorMessage(e);
-      setError(
-        friendlySchemaHint(raw) ??
-          `Não foi possível carregar os dados: ${raw}`
-      );
+      setError(friendlySchemaHint(raw) ?? `Não foi possível carregar os dados: ${raw}`);
     } finally {
       setLoading(false);
     }
@@ -209,81 +221,113 @@ export default function ProblemsPage() {
     void load();
   }, [load]);
 
-  const [didInitProject, setDidInitProject] = useState(false);
-  useEffect(() => {
-    if (didInitProject || projects.length === 0) return;
-    setSelectedProjectId(projects[0].id);
-    setDidInitProject(true);
-  }, [projects, didInitProject]);
-
-  const listForProject = useMemo(() => {
-    return problems
-      .filter((p) => matchProject(p, selectedProjectId))
-      .sort((a, b) => a.pos - b.pos);
-  }, [problems, selectedProjectId]);
-
-  const topPriorityIds = useMemo(() => {
-    const unresolved = listForProject.filter((p) => !p.resolved);
-    return new Set(unresolved.slice(0, 3).map((p) => p.id));
-  }, [listForProject]);
-
-  const activeProblem = useMemo(
-    () => (activeId ? problems.find((p) => p.id === activeId) : undefined),
-    [activeId, problems]
-  );
-
   const projectById = useMemo(() => {
     const m = new Map<string, Project>();
     projects.forEach((p) => m.set(p.id, p));
     return m;
   }, [projects]);
 
+  const tabFiltered = useMemo(() => {
+    if (tab === "active") return problems.filter((p) => !p.resolved);
+    if (tab === "resolved") return problems.filter((p) => p.resolved);
+    return [];
+  }, [problems, tab]);
+
+  const projectFiltered = useMemo(() => {
+    return tabFiltered.filter((p) => matchProjectFilter(p, filterProjectId));
+  }, [tabFiltered, filterProjectId]);
+
+  const searched = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return projectFiltered;
+    return projectFiltered.filter((p) => p.title.toLowerCase().includes(q));
+  }, [projectFiltered, searchQuery]);
+
+  const sortedList = useMemo(() => {
+    const copy = [...searched];
+    if (filterProjectId === "all") {
+      copy.sort((a, b) => {
+        const pa = a.projectId ?? "";
+        const pb = b.projectId ?? "";
+        if (pa !== pb) return pa.localeCompare(pb);
+        return a.pos - b.pos;
+      });
+    } else {
+      copy.sort((a, b) => a.pos - b.pos);
+    }
+    return copy;
+  }, [searched, filterProjectId]);
+
+  const topPriorityIds = useMemo(() => {
+    if (tab !== "active") return new Set<string>();
+    const unresolved = sortedList.filter((p) => !p.resolved);
+    return new Set(unresolved.slice(0, 3).map((p) => p.id));
+  }, [sortedList, tab]);
+
+  const activeProblem = useMemo(
+    () => (activeId ? problems.find((p) => p.id === activeId) : undefined),
+    [activeId, problems]
+  );
+
+  const stats = useMemo(() => {
+    const open = problems.filter((p) => !p.resolved);
+    const projectKeys = new Set(
+      open.map((p) => p.projectId ?? "none")
+    );
+    return { openCount: open.length, projectWithOpenCount: projectKeys.size };
+  }, [problems]);
+
+  const openCreate = useCallback((prefillTitle?: string) => {
+    setCreateTitle(prefillTitle?.trim() ?? "");
+    setCreateProjectId(projects[0]?.id ?? null);
+    setCreateOpen(true);
+    setError(null);
+  }, [projects]);
+
+  const submitCreate = async () => {
+    if (!user || !createTitle.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const row = await problemsService.createProblem(user.id, {
+        title: createTitle.trim(),
+        project_id: createProjectId,
+      });
+      setProblems((prev) => [...prev, fromDbProblem(row)]);
+      setCreateOpen(false);
+      setCreateTitle("");
+      setDraft("");
+      setTab("active");
+    } catch (e) {
+      console.error(e);
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível criar: ${raw}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (dragDisabled) return;
     const { active, over } = event;
     setActiveId(null);
     if (!over || active.id === over.id) return;
-    const ids = listForProject.map((p) => p.id);
+    const ids = sortedList.map((p) => p.id);
     const oldIndex = ids.indexOf(String(active.id));
     const newIndex = ids.indexOf(String(over.id));
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const reordered = arrayMove(listForProject, oldIndex, newIndex);
+    const reordered = arrayMove(sortedList, oldIndex, newIndex);
     const newPos = computePosAtNewIndexForProblems(reordered, String(active.id));
     if (newPos == null) return;
 
     try {
       const updated = await problemsService.updateProblem(String(active.id), { pos: newPos });
-      setProblems((prev) =>
-        prev.map((p) => (p.id === updated.id ? fromDbProblem(updated) : p))
-      );
+      setProblems((prev) => prev.map((p) => (p.id === updated.id ? fromDbProblem(updated) : p)));
     } catch (e) {
       console.error(e);
       const raw = getSupabaseErrorMessage(e);
       setError(friendlySchemaHint(raw) ?? `Não foi possível reordenar: ${raw}`);
-    }
-  };
-
-  const handleAdd = async () => {
-    if (!user || !draft.trim()) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const pid = selectedProjectId === NONE ? null : selectedProjectId;
-      const row = await problemsService.createProblem(user.id, {
-        title: draft.trim(),
-        project_id: pid,
-      });
-      setProblems((prev) => [...prev, fromDbProblem(row)]);
-      setDraft("");
-    } catch (e) {
-      console.error(e);
-      const raw = getSupabaseErrorMessage(e);
-      setError(
-        friendlySchemaHint(raw) ??
-          `Não foi possível criar o problema: ${raw}`
-      );
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -327,35 +371,67 @@ export default function ProblemsPage() {
 
   return (
     <div className="font-body text-on-surface">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-headline text-2xl font-bold tracking-tight text-on-surface md:text-3xl">
-            Problemas
-          </h1>
-          <p className="mt-1 max-w-xl text-sm text-on-surface-variant">
-            Priorize o que importa: arraste para ordenar. Os três primeiros itens em aberto
-            ficam em destaque.
-          </p>
+      {/* Top bar — mock Velocity / Problems */}
+      <header className="sticky top-0 z-30 -mx-4 mb-8 border-b border-outline-variant/15 bg-background px-4 pb-0 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex flex-col gap-4 pb-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
+            <span className="font-headline text-xl font-bold tracking-tight text-on-surface">
+              Problemas
+            </span>
+            <nav className="flex gap-6 border-b border-transparent text-sm">
+              {(
+                [
+                  ["active", "Ativos"],
+                  ["resolved", "Resolvidos"],
+                  ["archived", "Arquivados"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
+                  className={`pb-2 font-semibold transition-colors ${
+                    tab === key
+                      ? "border-b-2 border-primary text-primary"
+                      : "text-on-surface-variant hover:text-on-surface"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-outline">
+                search
+              </span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Busca rápida…"
+                className="w-full min-w-[12rem] rounded-full border-0 bg-surface-container-low py-1.5 pl-10 pr-4 text-sm text-on-surface shadow-sm ring-1 ring-outline-variant/10 transition-all focus:w-64 focus:ring-2 focus:ring-primary/20 sm:w-48"
+              />
+            </div>
+            <Link
+              href="/dashboard/settings"
+              className="rounded-full p-2 text-outline transition-colors hover:bg-surface-container-low"
+              aria-label="Configurações"
+            >
+              <span className="material-symbols-outlined">settings</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => openCreate()}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-primary shadow-sm transition-all hover:bg-primary-container active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined text-lg">add</span>
+              Novo problema
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col gap-2 sm:items-end">
-          <label htmlFor="proj-filter" className="text-xs font-medium text-on-surface-variant">
-            Projeto
-          </label>
-          <select
-            id="proj-filter"
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
-            className="rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-sm font-medium text-on-surface shadow-sm ring-1 ring-outline-variant/10 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
-          >
-            <option value={NONE}>Sem projeto</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      </header>
 
       {error && (
         <div
@@ -366,82 +442,280 @@ export default function ProblemsPage() {
         </div>
       )}
 
-      {projects.length === 0 && (
-        <div className="mb-6 rounded-xl border border-dashed border-outline-variant/40 bg-surface-container-low/50 p-4 text-center text-sm text-on-surface-variant">
-          Sem projetos ainda.{" "}
-          <Link href="/dashboard/planning" className="font-semibold text-primary underline">
-            Crie em Planejamento
-          </Link>{" "}
-          para prefixos coloridos — ou use &quot;Sem projeto&quot; abaixo.
+      {/* Quick entry */}
+      <section className="mb-10">
+        <div className="group relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+            <span className="material-symbols-outlined text-primary">add_circle</span>
+          </div>
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && draft.trim()) {
+                e.preventDefault();
+                openCreate(draft);
+              }
+            }}
+            placeholder="Adicionar novo problema…"
+            disabled={saving}
+            className="block w-full rounded-2xl border-0 bg-surface-container-lowest py-5 pl-12 pr-36 font-headline text-lg shadow-sm ring-1 ring-outline-variant/10 placeholder:text-outline/50 focus:ring-2 focus:ring-primary/20"
+          />
+          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+            <span className="rounded bg-surface-container px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-outline">
+              Enter para definir projeto
+            </span>
+          </div>
         </div>
+      </section>
+
+      {/* Project filter pills — dados reais */}
+      <section className="mb-8 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant/60">
+            Filtro por projeto
+          </h2>
+          <Link
+            href="/dashboard/planning"
+            className="inline-flex items-center gap-1 text-xs font-bold text-primary"
+          >
+            <span className="material-symbols-outlined text-sm">folder</span>
+            Gerir projetos
+          </Link>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setFilterProjectId("all")}
+            className={`rounded-full px-5 py-2 text-xs font-bold shadow-sm transition-colors ${
+              filterProjectId === "all"
+                ? "bg-primary text-on-primary"
+                : "bg-surface-container-lowest text-on-surface ring-1 ring-outline-variant/15 hover:bg-surface-container-high"
+            }`}
+          >
+            Todos
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterProjectId(NONE)}
+            className={`rounded-full px-5 py-2 text-xs font-semibold transition-colors ${
+              filterProjectId === NONE
+                ? "bg-primary text-on-primary"
+                : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-high"
+            }`}
+          >
+            Sem projeto
+          </button>
+          {projects.map((p) => {
+            const code = projectShortCode(p.name);
+            const active = filterProjectId === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setFilterProjectId(p.id)}
+                className={`rounded-full px-5 py-2 text-xs font-semibold transition-colors ${
+                  active
+                    ? "text-on-primary shadow-sm"
+                    : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-high"
+                }`}
+                style={
+                  active
+                    ? { backgroundColor: p.color, color: "#fff" }
+                    : { borderLeft: `3px solid ${p.color}` }
+                }
+              >
+                {code}
+              </button>
+            );
+          })}
+          <Link
+            href="/dashboard/planning"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-lowest text-outline ring-1 ring-outline-variant/15 transition-colors hover:bg-surface-container-high"
+            title="Novo projeto"
+          >
+            <span className="material-symbols-outlined text-sm">add</span>
+          </Link>
+        </div>
+        {dragDisabled && tab !== "archived" && (
+          <p className="text-xs text-on-surface-variant">
+            Para reordenar por prioridade, escolha um projeto no filtro (ou &quot;Sem projeto&quot;).
+          </p>
+        )}
+      </section>
+
+      {/* List */}
+      {tab === "archived" ? (
+        <div className="rounded-2xl border border-dashed border-outline-variant/40 bg-surface-container-low/40 px-6 py-16 text-center">
+          <p className="font-headline text-on-surface-variant">
+            Arquivamento em breve — por agora use <strong>Resolvidos</strong>.
+          </p>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={(e) => setActiveId(String(e.active.id))}
+          onDragEnd={(e) => void handleDragEnd(e)}
+          onDragCancel={() => setActiveId(null)}
+        >
+          <SortableContext
+            items={sortedList.map((p) => p.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <section className="space-y-3">
+              {sortedList.length === 0 ? (
+                <p className="rounded-2xl bg-surface-container-low/50 px-6 py-12 text-center text-sm text-on-surface-variant">
+                  Nenhum problema nesta vista. Use <strong>Novo problema</strong> ou o campo acima.
+                </p>
+              ) : (
+                sortedList.map((p) => {
+                  const proj = p.projectId ? projectById.get(p.projectId) : null;
+                  return (
+                    <SortableProblemRow
+                      key={p.id}
+                      problem={p}
+                      projectName={proj?.name ?? null}
+                      projectColor={proj?.color ?? null}
+                      isTopPriority={topPriorityIds.has(p.id)}
+                      stale={daysSince(p.createdAt) > 14}
+                      dragDisabled={dragDisabled}
+                      onToggleResolved={toggleResolved}
+                      onDelete={deleteProblem}
+                    />
+                  );
+                })
+              )}
+            </section>
+          </SortableContext>
+          <DragOverlay dropAnimation={null}>
+            {activeProblem ? (
+              <div className="rounded-2xl bg-surface-container-lowest px-5 py-4 shadow-xl ring-2 ring-primary/30">
+                <p className="font-headline text-sm font-medium text-on-surface">
+                  {activeProblem.title}
+                </p>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
-      <>
-          <div className="mb-0 overflow-hidden rounded-t-xl border border-b-0 border-outline-variant/15 bg-surface-container-low ring-1 ring-outline-variant/10">
-            <div className="flex items-center gap-2 border-b border-outline-variant/15 px-3 py-2.5 sm:px-4">
-              <PlusIcon className="h-5 w-5 shrink-0 text-on-surface-variant" aria-hidden />
-              <input
-                type="text"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void handleAdd();
-                  }
-                }}
-                placeholder="Adicionar problema de curto prazo…"
-                disabled={saving}
-                className="min-w-0 flex-1 border-0 bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-0"
-              />
-            </div>
-          </div>
+      {/* Bottom CTA */}
+      <div className="mt-12 flex flex-col items-start justify-between gap-6 rounded-[2rem] bg-gradient-to-r from-primary to-primary-container p-8 text-on-primary shadow-xl sm:flex-row sm:items-center">
+        <div>
+          <h3 className="font-headline text-xl font-bold">Visão geral</h3>
+          <p className="mt-1 text-sm text-white/80">
+            {stats.openCount} problema{stats.openCount !== 1 ? "s" : ""} em aberto
+            {stats.projectWithOpenCount > 0
+              ? ` em ${stats.projectWithOpenCount} projeto${stats.projectWithOpenCount !== 1 ? "s" : ""} com itens ativos.`
+              : "."}
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled
+          title="Em breve"
+          className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-primary shadow-lg opacity-70"
+        >
+          Gerar relatório
+        </button>
+      </div>
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={(e) => setActiveId(String(e.active.id))}
-            onDragEnd={(e) => void handleDragEnd(e)}
-            onDragCancel={() => setActiveId(null)}
-          >
-            <SortableContext
-              items={listForProject.map((p) => p.id)}
-              strategy={verticalListSortingStrategy}
+      {/* FAB */}
+      <div className="fixed bottom-8 right-8 z-20 lg:right-10">
+        <button
+          type="button"
+          onClick={() => openCreate()}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-2xl transition-transform hover:scale-105 active:scale-95"
+          aria-label="Novo problema"
+        >
+          <span className="material-symbols-outlined text-3xl">add</span>
+        </button>
+      </div>
+
+      <ModalOverlay isOpen={createOpen} onClose={() => setCreateOpen(false)}>
+        <div
+          className="relative w-full max-w-md rounded-2xl bg-surface-container-lowest p-6 shadow-2xl ring-1 ring-outline-variant/15"
+          aria-labelledby="problem-modal-title"
+        >
+          <h2 id="problem-modal-title" className="font-headline text-lg font-bold text-on-surface">
+            Novo problema
+          </h2>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Escolha a que projeto este problema pertence.
+          </p>
+          <label className="mt-6 block text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+            Título
+          </label>
+          <input
+            type="text"
+            value={createTitle}
+            onChange={(e) => setCreateTitle(e.target.value)}
+            className="mt-2 w-full rounded-xl border border-outline-variant/30 bg-background px-4 py-3 text-on-surface shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="Descreva o problema…"
+            autoFocus
+          />
+          <p className="mt-6 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+            Projeto
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setCreateProjectId(null)}
+              className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${
+                createProjectId === null
+                  ? "bg-primary text-on-primary"
+                  : "bg-surface-container-high text-on-surface hover:bg-surface-container"
+              }`}
             >
-              <div className="overflow-hidden rounded-b-xl border border-outline-variant/15 bg-surface-container-low ring-1 ring-outline-variant/10">
-                {listForProject.length === 0 ? (
-                  <p className="px-4 py-10 text-center text-sm text-on-surface-variant">
-                    Nenhum problema neste projeto. Use o campo acima para adicionar.
-                  </p>
-                ) : (
-                  listForProject.map((p) => {
-                    const proj = p.projectId ? projectById.get(p.projectId) : null;
-                    return (
-                      <div key={p.id}>
-                        <SortableProblemRow
-                          problem={p}
-                          projectName={proj?.name ?? null}
-                          projectColor={proj?.color ?? null}
-                          isTopPriority={topPriorityIds.has(p.id)}
-                          stale={daysSince(p.createdAt) > 14}
-                          onToggleResolved={toggleResolved}
-                          onDelete={deleteProblem}
-                        />
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </SortableContext>
-            <DragOverlay dropAnimation={null}>
-              {activeProblem ? (
-                <div className="rounded-lg bg-surface-container-lowest px-4 py-3 shadow-xl ring-2 ring-primary/30">
-                  <p className="text-sm font-medium text-on-surface">{activeProblem.title}</p>
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-      </>
+              Sem projeto
+            </button>
+            {projects.map((p) => {
+              const on = createProjectId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setCreateProjectId(p.id)}
+                  className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${
+                    on ? "text-white shadow-sm" : "bg-surface-container-lowest ring-1 ring-outline-variant/20"
+                  }`}
+                  style={on ? { backgroundColor: p.color } : undefined}
+                >
+                  {projectShortCode(p.name)} — {p.name}
+                </button>
+              );
+            })}
+          </div>
+          {projects.length === 0 && (
+            <p className="mt-4 text-sm text-on-surface-variant">
+              Crie projetos em{" "}
+              <Link href="/dashboard/planning" className="font-semibold text-primary underline">
+                Planejamento
+              </Link>
+              .
+            </p>
+          )}
+          <div className="mt-8 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setCreateOpen(false)}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={saving || !createTitle.trim()}
+              onClick={() => void submitCreate()}
+              className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-on-primary shadow-sm hover:bg-primary-container disabled:opacity-50"
+            >
+              {saving ? "A guardar…" : "Criar"}
+            </button>
+          </div>
+        </div>
+      </ModalOverlay>
     </div>
   );
 }

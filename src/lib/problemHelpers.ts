@@ -42,15 +42,20 @@ export function computePosAtNewIndexForProblems(
   return newPos
 }
 
-/** Prefixo estilo "ZTX:" a partir do nome do projeto */
-export function projectPrefixLabel(projectName: string): string {
+/** Código curto para badge (ex.: ZTX, OWN) — sem dois pontos */
+export function projectShortCode(projectName: string): string {
   const w = projectName.trim().split(/\s+/).filter(Boolean)
   if (w.length >= 2) {
     const a = w[0][0] ?? ''
     const b = w[1][0] ?? ''
-    return `${(a + b).toUpperCase().slice(0, 3)}:`
+    return `${(a + b).toUpperCase().slice(0, 3)}`
   }
-  return `${projectName.slice(0, 3).toUpperCase()}:`
+  return projectName.slice(0, 3).toUpperCase()
+}
+
+/** Prefixo estilo "ZTX:" a partir do nome do projeto */
+export function projectPrefixLabel(projectName: string): string {
+  return `${projectShortCode(projectName)}:`
 }
 
 export function formatRelativeDaysPt(iso: string): string {
