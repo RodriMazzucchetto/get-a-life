@@ -395,6 +395,7 @@ export default function PlanningPage() {
   )
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [pomodoroDisplay, setPomodoroDisplay] = useState('00:00:00')
   const activeDragTodo = useMemo(() => {
     if (!activeDragId || activeDragId.startsWith('group-')) return undefined
     return todos.find((t) => t.id === activeDragId)
@@ -1198,11 +1199,11 @@ export default function PlanningPage() {
 
       {/* Resumo — cartões */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-2">
-        <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/10 ring-1 ring-outline-variant/5">
-          <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
+        <div className="bg-primary/5 p-4 rounded-xl shadow-sm border-2 border-primary/20">
+          <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
             Em Progresso
           </p>
-          <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.inProgress}</p>
+          <p className="text-2xl font-bold font-headline text-primary">{taskStats.inProgress}</p>
         </div>
         <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/10 ring-1 ring-outline-variant/5">
           <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
@@ -1232,58 +1233,50 @@ export default function PlanningPage() {
         </button>
       </div>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={collisionDetectionStrategy}
-        onDragStart={(e) => setActiveDragId(String(e.active.id))}
-        onDragCancel={() => setActiveDragId(null)}
-        onDragEnd={(e) => {
-          setActiveDragId(null)
-          void handleDragEndBetweenBlocks(e)
-        }}
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8 items-stretch">
-          <section className="lg:col-span-7 flex flex-col min-h-0">
+      <div id="metas-section" className="mb-8">
       {/* Elemento de Metas */}
-      <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden flex flex-col h-full min-h-[280px]">
+      <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden flex flex-col">
         <div 
-          className="p-5 flex justify-between items-center cursor-pointer hover:bg-surface-container-high/30 transition-colors"
+          className="p-5 flex justify-between items-center border-b border-outline-variant/15 cursor-pointer hover:bg-surface-container-high/20 transition-colors"
           onClick={() => setGoalsExpanded(!goalsExpanded)}
         >
-          <div className="flex justify-between items-center w-full gap-3">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-2xl">ads_click</span>
-              <div>
-                <h2 className="font-headline font-bold text-lg text-on-surface">Metas</h2>
-              </div>
-              <span className="bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0">
-                {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}%` : '0%'} média
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {goals.length > 0 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setEditingGoal(null)
-                    setShowGoalModal(true)
-                  }}
-                  className="inline-flex items-center justify-center w-8 h-8 bg-primary text-on-primary rounded-full hover:bg-primary-container transition-colors duration-200"
-                  title="Criar Nova Meta"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              )}
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md">
-                <svg className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${goalsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="material-symbols-outlined text-primary text-2xl">ads_click</span>
+            <h2 className="font-headline font-bold text-lg text-on-surface">Metas Trimestrais</h2>
+            <span className="bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+              {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}%` : '0%'} média
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {goals.length > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditingGoal(null)
+                  setShowGoalModal(true)
+                }}
+                className="inline-flex items-center justify-center w-8 h-8 bg-primary text-on-primary rounded-full hover:bg-primary-container transition-colors"
+                title="Nova meta"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-              </div>
-            </div>
+              </button>
+            )}
+            <button
+              type="button"
+              className="p-1 rounded-lg hover:bg-surface-container-high transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                setGoalsExpanded(!goalsExpanded)
+              }}
+              aria-expanded={goalsExpanded}
+            >
+              <span className={`material-symbols-outlined text-on-surface-variant transition-transform ${goalsExpanded ? 'rotate-180' : ''}`}>
+                expand_more
+              </span>
+            </button>
           </div>
         </div>
 
@@ -1291,33 +1284,34 @@ export default function PlanningPage() {
         {goalsExpanded && (
           <div className="px-6 pb-6 border-t border-outline-variant/15">
             {goals.length === 0 ? (
-              <div className="py-8 md:py-12 px-4 flex flex-col items-center justify-center text-center">
-                <div className="w-24 h-24 mb-6 rounded-full bg-surface-container-low flex items-center justify-center relative overflow-hidden ring-1 ring-outline-variant/10">
+              <div className="p-8 flex flex-col md:flex-row items-center gap-8 justify-center">
+                <div className="w-20 h-20 rounded-full bg-surface-container-low flex items-center justify-center relative overflow-hidden shrink-0 ring-1 ring-outline-variant/10">
                   <img
                     alt=""
-                    className="w-16 h-16 object-cover z-10 rounded-lg"
+                    className="w-12 h-12 object-cover z-10 rounded-md"
                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2voAUwzAD7ptpQvfdImRg_R6NtEtvgcNhVQL-5zJqXJI1-O4k3EPuy7loSJxsAVNKWdk1q19VCyMVVuCoX5YH75z7-gP7SUTDzjTlOxTzgkVOs2XhD-arVlvAyqxG2jiKTLPJb2LsdBOYTS0AkCOJ6nE13qIbntH8vi1rZS_WXNeBZwFe1mfIWu9lij9LRS62Mkpa02fimyAf0QljOoA5d45UxogWsGujyGyXqVdCglk4d3fKbszQA5BmRNf5pThcFnIw7J8xupJO"
-                    width={64}
-                    height={64}
+                    width={48}
+                    height={48}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent pointer-events-none" aria-hidden />
                 </div>
-                <h3 className="font-headline font-bold text-lg text-primary mb-2 max-w-sm">
-                  Defina seus objetivos principais
-                </h3>
-                <p className="text-on-surface-variant text-sm max-w-xs mb-6 leading-relaxed">
-                  Mantenha o foco no que realmente importa criando metas trimestrais ou mensais.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingGoal(null)
-                    setShowGoalModal(true)
-                  }}
-                  className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-headline font-semibold text-sm shadow-md hover:bg-primary-container transition-colors active:scale-[0.98]"
-                >
-                  Criar Primeira Meta
-                </button>
+                <div className="text-center md:text-left">
+                  <h3 className="font-headline font-bold text-lg text-on-surface mb-1">
+                    Defina seus objetivos principais
+                  </h3>
+                  <p className="text-on-surface-variant text-sm mb-4 max-w-md">
+                    Mantenha o foco no que realmente importa criando metas trimestrais ou mensais.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingGoal(null)
+                      setShowGoalModal(true)
+                    }}
+                    className="px-5 py-2 border border-primary text-primary rounded-lg font-semibold text-sm hover:bg-primary/5 transition-colors"
+                  >
+                    Criar Primeira Meta
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-6">
@@ -1343,39 +1337,77 @@ export default function PlanningPage() {
           </div>
         )}
       </div>
-          </section>
-          <section className="lg:col-span-5 flex flex-col min-h-0">
-        {/* Bloco Em Progresso */}
-        <div className="mb-0 flex flex-col h-full min-h-[280px]">
-          <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden flex flex-col flex-1">
-            <div className="p-5 flex justify-between items-center border-b border-outline-variant/10">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary text-2xl">timer</span>
+      </div>
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetectionStrategy}
+        onDragStart={(e) => setActiveDragId(String(e.active.id))}
+        onDragCancel={() => setActiveDragId(null)}
+        onDragEnd={(e) => {
+          setActiveDragId(null)
+          void handleDragEndBetweenBlocks(e)
+        }}
+      >
+        {/* Foco Agora — em progresso + Pomodoro */}
+        <section className="mb-8 relative" id="foco-agora">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-lg ring-2 ring-primary/10 overflow-hidden flex flex-col relative">
+            <div className="absolute top-3 right-3 md:top-4 md:right-4 z-10" aria-hidden>
+              <span className="flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
+              </span>
+            </div>
+            <div className="p-5 md:p-6 flex flex-wrap justify-between items-center gap-4 border-b border-outline-variant/15 bg-primary/5">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="material-symbols-outlined text-primary text-3xl shrink-0">timer</span>
                 <div>
-                  <h2 className="font-headline font-bold text-lg text-on-surface">Em Progresso ({inProgressTodos.length})</h2>
-                  <p className="text-xs text-on-surface-variant">Tarefas em foco</p>
+                  <h2 className="font-headline font-bold text-xl text-on-surface">Foco Agora</h2>
+                  <p className="text-xs text-on-surface-variant">Tarefa em execução ativa</p>
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-3 py-1 rounded-full tabular-nums">
+                  {pomodoroDisplay}
+                </span>
+              </div>
             </div>
-            <div className="p-4 flex flex-col flex-1">
-              {/* Timer Pomodoro */}
+
+            <div className="p-4 md:p-6 flex flex-col flex-1">
               <div className="mb-4" id="pomodoro-section">
-                <PomodoroTimer 
+                <PomodoroTimer
+                  onDisplayTime={setPomodoroDisplay}
                   onCycleComplete={(cycles) => {
                     console.log(`Ciclo completado! Total de ciclos hoje: ${cycles}`)
                   }}
                 />
               </div>
 
-              {/* Conteúdo dos to-dos */}
               <DroppableColumn id={COL_IN_PROGRESS} className="space-y-4">
                 {inProgressTodos.length === 0 ? (
-                  <div className="py-6 flex flex-col items-center justify-center text-center flex-1 bg-surface-container-low/40 rounded-xl">
-                    <div className="w-16 h-16 mb-3 flex items-center justify-center bg-surface-container-lowest rounded-2xl shadow-sm ring-1 ring-outline-variant/10">
-                      <span className="material-symbols-outlined text-4xl text-outline">hourglass_empty</span>
-                    </div>
-                    <p className="text-on-surface-variant font-medium text-sm">Nenhuma tarefa em progresso</p>
-                    <p className="text-xs text-on-surface-variant/70 mt-1">Arraste da semana ou do backlog.</p>
+                  <div className="py-10 md:py-12 px-4 flex flex-col items-center justify-center text-center bg-gradient-to-b from-primary/[0.02] to-transparent rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('pomodoro-section')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="w-24 h-24 mb-6 flex items-center justify-center bg-surface-container-lowest rounded-3xl shadow-md ring-1 ring-outline-variant/10 group hover:scale-105 transition-transform cursor-pointer"
+                      aria-label="Iniciar foco no timer"
+                    >
+                      <span className="material-symbols-outlined text-5xl text-outline group-hover:text-primary transition-colors">
+                        play_circle
+                      </span>
+                    </button>
+                    <h3 className="font-headline font-bold text-lg text-on-surface mb-2">Pronto para começar?</h3>
+                    <p className="text-on-surface-variant text-sm max-w-sm mb-6">
+                      Inicie o cronômetro de uma tarefa na semana atual ou no backlog para manter o foco aqui.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowTaskModal(true)}
+                      className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:bg-primary-container transition-all shadow-md active:scale-95 flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">bolt</span>
+                      Foco rápido
+                    </button>
                   </div>
                 ) : (
                   <SortableContext
@@ -1404,39 +1436,38 @@ export default function PlanningPage() {
               </DroppableColumn>
             </div>
           </div>
-        </div>
-          </section>
-        </div>
+        </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Seção de Semana Atual */}
-          <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="font-headline text-xl font-bold text-on-surface">Semana Atual ({weekTodos.length})</h2>
-                    <p className="text-sm text-on-surface-variant">Tarefas e lembretes pessoais</p>
-                  </div>
-                </div>
+          <div className="flex flex-col gap-4 h-full">
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="font-headline font-bold text-on-surface truncate">Semana Atual</h2>
+                <span className="text-xs bg-surface-container-high px-2 py-0.5 rounded-md font-bold text-on-surface-variant shrink-0">
+                  {weekTodos.length}
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowInlineCreateForm(true)}
+                className="text-primary text-sm font-bold flex items-center gap-1 hover:underline shrink-0"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                Adicionar nova tarefa
+              </button>
+            </div>
 
-              {/* Botão de adicionar nova tarefa */}
-              {!showInlineCreateForm && (
+            <div className="bg-surface-container-lowest rounded-xl ring-1 ring-outline-variant/10 overflow-hidden">
+            <div className="p-4 md:p-6">
+              {/* Botão largo quando há tarefas — atalho extra */}
+              {!showInlineCreateForm && weekTodos.length > 0 && (
                 <button
+                  type="button"
                   onClick={() => setShowInlineCreateForm(true)}
-                  className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
+                  className="w-full mb-4 px-4 py-3 bg-surface-container-lowest border border-dashed border-outline-variant rounded-xl hover:bg-surface-container-high/80 transition-colors flex items-center justify-center gap-2 text-on-surface font-medium"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
+                  <span className="material-symbols-outlined text-lg">add</span>
                   Adicionar nova tarefa
                 </button>
               )}
@@ -1536,75 +1567,88 @@ export default function PlanningPage() {
 
               {/* Conteúdo dos to-dos - lista direta sem agrupamento (igual ao Backlog) */}
               <DroppableColumn id={COL_CURRENT_WEEK} className="space-y-4">
-                {weekTodos.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <div className="text-gray-400 text-4xl mb-4">📝</div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa criada</h3>
-                    <p className="text-gray-600 mb-4">Crie sua primeira tarefa para começar a organizar sua semana.</p>
-                    <button
-                      onClick={() => setShowCreateTodoModal(true)}
-                      className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                    >
-                      <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Criar Tarefa
-                    </button>
+                {weekTodos.length === 0 && !showInlineCreateForm ? (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setShowInlineCreateForm(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setShowInlineCreateForm(true)
+                      }
+                    }}
+                    className="border-2 border-dashed border-outline-variant rounded-xl min-h-[16rem] flex flex-col items-center justify-center bg-surface-container-low/30 group cursor-pointer hover:bg-surface-container-low transition-all"
+                  >
+                    <div className="p-3 rounded-full bg-surface-container-lowest shadow-sm mb-3 group-hover:scale-110 transition-transform ring-1 ring-outline-variant/10">
+                      <span className="material-symbols-outlined text-2xl text-outline group-hover:text-primary transition-colors">
+                        auto_awesome_motion
+                      </span>
+                    </div>
+                    <p className="text-sm text-on-surface-variant font-medium px-4 text-center">
+                      Nada planejado para esta semana ainda
+                    </p>
                   </div>
+                ) : weekTodos.length === 0 && showInlineCreateForm ? (
+                  <div
+                    className="min-h-[10rem] rounded-xl border border-dashed border-outline-variant/50 bg-surface-container-low/20"
+                    aria-label="Área para soltar tarefas na semana atual"
+                  />
                 ) : (
-                      <SortableContext
-                    items={weekTodos.map(todo => todo.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
+                  <SortableContext
+                    items={weekTodos.map((todo) => todo.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
                     <div className="space-y-2">
                       {weekTodos.map((todo) => (
                         <SortableTodoItem
                           key={todo.id}
                           todo={todo}
                           projects={projects}
-                              onToggleComplete={handleToggleTodoComplete}
-                              onTogglePriority={handleTogglePriority}
-                              onEdit={handleEditTodo}
-                              onPutOnHold={handlePutTodoOnHold}
-                              onMoveToProgress={handleMoveToProgress}
-                              onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
+                          onToggleComplete={handleToggleTodoComplete}
+                          onTogglePriority={handleTogglePriority}
+                          onEdit={handleEditTodo}
+                          onPutOnHold={handlePutTodoOnHold}
+                          onMoveToProgress={handleMoveToProgress}
+                          onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
                 )}
               </DroppableColumn>
             </div>
           </div>
+          </div>
 
           {/* Seção de Backlog */}
-          <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="font-headline text-xl font-bold text-on-surface">Backlog ({backlogTodos.length})</h2>
-                    <p className="text-sm text-on-surface-variant">Tarefas para o futuro</p>
-                  </div>
-                </div>
+          <div className="flex flex-col gap-4 h-full">
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="font-headline font-bold text-on-surface truncate">Backlog</h2>
+                <span className="text-xs bg-primary-fixed text-primary px-2 py-0.5 rounded-md font-bold shrink-0">
+                  {backlogTodos.length}
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowBacklogCreateForm(true)}
+                className="text-primary text-sm font-bold flex items-center gap-1 hover:underline shrink-0"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                Adicionar nova tarefa
+              </button>
+            </div>
 
-              {/* Botão de adicionar nova tarefa */}
-              {!showBacklogCreateForm && (
+            <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden flex-1 flex flex-col min-h-0">
+            <div className="p-4 md:p-6 flex-1 flex flex-col">
+              {!showBacklogCreateForm && backlogTodos.length > 0 && (
                 <button
+                  type="button"
                   onClick={() => setShowBacklogCreateForm(true)}
-                  className="w-full mb-4 px-4 py-3 bg-white border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-700 font-medium"
+                  className="w-full mb-4 px-4 py-3 bg-surface-container-lowest border border-dashed border-outline-variant rounded-xl hover:bg-surface-container-high/80 transition-colors flex items-center justify-center gap-2 text-on-surface font-medium"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
+                  <span className="material-symbols-outlined text-lg">add</span>
                   Adicionar nova tarefa
                 </button>
               )}
@@ -1706,6 +1750,7 @@ export default function PlanningPage() {
                 )}
               </DroppableColumn>
             </div>
+          </div>
           </div>
         </div>
 

@@ -5,9 +5,11 @@ import { usePomodoroTimer } from '@/hooks/usePomodoroTimer'
 
 interface PomodoroTimerProps {
   onCycleComplete?: (cyclesCompleted: number) => void
+  /** Formato HH:MM:SS para exibir no cabeçalho “Foco Agora” */
+  onDisplayTime?: (formatted: string) => void
 }
 
-export default function PomodoroTimer({ onCycleComplete }: PomodoroTimerProps) {
+export default function PomodoroTimer({ onCycleComplete, onDisplayTime }: PomodoroTimerProps) {
   // Hook para gerenciar dados do pomodoro
   const { cyclesCompleted, sessionCycles, completeCycle, resetSession } = usePomodoroTimer()
   
@@ -172,10 +174,20 @@ export default function PomodoroTimer({ onCycleComplete }: PomodoroTimerProps) {
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
-  
-  
+
+  const formatTimeHms = (seconds: number) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  useEffect(() => {
+    onDisplayTime?.(formatTimeHms(timeLeft))
+  }, [timeLeft, onDisplayTime])
+
   return (
-    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="flex items-center gap-3 p-3 bg-surface-container-lowest rounded-xl ring-1 ring-outline-variant/10 shadow-sm">
       {/* Ícone do Timer */}
       <div className="flex-shrink-0">
         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">

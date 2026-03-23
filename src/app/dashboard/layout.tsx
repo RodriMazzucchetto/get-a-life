@@ -1,21 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
-const nav = [
-  { name: "Planejamento", href: "/dashboard/planning", icon: "checklist" as const },
-  { name: "Configurações", href: "/dashboard/settings", icon: "settings" as const },
+const LOGO_URL =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuB-_anmDvPxPbl2VP7sbiqt5NRqPloEJk_LUSrLXtV7zJlGPn1olLbetOW62p7zetAlruoQBkfV4Ff2UpCW6WEdeioRCF_NTLOk3yZ4dS9fDYbseLPNGOXx3IH4Kj4ZyK-SV9Jyqzfsn2tnRygykH99sy0og8zVK23_yd1K3AOjd-7y8NU_oWM4OBbAp_ILJnQ-SMpXlnRJGkwh9lwH3K-ZhOk1HTNVTiGDbKrqufrouxMaG6ZMIRvhBv6DnW2e2_V8sn0HKLbjldZY";
+
+const mainNav: {
+  name: string;
+  href: string;
+  icon: string;
+  active: (pathname: string, hash: string) => boolean;
+  disabled?: boolean;
+}[] = [
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: "grid_view",
+    active: (pathname) => pathname === "/dashboard",
+  },
+  {
+    name: "Metas",
+    href: "/dashboard/planning#metas-section",
+    icon: "ads_click",
+    active: (pathname, hash) =>
+      pathname === "/dashboard/planning" && hash === "#metas-section",
+  },
+  {
+    name: "Tarefas",
+    href: "/dashboard/planning",
+    icon: "checklist",
+    active: (pathname, hash) =>
+      pathname === "/dashboard/planning" && hash !== "#metas-section",
+  },
+  {
+    name: "Relatórios",
+    href: "#",
+    icon: "analytics",
+    active: () => false,
+    disabled: true,
+  },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [routeHash, setRouteHash] = useState("");
   const { user, signOut } = useAuthContext();
   const router = useRouter();
+
+  useEffect(() => {
+    setRouteHash(typeof window !== "undefined" ? window.location.hash : "");
+    const onHashChange = () => setRouteHash(window.location.hash);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [pathname]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -26,20 +68,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     href,
     label,
     icon,
+    isActive,
     onNavigate,
   }: {
     href: string;
     label: string;
     icon: string;
+    isActive: boolean;
     onNavigate?: () => void;
   }) => {
-    const active = pathname === href || (href === "/dashboard/planning" && pathname === "/dashboard");
     return (
       <Link
         href={href}
         onClick={onNavigate}
         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-          active
+          isActive
             ? "bg-surface-container-lowest text-primary shadow-sm ring-1 ring-outline-variant/15"
             : "text-on-surface-variant hover:bg-surface-container-high/80"
         }`}
@@ -65,22 +108,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-64 z-40 bg-surface-container-low border-r border-outline-variant/15 pt-6 px-4 pb-6">
         <div className="flex items-center gap-3 mb-8 px-2 pt-2">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary font-headline font-bold text-lg shrink-0">
-            G
-          </div>
-          <div>
-            <p className="font-headline font-extrabold text-primary tracking-tight leading-tight text-sm">
-              Get a Life
-            </p>
-            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">
-              Workspace
-            </p>
-          </div>
+          <img
+            alt="Get a Life"
+            src={LOGO_URL}
+            className="h-10 w-auto shrink-0"
+            width={120}
+            height={40}
+          />
         </div>
         <nav className="flex flex-col gap-1 flex-1">
-          {nav.map((item) => (
-            <NavLink key={item.href} href={item.href} label={item.name} icon={item.icon} />
-          ))}
+          {mainNav.map((item) =>
+            item.disabled ? (
+              <span
+                key={item.name}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-on-surface-variant/45 cursor-default"
+              >
+                <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                {item.name}
+              </span>
+            ) : (
+              <NavLink
+                key={item.name + item.href}
+                href={item.href}
+                label={item.name}
+                icon={item.icon}
+                isActive={item.active(pathname, routeHash)}
+              />
+            ),
+          )}
         </nav>
         <div className="mt-auto flex flex-col gap-2 border-t border-outline-variant/15 pt-4">
           <a
@@ -90,6 +145,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="material-symbols-outlined text-xl">help</span>
             Suporte
           </a>
+          <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              pathname === "/dashboard/settings"
+                ? "bg-surface-container-lowest text-primary shadow-sm ring-1 ring-outline-variant/15 font-medium"
+                : "text-on-surface-variant hover:bg-surface-container-high/80"
+            }`}
+          >
+            <span className="material-symbols-outlined text-xl">settings</span>
+            Configurações
+          </Link>
           {user?.email && (
             <p className="text-[11px] text-on-surface-variant truncate px-2" title={user.email}>
               {user.email}
@@ -121,25 +187,56 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="material-symbols-outlined">close</span>
         </button>
         <div className="flex items-center gap-3 mb-8 px-2">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary font-headline font-bold">
-            G
-          </div>
-          <div>
-            <p className="font-headline font-extrabold text-primary text-sm">Get a Life</p>
-          </div>
+          <img
+            alt="Get a Life"
+            src={LOGO_URL}
+            className="h-10 w-auto shrink-0"
+            width={120}
+            height={40}
+          />
         </div>
         <nav className="flex flex-col gap-1 flex-1">
-          {nav.map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              label={item.name}
-              icon={item.icon}
-              onNavigate={() => setSidebarOpen(false)}
-            />
-          ))}
+          {mainNav.map((item) =>
+            item.disabled ? (
+              <span
+                key={item.name}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-on-surface-variant/45 cursor-default"
+              >
+                <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                {item.name}
+              </span>
+            ) : (
+              <NavLink
+                key={item.name + item.href}
+                href={item.href}
+                label={item.name}
+                icon={item.icon}
+                isActive={item.active(pathname, routeHash)}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            ),
+          )}
         </nav>
-        <div className="mt-auto border-t border-outline-variant/15 pt-4 space-y-2">
+        <div className="mt-auto flex flex-col gap-2 border-t border-outline-variant/15 pt-4">
+          <a
+            href="#"
+            className="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/80 rounded-lg text-sm transition-colors"
+          >
+            <span className="material-symbols-outlined text-xl">help</span>
+            Suporte
+          </a>
+          <Link
+            href="/dashboard/settings"
+            onClick={() => setSidebarOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              pathname === "/dashboard/settings"
+                ? "bg-surface-container-lowest text-primary shadow-sm ring-1 ring-outline-variant/15 font-medium"
+                : "text-on-surface-variant hover:bg-surface-container-high/80"
+            }`}
+          >
+            <span className="material-symbols-outlined text-xl">settings</span>
+            Configurações
+          </Link>
           {user?.email && (
             <p className="text-[11px] text-on-surface-variant truncate px-2">{user.email}</p>
           )}
