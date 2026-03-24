@@ -6,7 +6,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -120,14 +121,16 @@ function SortableProblemRow({
   onMoveToOtherKind: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const sortableId = String(problem.id);
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: problem.id, disabled: dragDisabled });
+  } = useSortable({ id: sortableId, disabled: dragDisabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -146,18 +149,24 @@ function SortableProblemRow({
       style={style}
       className={`group flex items-start gap-3 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${cardSurface} ${
         problem.resolved ? "opacity-60" : ""
-      } ${isDragging ? "opacity-60" : ""}`}
+      } ${isDragging ? "pointer-events-none opacity-0" : ""}`}
     >
-      <div
+      <button
+        type="button"
+        ref={setActivatorNodeRef}
+        disabled={dragDisabled}
         {...(dragDisabled ? {} : attributes)}
         {...(dragDisabled ? {} : listeners)}
-        className={`drag-handle mt-0.5 shrink-0 text-outline/35 transition-colors ${
-          dragDisabled ? "cursor-default opacity-30" : "cursor-grab text-outline/50 hover:text-outline active:cursor-grabbing"
+        className={`drag-handle relative z-10 -m-2 mt-0.5 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg p-2 touch-none select-none text-outline/35 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+          dragDisabled ? "cursor-default opacity-30" : "cursor-grab text-outline/50 hover:bg-black/[0.04] hover:text-outline active:cursor-grabbing dark:hover:bg-white/10"
         }`}
+        aria-label="Arrastar para reordenar"
         aria-hidden={dragDisabled}
       >
-        <span className="material-symbols-outlined text-[22px]">drag_indicator</span>
-      </div>
+        <span className="pointer-events-none material-symbols-outlined text-[22px]" aria-hidden>
+          drag_indicator
+        </span>
+      </button>
 
       <button
         type="button"
@@ -271,10 +280,20 @@ export default function ProblemsPage() {
   const [quickProjectIds, setQuickProjectIds] = useState<string[]>([]);
   const quickInputRef = useRef<HTMLInputElement>(null);
 
-  const dragDisabled = filterProjectId === "all";
+  /** Reordenar sempre que a lista for DnD (antes bloqueava em "Todos" e o utilizador não conseguia arrastar). */
+  const dragDisabled = false;
 
+  /**
+   * PointerSensor falha em alguns rato/trackpads Windows (exige isPrimary + button===0).
+   * MouseSensor (mousedown) + TouchSensor cobrem desktop e ecrã tátil.
+   */
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -325,18 +344,12 @@ export default function ProblemsPage() {
 
   const sortedList = useMemo(() => {
     const copy = [...searched];
-    if (filterProjectId === "all") {
-      copy.sort((a, b) => {
-        const pa = a.projectId ?? "";
-        const pb = b.projectId ?? "";
-        if (pa !== pb) return pa.localeCompare(pb);
-        return a.pos - b.pos;
-      });
-    } else {
-      copy.sort((a, b) => a.pos - b.pos);
-    }
+    copy.sort((a, b) => {
+      if (a.pos !== b.pos) return a.pos - b.pos;
+      return a.id.localeCompare(b.id);
+    });
     return copy;
-  }, [searched, filterProjectId]);
+  }, [searched]);
 
   /** Três primeiros problemas em aberto nesta vista — maior destaque (fila), independente do ícone de prioridade. */
   const topThreeQueueIds = useMemo(() => {
@@ -346,7 +359,7 @@ export default function ProblemsPage() {
   }, [sortedList, tab]);
 
   const activeProblem = useMemo(
-    () => (activeId ? problems.find((p) => p.id === activeId) : undefined),
+    () => (activeId ? problems.find((p) => String(p.id) === activeId) : undefined),
     [activeId, problems]
   );
 
@@ -394,7 +407,7 @@ export default function ProblemsPage() {
     const { active, over } = event;
     setActiveId(null);
     if (!over || active.id === over.id) return;
-    const ids = sortedList.map((p) => p.id);
+    const ids = sortedList.map((p) => String(p.id));
     const oldIndex = ids.indexOf(String(active.id));
     const newIndex = ids.indexOf(String(over.id));
     if (oldIndex < 0 || newIndex < 0) return;
@@ -683,9 +696,9 @@ export default function ProblemsPage() {
             <span className="material-symbols-outlined text-sm">add</span>
           </Link>
         </div>
-        {dragDisabled && tab !== "archived" && (
+        {tab !== "archived" && (
           <p className="text-xs text-on-surface-variant">
-            Para reordenar por prioridade, escolha um projeto no filtro (ou &quot;Sem projeto&quot;).
+            Arraste pelo ícone à esquerda (linhas horizontais) para alterar a ordem.
           </p>
         )}
       </section>
@@ -724,7 +737,7 @@ export default function ProblemsPage() {
           onDragCancel={() => setActiveId(null)}
         >
           <SortableContext
-            items={sortedList.map((p) => p.id)}
+            items={sortedList.map((p) => String(p.id))}
             strategy={verticalListSortingStrategy}
           >
             <section className="space-y-3">
