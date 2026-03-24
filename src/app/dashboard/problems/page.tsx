@@ -49,6 +49,44 @@ const KIND_LABELS: Record<ProblemKind, string> = {
   operational: "Problemas Práticos (Operacional)",
 };
 
+/** Mesmo ícone de bandeira das tasks (planning). */
+function ProblemPriorityToggle({
+  isHighPriority,
+  disabled,
+  onToggle,
+}: {
+  isHighPriority: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      disabled={disabled}
+      className={`shrink-0 rounded-md p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/25 ${
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-surface-container-high"
+      }`}
+      title={isHighPriority ? "Clique para remover prioridade" : "Clique para marcar como prioridade"}
+      aria-pressed={isHighPriority}
+      aria-label={isHighPriority ? "Remover prioridade alta" : "Marcar como prioridade alta"}
+    >
+      <svg
+        className={`h-4 w-4 ${isHighPriority ? "text-red-500" : "text-gray-400"}`}
+        fill="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden
+      >
+        <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
+      </svg>
+    </button>
+  );
+}
+
 function matchProjectFilter(p: Problem, filter: string): boolean {
   if (filter === "all") return true;
   if (filter === NONE) return p.projectId === null;
@@ -58,24 +96,27 @@ function matchProjectFilter(p: Problem, filter: string): boolean {
 function SortableProblemRow({
   problem,
   projectColor,
-  isTopPriority,
+  isTopThreeSlot,
   stale,
   dragDisabled,
   projects,
   isSavingProject,
   onToggleResolved,
+  onTogglePriority,
   onProjectChange,
   onMoveToOtherKind,
   onDelete,
 }: {
   problem: Problem;
   projectColor: string | null;
-  isTopPriority: boolean;
+  /** Os 3 primeiros itens ativos na lista (fila) — destaque visual, independente da prioridade. */
+  isTopThreeSlot: boolean;
   stale: boolean;
   dragDisabled: boolean;
   projects: Project[];
   isSavingProject: boolean;
   onToggleResolved: (id: string) => void;
+  onTogglePriority: (id: string) => void;
   onProjectChange: (id: string, projectId: string | null) => void;
   onMoveToOtherKind: (id: string) => void;
   onDelete: (id: string) => void;
@@ -97,13 +138,18 @@ function SortableProblemRow({
   const badgeBg = projectColor ? `${projectColor}22` : undefined;
   const badgeFg = projectColor || undefined;
 
+  const queueHighlight =
+    isTopThreeSlot && !problem.resolved
+      ? "bg-primary-container/25 ring-1 ring-primary/30 shadow-sm hover:bg-primary-container/35"
+      : "bg-surface-container-lowest hover:bg-surface-container-low";
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-4 rounded-2xl border border-transparent bg-surface-container-lowest p-5 transition-all hover:border-outline-variant/10 hover:bg-surface-container-low hover:shadow-md ${
-        isTopPriority ? "ring-1 ring-primary/20" : ""
-      } ${problem.resolved ? "opacity-60" : ""} ${isDragging ? "opacity-60" : ""}`}
+      className={`group flex items-center gap-4 rounded-2xl border border-transparent p-5 transition-all hover:border-outline-variant/10 hover:shadow-md ${queueHighlight} ${
+        problem.resolved ? "opacity-60" : ""
+      } ${isDragging ? "opacity-60" : ""}`}
     >
       <div
         {...(dragDisabled ? {} : attributes)}
@@ -131,6 +177,12 @@ function SortableProblemRow({
           <span className="material-symbols-outlined text-[14px] leading-none">check</span>
         )}
       </button>
+
+      <ProblemPriorityToggle
+        isHighPriority={problem.isHighPriority}
+        disabled={problem.resolved}
+        onToggle={() => onTogglePriority(problem.id)}
+      />
 
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-3">
@@ -181,12 +233,6 @@ function SortableProblemRow({
             <span className="inline-flex items-center gap-1 text-error">
               <span className="material-symbols-outlined text-[14px]">warning</span>
               Atenção
-            </span>
-          )}
-          {isTopPriority && !problem.resolved && (
-            <span className="inline-flex items-center gap-1 text-primary">
-              <span className="material-symbols-outlined text-[14px]">priority_high</span>
-              Prioridade
             </span>
           )}
         </div>
@@ -315,7 +361,8 @@ export default function ProblemsPage() {
     return copy;
   }, [searched, filterProjectId]);
 
-  const topPriorityIds = useMemo(() => {
+  /** Três primeiros problemas em aberto nesta vista — maior destaque (fila), independente do ícone de prioridade. */
+  const topThreeQueueIds = useMemo(() => {
     if (tab !== "active") return new Set<string>();
     const unresolved = sortedList.filter((p) => !p.resolved);
     return new Set(unresolved.slice(0, 3).map((p) => p.id));
@@ -381,6 +428,22 @@ export default function ProblemsPage() {
       console.error(e);
       const raw = getSupabaseErrorMessage(e);
       setError(friendlySchemaHint(raw) ?? `Não foi possível reordenar: ${raw}`);
+    }
+  };
+
+  const togglePriority = async (id: string) => {
+    const p = problems.find((x) => x.id === id);
+    if (!p || p.resolved) return;
+    setError(null);
+    try {
+      const row = await problemsService.updateProblem(id, {
+        is_high_priority: !p.isHighPriority,
+      });
+      setProblems((prev) => prev.map((x) => (x.id === id ? fromDbProblem(row) : x)));
+    } catch (e) {
+      console.error(e);
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível alterar a prioridade: ${raw}`);
     }
   };
 
@@ -705,12 +768,13 @@ export default function ProblemsPage() {
                       key={p.id}
                       problem={p}
                       projectColor={proj?.color ?? null}
-                      isTopPriority={topPriorityIds.has(p.id)}
+                      isTopThreeSlot={topThreeQueueIds.has(p.id)}
                       stale={daysSince(p.createdAt) > 14}
                       dragDisabled={dragDisabled}
                       projects={projects}
                       isSavingProject={savingProjectId === p.id}
                       onToggleResolved={toggleResolved}
+                      onTogglePriority={togglePriority}
                       onProjectChange={assignProject}
                       onMoveToOtherKind={moveToOtherKind}
                       onDelete={deleteProblem}

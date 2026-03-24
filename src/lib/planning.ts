@@ -108,6 +108,7 @@ export interface DBProblem {
   resolved: boolean
   pos: number
   kind: ProblemKind
+  is_high_priority: boolean
   created_at: string
   updated_at: string
 }
@@ -119,6 +120,7 @@ export interface Problem {
   resolved: boolean
   pos: number
   kind: ProblemKind
+  isHighPriority: boolean
   createdAt: string
   updatedAt: string
 }
@@ -523,6 +525,7 @@ export const problemsService = {
         pos: nextPos,
         resolved: false,
         kind: data.kind,
+        is_high_priority: false,
       })
       .select()
       .single()
@@ -1056,6 +1059,7 @@ export function fromDbProblem(row: DBProblem): Problem {
     resolved: row.resolved,
     pos: row.pos,
     kind: k,
+    isHighPriority: Boolean(row.is_high_priority),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
