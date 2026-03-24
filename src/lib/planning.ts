@@ -98,6 +98,8 @@ export interface DBReminder {
   updated_at: string
 }
 
+export type ProblemKind = 'market' | 'operational'
+
 export interface DBProblem {
   id: string
   user_id: string
@@ -105,6 +107,7 @@ export interface DBProblem {
   title: string
   resolved: boolean
   pos: number
+  kind: ProblemKind
   created_at: string
   updated_at: string
 }
@@ -115,6 +118,7 @@ export interface Problem {
   title: string
   resolved: boolean
   pos: number
+  kind: ProblemKind
   createdAt: string
   updatedAt: string
 }
@@ -483,13 +487,17 @@ export const problemsService = {
 
   async createProblem(
     userId: string,
-    data: { title: string; project_id: string | null }
+    data: { title: string; project_id: string | null; kind: ProblemKind }
   ): Promise<DBProblem> {
     const supabase = createClient()
 
-    // Posição no fim da lista deste projeto (evita round-trip frágil com .is(null) em alguns setups).
+    // Posição no fim da lista deste projeto + tipo (mercado/operacional).
     let nextPos = Date.now()
-    let q = supabase.from('problems').select('pos').eq('user_id', userId)
+    let q = supabase
+      .from('problems')
+      .select('pos')
+      .eq('user_id', userId)
+      .eq('kind', data.kind)
     if (data.project_id === null) {
       q = q.filter('project_id', 'is', null)
     } else {
@@ -514,6 +522,7 @@ export const problemsService = {
         project_id: data.project_id,
         pos: nextPos,
         resolved: false,
+        kind: data.kind,
       })
       .select()
       .single()
@@ -523,6 +532,57 @@ export const problemsService = {
       throw error
     }
     return row
+  },
+
+  /** Move problema para o outro tipo (mercado ↔ operacional), com posição no fim da lista destino. */
+  async moveProblemKind(problemId: string, newKind: ProblemKind): Promise<DBProblem> {
+    const supabase = createClient()
+    const { data: current, error: fetchErr } = await supabase
+      .from('problems')
+      .select('*')
+      .eq('id', problemId)
+      .single()
+
+    if (fetchErr || !current) {
+      console.error('Erro ao carregar problema:', fetchErr)
+      throw fetchErr ?? new Error('Problema não encontrado')
+    }
+    if (current.kind === newKind) return current
+
+    let q = supabase
+      .from('problems')
+      .select('pos')
+      .eq('user_id', current.user_id)
+      .eq('kind', newKind)
+    if (current.project_id === null) {
+      q = q.filter('project_id', 'is', null)
+    } else {
+      q = q.eq('project_id', current.project_id)
+    }
+    const { data: maxRow, error: maxErr } = await q
+      .order('pos', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (maxErr) console.error('Erro ao ler pos máxima (move kind):', maxErr)
+    const nextPos = maxRow?.pos != null ? maxRow.pos + 1000 : 1000
+
+    const { data, error } = await supabase
+      .from('problems')
+      .update({
+        kind: newKind,
+        pos: nextPos,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', problemId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao mover tipo do problema:', error)
+      throw error
+    }
+    return data
   },
 
   async updateProblem(problemId: string, updates: Partial<DBProblem>): Promise<DBProblem> {
@@ -931,12 +991,14 @@ export function toDbInitiative(initiative: Partial<Initiative>): Partial<DBIniti
 }
 
 export function fromDbProblem(row: DBProblem): Problem {
+  const k = row.kind === 'operational' ? 'operational' : 'market'
   return {
     id: row.id,
     projectId: row.project_id,
     title: row.title,
     resolved: row.resolved,
     pos: row.pos,
+    kind: k,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

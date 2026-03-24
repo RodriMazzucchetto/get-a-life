@@ -28,6 +28,7 @@ import {
   fromDbProblem,
   fromDbProject,
   type Problem,
+  type ProblemKind,
   type Project,
 } from "@/lib/planning";
 import {
@@ -43,6 +44,11 @@ import {
 const NONE = "__none__";
 type TabKey = "active" | "resolved" | "archived";
 
+const KIND_LABELS: Record<ProblemKind, string> = {
+  market: "Problemas de Mercado (Estratégico)",
+  operational: "Problemas Práticos (Operacional)",
+};
+
 function matchProjectFilter(p: Problem, filter: string): boolean {
   if (filter === "all") return true;
   if (filter === NONE) return p.projectId === null;
@@ -57,6 +63,7 @@ function SortableProblemRow({
   stale,
   dragDisabled,
   onToggleResolved,
+  onMoveToOtherKind,
   onDelete,
 }: {
   problem: Problem;
@@ -66,6 +73,7 @@ function SortableProblemRow({
   stale: boolean;
   dragDisabled: boolean;
   onToggleResolved: (id: string) => void;
+  onMoveToOtherKind: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const {
@@ -160,14 +168,33 @@ function SortableProblemRow({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => onDelete(problem.id)}
-        className="shrink-0 rounded-lg p-2 text-outline opacity-70 transition-all hover:bg-surface-container-high hover:text-error sm:opacity-0 sm:group-hover:opacity-100"
-        aria-label="Excluir problema"
-      >
-        <TrashIcon className="h-4 w-4" />
-      </button>
+      <div className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={() => onMoveToOtherKind(problem.id)}
+          className="rounded-lg p-2 text-outline opacity-70 transition-all hover:bg-surface-container-high hover:text-primary"
+          title={
+            problem.kind === "market"
+              ? "Mover para operacional"
+              : "Mover para mercado (estratégico)"
+          }
+          aria-label={
+            problem.kind === "market"
+              ? "Mover problema para lista operacional"
+              : "Mover problema para lista de mercado"
+          }
+        >
+          <span className="material-symbols-outlined text-lg">swap_horiz</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(problem.id)}
+          className="rounded-lg p-2 text-outline opacity-70 transition-all hover:bg-surface-container-high hover:text-error"
+          aria-label="Excluir problema"
+        >
+          <TrashIcon className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -178,6 +205,7 @@ export default function ProblemsPage() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("active");
+  const [kindTab, setKindTab] = useState<ProblemKind>("market");
   const [filterProjectId, setFilterProjectId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [draft, setDraft] = useState("");
@@ -226,11 +254,16 @@ export default function ProblemsPage() {
     return m;
   }, [projects]);
 
+  const kindFiltered = useMemo(
+    () => problems.filter((p) => p.kind === kindTab),
+    [problems, kindTab]
+  );
+
   const tabFiltered = useMemo(() => {
-    if (tab === "active") return problems.filter((p) => !p.resolved);
-    if (tab === "resolved") return problems.filter((p) => p.resolved);
+    if (tab === "active") return kindFiltered.filter((p) => !p.resolved);
+    if (tab === "resolved") return kindFiltered.filter((p) => p.resolved);
     return [];
-  }, [problems, tab]);
+  }, [kindFiltered, tab]);
 
   const projectFiltered = useMemo(() => {
     return tabFiltered.filter((p) => matchProjectFilter(p, filterProjectId));
@@ -269,12 +302,10 @@ export default function ProblemsPage() {
   );
 
   const stats = useMemo(() => {
-    const open = problems.filter((p) => !p.resolved);
-    const projectKeys = new Set(
-      open.map((p) => p.projectId ?? "none")
-    );
+    const open = problems.filter((p) => p.kind === kindTab && !p.resolved);
+    const projectKeys = new Set(open.map((p) => p.projectId ?? "none"));
     return { openCount: open.length, projectWithOpenCount: projectKeys.size };
-  }, [problems]);
+  }, [problems, kindTab]);
 
   const focusQuickAdd = useCallback(() => {
     setTab("active");
@@ -290,6 +321,7 @@ export default function ProblemsPage() {
       const row = await problemsService.createProblem(user.id, {
         title: draft.trim(),
         project_id: quickProjectId === "" ? null : quickProjectId,
+        kind: kindTab,
       });
       setProblems((prev) => [...prev, fromDbProblem(row)]);
       setDraft("");
@@ -348,6 +380,21 @@ export default function ProblemsPage() {
       console.error(e);
       const raw = getSupabaseErrorMessage(e);
       setError(friendlySchemaHint(raw) ?? `Não foi possível excluir: ${raw}`);
+    }
+  };
+
+  const moveToOtherKind = async (id: string) => {
+    const p = problems.find((x) => x.id === id);
+    if (!p) return;
+    const nextKind: ProblemKind = p.kind === "market" ? "operational" : "market";
+    setError(null);
+    try {
+      const row = await problemsService.moveProblemKind(id, nextKind);
+      setProblems((prev) => prev.map((x) => (x.id === id ? fromDbProblem(row) : x)));
+    } catch (e) {
+      console.error(e);
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível mover o problema: ${raw}`);
     }
   };
 
@@ -563,6 +610,24 @@ export default function ProblemsPage() {
         )}
       </section>
 
+      {/* Tipo de problema: mercado vs operacional */}
+      <div className="mb-6 flex items-center gap-8 border-b border-outline-variant/20 font-headline">
+        {(["market", "operational"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setKindTab(k)}
+            className={`border-b-2 px-2 pb-4 text-sm transition-all ${
+              kindTab === k
+                ? "border-primary font-bold text-primary"
+                : "border-transparent font-medium text-on-surface-variant/60 hover:border-outline-variant/30 hover:text-on-surface"
+            }`}
+          >
+            {KIND_LABELS[k]}
+          </button>
+        ))}
+      </div>
+
       {/* List */}
       {tab === "archived" ? (
         <div className="rounded-2xl border border-dashed border-outline-variant/40 bg-surface-container-low/40 px-6 py-16 text-center">
@@ -600,6 +665,7 @@ export default function ProblemsPage() {
                       stale={daysSince(p.createdAt) > 14}
                       dragDisabled={dragDisabled}
                       onToggleResolved={toggleResolved}
+                      onMoveToOtherKind={moveToOtherKind}
                       onDelete={deleteProblem}
                     />
                   );
