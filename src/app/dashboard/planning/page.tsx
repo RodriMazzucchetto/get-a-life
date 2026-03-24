@@ -777,9 +777,23 @@ export default function PlanningPage() {
   }
 
   const handleUpdateReminder = async () => {
-    if (editingReminder) {
-    // TODO: Implementar atualização de lembretes
-      console.log('Atualizar lembrete:', editingReminder)
+    if (!editingReminder?.title?.trim()) return
+    const updated = await updateReminder(editingReminder.id, {
+      title: editingReminder.title.trim(),
+    })
+    if (updated) {
+      setShowEditReminderForm(false)
+      setEditingReminder(null)
+    } else {
+      showError('Não foi possível salvar o lembrete.')
+    }
+  }
+
+  const handleDeleteReminder = async (reminderId: string) => {
+    if (!confirm('Remover este lembrete?')) return
+    const ok = await deleteReminder(reminderId)
+    if (!ok) showError('Não foi possível excluir o lembrete.')
+    if (editingReminder?.id === reminderId) {
       setShowEditReminderForm(false)
       setEditingReminder(null)
     }
@@ -1925,6 +1939,7 @@ export default function PlanningPage() {
         onEditReminder={handleEditReminder}
         onUpdateReminder={handleUpdateReminder}
         onCancelEdit={handleCancelEditReminder}
+        onDeleteReminder={handleDeleteReminder}
         onShowAddForm={handleShowAddReminderForm}
         onSaveReminder={handleAddReminder}
         onCancelAdd={() => {

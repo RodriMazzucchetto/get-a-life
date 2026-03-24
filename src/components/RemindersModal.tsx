@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import ModalOverlay from './ModalOverlay'
 import { DBReminder } from '@/lib/planning'
+import { normalizeReminderCategory } from '@/lib/reminderHelpers'
 
 type Reminder = DBReminder
 
@@ -14,6 +15,7 @@ interface RemindersModalProps {
   onEditReminder: (reminder: Reminder) => void
   onUpdateReminder: () => void
   onCancelEdit: () => void
+  onDeleteReminder: (reminderId: string) => void
   onShowAddForm: () => void
   onSaveReminder: () => void
   onCancelAdd: () => void
@@ -35,6 +37,7 @@ export function RemindersModal({
   onEditReminder,
   onUpdateReminder,
   onCancelEdit,
+  onDeleteReminder,
   onShowAddForm,
   onSaveReminder,
   onCancelAdd,
@@ -45,14 +48,22 @@ export function RemindersModal({
   editingReminder,
   onEditingReminderChange
 }: RemindersModalProps) {
+  const remindersInTab = useMemo(
+    () => reminders.filter((r) => normalizeReminderCategory(r.category) === activeTab),
+    [reminders, activeTab]
+  )
+
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
       <div className="relative top-20 mx-auto p-6 w-full max-w-2xl shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Lembretes ({reminders.length})
-          </h2>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Lembretes</h2>
+            <p className="mt-0.5 text-sm text-gray-500">
+              {remindersInTab.length} nesta aba · {reminders.length} no total
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
@@ -119,7 +130,7 @@ export function RemindersModal({
                 onChange={(e) => onNewReminderChange(e.target.value)}
                 placeholder={`Digite o ${activeTab === 'compras' ? 'item de compra' : activeTab === 'followups' ? 'follow up' : 'lembrete'}...`}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                onKeyPress={(e) => e.key === 'Enter' && onSaveReminder()}
+                onKeyDown={(e) => e.key === 'Enter' && onSaveReminder()}
                 autoFocus
               />
               <button
@@ -141,50 +152,63 @@ export function RemindersModal({
 
         {/* Reminders List */}
         <div className="space-y-3 max-h-80 overflow-y-auto">
-          {reminders
-            .filter(reminder => reminder.category === activeTab)
-            .map((reminder) => (
+          {remindersInTab.map((reminder) => (
               <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
-                <input 
-                  type="checkbox" 
-                  className="mt-1 w-4 h-4 text-blue-600 rounded" 
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 shrink-0 rounded text-blue-600"
+                  aria-label="Marcar como concluído"
                   onChange={() => onToggleComplete(reminder.id)}
                 />
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   {showEditForm && editingReminder?.id === reminder.id ? (
                     <div className="space-y-2">
                       <input
                         type="text"
                         value={editingReminder.title}
                         onChange={(e) => onEditingReminderChange({...editingReminder, title: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        onKeyPress={(e) => e.key === 'Enter' && onUpdateReminder()}
+                        className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        onKeyDown={(e) => e.key === 'Enter' && onUpdateReminder()}
                         autoFocus
                       />
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
+                          type="button"
                           onClick={onUpdateReminder}
-                          className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                          className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
                         >
                           Salvar
                         </button>
                         <button
+                          type="button"
                           onClick={onCancelEdit}
-                          className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                          className="rounded bg-gray-500 px-2 py-1 text-xs text-white hover:bg-gray-600"
                         >
                           Cancelar
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-700">{reminder.title}</span>
-                      <button
-                        onClick={() => onEditReminder(reminder)}
-                        className="text-gray-400 hover:text-gray-600 text-xs"
-                      >
-                        Editar
-                      </button>
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="min-w-0 flex-1 break-words text-sm text-gray-800">
+                        {reminder.title?.trim() ? reminder.title : <span className="italic text-gray-400">(Sem título)</span>}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onEditReminder(reminder)}
+                          className="text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteReminder(reminder.id)}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -193,7 +217,7 @@ export function RemindersModal({
         </div>
 
         {/* Empty State */}
-        {reminders.filter(reminder => reminder.category === activeTab).length === 0 && (
+        {remindersInTab.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             <p className="text-sm">
               Nenhum {activeTab === 'compras' ? 'item de compra' : activeTab === 'followups' ? 'follow up' : 'lembrete'} encontrado.

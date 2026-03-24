@@ -26,6 +26,7 @@ import {
   fromDbInitiative,
   fromDbProject
 } from '@/lib/planning'
+import { normalizeReminderCategory } from '@/lib/reminderHelpers'
 
 export function usePlanningData() {
   const { user } = useAuthContext()
@@ -458,7 +459,11 @@ export function usePlanningData() {
     if (!user) return null
     
     try {
-      const newReminder = await remindersService.createReminder(user.id, reminderData)
+      const payload = {
+        ...reminderData,
+        category: normalizeReminderCategory(reminderData.category),
+      }
+      const newReminder = await remindersService.createReminder(user.id, payload)
       setReminders(prev => [newReminder, ...prev])
       return newReminder
     } catch (error) {
