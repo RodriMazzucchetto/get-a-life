@@ -105,13 +105,14 @@ function TodoDragOverlayPreview({
         {projectChips.map((project) => (
           <span
             key={project.id}
-            className="ml-2 inline-flex flex-shrink-0 items-center gap-0.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-black/10"
-            style={{ backgroundColor: project.color || '#3B82F6' }}
+            className="ml-2 inline-flex max-w-[min(12rem,40vw)] flex-shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide"
+            style={{ color: project.color || '#64748b' }}
+            title={project.name}
           >
-            <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
-              label
+            <span className="material-symbols-outlined shrink-0 text-[14px] leading-none" aria-hidden>
+              folder
             </span>
-            {project.name}
+            <span className="truncate">{project.name.trim().toUpperCase()}</span>
           </span>
         ))}
       </div>
@@ -239,19 +240,20 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
           </div>
         </div>
 
-        {/* Projetos como tags */}
+        {/* Projetos: ícone + nome em caps, só cor do projeto (sem pill) — alinhado ao mock Backlog */}
         {projectList.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 pl-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-0">
             {projectList.map((project) => (
               <span
                 key={project.id}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white shadow-sm ring-1 ring-black/10"
-                style={{ backgroundColor: project.color || '#3B82F6' }}
+                className="inline-flex max-w-full items-center gap-1 text-[11px] font-semibold uppercase tracking-wide"
+                style={{ color: project.color || '#64748b' }}
+                title={project.name}
               >
-                <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
-                  label
+                <span className="material-symbols-outlined shrink-0 text-[14px] leading-none" aria-hidden>
+                  folder
                 </span>
-                {project.name}
+                <span className="truncate">{project.name.trim().toUpperCase()}</span>
               </span>
             ))}
           </div>
