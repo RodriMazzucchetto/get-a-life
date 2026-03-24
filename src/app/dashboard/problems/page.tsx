@@ -190,20 +190,20 @@ function SortableProblemRow({
         onToggle={() => onTogglePriority(problem.id)}
       />
 
-      <div className="min-w-0 flex-1 pt-0.5">
-        <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <div className="min-w-0 shrink">
-            <span className="sr-only">Projetos deste problema</span>
-            <ProjectIdsPicker
-              projects={projects}
-              value={problem.projectIds}
-              onChange={(ids) => onProjectsChange(problem.id, ids)}
-              disabled={problem.resolved || isSavingProject}
-              variant="compact"
-            />
-          </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+        {/* Mesma ordem que as tasks: prioridade → tags (linha) → título */}
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="sr-only">Projetos deste problema</span>
+          <ProjectIdsPicker
+            projects={projects}
+            value={problem.projectIds}
+            onChange={(ids) => onProjectsChange(problem.id, ids)}
+            disabled={problem.resolved || isSavingProject}
+            variant="line"
+            className="shrink-0"
+          />
           <h3
-            className={`min-w-0 flex-1 font-headline text-sm font-semibold leading-snug transition-colors ${
+            className={`min-w-0 flex-1 truncate font-headline text-sm font-semibold leading-snug transition-colors ${
               problem.resolved
                 ? "text-on-surface-variant line-through"
                 : "text-on-surface"

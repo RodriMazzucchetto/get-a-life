@@ -10,8 +10,8 @@ type Props = {
   value: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
-  /** compact = badges curtos (problemas) */
-  variant?: "default" | "compact";
+  /** compact = badges coloridos | line = igual às tasks (texto + cor, uma linha) */
+  variant?: "default" | "compact" | "line";
   className?: string;
 };
 
@@ -55,11 +55,44 @@ export function ProjectIdsPicker({
     };
   }, [menuOpen]);
 
+  const isLine = variant === "line";
+
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
+    <div
+      className={`flex items-center gap-x-2 gap-y-1 ${
+        isLine ? "min-w-0 flex-nowrap overflow-hidden" : "flex-wrap"
+      } ${className}`}
+    >
       {value.map((id) => {
         const p = projects.find((x) => x.id === id);
         if (!p) return null;
+        if (isLine) {
+          return (
+            <span
+              key={id}
+              className="inline-flex max-w-[7rem] shrink-0 items-center gap-0.5 sm:max-w-[10rem]"
+              title={p.name}
+            >
+              <span
+                className="truncate text-[11px] font-semibold uppercase tracking-wide"
+                style={{ color: p.color || "#64748b" }}
+              >
+                {p.name.trim().toUpperCase()}
+              </span>
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => remove(id)}
+                  className="shrink-0 rounded p-0.5 opacity-50 transition-opacity hover:opacity-100"
+                  style={{ color: p.color || "#64748b" }}
+                  aria-label={`Remover ${p.name}`}
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          );
+        }
         return (
           <span
             key={id}
@@ -120,7 +153,7 @@ export function ProjectIdsPicker({
                       aria-hidden
                     />
                     <span className="min-w-0 flex-1 truncate">
-                      {variant === "compact" ? (
+                      {variant === "compact" || variant === "line" ? (
                         <>
                           <span className="font-black uppercase tracking-wide">
                             {projectShortCode(p.name)}
