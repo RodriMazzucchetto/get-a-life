@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { projectShortCode } from "@/lib/problemHelpers";
 
 export type ProjectLite = { id: string; name: string; color: string };
@@ -9,7 +10,7 @@ type Props = {
   value: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
-  /** compact = badge estilo problemas (maiúsculas curtas) */
+  /** compact = badges curtos (problemas) */
   variant?: "default" | "compact";
   className?: string;
 };
@@ -22,6 +23,9 @@ export function ProjectIdsPicker({
   variant = "default",
   className = "",
 }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
   const add = (id: string) => {
     if (!id || value.includes(id)) return;
     onChange([...value, id]);
@@ -32,6 +36,24 @@ export function ProjectIdsPicker({
   };
 
   const available = projects.filter((p) => !value.includes(p.id));
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
@@ -62,28 +84,59 @@ export function ProjectIdsPicker({
         );
       })}
       {!disabled && available.length > 0 && (
-        <label className="inline-flex items-center gap-0.5">
-          <span className="sr-only">Adicionar projeto</span>
-          <select
-            value=""
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v) add(v);
-              e.target.value = "";
-            }}
+        <div className="relative inline-flex" ref={wrapRef}>
+          <button
+            type="button"
+            aria-label="Adicionar projeto"
+            aria-expanded={menuOpen}
+            aria-haspopup="listbox"
+            onClick={() => setMenuOpen((o) => !o)}
             onPointerDown={(e) => e.stopPropagation()}
-            className={`max-w-[10rem] cursor-pointer rounded-md border-0 bg-surface-container-high py-1 pl-2 pr-6 text-xs text-on-surface ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/25 ${
-              variant === "compact" ? "font-black uppercase tracking-wide" : ""
-            }`}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-outline-variant/45 bg-surface-container-high text-on-surface-variant/90 shadow-sm transition-colors hover:border-outline-variant hover:bg-surface-container focus:outline-none focus:ring-2 focus:ring-primary/25 dark:border-slate-600 dark:bg-slate-800/80"
           >
-            <option value="">+ projeto</option>
-            {available.map((p) => (
-              <option key={p.id} value={p.id}>
-                {variant === "compact" ? `${projectShortCode(p.name)} — ${p.name}` : p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
+              add
+            </span>
+          </button>
+          {menuOpen && (
+            <ul
+              role="listbox"
+              className="absolute left-0 top-full z-50 mt-1 min-w-[10.5rem] overflow-hidden rounded-lg border border-outline-variant/25 bg-white py-1 text-left shadow-lg ring-1 ring-black/5 dark:border-slate-600 dark:bg-slate-900"
+            >
+              {available.map((p) => (
+                <li key={p.id} role="none">
+                  <button
+                    type="button"
+                    role="option"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-on-surface transition-colors hover:bg-surface-container-low dark:hover:bg-slate-800"
+                    onClick={() => {
+                      add(p.id);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+                      style={{ backgroundColor: p.color || "#6366f1" }}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {variant === "compact" ? (
+                        <>
+                          <span className="font-black uppercase tracking-wide">
+                            {projectShortCode(p.name)}
+                          </span>
+                          <span className="text-on-surface-variant"> — {p.name}</span>
+                        </>
+                      ) : (
+                        p.name
+                      )}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );
