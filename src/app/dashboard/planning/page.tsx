@@ -93,28 +93,25 @@ function TodoDragOverlayPreview({
         >
           <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
         </svg>
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="text-sm text-gray-900 truncate">{todo.title}</span>
+        {projectChips.map((project) => (
+          <span
+            key={project.id}
+            className="inline-flex max-w-[min(7rem,28vw)] shrink-0 text-[11px] font-semibold uppercase tracking-wide"
+            style={{ color: project.color || '#64748b' }}
+            title={project.name}
+          >
+            <span className="truncate">{project.name.trim().toUpperCase()}</span>
+          </span>
+        ))}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="truncate text-sm text-gray-900">{todo.title}</span>
           {todo.onHold && todo.onHoldReason && (
-            <span className="text-sm text-yellow-600 truncate max-w-32">
+            <span className="max-w-32 truncate text-sm text-yellow-600">
               - Em espera:{' '}
               {todo.onHoldReason.length > 20 ? `${todo.onHoldReason.substring(0, 20)}...` : todo.onHoldReason}
             </span>
           )}
         </div>
-        {projectChips.map((project) => (
-          <span
-            key={project.id}
-            className="ml-2 inline-flex max-w-[min(12rem,40vw)] flex-shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: project.color || '#64748b' }}
-            title={project.name}
-          >
-            <span className="material-symbols-outlined shrink-0 text-[14px] leading-none" aria-hidden>
-              folder
-            </span>
-            <span className="truncate">{project.name.trim().toUpperCase()}</span>
-          </span>
-        ))}
       </div>
       {todo.timeSensitive && todo.dueDate && (
         <div className="px-3 pb-3 border-t border-gray-100">
@@ -198,66 +195,61 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         </div>
       </div>
       
-      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-        <div className="flex items-center gap-2 min-w-0 pr-1">
+      <div className="flex min-w-0 flex-1 items-center gap-2 pr-1">
           {/* Checkbox */}
           <input
             type="checkbox"
             checked={todo.completed}
             onChange={() => onToggleComplete(todo.id)}
-            className="w-4 h-4 shrink-0 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+            className="h-4 w-4 shrink-0 rounded border border-blue-300 text-blue-600 focus:ring-blue-500"
           />
-          
+
           {/* Indicador de prioridade */}
           <div
             onClick={() => onTogglePriority(todo.id)}
-            className="cursor-pointer transition-colors shrink-0"
+            className="shrink-0 cursor-pointer transition-colors"
             title={todo.isHighPriority ? 'Clique para remover prioridade' : 'Clique para marcar como prioridade'}
           >
-            <svg 
-              className={`w-4 h-4 ${
+            <svg
+              className={`h-4 w-4 ${
                 todo.isHighPriority ? 'text-red-500' : 'text-gray-400'
               }`}
-              fill="currentColor" 
+              fill="currentColor"
               viewBox="0 0 24 24"
             >
-              <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z"/>
+              <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
             </svg>
           </div>
-          
-          {/* Título do to-do */}
-          <div className="flex-1 flex items-center gap-2 min-w-0">
-            <span className="text-sm text-gray-900 truncate">{todo.title}</span>
-            
+
+          {/* Projetos (só texto, cor do projeto) — antes do título, mesma linha */}
+          {projectList.length > 0 && (
+            <div className="flex shrink-0 items-center gap-x-2">
+              {projectList.map((project) => (
+                <span
+                  key={project.id}
+                  className="max-w-[7rem] truncate text-[11px] font-semibold uppercase tracking-wide sm:max-w-[10rem]"
+                  style={{ color: project.color || '#64748b' }}
+                  title={project.name}
+                >
+                  {project.name.trim().toUpperCase()}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Título + espera */}
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="truncate text-sm text-gray-900">{todo.title}</span>
             {todo.onHold && todo.onHoldReason && (
-              <span 
-                className="text-sm text-yellow-600 truncate max-w-[40%] shrink cursor-help"
+              <span
+                className="max-w-[40%] shrink cursor-help truncate text-sm text-yellow-600"
                 title={todo.onHoldReason}
               >
-                - Em espera: {todo.onHoldReason.length > 20 ? `${todo.onHoldReason.substring(0, 20)}...` : todo.onHoldReason}
+                - Em espera:{' '}
+                {todo.onHoldReason.length > 20 ? `${todo.onHoldReason.substring(0, 20)}...` : todo.onHoldReason}
               </span>
             )}
           </div>
-        </div>
-
-        {/* Projetos: ícone + nome em caps, só cor do projeto (sem pill) — alinhado ao mock Backlog */}
-        {projectList.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-0">
-            {projectList.map((project) => (
-              <span
-                key={project.id}
-                className="inline-flex max-w-full items-center gap-1 text-[11px] font-semibold uppercase tracking-wide"
-                style={{ color: project.color || '#64748b' }}
-                title={project.name}
-              >
-                <span className="material-symbols-outlined shrink-0 text-[14px] leading-none" aria-hidden>
-                  folder
-                </span>
-                <span className="truncate">{project.name.trim().toUpperCase()}</span>
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Botões de ação (hover) */}
