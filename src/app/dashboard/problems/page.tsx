@@ -57,22 +57,26 @@ function matchProjectFilter(p: Problem, filter: string): boolean {
 
 function SortableProblemRow({
   problem,
-  projectName,
   projectColor,
   isTopPriority,
   stale,
   dragDisabled,
+  projects,
+  isSavingProject,
   onToggleResolved,
+  onProjectChange,
   onMoveToOtherKind,
   onDelete,
 }: {
   problem: Problem;
-  projectName: string | null;
   projectColor: string | null;
   isTopPriority: boolean;
   stale: boolean;
   dragDisabled: boolean;
+  projects: Project[];
+  isSavingProject: boolean;
   onToggleResolved: (id: string) => void;
+  onProjectChange: (id: string, projectId: string | null) => void;
   onMoveToOtherKind: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
@@ -90,7 +94,6 @@ function SortableProblemRow({
     transition,
   };
 
-  const short = projectName ? projectShortCode(projectName) : "—";
   const badgeBg = projectColor ? `${projectColor}22` : undefined;
   const badgeFg = projectColor || undefined;
 
@@ -98,10 +101,8 @@ function SortableProblemRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-4 rounded-2xl border border-transparent p-5 transition-all hover:border-outline-variant/10 hover:bg-surface-container-low hover:shadow-md ${
-        isTopPriority
-          ? "bg-primary-container/25 ring-1 ring-primary/30 shadow-sm"
-          : "bg-surface-container-lowest"
+      className={`group flex items-center gap-4 rounded-2xl border border-transparent bg-surface-container-lowest p-5 transition-all hover:border-outline-variant/10 hover:bg-surface-container-low hover:shadow-md ${
+        isTopPriority ? "ring-1 ring-primary/20" : ""
       } ${problem.resolved ? "opacity-60" : ""} ${isDragging ? "opacity-60" : ""}`}
     >
       <div
@@ -133,15 +134,32 @@ function SortableProblemRow({
 
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-3">
-          <span
-            className="rounded-md px-2 py-0.5 text-xs font-black tracking-wide"
+          <label className="sr-only" htmlFor={`problem-project-${problem.id}`}>
+            Projeto
+          </label>
+          <select
+            id={`problem-project-${problem.id}`}
+            value={problem.projectId ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              onProjectChange(problem.id, v === "" ? null : v);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            disabled={problem.resolved || isSavingProject}
+            title="Projeto deste problema"
+            className="max-w-[min(100%,11rem)] shrink-0 cursor-pointer rounded-md border-0 py-1 pl-2 pr-7 text-xs font-black tracking-wide ring-1 ring-outline-variant/25 transition-colors hover:ring-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[13rem]"
             style={{
               backgroundColor: badgeBg ?? "var(--color-surface-container-high)",
               color: badgeFg ?? "var(--color-on-surface-variant)",
             }}
           >
-            {short}
-          </span>
+            <option value="">Sem projeto</option>
+            {projects.map((proj) => (
+              <option key={proj.id} value={proj.id}>
+                {projectShortCode(proj.name)} — {proj.name}
+              </option>
+            ))}
+          </select>
           <h3
             className={`font-headline text-sm font-medium transition-colors ${
               problem.resolved
@@ -163,6 +181,12 @@ function SortableProblemRow({
             <span className="inline-flex items-center gap-1 text-error">
               <span className="material-symbols-outlined text-[14px]">warning</span>
               Atenção
+            </span>
+          )}
+          {isTopPriority && !problem.resolved && (
+            <span className="inline-flex items-center gap-1 text-primary">
+              <span className="material-symbols-outlined text-[14px]">priority_high</span>
+              Prioridade
             </span>
           )}
         </div>
@@ -212,6 +236,7 @@ export default function ProblemsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
 
   /** Projeto do formulário rápido — "" = sem projeto (igual ao select de tarefas) */
   const [quickProjectId, setQuickProjectId] = useState("");
@@ -380,6 +405,26 @@ export default function ProblemsPage() {
       console.error(e);
       const raw = getSupabaseErrorMessage(e);
       setError(friendlySchemaHint(raw) ?? `Não foi possível excluir: ${raw}`);
+    }
+  };
+
+  const assignProject = async (id: string, projectId: string | null) => {
+    const p = problems.find((x) => x.id === id);
+    if (!p) return;
+    const same =
+      (p.projectId === null && projectId === null) || p.projectId === projectId;
+    if (same) return;
+    setSavingProjectId(id);
+    setError(null);
+    try {
+      const row = await problemsService.assignProblemProject(id, projectId);
+      setProblems((prev) => prev.map((x) => (x.id === id ? fromDbProblem(row) : x)));
+    } catch (e) {
+      console.error(e);
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível atualizar o projeto: ${raw}`);
+    } finally {
+      setSavingProjectId(null);
     }
   };
 
@@ -659,12 +704,14 @@ export default function ProblemsPage() {
                     <SortableProblemRow
                       key={p.id}
                       problem={p}
-                      projectName={proj?.name ?? null}
                       projectColor={proj?.color ?? null}
                       isTopPriority={topPriorityIds.has(p.id)}
                       stale={daysSince(p.createdAt) > 14}
                       dragDisabled={dragDisabled}
+                      projects={projects}
+                      isSavingProject={savingProjectId === p.id}
                       onToggleResolved={toggleResolved}
+                      onProjectChange={assignProject}
                       onMoveToOtherKind={moveToOtherKind}
                       onDelete={deleteProblem}
                     />

@@ -585,6 +585,63 @@ export const problemsService = {
     return data
   },
 
+  /** Altera o projeto do problema; recalcula posição no fim da lista (mesmo kind). */
+  async assignProblemProject(
+    problemId: string,
+    newProjectId: string | null
+  ): Promise<DBProblem> {
+    const supabase = createClient()
+    const { data: current, error: fetchErr } = await supabase
+      .from('problems')
+      .select('*')
+      .eq('id', problemId)
+      .single()
+
+    if (fetchErr || !current) {
+      console.error('Erro ao carregar problema:', fetchErr)
+      throw fetchErr ?? new Error('Problema não encontrado')
+    }
+    const same =
+      (current.project_id === null && newProjectId === null) ||
+      current.project_id === newProjectId
+    if (same) return current
+
+    let q = supabase
+      .from('problems')
+      .select('pos')
+      .eq('user_id', current.user_id)
+      .eq('kind', current.kind)
+    if (newProjectId === null) {
+      q = q.filter('project_id', 'is', null)
+    } else {
+      q = q.eq('project_id', newProjectId)
+    }
+    const { data: maxRow, error: maxErr } = await q
+      .order('pos', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (maxErr) console.error('Erro ao ler pos máxima (assign project):', maxErr)
+    const nextPos = maxRow?.pos != null ? maxRow.pos + 1000 : 1000
+
+    const { data, error } = await supabase
+      .from('problems')
+      .update({
+        project_id: newProjectId,
+        pos: nextPos,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', problemId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao atribuir projeto ao problema:', error)
+      throw error
+    }
+    return data
+  },
+
   async updateProblem(problemId: string, updates: Partial<DBProblem>): Promise<DBProblem> {
     const supabase = createClient()
     const { data, error } = await supabase
