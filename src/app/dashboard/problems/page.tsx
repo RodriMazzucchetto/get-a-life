@@ -138,17 +138,17 @@ function SortableProblemRow({
   const badgeBg = projectColor ? `${projectColor}22` : undefined;
   const badgeFg = projectColor || undefined;
 
-  /** Fila top-3: só contorno (sem fundo lavanda — alinhado ao mock branco). */
-  const queueAccent =
+  /** Top 3 da fila: fundo primary-fixed (design system — #dde1ff), mais claro que o azul do container. */
+  const cardSurface =
     isTopThreeSlot && !problem.resolved
-      ? "ring-2 ring-primary/25 shadow-sm"
-      : "ring-1 ring-black/[0.06]";
+      ? "bg-primary-fixed ring-1 ring-primary/25 shadow-sm dark:bg-primary-fixed/20 dark:ring-primary/35"
+      : "bg-white ring-1 ring-black/[0.06] dark:bg-slate-900/80";
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-start gap-3 rounded-2xl bg-white p-5 shadow-sm transition-all hover:shadow-md dark:bg-slate-900/80 ${queueAccent} ${
+      className={`group flex items-start gap-3 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${cardSurface} ${
         problem.resolved ? "opacity-60" : ""
       } ${isDragging ? "opacity-60" : ""}`}
     >
