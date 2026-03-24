@@ -68,8 +68,8 @@ function ProblemPriorityToggle({
       }}
       onPointerDown={(e) => e.stopPropagation()}
       disabled={disabled}
-      className={`shrink-0 rounded-md p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/25 ${
-        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-surface-container-high"
+      className={`mt-0.5 shrink-0 rounded-md p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/25 ${
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/10"
       }`}
       title={isHighPriority ? "Clique para remover prioridade" : "Clique para marcar como prioridade"}
       aria-pressed={isHighPriority}
@@ -138,28 +138,29 @@ function SortableProblemRow({
   const badgeBg = projectColor ? `${projectColor}22` : undefined;
   const badgeFg = projectColor || undefined;
 
-  const queueHighlight =
+  /** Fila top-3: só contorno (sem fundo lavanda — alinhado ao mock branco). */
+  const queueAccent =
     isTopThreeSlot && !problem.resolved
-      ? "bg-primary-container/25 ring-1 ring-primary/30 shadow-sm hover:bg-primary-container/35"
-      : "bg-surface-container-lowest hover:bg-surface-container-low";
+      ? "ring-2 ring-primary/25 shadow-sm"
+      : "ring-1 ring-black/[0.06]";
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-4 rounded-2xl border border-transparent p-5 transition-all hover:border-outline-variant/10 hover:shadow-md ${queueHighlight} ${
+      className={`group flex items-start gap-3 rounded-2xl bg-white p-5 shadow-sm transition-all hover:shadow-md dark:bg-slate-900/80 ${queueAccent} ${
         problem.resolved ? "opacity-60" : ""
       } ${isDragging ? "opacity-60" : ""}`}
     >
       <div
         {...(dragDisabled ? {} : attributes)}
         {...(dragDisabled ? {} : listeners)}
-        className={`drag-handle shrink-0 text-outline/30 transition-colors ${
-          dragDisabled ? "cursor-default opacity-30" : "cursor-grab text-outline/40 hover:text-outline active:cursor-grabbing"
+        className={`drag-handle mt-0.5 shrink-0 text-outline/35 transition-colors ${
+          dragDisabled ? "cursor-default opacity-30" : "cursor-grab text-outline/50 hover:text-outline active:cursor-grabbing"
         }`}
         aria-hidden={dragDisabled}
       >
-        <span className="material-symbols-outlined">drag_indicator</span>
+        <span className="material-symbols-outlined text-[22px]">drag_indicator</span>
       </div>
 
       <button
@@ -167,14 +168,14 @@ function SortableProblemRow({
         role="checkbox"
         aria-checked={problem.resolved}
         onClick={() => onToggleResolved(problem.id)}
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
           problem.resolved
             ? "border-primary bg-primary text-on-primary"
-            : "border-outline-variant group-hover:border-primary/60"
+            : "border-[#c4c5d5] bg-white group-hover:border-primary/50 dark:border-slate-600 dark:bg-transparent"
         }`}
       >
         {problem.resolved && (
-          <span className="material-symbols-outlined text-[14px] leading-none">check</span>
+          <span className="material-symbols-outlined text-[16px] leading-none">check</span>
         )}
       </button>
 
@@ -184,47 +185,57 @@ function SortableProblemRow({
         onToggle={() => onTogglePriority(problem.id)}
       />
 
-      <div className="min-w-0 flex-1">
-        <div className="mb-1 flex flex-wrap items-center gap-3">
+      <div className="min-w-0 flex-1 pt-0.5">
+        <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
           <label className="sr-only" htmlFor={`problem-project-${problem.id}`}>
             Projeto
           </label>
-          <select
-            id={`problem-project-${problem.id}`}
-            value={problem.projectId ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              onProjectChange(problem.id, v === "" ? null : v);
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            disabled={problem.resolved || isSavingProject}
-            title="Projeto deste problema"
-            className="max-w-[min(100%,11rem)] shrink-0 cursor-pointer rounded-md border-0 py-1 pl-2 pr-7 text-xs font-black tracking-wide ring-1 ring-outline-variant/25 transition-colors hover:ring-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[13rem]"
-            style={{
-              backgroundColor: badgeBg ?? "var(--color-surface-container-high)",
-              color: badgeFg ?? "var(--color-on-surface-variant)",
-            }}
-          >
-            <option value="">Sem projeto</option>
-            {projects.map((proj) => (
-              <option key={proj.id} value={proj.id}>
-                {projectShortCode(proj.name)} — {proj.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative inline-flex shrink-0 max-w-[min(100%,12rem)] sm:max-w-[14rem]">
+            <select
+              id={`problem-project-${problem.id}`}
+              value={problem.projectId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                onProjectChange(problem.id, v === "" ? null : v);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              disabled={problem.resolved || isSavingProject}
+              title="Projeto deste problema"
+              className="w-full cursor-pointer appearance-none rounded-md border-0 py-1 pl-2.5 pr-9 text-xs font-black uppercase tracking-wide transition-[box-shadow] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60"
+              style={{
+                backgroundColor: badgeBg ?? "#e8eaf0",
+                color: badgeFg ?? "#444653",
+              }}
+            >
+              <option value="">Sem projeto</option>
+              {projects.map((proj) => (
+                <option key={proj.id} value={proj.id}>
+                  {projectShortCode(proj.name)} — {proj.name}
+                </option>
+              ))}
+            </select>
+            <span
+              className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-on-surface-variant/70"
+              aria-hidden
+            >
+              <span className="material-symbols-outlined text-[18px]">expand_more</span>
+            </span>
+          </div>
           <h3
-            className={`font-headline text-sm font-medium transition-colors ${
+            className={`min-w-0 flex-1 font-headline text-sm font-semibold leading-snug transition-colors ${
               problem.resolved
                 ? "text-on-surface-variant line-through"
-                : "text-on-surface group-hover:text-primary"
+                : "text-on-surface"
             }`}
           >
             {problem.title}
           </h3>
         </div>
-        <div className="flex flex-wrap items-center gap-4 text-[11px] text-on-surface-variant/80">
+        <div className="flex flex-wrap items-center gap-4 text-[11px] leading-normal text-on-surface-variant/70">
           <span className="inline-flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px]">schedule</span>
+            <span className="material-symbols-outlined text-[14px] text-on-surface-variant/60">
+              schedule
+            </span>
             {problem.resolved
               ? `Resolvido ${formatRelativeDaysPt(problem.updatedAt)}`
               : formatRelativeDaysPt(problem.createdAt)}
@@ -238,7 +249,7 @@ function SortableProblemRow({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+      <div className="mt-0.5 flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
         <button
           type="button"
           onClick={() => onMoveToOtherKind(problem.id)}
