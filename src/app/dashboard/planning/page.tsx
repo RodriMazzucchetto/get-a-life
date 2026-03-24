@@ -45,6 +45,7 @@ import {
   sortTodosByPriorityAndPos,
 } from '@/lib/todoBoardHelpers'
 import { DBReminder, type Todo, type Goal } from '@/lib/planning'
+import { ProjectIdsPicker } from '@/components/ProjectIdsPicker'
 
 // Componente para grupo de tags arrastável - será definido depois das funções
 
@@ -56,7 +57,9 @@ function TodoDragOverlayPreview({
   todo: Todo
   projects: { id: string; name: string; color: string }[]
 }) {
-  const project = todo.projectId ? projects.find((p) => p.id === todo.projectId) : undefined
+  const projectChips = (todo.projectIds ?? (todo.projectId ? [todo.projectId] : []))
+    .map((id) => projects.find((p) => p.id === id))
+    .filter(Boolean) as { id: string; name: string; color: string }[]
   return (
     <div
       className={`pointer-events-none flex flex-col bg-surface-container-lowest rounded-xl shadow-xl cursor-grabbing select-none ring-1 ring-outline-variant/15 ${
@@ -99,9 +102,10 @@ function TodoDragOverlayPreview({
             </span>
           )}
         </div>
-        {project && (
+        {projectChips.map((project) => (
           <span
-            className="flex-shrink-0 ml-2 inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-black/10"
+            key={project.id}
+            className="ml-2 inline-flex flex-shrink-0 items-center gap-0.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-black/10"
             style={{ backgroundColor: project.color || '#3B82F6' }}
           >
             <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
@@ -109,7 +113,7 @@ function TodoDragOverlayPreview({
             </span>
             {project.name}
           </span>
-        )}
+        ))}
       </div>
       {todo.timeSensitive && todo.dueDate && (
         <div className="px-3 pb-3 border-t border-gray-100">
@@ -150,7 +154,14 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
     opacity: isDragging ? 0 : 1,
   }
 
-  const project = todo.projectId ? projects.find((p) => p.id === todo.projectId) : undefined
+  const projectList = (todo.projectIds?.length
+    ? todo.projectIds
+    : todo.projectId
+      ? [todo.projectId]
+      : []
+  )
+    .map((id) => projects.find((p) => p.id === id))
+    .filter(Boolean) as { id: string; name: string; color: string }[]
 
   return (
     <div
@@ -228,18 +239,21 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
           </div>
         </div>
 
-        {/* Projeto como tag (cor do projeto) */}
-        {project && (
+        {/* Projetos como tags */}
+        {projectList.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 pl-0">
-            <span
-              className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white shadow-sm ring-1 ring-black/10"
-              style={{ backgroundColor: project.color || '#3B82F6' }}
-            >
-              <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
-                label
+            {projectList.map((project) => (
+              <span
+                key={project.id}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white shadow-sm ring-1 ring-black/10"
+                style={{ backgroundColor: project.color || '#3B82F6' }}
+              >
+                <span className="material-symbols-outlined text-[14px] leading-none" aria-hidden>
+                  label
+                </span>
+                {project.name}
               </span>
-              {project.name}
-            </span>
+            ))}
           </div>
         )}
       </div>
@@ -460,7 +474,7 @@ export default function PlanningPage() {
     onHold: false,
     onHoldReason: undefined,
     tags: [] as { name: string; color: string }[],
-    projectId: undefined as string | undefined
+    projectIds: [] as string[]
   })
 
 
@@ -480,7 +494,7 @@ export default function PlanningPage() {
     onHold: false,
     onHoldReason: undefined,
     tags: [] as { name: string; color: string }[],
-    projectId: undefined as string | undefined
+    projectIds: [] as string[]
   })
 
   // Estados para backlog
@@ -495,7 +509,7 @@ export default function PlanningPage() {
     onHold: false,
     onHoldReason: undefined,
     tags: [] as { name: string; color: string }[],
-    projectId: undefined as string | undefined
+    projectIds: [] as string[]
   })
 
   // Funções de projetos REMOVIDAS - será reimplementado do zero
@@ -805,10 +819,10 @@ export default function PlanningPage() {
         onHoldReason: undefined,
         status: 'current_week',
         tags: [],
-        projectId: newTodo.projectId
+        projectIds: newTodo.projectIds,
       })
       if (newTodoData) {
-      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
+      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
       setShowInlineCreateForm(false)
       setShowCreateTodoModal(false)
       }
@@ -816,7 +830,7 @@ export default function PlanningPage() {
   }
 
   const handleCancelCreate = () => {
-    setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
+    setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
     setShowInlineCreateForm(false)
   }
 
@@ -838,7 +852,7 @@ export default function PlanningPage() {
         timeSensitive: editingTodo.timeSensitive,
         onHold: editingTodo.onHold,
         onHoldReason: editingTodo.onHoldReason,
-        projectId: editingTodo.projectId
+        projectIds: editingTodo.projectIds,
       })
       if (updatedTodo) {
       setEditingTodo(null)
@@ -972,20 +986,21 @@ export default function PlanningPage() {
         onHold: false,
         onHoldReason: undefined,
         status: 'in_progress' as const,
-        projectId: newInProgressTodo.projectId
+        tags: [],
+        projectIds: newInProgressTodo.projectIds,
       }
       
       // Usar API para criar no banco
       const createdTodo = await createTodo(newTodoData)
       if (createdTodo) {
-        setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
+        setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
         setShowInProgressCreateForm(false)
       }
     }
   }
 
   const handleCancelInProgressCreate = () => {
-    setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
+    setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
     setShowInProgressCreateForm(false)
   }
 
@@ -1080,20 +1095,21 @@ export default function PlanningPage() {
         onHold: false,
         onHoldReason: undefined,
         status: 'backlog' as const,
-        projectId: newBacklogTodo.projectId
+        tags: [],
+        projectIds: newBacklogTodo.projectIds,
       }
       
       // Usar API para criar no banco
       const createdTodo = await createTodo(newTodoData)
       if (createdTodo) {
-        setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
+        setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
         setShowBacklogCreateForm(false)
       }
     }
   }
 
   const handleCancelBacklogCreate = () => {
-    setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectId: undefined })
+    setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
     setShowBacklogCreateForm(false)
   }
 
@@ -1504,49 +1520,14 @@ export default function PlanningPage() {
                           </button>
                         </div>
                         <div className="ml-16">
-                          {newInProgressTodo.projectId && projects.find((p) => p.id === newInProgressTodo.projectId) && (
-                            <div className="flex items-center gap-2 mb-3">
-                              <span
-                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
-                                style={{
-                                  backgroundColor:
-                                    projects.find((p) => p.id === newInProgressTodo.projectId)?.color ||
-                                    '#3B82F6',
-                                }}
-                              >
-                                {projects.find((p) => p.id === newInProgressTodo.projectId)?.name}
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setNewInProgressTodo({ ...newInProgressTodo, projectId: undefined })
-                                  }
-                                  className="ml-2 text-white hover:text-gray-200"
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <label className="text-sm text-gray-600">Projeto:</label>
-                            <select
-                              value={newInProgressTodo.projectId || ''}
-                              onChange={(e) =>
-                                setNewInProgressTodo({
-                                  ...newInProgressTodo,
-                                  projectId: e.target.value || undefined,
-                                })
-                              }
-                              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              <option value="">Sem projeto</option>
-                              {projects.map((project) => (
-                                <option key={project.id} value={project.id}>
-                                  {project.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <label className="mb-1 block text-sm text-gray-600">Projetos (opcional)</label>
+                          <ProjectIdsPicker
+                            projects={projects}
+                            value={newInProgressTodo.projectIds}
+                            onChange={(ids) =>
+                              setNewInProgressTodo({ ...newInProgressTodo, projectIds: ids })
+                            }
+                          />
                         </div>
                       </div>
                       <div
@@ -1709,43 +1690,15 @@ export default function PlanningPage() {
                     </button>
                   </div>
 
-                  {/* Segunda linha: Seleção de projeto */}
+                  {/* Segunda linha: projetos */}
                   <div className="ml-16">
-                    {/* Projeto selecionado */}
-                    {newTodo.projectId && projects.find(p => p.id === newTodo.projectId) && (
-                      <div className="flex items-center gap-2 mb-3">
-                          <span
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
-                          style={{ backgroundColor: projects.find(p => p.id === newTodo.projectId)?.color || '#3B82F6' }}
-                          >
-                          {projects.find(p => p.id === newTodo.projectId)?.name}
-                            <button
-                            onClick={() => setNewTodo({ ...newTodo, projectId: undefined })}
-                              className="ml-2 text-white hover:text-gray-200"
-                            >
-                              ×
-                            </button>
-                          </span>
-                      </div>
-                    )}
-
-                    {/* Seletor de projeto */}
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600">Projeto:</label>
-                      <select
-                        value={newTodo.projectId || ''}
-                        onChange={(e) => setNewTodo({ ...newTodo, projectId: e.target.value || undefined })}
-                        className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Sem projeto</option>
-                        {projects.map((project) => (
-                          <option key={project.id} value={project.id}>
-                            {project.name}
-                          </option>
-                        ))}
-                      </select>
-                                </div>
-                                  </div>
+                    <label className="mb-1 block text-sm text-gray-600">Projetos (opcional)</label>
+                    <ProjectIdsPicker
+                      projects={projects}
+                      value={newTodo.projectIds}
+                      onChange={(ids) => setNewTodo({ ...newTodo, projectIds: ids })}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -1890,47 +1843,12 @@ export default function PlanningPage() {
                     </button>
                   </div>
                   <div className="ml-16">
-                    {newBacklogTodo.projectId && projects.find((p) => p.id === newBacklogTodo.projectId) && (
-                      <div className="flex items-center gap-2 mb-3">
-                        <span
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white"
-                          style={{
-                            backgroundColor:
-                              projects.find((p) => p.id === newBacklogTodo.projectId)?.color || '#3B82F6',
-                          }}
-                        >
-                          <span className="material-symbols-outlined text-sm" aria-hidden>
-                            label
-                          </span>
-                          {projects.find((p) => p.id === newBacklogTodo.projectId)?.name}
-                          <button
-                            type="button"
-                            onClick={() => setNewBacklogTodo({ ...newBacklogTodo, projectId: undefined })}
-                            className="ml-1 text-white hover:text-gray-200"
-                            aria-label="Remover projeto"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600">Projeto:</label>
-                      <select
-                        value={newBacklogTodo.projectId || ''}
-                        onChange={(e) =>
-                          setNewBacklogTodo({ ...newBacklogTodo, projectId: e.target.value || undefined })
-                        }
-                        className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Sem projeto</option>
-                        {projects.map((project) => (
-                          <option key={project.id} value={project.id}>
-                            {project.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <label className="mb-1 block text-sm text-gray-600">Projetos (opcional)</label>
+                    <ProjectIdsPicker
+                      projects={projects}
+                      value={newBacklogTodo.projectIds}
+                      onChange={(ids) => setNewBacklogTodo({ ...newBacklogTodo, projectIds: ids })}
+                    />
                   </div>
                 </div>
               )}
@@ -2322,44 +2240,14 @@ export default function PlanningPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Projeto (opcional)
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Projetos (opcional)
                 </label>
-                {newTodo.projectId && projects.find((p) => p.id === newTodo.projectId) && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white"
-                      style={{
-                        backgroundColor: projects.find((p) => p.id === newTodo.projectId)?.color || '#3B82F6',
-                      }}
-                    >
-                      <span className="material-symbols-outlined text-sm" aria-hidden>
-                        label
-                      </span>
-                      {projects.find((p) => p.id === newTodo.projectId)?.name}
-                      <button
-                        type="button"
-                        onClick={() => setNewTodo({ ...newTodo, projectId: undefined })}
-                        className="ml-1 text-white hover:text-gray-200"
-                        aria-label="Remover projeto"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  </div>
-                )}
-                <select
-                  value={newTodo.projectId || ''}
-                  onChange={(e) => setNewTodo({ ...newTodo, projectId: e.target.value || undefined })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Sem projeto</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
+                <ProjectIdsPicker
+                  projects={projects}
+                  value={newTodo.projectIds}
+                  onChange={(ids) => setNewTodo({ ...newTodo, projectIds: ids })}
+                />
               </div>
 
               <div>
@@ -2466,43 +2354,15 @@ export default function PlanningPage() {
                   />
                 </div>
 
-                {/* Projeto */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Projeto
-                    </label>
-                  
-                  {/* Projeto selecionado */}
-                  {editingTodo.projectId && projects.find(p => p.id === editingTodo.projectId) && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <span
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
-                        style={{ backgroundColor: projects.find(p => p.id === editingTodo.projectId)?.color || '#3B82F6' }}
-                      >
-                        {projects.find(p => p.id === editingTodo.projectId)?.name}
-                    <button
-                          onClick={() => setEditingTodo({ ...editingTodo, projectId: undefined })}
-                          className="ml-2 text-white hover:text-gray-200"
-                        >
-                          ×
-                    </button>
-                      </span>
-                  </div>
-                  )}
-                  
-                  {/* Seletor de projeto */}
-                    <select
-                    value={editingTodo.projectId || ''}
-                    onChange={(e) => setEditingTodo({ ...editingTodo, projectId: e.target.value || undefined })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                    <option value="">Sem projeto</option>
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                    </select>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Projetos
+                  </label>
+                  <ProjectIdsPicker
+                    projects={projects}
+                    value={editingTodo.projectIds ?? []}
+                    onChange={(ids) => setEditingTodo({ ...editingTodo, projectIds: ids })}
+                  />
                 </div>
 
 

@@ -40,6 +40,7 @@ import {
   friendlySchemaHint,
   getSupabaseErrorMessage,
 } from "@/lib/supabaseErrors";
+import { ProjectIdsPicker } from "@/components/ProjectIdsPicker";
 
 const NONE = "__none__";
 type TabKey = "active" | "resolved" | "archived";
@@ -89,13 +90,12 @@ function ProblemPriorityToggle({
 
 function matchProjectFilter(p: Problem, filter: string): boolean {
   if (filter === "all") return true;
-  if (filter === NONE) return p.projectId === null;
-  return p.projectId === filter;
+  if (filter === NONE) return p.projectIds.length === 0;
+  return p.projectIds.includes(filter);
 }
 
 function SortableProblemRow({
   problem,
-  projectColor,
   isTopThreeSlot,
   stale,
   dragDisabled,
@@ -103,12 +103,11 @@ function SortableProblemRow({
   isSavingProject,
   onToggleResolved,
   onTogglePriority,
-  onProjectChange,
+  onProjectsChange,
   onMoveToOtherKind,
   onDelete,
 }: {
   problem: Problem;
-  projectColor: string | null;
   /** Os 3 primeiros itens ativos na lista (fila) — destaque visual, independente da prioridade. */
   isTopThreeSlot: boolean;
   stale: boolean;
@@ -117,7 +116,7 @@ function SortableProblemRow({
   isSavingProject: boolean;
   onToggleResolved: (id: string) => void;
   onTogglePriority: (id: string) => void;
-  onProjectChange: (id: string, projectId: string | null) => void;
+  onProjectsChange: (id: string, projectIds: string[]) => void;
   onMoveToOtherKind: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
@@ -134,9 +133,6 @@ function SortableProblemRow({
     transform: CSS.Transform.toString(transform),
     transition,
   };
-
-  const badgeBg = projectColor ? `${projectColor}22` : undefined;
-  const badgeFg = projectColor || undefined;
 
   /** Top 3 da fila: fundo primary-fixed (design system — #dde1ff), mais claro que o azul do container. */
   const cardSurface =
@@ -187,39 +183,15 @@ function SortableProblemRow({
 
       <div className="min-w-0 flex-1 pt-0.5">
         <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <label className="sr-only" htmlFor={`problem-project-${problem.id}`}>
-            Projeto
-          </label>
-          <div className="relative inline-flex shrink-0 max-w-[min(100%,12rem)] sm:max-w-[14rem]">
-            <select
-              id={`problem-project-${problem.id}`}
-              value={problem.projectId ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                onProjectChange(problem.id, v === "" ? null : v);
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
+          <div className="min-w-0 shrink">
+            <span className="sr-only">Projetos deste problema</span>
+            <ProjectIdsPicker
+              projects={projects}
+              value={problem.projectIds}
+              onChange={(ids) => onProjectsChange(problem.id, ids)}
               disabled={problem.resolved || isSavingProject}
-              title="Projeto deste problema"
-              className="w-full cursor-pointer appearance-none rounded-md border-0 py-1 pl-2.5 pr-9 text-xs font-black uppercase tracking-wide transition-[box-shadow] focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60"
-              style={{
-                backgroundColor: badgeBg ?? "#e8eaf0",
-                color: badgeFg ?? "#444653",
-              }}
-            >
-              <option value="">Sem projeto</option>
-              {projects.map((proj) => (
-                <option key={proj.id} value={proj.id}>
-                  {projectShortCode(proj.name)} — {proj.name}
-                </option>
-              ))}
-            </select>
-            <span
-              className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-on-surface-variant/70"
-              aria-hidden
-            >
-              <span className="material-symbols-outlined text-[18px]">expand_more</span>
-            </span>
+              variant="compact"
+            />
           </div>
           <h3
             className={`min-w-0 flex-1 font-headline text-sm font-semibold leading-snug transition-colors ${
@@ -295,8 +267,8 @@ export default function ProblemsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
 
-  /** Projeto do formulário rápido — "" = sem projeto (igual ao select de tarefas) */
-  const [quickProjectId, setQuickProjectId] = useState("");
+  /** Projetos do formulário rápido (vários) */
+  const [quickProjectIds, setQuickProjectIds] = useState<string[]>([]);
   const quickInputRef = useRef<HTMLInputElement>(null);
 
   const dragDisabled = filterProjectId === "all";
@@ -329,12 +301,6 @@ export default function ProblemsPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const projectById = useMemo(() => {
-    const m = new Map<string, Project>();
-    projects.forEach((p) => m.set(p.id, p));
-    return m;
-  }, [projects]);
 
   const kindFiltered = useMemo(
     () => problems.filter((p) => p.kind === kindTab),
@@ -386,7 +352,11 @@ export default function ProblemsPage() {
 
   const stats = useMemo(() => {
     const open = problems.filter((p) => p.kind === kindTab && !p.resolved);
-    const projectKeys = new Set(open.map((p) => p.projectId ?? "none"));
+    const projectKeys = new Set<string>();
+    open.forEach((p) => {
+      if (p.projectIds.length === 0) projectKeys.add("none");
+      else p.projectIds.forEach((id) => projectKeys.add(id));
+    });
     return { openCount: open.length, projectWithOpenCount: projectKeys.size };
   }, [problems, kindTab]);
 
@@ -403,7 +373,8 @@ export default function ProblemsPage() {
     try {
       const row = await problemsService.createProblem(user.id, {
         title: draft.trim(),
-        project_id: quickProjectId === "" ? null : quickProjectId,
+        project_id: quickProjectIds[0] ?? null,
+        project_ids: quickProjectIds,
         kind: kindTab,
       });
       setProblems((prev) => [...prev, fromDbProblem(row)]);
@@ -482,21 +453,21 @@ export default function ProblemsPage() {
     }
   };
 
-  const assignProject = async (id: string, projectId: string | null) => {
+  const assignProjects = async (id: string, projectIds: string[]) => {
     const p = problems.find((x) => x.id === id);
     if (!p) return;
-    const same =
-      (p.projectId === null && projectId === null) || p.projectId === projectId;
-    if (same) return;
+    const a = [...p.projectIds].sort().join(",");
+    const b = [...projectIds].sort().join(",");
+    if (a === b) return;
     setSavingProjectId(id);
     setError(null);
     try {
-      const row = await problemsService.assignProblemProject(id, projectId);
+      const row = await problemsService.setProblemProjects(id, projectIds);
       setProblems((prev) => prev.map((x) => (x.id === id ? fromDbProblem(row) : x)));
     } catch (e) {
       console.error(e);
       const raw = getSupabaseErrorMessage(e);
-      setError(friendlySchemaHint(raw) ?? `Não foi possível atualizar o projeto: ${raw}`);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível atualizar os projetos: ${raw}`);
     } finally {
       setSavingProjectId(null);
     }
@@ -626,24 +597,14 @@ export default function ProblemsPage() {
               disabled={saving}
               className="min-w-0 flex-1 border-0 bg-transparent py-2 font-headline text-lg text-on-surface placeholder:text-outline/50 focus:outline-none focus:ring-0 sm:py-3"
             />
-            <div className="flex shrink-0 items-center gap-2 sm:max-w-[min(100%,14rem)]">
-              <label htmlFor="quick-problem-project" className="sr-only">
-                Projeto
-              </label>
-              <select
-                id="quick-problem-project"
-                value={quickProjectId}
-                onChange={(e) => setQuickProjectId(e.target.value)}
-                className="w-full cursor-pointer rounded-lg border-0 bg-surface-container px-3 py-2.5 text-left text-sm font-semibold text-on-surface shadow-inner ring-1 ring-outline-variant/20 focus:outline-none focus:ring-2 focus:ring-primary/25"
-                title="Projeto deste problema"
-              >
-                <option value="">Sem projeto</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {projectShortCode(p.name)} — {p.name}
-                  </option>
-                ))}
-              </select>
+            <div className="flex min-w-0 max-w-full shrink flex-wrap items-center gap-2 sm:max-w-[min(100%,22rem)]">
+              <span className="sr-only">Projetos</span>
+              <ProjectIdsPicker
+                projects={projects}
+                value={quickProjectIds}
+                onChange={setQuickProjectIds}
+                variant="default"
+              />
             </div>
             <div className="flex shrink-0 items-center justify-end sm:justify-start">
               <span className="rounded bg-surface-container px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-outline">
@@ -772,26 +733,22 @@ export default function ProblemsPage() {
                   Nenhum problema nesta vista. Use <strong>Novo problema</strong> ou o campo acima.
                 </p>
               ) : (
-                sortedList.map((p) => {
-                  const proj = p.projectId ? projectById.get(p.projectId) : null;
-                  return (
-                    <SortableProblemRow
-                      key={p.id}
-                      problem={p}
-                      projectColor={proj?.color ?? null}
-                      isTopThreeSlot={topThreeQueueIds.has(p.id)}
-                      stale={daysSince(p.createdAt) > 14}
-                      dragDisabled={dragDisabled}
-                      projects={projects}
-                      isSavingProject={savingProjectId === p.id}
-                      onToggleResolved={toggleResolved}
-                      onTogglePriority={togglePriority}
-                      onProjectChange={assignProject}
-                      onMoveToOtherKind={moveToOtherKind}
-                      onDelete={deleteProblem}
-                    />
-                  );
-                })
+                sortedList.map((p) => (
+                  <SortableProblemRow
+                    key={p.id}
+                    problem={p}
+                    isTopThreeSlot={topThreeQueueIds.has(p.id)}
+                    stale={daysSince(p.createdAt) > 14}
+                    dragDisabled={dragDisabled}
+                    projects={projects}
+                    isSavingProject={savingProjectId === p.id}
+                    onToggleResolved={toggleResolved}
+                    onTogglePriority={togglePriority}
+                    onProjectsChange={assignProjects}
+                    onMoveToOtherKind={moveToOtherKind}
+                    onDelete={deleteProblem}
+                  />
+                ))
               )}
             </section>
           </SortableContext>

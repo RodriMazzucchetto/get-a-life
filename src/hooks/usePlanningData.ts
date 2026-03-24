@@ -4,13 +4,14 @@ import { useAuthContext } from '@/contexts/AuthContext'
 import { 
   projectsService, 
   tagsService, 
-  todosService, 
+  todosService,
   goalsService, 
   remindersService,
   initiativesService,
   type DBProject,
   type DBTag,
   type DBTodo,
+  type DBTodoWithLinks,
   type DBGoal,
   type DBInitiative,
   type DBReminder,
@@ -211,8 +212,18 @@ export function usePlanningData() {
     try {
       console.log('🔄 Hook: Criando todo com dados:', todoData)
       
-      const dbTodoData = toDbUpdate(todoData)
-      const newDbTodo = await todosService.createTodo(user.id, dbTodoData as Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at'>)
+      const { projectIds, projectId, ...rest } = todoData
+      const ids = projectIds?.length
+        ? projectIds
+        : projectId
+          ? [projectId]
+          : []
+      const dbTodoData = toDbUpdate({ ...rest, projectId: ids[0] })
+      const newDbTodo = await todosService.createTodo(
+        user.id,
+        dbTodoData as Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
+        { projectIds: ids }
+      )
       const newTodo = fromDbTodo(newDbTodo)
       
       console.log('✅ Hook: Todo criado no banco:', newTodo)
@@ -230,10 +241,27 @@ export function usePlanningData() {
 
   const updateTodo = useCallback(async (todoId: string, updates: Partial<Todo>) => {
     try {
-      const dbUpdates = toDbUpdate(updates)
-      const updatedDbTodo = await todosService.updateTodo(todoId, dbUpdates)
+      const { projectIds, projectId, ...rest } = updates
+      let updatedDbTodo: DBTodoWithLinks | null = null
+
+      if (projectIds !== undefined) {
+        updatedDbTodo = await todosService.setTodoProjects(todoId, projectIds)
+      } else if (projectId !== undefined) {
+        updatedDbTodo = await todosService.setTodoProjects(
+          todoId,
+          projectId ? [projectId] : []
+        )
+      }
+
+      const dbUpdates = toDbUpdate(rest)
+      if (Object.keys(dbUpdates).length > 0) {
+        updatedDbTodo = await todosService.updateTodo(todoId, dbUpdates)
+      }
+
+      if (!updatedDbTodo) return null
+
       const updatedTodo = fromDbTodo(updatedDbTodo)
-      setTodos(prev => prev.map(t => t.id === todoId ? updatedTodo : t))
+      setTodos(prev => prev.map(t => (t.id === todoId ? updatedTodo : t)))
       return updatedTodo
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error)

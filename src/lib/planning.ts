@@ -115,7 +115,10 @@ export interface DBProblem {
 
 export interface Problem {
   id: string
+  /** Primeiro projeto (fila / ordenação por projeto). */
   projectId: string | null
+  /** Todos os projetos associados. */
+  projectIds: string[]
   title: string
   resolved: boolean
   pos: number
@@ -123,6 +126,10 @@ export interface Problem {
   isHighPriority: boolean
   createdAt: string
   updatedAt: string
+}
+
+export type DBProblemWithLinks = DBProblem & {
+  problem_projects?: { project_id: string }[]
 }
 
 // Serviço de Projetos
@@ -350,16 +357,22 @@ export const initiativesService = {
   }
 }
 
+const todoSelectWithProjects =
+  '*, todo_projects(project_id)' as const
+
+export type DBTodoWithLinks = DBTodo & {
+  todo_projects?: { project_id: string }[]
+}
+
 // Serviço de Tarefas
 export const todosService = {
-    // Buscar todas as tarefas do usuário (sem tags por enquanto)
-  async getTodos(userId: string): Promise<DBTodo[]> {
+  async getTodos(userId: string): Promise<DBTodoWithLinks[]> {
     const supabase = createClient()
     console.log('🔄 Serviço: Buscando todos para usuário:', userId)
-    
+
     const { data, error } = await supabase
       .from('todos')
-      .select('*')
+      .select(todoSelectWithProjects)
       .eq('user_id', userId)
       .order('pos', { ascending: true })
 
@@ -368,16 +381,52 @@ export const todosService = {
       throw error
     }
 
-    // NÃO ordenar localmente - o banco já ordena por pos
-    console.log('✅ Todos carregados e ordenados por pos:', data.length)
-    return data || []
+    console.log('✅ Todos carregados e ordenados por pos:', data?.length)
+    return (data || []) as DBTodoWithLinks[]
   },
 
-  // Criar nova tarefa
-  async createTodo(userId: string, todoData: Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'pos'>): Promise<DBTodo> {
+  /** Substitui projetos ligados à tarefa; `project_id` = primeiro (legado). */
+  async setTodoProjects(todoId: string, projectIds: string[]): Promise<DBTodoWithLinks> {
     const supabase = createClient()
-    
-    // Buscar o maior pos atual para calcular o próximo
+    const uniqueIds = [...new Set(projectIds)]
+    const primary = uniqueIds.length > 0 ? uniqueIds[0] : null
+
+    await supabase.from('todo_projects').delete().eq('todo_id', todoId)
+
+    if (uniqueIds.length > 0) {
+      const { error: insErr } = await supabase.from('todo_projects').insert(
+        uniqueIds.map((project_id) => ({ todo_id: todoId, project_id }))
+      )
+      if (insErr) {
+        console.error('Erro ao inserir todo_projects:', insErr)
+        throw insErr
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('todos')
+      .update({
+        project_id: primary,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', todoId)
+      .select(todoSelectWithProjects)
+      .single()
+
+    if (error) {
+      console.error('Erro ao atualizar todo (projetos):', error)
+      throw error
+    }
+    return data as DBTodoWithLinks
+  },
+
+  async createTodo(
+    userId: string,
+    todoData: Omit<DBTodo, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'pos'>,
+    options?: { projectIds?: string[] }
+  ): Promise<DBTodoWithLinks> {
+    const supabase = createClient()
+
     const { data: maxPosData } = await supabase
       .from('todos')
       .select('pos')
@@ -385,67 +434,72 @@ export const todosService = {
       .order('pos', { ascending: false })
       .limit(1)
       .single()
-    
+
     const nextPos = maxPosData?.pos ? maxPosData.pos + 1000 : 1000
-    
+
+    const linkIds = [
+      ...new Set(
+        options?.projectIds ??
+          (todoData.project_id ? [todoData.project_id] : [])
+      ),
+    ]
+    const primary = linkIds.length > 0 ? linkIds[0] : null
+
     const { data, error } = await supabase
       .from('todos')
       .insert({
         user_id: userId,
         pos: nextPos,
-        ...todoData
+        ...todoData,
+        project_id: primary,
       })
-      .select()
+      .select('id')
       .single()
 
-    if (error) {
+    if (error || !data) {
       console.error('Erro ao criar tarefa:', error)
       throw error
     }
 
-    return data
+    return todosService.setTodoProjects(data.id, linkIds)
   },
 
-  // Atualizar tarefa
-  async updateTodo(todoId: string, updates: Partial<DBTodo>): Promise<DBTodo> {
+  async updateTodo(todoId: string, updates: Partial<DBTodo>): Promise<DBTodoWithLinks> {
     const supabase = createClient()
-    
-    // Se está atualizando pos, usar RPC para garantir atomicidade
+
     if (updates.pos !== undefined) {
       console.log('🔄 Usando RPC para atualizar pos:', { todoId, pos: updates.pos, status: updates.status })
-      
+
       const { error: rpcError } = await supabase.rpc('move_todo', {
         p_id: todoId,
         p_status: updates.status || null,
-        p_pos: updates.pos
+        p_pos: updates.pos,
       })
-      
+
       if (rpcError) {
         console.error('❌ Erro no RPC move_todo:', rpcError)
         throw rpcError
       }
-      
-      // Buscar o todo atualizado
+
       const { data, error } = await supabase
         .from('todos')
-        .select('*')
+        .select(todoSelectWithProjects)
         .eq('id', todoId)
         .single()
-      
+
       if (error) {
         console.error('❌ Erro ao buscar todo atualizado:', error)
         throw error
       }
-      
-      return data
+
+      return data as DBTodoWithLinks
     }
-    
-    // Para outras atualizações, usar método normal
+
     const { data, error } = await supabase
       .from('todos')
       .update(updates)
       .eq('id', todoId)
-      .select()
+      .select(todoSelectWithProjects)
       .single()
 
     if (error) {
@@ -453,7 +507,7 @@ export const todosService = {
       throw error
     }
 
-    return data
+    return data as DBTodoWithLinks
   },
 
   // Deletar tarefa
@@ -471,12 +525,15 @@ export const todosService = {
   }
 }
 
+const problemSelectWithProjects =
+  '*, problem_projects(project_id)' as const
+
 export const problemsService = {
-  async getProblems(userId: string): Promise<DBProblem[]> {
+  async getProblems(userId: string): Promise<DBProblemWithLinks[]> {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('problems')
-      .select('*')
+      .select(problemSelectWithProjects)
       .eq('user_id', userId)
       .order('pos', { ascending: true })
 
@@ -484,26 +541,38 @@ export const problemsService = {
       console.error('Erro ao buscar problemas:', error)
       throw error
     }
-    return data || []
+    return (data || []) as DBProblemWithLinks[]
   },
 
   async createProblem(
     userId: string,
-    data: { title: string; project_id: string | null; kind: ProblemKind }
-  ): Promise<DBProblem> {
+    data: {
+      title: string
+      project_id: string | null
+      kind: ProblemKind
+      project_ids?: string[]
+    }
+  ): Promise<DBProblemWithLinks> {
     const supabase = createClient()
 
-    // Posição no fim da lista deste projeto + tipo (mercado/operacional).
+    const projectIds = [
+      ...new Set(
+        data.project_ids ??
+          (data.project_id ? [data.project_id] : [])
+      ),
+    ]
+    const primary = projectIds.length > 0 ? projectIds[0] : null
+
     let nextPos = Date.now()
     let q = supabase
       .from('problems')
       .select('pos')
       .eq('user_id', userId)
       .eq('kind', data.kind)
-    if (data.project_id === null) {
+    if (primary === null) {
       q = q.filter('project_id', 'is', null)
     } else {
-      q = q.eq('project_id', data.project_id)
+      q = q.eq('project_id', primary)
     }
     const { data: maxRow, error: maxErr } = await q
       .order('pos', { ascending: false })
@@ -521,28 +590,32 @@ export const problemsService = {
       .insert({
         user_id: userId,
         title: data.title.trim(),
-        project_id: data.project_id,
+        project_id: primary,
         pos: nextPos,
         resolved: false,
         kind: data.kind,
         is_high_priority: false,
       })
-      .select()
+      .select('id')
       .single()
 
-    if (error) {
+    if (error || !row) {
       console.error('Erro ao criar problema:', error)
       throw error
     }
-    return row
+
+    return problemsService.setProblemProjects(row.id, projectIds)
   },
 
   /** Move problema para o outro tipo (mercado ↔ operacional), com posição no fim da lista destino. */
-  async moveProblemKind(problemId: string, newKind: ProblemKind): Promise<DBProblem> {
+  async moveProblemKind(
+    problemId: string,
+    newKind: ProblemKind
+  ): Promise<DBProblemWithLinks> {
     const supabase = createClient()
     const { data: current, error: fetchErr } = await supabase
       .from('problems')
-      .select('*')
+      .select(problemSelectWithProjects)
       .eq('id', problemId)
       .single()
 
@@ -550,7 +623,7 @@ export const problemsService = {
       console.error('Erro ao carregar problema:', fetchErr)
       throw fetchErr ?? new Error('Problema não encontrado')
     }
-    if (current.kind === newKind) return current
+    if (current.kind === newKind) return current as DBProblemWithLinks
 
     let q = supabase
       .from('problems')
@@ -578,22 +651,25 @@ export const problemsService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', problemId)
-      .select()
+      .select(problemSelectWithProjects)
       .single()
 
     if (error) {
       console.error('Erro ao mover tipo do problema:', error)
       throw error
     }
-    return data
+    return data as DBProblemWithLinks
   },
 
-  /** Altera o projeto do problema; recalcula posição no fim da lista (mesmo kind). */
-  async assignProblemProject(
+  /** Substitui projetos do problema; primeiro = fila/pos; recalcula pos se a fila mudar. */
+  async setProblemProjects(
     problemId: string,
-    newProjectId: string | null
-  ): Promise<DBProblem> {
+    projectIds: string[]
+  ): Promise<DBProblemWithLinks> {
     const supabase = createClient()
+    const uniqueIds = [...new Set(projectIds)]
+    const newPrimary = uniqueIds.length > 0 ? uniqueIds[0] : null
+
     const { data: current, error: fetchErr } = await supabase
       .from('problems')
       .select('*')
@@ -604,48 +680,66 @@ export const problemsService = {
       console.error('Erro ao carregar problema:', fetchErr)
       throw fetchErr ?? new Error('Problema não encontrado')
     }
-    const same =
-      (current.project_id === null && newProjectId === null) ||
-      current.project_id === newProjectId
-    if (same) return current
 
-    let q = supabase
-      .from('problems')
-      .select('pos')
-      .eq('user_id', current.user_id)
-      .eq('kind', current.kind)
-    if (newProjectId === null) {
-      q = q.filter('project_id', 'is', null)
-    } else {
-      q = q.eq('project_id', newProjectId)
+    const oldPrimary = current.project_id
+    let nextPos = current.pos
+    if (newPrimary !== oldPrimary) {
+      let q = supabase
+        .from('problems')
+        .select('pos')
+        .eq('user_id', current.user_id)
+        .eq('kind', current.kind)
+      if (newPrimary === null) {
+        q = q.filter('project_id', 'is', null)
+      } else {
+        q = q.eq('project_id', newPrimary)
+      }
+      const { data: maxRow, error: maxErr } = await q
+        .order('pos', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (maxErr) console.error('Erro ao ler pos máxima (set projects):', maxErr)
+      nextPos = maxRow?.pos != null ? maxRow.pos + 1000 : 1000
     }
-    const { data: maxRow, error: maxErr } = await q
-      .order('pos', { ascending: false })
-      .limit(1)
-      .maybeSingle()
 
-    if (maxErr) console.error('Erro ao ler pos máxima (assign project):', maxErr)
-    const nextPos = maxRow?.pos != null ? maxRow.pos + 1000 : 1000
+    await supabase.from('problem_projects').delete().eq('problem_id', problemId)
+
+    if (uniqueIds.length > 0) {
+      const { error: insErr } = await supabase.from('problem_projects').insert(
+        uniqueIds.map((project_id) => ({
+          problem_id: problemId,
+          project_id,
+        }))
+      )
+      if (insErr) {
+        console.error('Erro ao inserir problem_projects:', insErr)
+        throw insErr
+      }
+    }
 
     const { data, error } = await supabase
       .from('problems')
       .update({
-        project_id: newProjectId,
+        project_id: newPrimary,
         pos: nextPos,
         updated_at: new Date().toISOString(),
       })
       .eq('id', problemId)
-      .select()
+      .select(problemSelectWithProjects)
       .single()
 
     if (error) {
-      console.error('Erro ao atribuir projeto ao problema:', error)
+      console.error('Erro ao atualizar problema (projetos):', error)
       throw error
     }
-    return data
+    return data as DBProblemWithLinks
   },
 
-  async updateProblem(problemId: string, updates: Partial<DBProblem>): Promise<DBProblem> {
+  async updateProblem(
+    problemId: string,
+    updates: Partial<DBProblem>
+  ): Promise<DBProblemWithLinks> {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('problems')
@@ -654,14 +748,14 @@ export const problemsService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', problemId)
-      .select()
+      .select(problemSelectWithProjects)
       .single()
 
     if (error) {
       console.error('Erro ao atualizar problema:', error)
       throw error
     }
-    return data
+    return data as DBProblemWithLinks
   },
 
   async deleteProblem(problemId: string): Promise<void> {
@@ -870,9 +964,17 @@ export const remindersService = {
 }
 
 // Adapters para converter entre DBTodo e Todo
-export function fromDbTodo(row: DBTodo): Todo {
+export function fromDbTodo(row: DBTodoWithLinks): Todo {
   console.log('🔄 Adapter: Convertendo DBTodo para Todo:', { id: row.id })
-  
+
+  const fromLinks = (row.todo_projects ?? []).map((x) => x.project_id)
+  const projectIds =
+    fromLinks.length > 0
+      ? [...new Set(fromLinks)]
+      : row.project_id
+        ? [row.project_id]
+        : []
+
   const todo = {
     id: row.id,
     title: row.title,
@@ -886,18 +988,18 @@ export function fromDbTodo(row: DBTodo): Todo {
     onHold: row.on_hold,
     onHoldReason: row.on_hold_reason,
     status: row.status,
-    pos: row.pos, // Coluna pos agora existe no banco
-    tags: [], // Tags serão implementadas do zero
-    // RELACIONAMENTOS OPCIONAIS
-    projectId: row.project_id,
+    pos: row.pos,
+    tags: [],
+    projectId: projectIds[0],
+    projectIds,
     goalId: row.goal_id,
     initiativeId: row.initiative_id,
     created_at: row.created_at,
-    updated_at: row.updated_at
-  };
-  
+    updated_at: row.updated_at,
+  }
+
   console.log('✅ Adapter: Todo convertido:', { id: todo.id })
-  return todo;
+  return todo
 }
 
 export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
@@ -916,7 +1018,7 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.pos !== undefined) out.pos = patch.pos; // Coluna pos agora existe no banco
   // if (patch.created_at !== undefined) out.created_at = patch.created_at; // Não precisamos mais atualizar created_at
   
-  // RELACIONAMENTOS OPCIONAIS
+  // RELACIONAMENTOS OPCIONAIS (projectIds → todosService.setTodoProjects)
   if (patch.projectId !== undefined) out.project_id = patch.projectId;
   if (patch.goalId !== undefined) out.goal_id = patch.goalId;
   if (patch.initiativeId !== undefined) out.initiative_id = patch.initiativeId;
@@ -946,6 +1048,8 @@ export interface Todo {
   tags?: { name: string; color: string }[];
   // RELACIONAMENTOS OPCIONAIS
   projectId?: string;
+  /** Todos os projetos (N:N). `projectId` = primeiro. */
+  projectIds: string[];
   goalId?: string;
   initiativeId?: string;
   created_at: string;
@@ -1050,11 +1154,19 @@ export function toDbInitiative(initiative: Partial<Initiative>): Partial<DBIniti
   return out;
 }
 
-export function fromDbProblem(row: DBProblem): Problem {
+export function fromDbProblem(row: DBProblemWithLinks): Problem {
   const k = row.kind === 'operational' ? 'operational' : 'market'
+  const fromLinks = (row.problem_projects ?? []).map((x) => x.project_id)
+  const projectIds =
+    fromLinks.length > 0
+      ? [...new Set(fromLinks)]
+      : row.project_id
+        ? [row.project_id]
+        : []
   return {
     id: row.id,
-    projectId: row.project_id,
+    projectId: projectIds[0] ?? null,
+    projectIds,
     title: row.title,
     resolved: row.resolved,
     pos: row.pos,
