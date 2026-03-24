@@ -55,7 +55,7 @@ export function RemindersModal({
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="relative top-20 mx-auto p-6 w-full max-w-2xl shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+      <div className="mx-auto w-full max-w-2xl rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -150,18 +150,18 @@ export function RemindersModal({
           )}
         </div>
 
-        {/* Reminders List */}
-        <div className="space-y-3 max-h-80 overflow-y-auto">
+        {/* Lista + vazio na mesma área rolável (evita “sumir” por layout) */}
+        <div className="max-h-80 min-h-[5rem] space-y-3 overflow-y-auto">
           {remindersInTab.map((reminder) => (
-              <div key={reminder.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md">
+              <div key={String(reminder.id)} className="flex items-start gap-3 rounded-md bg-gray-50 p-3">
                 <input
                   type="checkbox"
                   className="mt-1 h-4 w-4 shrink-0 rounded text-blue-600"
                   aria-label="Marcar como concluído"
-                  onChange={() => onToggleComplete(reminder.id)}
+                  onChange={() => onToggleComplete(String(reminder.id))}
                 />
                 <div className="min-w-0 flex-1">
-                  {showEditForm && editingReminder?.id === reminder.id ? (
+                  {showEditForm && editingReminder && String(editingReminder.id) === String(reminder.id) ? (
                     <div className="space-y-2">
                       <input
                         type="text"
@@ -203,7 +203,7 @@ export function RemindersModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onDeleteReminder(reminder.id)}
+                          onClick={() => onDeleteReminder(String(reminder.id))}
                           className="text-xs text-red-600 hover:text-red-800"
                         >
                           Excluir
@@ -214,16 +214,20 @@ export function RemindersModal({
                 </div>
               </div>
             ))}
+          {remindersInTab.length === 0 && (
+            <div className="py-8 text-center text-gray-500">
+              <p className="text-sm">
+                Nenhum{' '}
+                {activeTab === 'compras'
+                  ? 'item de compra'
+                  : activeTab === 'followups'
+                    ? 'follow up'
+                    : 'lembrete'}{' '}
+                nesta aba.
+              </p>
+            </div>
+          )}
         </div>
-
-        {/* Empty State */}
-        {remindersInTab.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <p className="text-sm">
-              Nenhum {activeTab === 'compras' ? 'item de compra' : activeTab === 'followups' ? 'follow up' : 'lembrete'} encontrado.
-            </p>
-          </div>
-        )}
       </div>
     </ModalOverlay>
   )

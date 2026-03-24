@@ -26,7 +26,7 @@ import {
   fromDbInitiative,
   fromDbProject
 } from '@/lib/planning'
-import { normalizeReminderCategory } from '@/lib/reminderHelpers'
+import { normalizeReminderCategory, normalizeReminderRow } from '@/lib/reminderHelpers'
 
 export function usePlanningData() {
   const { user } = useAuthContext()
@@ -112,7 +112,7 @@ export function usePlanningData() {
 
       // Carregar lembretes
       const remindersData = await remindersService.getReminders(user.id)
-      setReminders(remindersData)
+      setReminders(remindersData.map(normalizeReminderRow))
       setLoadingReminders(false)
 
       console.log('✅ Hook: Todos os dados carregados com sucesso!')
@@ -464,7 +464,7 @@ export function usePlanningData() {
         category: normalizeReminderCategory(reminderData.category),
       }
       const newReminder = await remindersService.createReminder(user.id, payload)
-      setReminders(prev => [newReminder, ...prev])
+      setReminders((prev) => [normalizeReminderRow(newReminder), ...prev])
       return newReminder
     } catch (error) {
       console.error('Erro ao criar lembrete:', error)
@@ -475,7 +475,11 @@ export function usePlanningData() {
   const updateReminder = useCallback(async (reminderId: string, updates: Partial<DBReminder>) => {
     try {
       const updatedReminder = await remindersService.updateReminder(reminderId, updates)
-      setReminders(prev => prev.map(r => r.id === reminderId ? updatedReminder : r))
+      setReminders((prev) =>
+        prev.map((r) =>
+          String(r.id) === String(reminderId) ? normalizeReminderRow(updatedReminder) : r
+        )
+      )
       return updatedReminder
     } catch (error) {
       console.error('Erro ao atualizar lembrete:', error)
@@ -490,8 +494,8 @@ export function usePlanningData() {
       console.log('✅ Lembrete marcado como concluído com sucesso')
       
       // Remove otimisticamente da lista (já que getReminders filtra completed_at IS NULL)
-      setReminders(prev => {
-        const newList = prev.filter(r => r.id !== reminderId)
+      setReminders((prev) => {
+        const newList = prev.filter((r) => String(r.id) !== String(reminderId))
         console.log('✅ Lista atualizada, removendo lembrete:', reminderId, 'Nova lista:', newList.length)
         return newList
       })
@@ -556,7 +560,7 @@ export function usePlanningData() {
   const deleteReminder = useCallback(async (reminderId: string) => {
     try {
       await remindersService.deleteReminder(reminderId)
-      setReminders(prev => prev.filter(r => r.id !== reminderId))
+      setReminders((prev) => prev.filter((r) => String(r.id) !== String(reminderId)))
       return true
     } catch (error) {
       console.error('Erro ao deletar lembrete:', error)
