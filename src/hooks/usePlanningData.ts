@@ -55,39 +55,28 @@ export function usePlanningData() {
   const [reminders, setReminders] = useState<DBReminder[]>([])
   const [loadingReminders, setLoadingReminders] = useState(true)
 
-  // Função para carregar todos os dados
+  // Função para carregar todos os dados (pedidos independentes em paralelo; metas+iniciativas em seguida)
   const loadAllData = useCallback(async () => {
     if (!user) return
 
     try {
-      console.log('🔄 Hook: Iniciando carregamento de dados...')
-      
-      // Carregar projetos
-      const projectsData = await projectsService.getProjects(user.id)
+      const [projectsData, tagsData, todosData, goalsData, remindersData] = await Promise.all([
+        projectsService.getProjects(user.id),
+        tagsService.getTags(user.id),
+        todosService.getTodos(user.id),
+        goalsService.getGoals(user.id),
+        remindersService.getReminders(user.id),
+      ])
+
       setProjects(projectsData.map(fromDbProject))
       setLoadingProjects(false)
 
-      // Carregar tags
-      const tagsData = await tagsService.getTags(user.id)
       setTags(tagsData)
       setLoadingTags(false)
 
-      // Carregar tarefas (sem tags por enquanto)
-      console.log('🔄 Hook: Carregando todos...')
-      const todosData = await todosService.getTodos(user.id)
-      console.log('📊 Hook: Todos carregados do banco:', todosData)
-      
-      const todosConverted = todosData.map(fromDbTodo)
-      console.log('✅ Hook: Todos convertidos:', todosConverted)
-      
-      setTodos(todosConverted)
+      setTodos(todosData.map(fromDbTodo))
       setLoadingTodos(false)
 
-      // Carregar metas
-      console.log('🎯 Hook: Carregando metas...')
-      const goalsData = await goalsService.getGoals(user.id)
-      console.log('🎯 Hook: Metas carregadas do banco:', goalsData)
-      
       const goalsWithInitiatives = await Promise.all(
         goalsData.map(async (goal) => {
           const initiatives = await initiativesService.getInitiativesByGoal(goal.id)
@@ -96,27 +85,19 @@ export function usePlanningData() {
             initiatives: initiatives.map((i: DBInitiative) => ({
               id: i.id,
               title: i.title || '',
-              completed: i.status === 'completed'
-            }))
+              completed: i.status === 'completed',
+            })),
           }
         })
       )
-      console.log('🎯 Hook: Metas com iniciativas processadas:', goalsWithInitiatives)
       setGoals(goalsWithInitiatives)
       setLoadingGoals(false)
 
-      // Carregar iniciativas
-      const initiativesData = await initiativesService.getInitiativesByGoal(goalsData[0]?.id || '')
-      setInitiatives(initiativesData.map(fromDbInitiative))
+      setInitiatives([])
       setLoadingInitiatives(false)
 
-      // Carregar lembretes
-      const remindersData = await remindersService.getReminders(user.id)
       setReminders(remindersData.map(normalizeReminderRow))
       setLoadingReminders(false)
-
-      console.log('✅ Hook: Todos os dados carregados com sucesso!')
-
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
       // Em caso de erro, definir loading como false para não travar a interface
@@ -238,7 +219,7 @@ export function usePlanningData() {
       console.error('❌ Hook: Erro ao criar tarefa:', error)
       return null
     }
-  }, [user, tags])
+  }, [user])
 
   const updateTodo = useCallback(async (todoId: string, updates: Partial<Todo>) => {
     try {
@@ -314,12 +295,14 @@ export function usePlanningData() {
         
         // Usar try-catch separado para não afetar a meta
         try {
-          for (const initiative of goalData.initiatives) {
-            await initiativesService.createInitiative(user.id, {
-              title: initiative.title,
-              goal_id: newGoal.id
-            })
-          }
+          await Promise.all(
+            goalData.initiatives.map((initiative) =>
+              initiativesService.createInitiative(user.id, {
+                title: initiative.title,
+                goal_id: newGoal.id,
+              })
+            )
+          )
           console.log('🎯 Hook: Iniciativas criadas com sucesso')
           
           // Recarregar iniciativas e atualizar a meta
@@ -391,33 +374,22 @@ export function usePlanningData() {
         const toUpdate = updates.initiatives.filter(i => !i.id.startsWith('temp-') && existingIds.has(i.id))
         console.log('🎯 Hook: Iniciativas para atualizar:', toUpdate)
         
-        // 2.3. Executar operações em sequência
-        
-        // 2.3.1. DELETAR iniciativas removidas
-        for (const initiative of toDelete) {
-          console.log('🎯 Hook: Deletando iniciativa:', initiative.id)
-          await initiativesService.deleteInitiative(initiative.id)
-        }
-        console.log('🎯 Hook: Iniciativas deletadas:', toDelete.length)
-        
-        // 2.3.2. CRIAR novas iniciativas
-        for (const initiative of toCreate) {
-          console.log('🎯 Hook: Criando iniciativa:', initiative.title)
-          await initiativesService.createInitiative(user.id, {
-            title: initiative.title,
-            goal_id: goalId
-          })
-        }
-        console.log('🎯 Hook: Iniciativas criadas:', toCreate.length)
-        
-        // 2.3.3. ATUALIZAR iniciativas existentes
-        for (const initiative of toUpdate) {
-          console.log('🎯 Hook: Atualizando iniciativa:', initiative.id)
-          await initiativesService.updateInitiative(initiative.id, {
-            title: initiative.title
-          })
-        }
-        console.log('🎯 Hook: Iniciativas atualizadas:', toUpdate.length)
+        await Promise.all(toDelete.map((i) => initiativesService.deleteInitiative(i.id)))
+        await Promise.all(
+          toCreate.map((initiative) =>
+            initiativesService.createInitiative(user.id, {
+              title: initiative.title,
+              goal_id: goalId,
+            })
+          )
+        )
+        await Promise.all(
+          toUpdate.map((initiative) =>
+            initiativesService.updateInitiative(initiative.id, {
+              title: initiative.title,
+            })
+          )
+        )
         
         console.log('🎯 Hook: Processamento de iniciativas concluído')
       }
@@ -545,17 +517,19 @@ export function usePlanningData() {
         ]
 
         // Criar todos os lembretes padrão
-        for (const reminderData of defaultReminders) {
-          await remindersService.createReminder(user.id, reminderData)
-        }
+        await Promise.all(
+          defaultReminders.map((reminderData) =>
+            remindersService.createReminder(user.id, reminderData)
+          )
+        )
 
-        // Recarregar a lista de lembretes
-        await loadAllData()
+        const refreshed = await remindersService.getReminders(user.id)
+        setReminders(refreshed.map(normalizeReminderRow))
       }
     } catch (error) {
       console.error('Erro ao seedar lembretes padrão:', error)
     }
-  }, [user, loadAllData])
+  }, [user])
 
   const deleteReminder = useCallback(async (reminderId: string) => {
     try {

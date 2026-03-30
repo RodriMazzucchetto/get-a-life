@@ -48,6 +48,10 @@ import {
 import { DBReminder, type Todo, type Goal } from '@/lib/planning'
 import { ProjectIdsPicker } from '@/components/ProjectIdsPicker'
 
+function cloneTodoList(list: Todo[]): Todo[] {
+  return list.map((t) => ({ ...t }))
+}
+
 // Componente para grupo de tags arrastável - será definido depois das funções
 
 // Preview do card no cursor (DragOverlay)
@@ -392,7 +396,8 @@ export default function PlanningPage() {
     completeReminder,
     deleteReminder,
     seedDefaultReminders,
-    reloadData
+    reloadData,
+    setTodos,
   } = usePlanningData()
 
   const [boardError, setBoardError] = useState<string | null>(null)
@@ -419,6 +424,8 @@ export default function PlanningPage() {
   const weekInlineFormRef = useRef<HTMLDivElement>(null)
   const backlogInlineFormRef = useRef<HTMLDivElement>(null)
   const inProgressInlineFormRef = useRef<HTMLDivElement>(null)
+  /** Snapshot para reverter ordem/coluna se o update no Supabase falhar após DnD */
+  const dragRollbackRef = useRef<Todo[] | null>(null)
   const activeDragTodo = useMemo(() => {
     if (!activeDragId || activeDragId.startsWith('group-')) return undefined
     return todos.find((t) => t.id === activeDragId)
@@ -920,18 +927,53 @@ export default function PlanningPage() {
     const activeTodo = todos.find((t) => t.id === activeId)
     if (!activeTodo) return
 
+    const applyOptimistic = (build: (prev: Todo[]) => Todo[]) => {
+      setTodos((prev) => {
+        dragRollbackRef.current = cloneTodoList(prev)
+        return build(prev)
+      })
+    }
+
+    const rollbackDrag = () => {
+      if (dragRollbackRef.current) {
+        setTodos(dragRollbackRef.current)
+        dragRollbackRef.current = null
+      }
+    }
+
+    const finishDrag = (result: Todo | null, errMsg: string) => {
+      if (!result) {
+        rollbackDrag()
+        showError(errMsg)
+      } else {
+        dragRollbackRef.current = null
+      }
+    }
+
     const columnTarget = columnStatusFromId(overId)
     if (columnTarget && activeTodo.status !== columnTarget) {
-      const newPos = appendPosForStatus(todos, columnTarget, activeId)
+      let newPos = 0
+      applyOptimistic((prev) => {
+        newPos = appendPosForStatus(prev, columnTarget, activeId)
+        return prev.map((t) =>
+          t.id === activeId ? { ...t, status: columnTarget, pos: newPos } : t
+        )
+      })
       const result = await updateTodo(activeId, { status: columnTarget, pos: newPos })
-      if (!result) showError('Não foi possível mover a tarefa.')
+      finishDrag(result, 'Não foi possível mover a tarefa.')
       return
     }
 
     if (overId.startsWith('group-')) {
-      const newPos = appendPosForStatus(todos, 'current_week', activeId)
+      let newPos = 0
+      applyOptimistic((prev) => {
+        newPos = appendPosForStatus(prev, 'current_week', activeId)
+        return prev.map((t) =>
+          t.id === activeId ? { ...t, status: 'current_week', pos: newPos } : t
+        )
+      })
       const result = await updateTodo(activeId, { status: 'current_week', pos: newPos })
-      if (!result) showError('Não foi possível mover a tarefa.')
+      finishDrag(result, 'Não foi possível mover a tarefa.')
       return
     }
 
@@ -948,8 +990,11 @@ export default function PlanningPage() {
       const reordered = arrayMove(col, oldIdx, newIdx)
       const newPos = computePosAtNewIndex(reordered, activeId)
       if (newPos === null) return
+      applyOptimistic((prev) =>
+        prev.map((t) => (t.id === activeId ? { ...t, pos: newPos } : t))
+      )
       const result = await updateTodo(activeId, { pos: newPos, status: activeTodo.status })
-      if (!result) showError('Não foi possível reordenar.')
+      finishDrag(result, 'Não foi possível reordenar.')
       return
     }
 
@@ -970,8 +1015,11 @@ export default function PlanningPage() {
         newPos = prev.pos + (next.pos - prev.pos) / 2
       }
     }
+    applyOptimistic((prev) =>
+      prev.map((t) => (t.id === activeId ? { ...t, status: newStatus, pos: newPos } : t))
+    )
     const result = await updateTodo(activeId, { status: newStatus, pos: newPos })
-    if (!result) showError('Não foi possível mover a tarefa.')
+    finishDrag(result, 'Não foi possível mover a tarefa.')
   }
 
   const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {

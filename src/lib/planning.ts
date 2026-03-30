@@ -468,8 +468,6 @@ export const todosService = {
     const supabase = createClient()
 
     if (updates.pos !== undefined) {
-      console.log('🔄 Usando RPC para atualizar pos:', { todoId, pos: updates.pos, status: updates.status })
-
       const { error: rpcError } = await supabase.rpc('move_todo', {
         p_id: todoId,
         p_status: updates.status || null,
