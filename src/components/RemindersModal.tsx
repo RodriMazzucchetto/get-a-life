@@ -1,10 +1,110 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useCallback } from 'react'
+import { useMicroCompleteToggle } from '@/hooks/useMicroCompleteToggle'
 import ModalOverlay from './ModalOverlay'
 import { ModalPanel } from './ModalPanel'
 import { DBReminder } from '@/lib/planning'
 import { normalizeReminderCategory } from '@/lib/reminderHelpers'
 
 type Reminder = DBReminder
+
+function ReminderRow({
+  reminder,
+  showEditForm,
+  editingReminder,
+  onToggleComplete,
+  onEditReminder,
+  onDeleteReminder,
+  onEditingReminderChange,
+  onUpdateReminder,
+  onCancelEdit,
+}: {
+  reminder: Reminder
+  showEditForm: boolean
+  editingReminder: Reminder | null
+  onToggleComplete: (reminderId: string) => void
+  onEditReminder: (reminder: Reminder) => void
+  onDeleteReminder: (reminderId: string) => void
+  onEditingReminderChange: (reminder: Reminder) => void
+  onUpdateReminder: () => void
+  onCancelEdit: () => void
+}) {
+  const id = String(reminder.id)
+  const onConfirm = useCallback(() => onToggleComplete(id), [onToggleComplete, id])
+  const micro = useMicroCompleteToggle({
+    completed: reminder.completed,
+    onConfirm,
+  })
+
+  return (
+    <div
+      className={`flex items-start gap-3 rounded-md bg-gray-50 p-3 transition-shadow ${micro.rowMotionClass}`}
+    >
+      <input
+        type="checkbox"
+        checked={micro.displayChecked}
+        onChange={micro.toggle}
+        disabled={micro.isCompleting}
+        className={`mt-1 h-4 w-4 shrink-0 rounded border-primary/35 text-primary focus:ring-primary/35 ${
+          micro.isCompleting ? 'motion-check-bounce' : ''
+        }`}
+        aria-label="Marcar como concluído"
+        aria-busy={micro.isCompleting}
+      />
+      <div className="min-w-0 flex-1">
+        {showEditForm && editingReminder && String(editingReminder.id) === id ? (
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={editingReminder.title}
+              onChange={(e) => onEditingReminderChange({ ...editingReminder, title: e.target.value })}
+              className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onKeyDown={(e) => e.key === 'Enter' && onUpdateReminder()}
+              autoFocus
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onUpdateReminder}
+                className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 motion-icon-press"
+              >
+                Salvar
+              </button>
+              <button
+                type="button"
+                onClick={onCancelEdit}
+                className="rounded bg-gray-500 px-2 py-1 text-xs text-white hover:bg-gray-600 motion-icon-press"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <span className="min-w-0 flex-1 break-words text-sm text-gray-800">
+              {reminder.title?.trim() ? reminder.title : <span className="italic text-gray-400">(Sem título)</span>}
+            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onEditReminder(reminder)}
+                className="text-xs text-blue-600 hover:text-blue-800 motion-icon-press"
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                onClick={() => onDeleteReminder(id)}
+                className="text-xs text-red-600 hover:text-red-800 motion-icon-press"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 interface RemindersModalProps {
   isOpen: boolean
@@ -154,67 +254,19 @@ export function RemindersModal({
         {/* Lista: scroll vertical no ModalPanel quando há muitos itens */}
         <div className="min-h-[5rem] space-y-3">
           {remindersInTab.map((reminder) => (
-              <div key={String(reminder.id)} className="flex items-start gap-3 rounded-md bg-gray-50 p-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 shrink-0 rounded text-blue-600"
-                  aria-label="Marcar como concluído"
-                  onChange={() => onToggleComplete(String(reminder.id))}
-                />
-                <div className="min-w-0 flex-1">
-                  {showEditForm && editingReminder && String(editingReminder.id) === String(reminder.id) ? (
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={editingReminder.title}
-                        onChange={(e) => onEditingReminderChange({...editingReminder, title: e.target.value})}
-                        className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        onKeyDown={(e) => e.key === 'Enter' && onUpdateReminder()}
-                        autoFocus
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={onUpdateReminder}
-                          className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
-                        >
-                          Salvar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={onCancelEdit}
-                          className="rounded bg-gray-500 px-2 py-1 text-xs text-white hover:bg-gray-600"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="min-w-0 flex-1 break-words text-sm text-gray-800">
-                        {reminder.title?.trim() ? reminder.title : <span className="italic text-gray-400">(Sem título)</span>}
-                      </span>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onEditReminder(reminder)}
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteReminder(String(reminder.id))}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+            <ReminderRow
+              key={String(reminder.id)}
+              reminder={reminder}
+              showEditForm={showEditForm}
+              editingReminder={editingReminder}
+              onToggleComplete={onToggleComplete}
+              onEditReminder={onEditReminder}
+              onDeleteReminder={onDeleteReminder}
+              onEditingReminderChange={onEditingReminderChange}
+              onUpdateReminder={onUpdateReminder}
+              onCancelEdit={onCancelEdit}
+            />
+          ))}
           {remindersInTab.length === 0 && (
             <div className="py-8 text-center text-gray-500">
               <p className="text-sm">

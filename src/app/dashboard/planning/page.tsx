@@ -12,6 +12,7 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
+import { useMicroCompleteToggle } from '@/hooks/useMicroCompleteToggle'
 import PomodoroTimer from '@/components/Timer/PomodoroTimer'
 import {
   DndContext,
@@ -166,16 +167,26 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
       ? [todo.projectId]
       : []
   )
-    .map((id) => projects.find((p) => p.id === id))
-    .filter(Boolean) as { id: string; name: string; color: string }[]
+  .map((id) => projects.find((p) => p.id === id))
+  .filter(Boolean) as { id: string; name: string; color: string }[]
+
+  const onConfirmComplete = useCallback(
+    () => onToggleComplete(todo.id),
+    [onToggleComplete, todo.id]
+  )
+  const microComplete = useMicroCompleteToggle({
+    completed: todo.completed,
+    onConfirm: onConfirmComplete,
+  })
+  const [priorityPopKey, setPriorityPopKey] = useState(0)
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`group flex flex-col bg-surface-container-lowest rounded-xl shadow-sm transition-all duration-200 ${
-        isDragging ? 'pointer-events-none' : ''
-      } ${
+        microComplete.rowMotionClass
+      } ${isDragging ? 'pointer-events-none' : ''} ${
         todo.onHold
           ? 'border-2 border-amber-400 bg-amber-50/40 ring-0 hover:shadow-md'
           : 'ring-1 ring-outline-variant/10 hover:shadow-md'
@@ -207,26 +218,38 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
           {/* Checkbox */}
           <input
             type="checkbox"
-            checked={todo.completed}
-            onChange={() => onToggleComplete(todo.id)}
-            className="h-4 w-4 shrink-0 rounded border border-blue-300 text-blue-600 focus:ring-blue-500"
+            checked={microComplete.displayChecked}
+            onChange={microComplete.toggle}
+            disabled={microComplete.isCompleting}
+            aria-busy={microComplete.isCompleting}
+            className={`h-4 w-4 shrink-0 rounded border border-primary/35 text-primary focus:ring-primary/35 ${
+              microComplete.isCompleting ? 'motion-check-bounce' : ''
+            }`}
           />
 
           {/* Indicador de prioridade */}
           <div
-            onClick={() => onTogglePriority(todo.id)}
-            className="shrink-0 cursor-pointer transition-colors"
+            onClick={() => {
+              onTogglePriority(todo.id)
+              setPriorityPopKey((k) => k + 1)
+            }}
+            className="shrink-0 cursor-pointer transition-colors motion-icon-press"
             title={todo.isHighPriority ? 'Clique para remover prioridade' : 'Clique para marcar como prioridade'}
           >
-            <svg
-              className={`h-4 w-4 ${
-                todo.isHighPriority ? 'text-red-500' : 'text-gray-400'
-              }`}
-              fill="currentColor"
-              viewBox="0 0 24 24"
+            <span
+              key={priorityPopKey}
+              className={`inline-flex ${priorityPopKey > 0 ? 'motion-priority-pop' : ''}`}
             >
-              <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
-            </svg>
+              <svg
+                className={`h-4 w-4 ${
+                  todo.isHighPriority ? 'text-red-500' : 'text-gray-400'
+                }`}
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
+              </svg>
+            </span>
           </div>
 
           {/* Projetos (só texto, cor do projeto) — antes do título, mesma linha */}
@@ -264,8 +287,9 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
       <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 self-start shrink-0 bg-surface-container-lowest/95 backdrop-blur-sm rounded-md px-1 py-0.5">
         {/* Botão de editar */}
         <button
+          type="button"
           onClick={() => onEdit(todo)}
-          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+          className="p-2 text-gray-400 hover:text-primary hover:bg-primary-fixed/10 rounded-md transition-colors motion-icon-press"
           title="Editar tarefa"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,8 +300,9 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         {/* Botão de pause/play (colocar ou remover da espera) */}
         {onPutOnHold && (
           <button
+            type="button"
             onClick={() => onPutOnHold(todo)}
-            className={`p-2 rounded-md transition-colors ${
+            className={`p-2 rounded-md transition-colors motion-icon-press ${
               todo.onHold 
                 ? 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50' 
                 : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50'
@@ -301,11 +326,12 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         {/* Botão de enviar para Em Progresso ou voltar */}
         {onMoveToProgress && (
           <button
+            type="button"
             onClick={() => onMoveToProgress(todo)}
-            className={`p-2 rounded-md transition-colors ${
+            className={`p-2 rounded-md transition-colors motion-icon-press ${
               todo.status === 'in_progress'
-                ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                ? 'text-primary hover:text-primary-container hover:bg-primary-fixed/10'
+                : 'text-gray-400 hover:text-primary hover:bg-primary-fixed/10'
             }`}
             title={
               todo.status === 'in_progress'
@@ -330,8 +356,9 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         {/* Botão de deletar */}
         {onDeleteFromAnyBlock && (
           <button
+            type="button"
             onClick={() => onDeleteFromAnyBlock(todo)}
-            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors motion-icon-press"
             title="Deletar tarefa"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

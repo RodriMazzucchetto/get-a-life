@@ -123,3 +123,69 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-outline);
 }
+
+/* ---------------------------------------------------------------------------
+   Microinterações (planning / lembretes) — DESIGN.md: tertiary = “sucesso”
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes micro-todo-complete {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-tertiary) 35%, transparent);
+    }
+    45% {
+      transform: scale(1.014);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 14px transparent;
+    }
+  }
+
+  @keyframes micro-priority-pop {
+    0% {
+      transform: scale(1) rotate(0deg);
+    }
+    40% {
+      transform: scale(1.22) rotate(-8deg);
+    }
+    100% {
+      transform: scale(1) rotate(0deg);
+    }
+  }
+
+  @keyframes micro-check-bounce {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.12);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-todo-complete,
+  .motion-priority-pop,
+  .motion-check-bounce {
+    animation: none !important;
+  }
+}
+
+.motion-todo-complete {
+  animation: micro-todo-complete 0.42s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+}
+
+.motion-priority-pop {
+  animation: micro-priority-pop 0.38s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+}
+
+.motion-check-bounce {
+  animation: micro-check-bounce 0.28s ease-out both;
+}
+
+/** Botões de ícone: feedback tátil */
+.motion-icon-press {
+  @apply transition-transform duration-150 ease-out active:scale-[0.92];
+}
