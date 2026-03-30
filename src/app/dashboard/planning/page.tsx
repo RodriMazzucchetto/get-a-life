@@ -1104,16 +1104,22 @@ export default function PlanningPage() {
   }
 
   const handleConfirmOnHold = async () => {
-    if (todoToPutOnHold && on_hold_reason.trim()) {
-      const result = await updateTodo(todoToPutOnHold.id, {
-        onHold: true,
-        onHoldReason: on_hold_reason.trim(),
-      })
-      if (!result) showError('Não foi possível atualizar a tarefa.')
-      setShowOnHoldModal(false)
-      setTodoToPutOnHold(null)
-      setOnHoldReason('')
+    if (!todoToPutOnHold) return
+    if (!on_hold_reason.trim()) {
+      showError('Informe o motivo da espera.')
+      return
     }
+    const result = await updateTodo(todoToPutOnHold.id, {
+      onHold: true,
+      onHoldReason: on_hold_reason.trim(),
+    })
+    if (!result) {
+      showError('Não foi possível atualizar a tarefa.')
+      return
+    }
+    setShowOnHoldModal(false)
+    setTodoToPutOnHold(null)
+    setOnHoldReason('')
   }
 
   const handleCancelOnHold = () => {
@@ -2009,7 +2015,11 @@ export default function PlanningPage() {
 
 
       {/* Edit Goal Modal */}
-      <ModalOverlay isOpen={showEditGoalModal} onClose={() => setShowEditGoalModal(false)}>
+      <ModalOverlay
+        isOpen={showEditGoalModal}
+        onClose={() => setShowEditGoalModal(false)}
+        onBackdropClick={handleUpdateGoal}
+      >
         <ModalPanel maxWidthClass="max-w-lg">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
@@ -2233,7 +2243,11 @@ export default function PlanningPage() {
       </ModalOverlay>
 
       {/* Create Todo Modal */}
-      <ModalOverlay isOpen={showCreateTodoModal} onClose={() => setShowCreateTodoModal(false)}>
+      <ModalOverlay
+        isOpen={showCreateTodoModal}
+        onClose={() => setShowCreateTodoModal(false)}
+        onBackdropClick={handleCreateTodo}
+      >
         <ModalPanel maxWidthClass="max-w-lg">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
@@ -2351,7 +2365,11 @@ export default function PlanningPage() {
       </ModalOverlay>
 
       {/* Edit Todo Modal */}
-      <ModalOverlay isOpen={showEditTodoModal} onClose={() => setShowEditTodoModal(false)}>
+      <ModalOverlay
+        isOpen={showEditTodoModal}
+        onClose={() => setShowEditTodoModal(false)}
+        onBackdropClick={handleUpdateTodoUnified}
+      >
         <ModalPanel maxWidthClass="max-w-2xl">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
@@ -2505,7 +2523,11 @@ export default function PlanningPage() {
 
       {/* Modal para colocar tarefa em espera */}
       {showOnHoldModal && (
-        <ModalOverlay isOpen={showOnHoldModal} onClose={handleCancelOnHold}>
+        <ModalOverlay
+          isOpen={showOnHoldModal}
+          onClose={handleCancelOnHold}
+          onBackdropClick={handleConfirmOnHold}
+        >
           <ModalPanel maxWidthClass="max-w-md" padding="none">
               {/* Header */}
               <div className="flex justify-between items-center p-6 border-b border-gray-200">

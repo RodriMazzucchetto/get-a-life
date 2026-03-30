@@ -4,6 +4,11 @@ import { createPortal } from 'react-dom'
 interface ModalOverlayProps {
   isOpen: boolean
   onClose: () => void
+  /**
+   * Clique no fundo escuro: em geral gravar e fechar (mesma lógica do botão Salvar).
+   * Se omitido, o fundo chama só `onClose` (ex.: listas sem rascunho).
+   */
+  onBackdropClick?: () => void | Promise<void>
   children: React.ReactNode
 }
 
@@ -12,7 +17,7 @@ interface ModalOverlayProps {
  * com altura limitada. items-start evita centrar verticalmente conteúdo alto (cortava
  * topo/fundo no viewport). O conteúdo filho define max-w (ex. via ModalPanel).
  */
-export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlayProps) {
+export default function ModalOverlay({ isOpen, onClose, onBackdropClick, children }: ModalOverlayProps) {
   const [mounted, setMounted] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
   const scrollPositionRef = useRef<number>(0)
@@ -58,7 +63,19 @@ export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlay
       <div
         className="absolute inset-0 z-0 cursor-pointer"
         aria-hidden
-        onClick={onClose}
+        onClick={() => {
+          void (async () => {
+            try {
+              if (onBackdropClick) {
+                await onBackdropClick()
+              } else {
+                onClose()
+              }
+            } catch (e) {
+              console.error('ModalOverlay backdrop:', e)
+            }
+          })()
+        }}
         style={{
           backgroundColor: 'rgba(0, 0, 0, 0.22)',
         }}

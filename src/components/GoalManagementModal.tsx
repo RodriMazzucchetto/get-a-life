@@ -180,7 +180,7 @@ export function GoalManagementModal({
   const selectedProject = projects.find(p => p.id === projectId)
 
   return (
-    <ModalOverlay isOpen={isOpen} onClose={onClose}>
+    <ModalOverlay isOpen={isOpen} onClose={onClose} onBackdropClick={handleSave}>
       <ModalPanel maxWidthClass="max-w-4xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">
