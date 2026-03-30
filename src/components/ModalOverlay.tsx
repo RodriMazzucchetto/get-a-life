@@ -7,6 +7,10 @@ interface ModalOverlayProps {
   children: React.ReactNode
 }
 
+/**
+ * Overlay de modal: scroll único no viewport (sem max-height no wrapper) para não cortar
+ * rodapés em formulários longos. O conteúdo filho define max-w (ex.: max-w-2xl).
+ */
 export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlayProps) {
   const [mounted, setMounted] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -43,12 +47,11 @@ export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlay
 
   if (!isOpen || !mounted) return null
 
-  // Portal para document.body para evitar herdar estilos do container
   return createPortal(
     <div
       ref={modalRef}
       role="presentation"
-      className="fixed inset-0 z-[100] overflow-y-auto"
+      className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden"
       style={{ overscrollBehavior: 'contain' }}
     >
       <div
@@ -60,13 +63,16 @@ export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlay
         }}
       />
 
-      <div className="relative z-10 flex min-h-full w-full items-center justify-center p-4 pointer-events-none">
+      {/* min-h garante espaço para centrar modais curtos; cresce com conteúdo alto e deixa o scroll no próprio overlay */}
+      <div
+        className="relative z-10 flex min-h-[100dvh] w-full items-center justify-center px-4 py-8 sm:px-6 sm:py-10 pointer-events-none"
+        style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 0px))' }}
+      >
         <div
           data-modal-content
           role="dialog"
           aria-modal="true"
-          className="pointer-events-auto w-full max-h-[min(90vh,720px)] overflow-y-auto rounded-xl"
-          style={{ overscrollBehavior: 'contain' }}
+          className="pointer-events-auto w-full"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >

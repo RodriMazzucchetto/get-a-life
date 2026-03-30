@@ -1959,7 +1959,7 @@ export default function PlanningPage() {
 
       {/* Edit Goal Modal */}
       <ModalOverlay isOpen={showEditGoalModal} onClose={() => setShowEditGoalModal(false)}>
-        <div className="relative top-20 mx-auto p-6 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+        <div className="mx-auto w-full max-w-lg rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Editar Meta</h3>
@@ -2183,7 +2183,7 @@ export default function PlanningPage() {
 
       {/* Create Todo Modal */}
       <ModalOverlay isOpen={showCreateTodoModal} onClose={() => setShowCreateTodoModal(false)}>
-        <div className="relative top-20 mx-auto p-6 w-[500px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+        <div className="mx-auto w-full max-w-lg rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Novo To-do</h3>
@@ -2301,7 +2301,7 @@ export default function PlanningPage() {
 
       {/* Edit Todo Modal */}
       <ModalOverlay isOpen={showEditTodoModal} onClose={() => setShowEditTodoModal(false)}>
-        <div className="relative top-20 mx-auto p-6 w-[600px] shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+        <div className="mx-auto w-full max-w-2xl rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
               <div>
@@ -2455,8 +2455,7 @@ export default function PlanningPage() {
       {/* Modal para colocar tarefa em espera */}
       {showOnHoldModal && (
         <ModalOverlay isOpen={showOnHoldModal} onClose={handleCancelOnHold}>
-          <div className="flex items-center justify-center min-h-screen p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="mx-auto w-full max-w-md rounded-xl border-2 border-gray-100 bg-white shadow-2xl ring-4 ring-white/50">
               {/* Header */}
               <div className="flex justify-between items-center p-6 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -2505,7 +2504,6 @@ export default function PlanningPage() {
                   {todoToPutOnHold?.onHold ? 'Remover da Espera' : 'Confirmar'}
                 </button>
               </div>
-            </div>
           </div>
         </ModalOverlay>
       )}

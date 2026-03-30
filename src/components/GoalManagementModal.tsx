@@ -180,7 +180,7 @@ export function GoalManagementModal({
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="relative top-20 mx-auto p-6 w-full max-w-4xl shadow-2xl rounded-xl bg-white border-2 border-gray-100 ring-4 ring-white/50">
+      <div className="mx-auto w-full max-w-4xl rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {isEditing ? 'Editar Meta' : 'Criar Nova Meta'}
