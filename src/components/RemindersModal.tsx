@@ -1,5 +1,6 @@
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useEffect, useRef } from 'react'
 import { useMicroCompleteToggle } from '@/hooks/useMicroCompleteToggle'
+import { burstTaskComplete } from '@/lib/microEffects'
 import ModalOverlay from './ModalOverlay'
 import { ModalPanel } from './ModalPanel'
 import { DBReminder } from '@/lib/planning'
@@ -23,7 +24,7 @@ function ReminderRow({
   editingReminder: Reminder | null
   onToggleComplete: (reminderId: string) => void
   onEditReminder: (reminder: Reminder) => void
-  onDeleteReminder: (reminderId: string) => void
+  onDeleteReminder: (reminderId: string, anchorRect?: DOMRect) => void
   onEditingReminderChange: (reminder: Reminder) => void
   onUpdateReminder: () => void
   onCancelEdit: () => void
@@ -34,9 +35,22 @@ function ReminderRow({
     completed: reminder.completed,
     onConfirm,
   })
+  const rowRef = useRef<HTMLDivElement>(null)
+  const completeBurstFiredRef = useRef(false)
+
+  useEffect(() => {
+    if (!micro.isCompleting) {
+      completeBurstFiredRef.current = false
+      return
+    }
+    if (completeBurstFiredRef.current || !rowRef.current) return
+    completeBurstFiredRef.current = true
+    burstTaskComplete(rowRef.current.getBoundingClientRect())
+  }, [micro.isCompleting])
 
   return (
     <div
+      ref={rowRef}
       className={`flex items-start gap-3 rounded-md bg-gray-50 p-3 transition-shadow ${micro.rowMotionClass}`}
     >
       <input
@@ -93,7 +107,9 @@ function ReminderRow({
               </button>
               <button
                 type="button"
-                onClick={() => onDeleteReminder(id)}
+                onClick={(e) =>
+                  onDeleteReminder(id, (e.currentTarget as HTMLElement).getBoundingClientRect())
+                }
                 className="text-xs text-red-600 hover:text-red-800 motion-icon-press"
               >
                 Excluir
@@ -116,7 +132,7 @@ interface RemindersModalProps {
   onEditReminder: (reminder: Reminder) => void
   onUpdateReminder: () => void
   onCancelEdit: () => void
-  onDeleteReminder: (reminderId: string) => void
+  onDeleteReminder: (reminderId: string, anchorRect?: DOMRect) => void
   onShowAddForm: () => void
   onSaveReminder: () => void
   onCancelAdd: () => void

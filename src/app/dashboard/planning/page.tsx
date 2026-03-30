@@ -13,6 +13,14 @@ import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
 import { useMicroCompleteToggle } from '@/hooks/useMicroCompleteToggle'
+import {
+  burstOnHold,
+  burstPriorityStar,
+  burstProgressMove,
+  burstResumeFromHold,
+  burstTaskComplete,
+  burstTaskDelete,
+} from '@/lib/microEffects'
 import PomodoroTimer from '@/components/Timer/PomodoroTimer'
 import {
   DndContext,
@@ -144,7 +152,7 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
   onEdit: (todo: Todo) => void
   onPutOnHold?: (todo: Todo) => void
   onMoveToProgress?: (todo: Todo) => void
-  onDeleteFromAnyBlock?: (todo: Todo) => void
+  onDeleteFromAnyBlock?: (todo: Todo, anchorRect?: DOMRect) => void
 }) {
   const {
     attributes,
@@ -154,6 +162,14 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
     transition,
     isDragging,
   } = useSortable({ id: todo.id })
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const setCardRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setNodeRef(node)
+      cardRef.current = node
+    },
+    [setNodeRef]
+  )
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -179,10 +195,21 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
     onConfirm: onConfirmComplete,
   })
   const [priorityPopKey, setPriorityPopKey] = useState(0)
+  const completeBurstFiredRef = useRef(false)
+
+  useEffect(() => {
+    if (!microComplete.isCompleting) {
+      completeBurstFiredRef.current = false
+      return
+    }
+    if (completeBurstFiredRef.current || !cardRef.current) return
+    completeBurstFiredRef.current = true
+    burstTaskComplete(cardRef.current.getBoundingClientRect())
+  }, [microComplete.isCompleting])
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setCardRef}
       style={style}
       className={`group flex flex-col bg-surface-container-lowest rounded-xl shadow-sm transition-all duration-200 ${
         microComplete.rowMotionClass
@@ -229,7 +256,8 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
 
           {/* Indicador de prioridade */}
           <div
-            onClick={() => {
+            onClick={(e) => {
+              burstPriorityStar((e.currentTarget as HTMLElement).getBoundingClientRect())
               onTogglePriority(todo.id)
               setPriorityPopKey((k) => k + 1)
             }}
@@ -301,7 +329,12 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         {onPutOnHold && (
           <button
             type="button"
-            onClick={() => onPutOnHold(todo)}
+            onClick={(e) => {
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              if (todo.onHold) burstResumeFromHold(r)
+              else burstOnHold(r)
+              onPutOnHold(todo)
+            }}
             className={`p-2 rounded-md transition-colors motion-icon-press ${
               todo.onHold 
                 ? 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50' 
@@ -327,7 +360,10 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         {onMoveToProgress && (
           <button
             type="button"
-            onClick={() => onMoveToProgress(todo)}
+            onClick={(e) => {
+              burstProgressMove((e.currentTarget as HTMLElement).getBoundingClientRect())
+              onMoveToProgress(todo)
+            }}
             className={`p-2 rounded-md transition-colors motion-icon-press ${
               todo.status === 'in_progress'
                 ? 'text-primary hover:text-primary-container hover:bg-primary-fixed/10'
@@ -357,7 +393,9 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         {onDeleteFromAnyBlock && (
           <button
             type="button"
-            onClick={() => onDeleteFromAnyBlock(todo)}
+            onClick={(e) =>
+              onDeleteFromAnyBlock(todo, (e.currentTarget as HTMLElement).getBoundingClientRect())
+            }
             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors motion-icon-press"
             title="Deletar tarefa"
           >
@@ -829,8 +867,9 @@ export default function PlanningPage() {
     }
   }
 
-  const handleDeleteReminder = async (reminderId: string) => {
+  const handleDeleteReminder = async (reminderId: string, anchorRect?: DOMRect) => {
     if (!confirm('Remover este lembrete?')) return
+    if (anchorRect) burstTaskDelete(anchorRect)
     const ok = await deleteReminder(reminderId)
     if (!ok) showError('Não foi possível excluir o lembrete.')
     if (editingReminder?.id === reminderId) {
@@ -1173,8 +1212,9 @@ export default function PlanningPage() {
   }
 
   // Função para deletar item com confirmação de qualquer bloco
-  const handleDeleteTodoFromAnyBlock = async (todo: Todo) => {
+  const handleDeleteTodoFromAnyBlock = async (todo: Todo, anchorRect?: DOMRect) => {
     if (!confirm('Tem certeza que deseja deletar esta tarefa? Esta ação não pode ser desfeita.')) return
+    if (anchorRect) burstTaskDelete(anchorRect)
     const success = await deleteTodo(todo.id)
     if (!success) showError('Não foi possível excluir a tarefa.')
   }
@@ -2659,7 +2699,7 @@ function SortableTagGroup({
   onEdit: (todo: Todo) => void
   onPutOnHold?: (todo: Todo) => void
   onMoveToProgress?: (todo: Todo) => void
-  onDeleteFromAnyBlock?: (todo: Todo) => void
+  onDeleteFromAnyBlock?: (todo: Todo, anchorRect?: DOMRect) => void
 }) {
   const {
     attributes,
