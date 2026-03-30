@@ -4,10 +4,47 @@ export const COL_IN_PROGRESS = 'col-in-progress'
 export const COL_CURRENT_WEEK = 'col-current-week'
 export const COL_BACKLOG = 'col-backlog'
 
+/** Tarefas ativas (não em espera) primeiro; em espera sempre no fundo da coluna. */
 export function sortTodosByPriorityAndPos(a: Todo, b: Todo): number {
   if (a.isHighPriority && !b.isHighPriority) return -1
   if (!a.isHighPriority && b.isHighPriority) return 1
+  if (a.onHold !== b.onHold) return a.onHold ? 1 : -1
   return a.pos - b.pos
+}
+
+/**
+ * Próxima pos para uma tarefa **ativa** no fim da fila “normal”, sempre acima das em espera.
+ */
+export function computeNextPosForColumnTasks(
+  tasks: { pos: number; onHold: boolean }[]
+): number {
+  if (tasks.length === 0) return 1000
+  const active = tasks.filter((t) => !t.onHold)
+  const paused = tasks.filter((t) => t.onHold)
+  if (paused.length === 0) {
+    return Math.max(...active.map((t) => t.pos), 0) + 1000
+  }
+  if (active.length === 0) {
+    return Math.min(...paused.map((t) => t.pos)) - 1000
+  }
+  const maxActive = Math.max(...active.map((t) => t.pos))
+  const minPaused = Math.min(...paused.map((t) => t.pos))
+  const candidate = maxActive + 1000
+  if (candidate < minPaused) return candidate
+  return maxActive + (minPaused - maxActive) / 2
+}
+
+/** Coloca tarefa em espera no fundo absoluto da coluna (abaixo de todas as outras). */
+export function appendPosForOnHoldAtBottom(
+  allTodos: Todo[],
+  status: Todo['status'],
+  excludeTodoId?: string
+): number {
+  const col = allTodos.filter(
+    (t) => t.status === status && !t.completed && t.id !== excludeTodoId
+  )
+  if (col.length === 0) return 1000
+  return Math.max(...col.map((t) => t.pos)) + 1000
 }
 
 export function appendPosForStatus(
@@ -18,8 +55,9 @@ export function appendPosForStatus(
   const col = allTodos.filter(
     (t) => t.status === status && !t.completed && t.id !== excludeTodoId
   )
-  if (col.length === 0) return 1000
-  return Math.max(...col.map((t) => t.pos)) + 1000
+  return computeNextPosForColumnTasks(
+    col.map((t) => ({ pos: t.pos, onHold: t.onHold }))
+  )
 }
 
 /** Posição após reordenar lista já filtrada pela coluna (mesmo status). */

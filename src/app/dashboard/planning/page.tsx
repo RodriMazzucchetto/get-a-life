@@ -40,6 +40,7 @@ import {
   COL_BACKLOG,
   COL_CURRENT_WEEK,
   COL_IN_PROGRESS,
+  appendPosForOnHoldAtBottom,
   appendPosForStatus,
   columnStatusFromId,
   computePosAtNewIndex,
@@ -1090,9 +1091,11 @@ export default function PlanningPage() {
   // Funções para gerenciar status "Em Espera"
   const handlePutTodoOnHold = async (todo: Todo) => {
     if (todo.onHold) {
+      const pos = appendPosForStatus(todos, todo.status, todo.id)
       const result = await updateTodo(todo.id, {
         onHold: false,
         onHoldReason: undefined,
+        pos,
       })
       if (!result) showError('Não foi possível atualizar a tarefa.')
     } else {
@@ -1109,9 +1112,11 @@ export default function PlanningPage() {
       showError('Informe o motivo da espera.')
       return
     }
+    const pos = appendPosForOnHoldAtBottom(todos, todoToPutOnHold.status, todoToPutOnHold.id)
     const result = await updateTodo(todoToPutOnHold.id, {
       onHold: true,
       onHoldReason: on_hold_reason.trim(),
+      pos,
     })
     if (!result) {
       showError('Não foi possível atualizar a tarefa.')

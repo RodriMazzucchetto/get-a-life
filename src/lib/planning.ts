@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase'
+import { computeNextPosForColumnTasks } from '@/lib/todoBoardHelpers'
 
 // Tipos para o banco de dados
 export interface DBProject {
@@ -427,15 +428,19 @@ export const todosService = {
   ): Promise<DBTodoWithLinks> {
     const supabase = createClient()
 
-    const { data: maxPosData } = await supabase
+    const { data: colRows } = await supabase
       .from('todos')
-      .select('pos')
+      .select('pos, on_hold')
       .eq('user_id', userId)
-      .order('pos', { ascending: false })
-      .limit(1)
-      .single()
+      .eq('status', todoData.status)
+      .eq('completed', false)
 
-    const nextPos = maxPosData?.pos ? maxPosData.pos + 1000 : 1000
+    const nextPos = computeNextPosForColumnTasks(
+      (colRows ?? []).map((r) => ({
+        pos: r.pos,
+        onHold: r.on_hold,
+      }))
+    )
 
     const linkIds = [
       ...new Set(
@@ -470,13 +475,35 @@ export const todosService = {
     if (updates.pos !== undefined) {
       const { error: rpcError } = await supabase.rpc('move_todo', {
         p_id: todoId,
-        p_status: updates.status || null,
+        p_status: updates.status ?? null,
         p_pos: updates.pos,
       })
 
       if (rpcError) {
         console.error('❌ Erro no RPC move_todo:', rpcError)
         throw rpcError
+      }
+
+      const rest: Partial<DBTodo> = { ...updates }
+      delete rest.pos
+      if (updates.status !== undefined) delete rest.status
+
+      const restEntries = Object.entries(rest).filter(([, v]) => v !== undefined)
+      if (restEntries.length > 0) {
+        const patch = Object.fromEntries(restEntries) as Partial<DBTodo>
+        const { data, error } = await supabase
+          .from('todos')
+          .update(patch)
+          .eq('id', todoId)
+          .select(todoSelectWithProjects)
+          .single()
+
+        if (error) {
+          console.error('❌ Erro ao atualizar todo após move:', error)
+          throw error
+        }
+
+        return data as DBTodoWithLinks
       }
 
       const { data, error } = await supabase
