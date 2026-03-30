@@ -4,11 +4,16 @@ export const COL_IN_PROGRESS = 'col-in-progress'
 export const COL_CURRENT_WEEK = 'col-current-week'
 export const COL_BACKLOG = 'col-backlog'
 
-/** Tarefas ativas (não em espera) primeiro; em espera sempre no fundo da coluna. */
+/**
+ * Tarefas ativas (não em espera) primeiro — **todas** antes de qualquer pausada.
+ * Depois prioridade alta e por fim pos (evita tarefa pausada “estrela” no topo).
+ */
 export function sortTodosByPriorityAndPos(a: Todo, b: Todo): number {
+  const holdA = Boolean(a.onHold)
+  const holdB = Boolean(b.onHold)
+  if (holdA !== holdB) return holdA ? 1 : -1
   if (a.isHighPriority && !b.isHighPriority) return -1
   if (!a.isHighPriority && b.isHighPriority) return 1
-  if (a.onHold !== b.onHold) return a.onHold ? 1 : -1
   return a.pos - b.pos
 }
 
@@ -20,7 +25,7 @@ export function computeNextPosForColumnTasks(
 ): number {
   if (tasks.length === 0) return 1000
   const active = tasks.filter((t) => !t.onHold)
-  const paused = tasks.filter((t) => t.onHold)
+  const paused = tasks.filter((t) => Boolean(t.onHold))
   if (paused.length === 0) {
     return Math.max(...active.map((t) => t.pos), 0) + 1000
   }
