@@ -23,7 +23,12 @@ export function ModalPanel({
 
   return (
     <div
-      className={`mx-auto w-full ${maxWidthClass} max-h-[min(92dvh,56rem)] overflow-y-auto overscroll-contain rounded-xl border-2 border-gray-100 bg-white shadow-2xl ring-4 ring-white/50 [scrollbar-gutter:stable] ${paddingClass} ${className}`}
+      data-modal-content
+      role="dialog"
+      aria-modal="true"
+      className={`pointer-events-auto relative z-[1] mx-auto w-full ${maxWidthClass} max-h-[min(92dvh,56rem)] overflow-y-auto overscroll-contain rounded-xl border-2 border-gray-100 bg-white shadow-2xl ring-4 ring-white/50 [scrollbar-gutter:stable] ${paddingClass} ${className}`}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       {children}
     </div>

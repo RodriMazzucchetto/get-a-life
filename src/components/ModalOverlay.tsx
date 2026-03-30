@@ -81,22 +81,12 @@ export default function ModalOverlay({ isOpen, onClose, onBackdropClick, childre
         }}
       />
 
-      {/* items-start: conteúdo alto não fica “centrado” no viewport (metade cortada). ModalPanel faz scroll interno. */}
+      {/* Só o ModalPanel (filho) tem pointer-events; sem invólucro largo entre o cartão e o backdrop */}
       <div
         className="relative z-10 flex min-h-[100dvh] w-full items-start justify-center px-4 py-8 sm:px-6 sm:py-10 pointer-events-none"
         style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 0px))' }}
       >
-        {/* Largura limitada ao painel: w-full sozinho cobria o viewport inteiro e roubava cliques longe do cartão */}
-        <div
-          data-modal-content
-          role="dialog"
-          aria-modal="true"
-          className="pointer-events-auto mx-auto min-w-0 w-full max-w-[min(100vw-2rem,72rem)]"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {children}
-        </div>
+        {children}
       </div>
     </div>,
     document.body
