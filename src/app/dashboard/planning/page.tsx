@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { PlusIcon, FolderIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
+import { ModalPanel } from '@/components/ModalPanel'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
 import { GoalManagementModal } from '@/components/GoalManagementModal'
 import { GoalDisplay } from '@/components/GoalDisplay'
@@ -1959,7 +1960,7 @@ export default function PlanningPage() {
 
       {/* Edit Goal Modal */}
       <ModalOverlay isOpen={showEditGoalModal} onClose={() => setShowEditGoalModal(false)}>
-        <div className="mx-auto w-full max-w-lg rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
+        <ModalPanel maxWidthClass="max-w-lg">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Editar Meta</h3>
@@ -2178,12 +2179,12 @@ export default function PlanningPage() {
               </div>
             )}
           </div>
-        </div>
+        </ModalPanel>
       </ModalOverlay>
 
       {/* Create Todo Modal */}
       <ModalOverlay isOpen={showCreateTodoModal} onClose={() => setShowCreateTodoModal(false)}>
-        <div className="mx-auto w-full max-w-lg rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
+        <ModalPanel maxWidthClass="max-w-lg">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Novo To-do</h3>
@@ -2296,12 +2297,12 @@ export default function PlanningPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalPanel>
       </ModalOverlay>
 
       {/* Edit Todo Modal */}
       <ModalOverlay isOpen={showEditTodoModal} onClose={() => setShowEditTodoModal(false)}>
-        <div className="mx-auto w-full max-w-2xl rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
+        <ModalPanel maxWidthClass="max-w-2xl">
           <div className="mt-3">
             <div className="flex justify-between items-center mb-4">
               <div>
@@ -2449,13 +2450,13 @@ export default function PlanningPage() {
               </div>
             )}
           </div>
-        </div>
+        </ModalPanel>
       </ModalOverlay>
 
       {/* Modal para colocar tarefa em espera */}
       {showOnHoldModal && (
         <ModalOverlay isOpen={showOnHoldModal} onClose={handleCancelOnHold}>
-          <div className="mx-auto w-full max-w-md rounded-xl border-2 border-gray-100 bg-white shadow-2xl ring-4 ring-white/50">
+          <ModalPanel maxWidthClass="max-w-md" padding="none">
               {/* Header */}
               <div className="flex justify-between items-center p-6 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -2504,7 +2505,7 @@ export default function PlanningPage() {
                   {todoToPutOnHold?.onHold ? 'Remover da Espera' : 'Confirmar'}
                 </button>
               </div>
-          </div>
+          </ModalPanel>
         </ModalOverlay>
       )}
 

@@ -8,8 +8,9 @@ interface ModalOverlayProps {
 }
 
 /**
- * Overlay de modal: scroll único no viewport (sem max-height no wrapper) para não cortar
- * rodapés em formulários longos. O conteúdo filho define max-w (ex.: max-w-2xl).
+ * Overlay de modal: filhos devem usar ModalPanel (scroll interno + max-h) ou conteúdo
+ * com altura limitada. items-start evita centrar verticalmente conteúdo alto (cortava
+ * topo/fundo no viewport). O conteúdo filho define max-w (ex. via ModalPanel).
  */
 export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlayProps) {
   const [mounted, setMounted] = useState(false)
@@ -63,9 +64,9 @@ export default function ModalOverlay({ isOpen, onClose, children }: ModalOverlay
         }}
       />
 
-      {/* min-h garante espaço para centrar modais curtos; cresce com conteúdo alto e deixa o scroll no próprio overlay */}
+      {/* items-start: conteúdo alto não fica “centrado” no viewport (metade cortada). ModalPanel faz scroll interno. */}
       <div
-        className="relative z-10 flex min-h-[100dvh] w-full items-center justify-center px-4 py-8 sm:px-6 sm:py-10 pointer-events-none"
+        className="relative z-10 flex min-h-[100dvh] w-full items-start justify-center px-4 py-8 sm:px-6 sm:py-10 pointer-events-none"
         style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 0px))' }}
       >
         <div

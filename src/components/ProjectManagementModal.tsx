@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import ModalOverlay from './ModalOverlay'
+import { ModalPanel } from './ModalPanel'
 import { Project } from '@/lib/planning'
 
 interface ProjectManagementModalProps {
@@ -122,7 +123,7 @@ export function ProjectManagementModal({
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="mx-auto w-full max-w-2xl rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
+      <ModalPanel maxWidthClass="max-w-2xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Gerenciar Projetos</h2>
           <button
@@ -315,7 +316,7 @@ export function ProjectManagementModal({
             </div>
           )}
         </div>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import ModalOverlay from './ModalOverlay'
+import { ModalPanel } from './ModalPanel'
 import { DBReminder } from '@/lib/planning'
 import { normalizeReminderCategory } from '@/lib/reminderHelpers'
 
@@ -55,7 +56,7 @@ export function RemindersModal({
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="mx-auto w-full max-w-2xl rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
+      <ModalPanel maxWidthClass="max-w-2xl">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -150,7 +151,7 @@ export function RemindersModal({
           )}
         </div>
 
-        {/* Lista: sem max-height aqui — o scroll fica no content do ModalOverlay (evita ~6 linhas visíveis + scroll aninhado). */}
+        {/* Lista: scroll vertical no ModalPanel quando há muitos itens */}
         <div className="min-h-[5rem] space-y-3">
           {remindersInTab.map((reminder) => (
               <div key={String(reminder.id)} className="flex items-start gap-3 rounded-md bg-gray-50 p-3">
@@ -228,7 +229,7 @@ export function RemindersModal({
             </div>
           )}
         </div>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

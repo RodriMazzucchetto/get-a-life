@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import ModalOverlay from './ModalOverlay'
+import { ModalPanel } from './ModalPanel'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { Goal, Project, SimpleInitiative } from '@/lib/planning'
@@ -180,7 +181,7 @@ export function GoalManagementModal({
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="mx-auto w-full max-w-4xl rounded-xl border-2 border-gray-100 bg-white p-6 shadow-2xl ring-4 ring-white/50">
+      <ModalPanel maxWidthClass="max-w-4xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {isEditing ? 'Editar Meta' : 'Criar Nova Meta'}
@@ -434,7 +435,7 @@ export function GoalManagementModal({
             </div>
           </div>
         </div>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }
