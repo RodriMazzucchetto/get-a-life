@@ -63,8 +63,10 @@ function TodoDragOverlayPreview({
     .filter(Boolean) as { id: string; name: string; color: string }[]
   return (
     <div
-      className={`pointer-events-none flex flex-col bg-surface-container-lowest rounded-xl shadow-xl cursor-grabbing select-none ring-1 ring-outline-variant/15 ${
-        todo.onHold ? 'ring-2 ring-yellow-400' : ''
+      className={`pointer-events-none flex flex-col bg-surface-container-lowest rounded-xl shadow-xl cursor-grabbing select-none ${
+        todo.onHold
+          ? 'border-2 border-amber-400 bg-amber-50/50 ring-0'
+          : 'ring-1 ring-outline-variant/15'
       }`}
     >
       <div className="flex items-center gap-3 p-3">
@@ -166,12 +168,12 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex flex-col bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 hover:shadow-md transition-all duration-200 ${
+      className={`group flex flex-col bg-surface-container-lowest rounded-xl shadow-sm transition-all duration-200 ${
         isDragging ? 'pointer-events-none' : ''
       } ${
-        todo.onHold 
-          ? 'ring-2 ring-yellow-400' 
-          : ''
+        todo.onHold
+          ? 'border-2 border-amber-400 bg-amber-50/40 ring-0 hover:shadow-md'
+          : 'ring-1 ring-outline-variant/10 hover:shadow-md'
       }`}
     >
       {/* Linha principal da atividade */}
@@ -1479,7 +1481,7 @@ export default function PlanningPage() {
             <div className="p-4 md:p-6 flex flex-col flex-1 gap-5">
               <DroppableColumn
                 id={COL_IN_PROGRESS}
-                className="space-y-4 min-h-[12rem] md:min-h-[14rem] max-h-[min(28rem,50vh)] overflow-y-auto pr-1 -mr-1"
+                className="space-y-4 min-h-[12rem] md:min-h-[14rem] max-h-[min(28rem,50vh)] overflow-y-auto py-0.5 pr-1 -mr-1 [scrollbar-gutter:stable]"
               >
                 {inProgressTodos.length === 0 ? (
                   showInProgressCreateForm ? (
