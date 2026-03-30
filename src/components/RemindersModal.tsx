@@ -150,8 +150,8 @@ export function RemindersModal({
           )}
         </div>
 
-        {/* Lista + vazio na mesma área rolável (evita “sumir” por layout) */}
-        <div className="max-h-80 min-h-[5rem] space-y-3 overflow-y-auto">
+        {/* Lista: sem max-height aqui — o scroll fica no content do ModalOverlay (evita ~6 linhas visíveis + scroll aninhado). */}
+        <div className="min-h-[5rem] space-y-3">
           {remindersInTab.map((reminder) => (
               <div key={String(reminder.id)} className="flex items-start gap-3 rounded-md bg-gray-50 p-3">
                 <input

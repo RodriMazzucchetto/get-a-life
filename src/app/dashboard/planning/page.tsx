@@ -745,6 +745,8 @@ export default function PlanningPage() {
       if (newReminderData) {
         setNewReminder('')
         setShowAddReminderForm(false)
+      } else {
+        showError('Não foi possível salvar o lembrete. Tenta de novo.')
       }
     }
   }

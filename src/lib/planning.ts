@@ -863,6 +863,7 @@ export const remindersService = {
       .eq('user_id', userId)
       .is('completed_at', null) // Só retorna lembretes não concluídos
       .order('created_at', { ascending: false })
+      .limit(5000)
 
     if (error) {
       console.error('Erro ao buscar lembretes:', error)
@@ -880,6 +881,7 @@ export const remindersService = {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
+      .limit(5000)
 
     if (error) {
       console.error('Erro ao buscar todos os lembretes:', error)
@@ -896,7 +898,8 @@ export const remindersService = {
       .from('reminders')
       .insert({
         user_id: userId,
-        ...reminderData
+        ...reminderData,
+        completed_at: null,
       })
       .select()
       .single()

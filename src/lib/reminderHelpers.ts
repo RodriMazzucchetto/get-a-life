@@ -5,6 +5,7 @@ export function normalizeReminderCategory(
   raw: string | number | null | undefined
 ): DBReminder['category'] {
   const s = String(raw ?? '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .trim()
     .toLowerCase()
   if (s === 'compras' || s === 'followups' || s === 'lembretes') return s
