@@ -109,6 +109,7 @@ export interface DBTaskCycle {
   started_at: string
   ended_at?: string | null
   planned_count: number
+  added_after_start_count: number
   delivered_count: number
   effectiveness_pct: number
   created_at: string
@@ -488,6 +489,32 @@ export const todosService = {
       throw error
     }
 
+    // Se houver ciclo ativo, este item passa a compor o planejamento do ciclo
+    // e é marcado como "adicionado após início".
+    const { data: activeCycle } = await supabase
+      .from('task_cycles')
+      .select('id, planned_count, added_after_start_count')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle()
+
+    if (activeCycle?.id) {
+      const now = new Date().toISOString()
+      const { error: cyclePatchErr } = await supabase
+        .from('task_cycles')
+        .update({
+          planned_count: (activeCycle.planned_count ?? 0) + 1,
+          added_after_start_count: (activeCycle.added_after_start_count ?? 0) + 1,
+          updated_at: now,
+        })
+        .eq('id', activeCycle.id)
+        .eq('user_id', userId)
+      if (cyclePatchErr) {
+        console.error('Erro ao atualizar ciclo ativo após criação de tarefa:', cyclePatchErr)
+      }
+    }
+
     return todosService.setTodoProjects(data.id, linkIds)
   },
 
@@ -646,6 +673,7 @@ export const cyclesService = {
         status: 'active',
         started_at: now,
         planned_count: plannedCount ?? 0,
+        added_after_start_count: 0,
         delivered_count: 0,
         effectiveness_pct: 0,
       })
@@ -670,8 +698,6 @@ export const cyclesService = {
       .select('id', { head: true, count: 'exact' })
       .eq('user_id', userId)
       .eq('completed', true)
-      .gte('completed_at', active.started_at)
-      .lte('completed_at', endedAt)
     if (deliveredErr) {
       console.error('Erro ao contar tarefas entregues no ciclo:', deliveredErr)
       throw deliveredErr
@@ -1280,6 +1306,7 @@ export interface TaskCycle {
   startedAt: string
   endedAt?: string
   plannedCount: number
+  addedAfterStartCount: number
   deliveredCount: number
   effectivenessPct: number
   createdAt: string
@@ -1358,6 +1385,7 @@ export function fromDbTaskCycle(row: DBTaskCycle): TaskCycle {
     startedAt: row.started_at,
     endedAt: row.ended_at ?? undefined,
     plannedCount: row.planned_count,
+    addedAfterStartCount: row.added_after_start_count,
     deliveredCount: row.delivered_count,
     effectivenessPct: row.effectiveness_pct,
     createdAt: row.created_at,

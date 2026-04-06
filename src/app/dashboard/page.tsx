@@ -52,6 +52,8 @@ export default function DashboardPage() {
   const previousClosed = closedCycles.length > 1 ? closedCycles[closedCycles.length - 2] : null;
 
   const planned = latestClosed?.plannedCount ?? activeCycle?.plannedCount ?? 0;
+  const addedAfterStart =
+    latestClosed?.addedAfterStartCount ?? activeCycle?.addedAfterStartCount ?? 0;
   const delivered = latestClosed?.deliveredCount ?? 0;
   const pending = Math.max(planned - delivered, 0);
   const effectiveness = latestClosed?.effectivenessPct ?? 0;
@@ -120,6 +122,20 @@ export default function DashboardPage() {
         </article>
       </section>
 
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <article className="rounded-xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+            Itens adicionados após início
+          </p>
+          <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">
+            {addedAfterStart}
+          </p>
+          <p className="text-xs text-on-surface-variant">
+            Estes itens entram no planejado total do ciclo e impactam a eficácia.
+          </p>
+        </article>
+      </section>
+
       <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
@@ -148,7 +164,7 @@ export default function DashboardPage() {
                     <div
                       className="w-1/2 rounded-t-md bg-primary-container/30"
                       style={{ height: `${plannedHeight}%` }}
-                      title={`Planejado: ${cycle.plannedCount}`}
+                      title={`Planejado: ${cycle.plannedCount} (extras: +${cycle.addedAfterStartCount})`}
                     />
                     <div
                       className="w-1/2 rounded-t-md bg-primary"
