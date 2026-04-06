@@ -19,8 +19,7 @@ const mainNav: {
     name: "Dashboard",
     href: "/dashboard",
     icon: "grid_view",
-    future: true,
-    active: () => false,
+    active: (pathname) => pathname === "/dashboard",
   },
   {
     name: "Tarefas",

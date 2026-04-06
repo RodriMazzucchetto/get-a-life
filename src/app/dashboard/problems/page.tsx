@@ -22,6 +22,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { TrashIcon } from "@heroicons/react/24/outline";
+import ModalOverlay from "@/components/ModalOverlay";
+import { ModalPanel } from "@/components/ModalPanel";
 import { useAuthContext } from "@/contexts/AuthContext";
 import {
   problemsService,
@@ -33,9 +35,12 @@ import {
   type Project,
 } from "@/lib/planning";
 import {
+  appendPosForKindProblems,
+  appendPosForOnHoldAtBottomForProblems,
   computePosAtNewIndexForProblems,
   formatRelativeDaysPt,
   projectShortCode,
+  sortProblemsForDisplay,
 } from "@/lib/problemHelpers";
 import {
   friendlySchemaHint,
@@ -106,6 +111,10 @@ function SortableProblemRow({
   onTogglePriority,
   onProjectsChange,
   onMoveToOtherKind,
+  onToggleOnHold,
+  onOpenEdit,
+  isTitleExpanded,
+  onToggleTitleExpanded,
   onDelete,
 }: {
   problem: Problem;
@@ -119,6 +128,10 @@ function SortableProblemRow({
   onTogglePriority: (id: string) => void;
   onProjectsChange: (id: string, projectIds: string[]) => void;
   onMoveToOtherKind: (id: string) => void;
+  onToggleOnHold: (id: string) => void;
+  onOpenEdit: (problem: Problem) => void;
+  isTitleExpanded: boolean;
+  onToggleTitleExpanded: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const sortableId = String(problem.id);
@@ -138,18 +151,21 @@ function SortableProblemRow({
   };
 
   /** Top 3 da fila: fundo primary-fixed (design system — #dde1ff), mais claro que o azul do container. */
-  const cardSurface =
-    isTopThreeSlot && !problem.resolved
+  const cardSurface = problem.onHold
+    ? "border-2 border-amber-400 bg-amber-50/40 ring-0 shadow-sm dark:border-amber-300/70 dark:bg-amber-900/15"
+    : isTopThreeSlot && !problem.resolved
       ? "bg-primary-fixed ring-1 ring-primary/25 shadow-sm dark:bg-primary-fixed/20 dark:ring-primary/35"
       : "bg-white ring-1 ring-black/[0.06] dark:bg-slate-900/80";
+  const shouldShowExpandTitle = problem.title.length > 110;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
+      onClick={() => onOpenEdit(problem)}
       className={`group flex items-start gap-3 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${cardSurface} ${
         problem.resolved ? "opacity-60" : ""
-      } ${isDragging ? "pointer-events-none opacity-0" : ""}`}
+      } ${isDragging ? "pointer-events-none opacity-0" : ""} cursor-pointer`}
     >
       <button
         type="button"
@@ -157,6 +173,7 @@ function SortableProblemRow({
         disabled={dragDisabled}
         {...(dragDisabled ? {} : attributes)}
         {...(dragDisabled ? {} : listeners)}
+        onClick={(e) => e.stopPropagation()}
         className={`drag-handle relative z-10 -m-2 mt-0.5 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg p-2 touch-none select-none text-outline/35 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
           dragDisabled ? "cursor-default opacity-30" : "cursor-grab text-outline/50 hover:bg-black/[0.04] hover:text-outline active:cursor-grabbing dark:hover:bg-white/10"
         }`}
@@ -172,7 +189,10 @@ function SortableProblemRow({
         type="button"
         role="checkbox"
         aria-checked={problem.resolved}
-        onClick={() => onToggleResolved(problem.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleResolved(problem.id);
+        }}
         className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
           problem.resolved
             ? "border-primary bg-primary text-on-primary"
@@ -193,25 +213,58 @@ function SortableProblemRow({
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
         {/* Mesma ordem que as tasks: prioridade → tags (linha) → título */}
         <div className="flex min-w-0 items-center gap-2">
-          <span className="sr-only">Projetos deste problema</span>
-          <ProjectIdsPicker
-            projects={projects}
-            value={problem.projectIds}
-            onChange={(ids) => onProjectsChange(problem.id, ids)}
-            disabled={problem.resolved || isSavingProject}
-            variant="line"
-            className="shrink-0"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <span className="sr-only">Projetos deste problema</span>
+            <ProjectIdsPicker
+              projects={projects}
+              value={problem.projectIds}
+              onChange={(ids) => onProjectsChange(problem.id, ids)}
+              disabled={problem.resolved || isSavingProject}
+              variant="line"
+              className="shrink-0"
+            />
+          </div>
           <h3
-            className={`min-w-0 flex-1 truncate font-headline text-sm font-semibold leading-snug transition-colors ${
+            className={`min-w-0 flex-1 break-words font-headline text-sm font-semibold leading-snug transition-colors ${
               problem.resolved
                 ? "text-on-surface-variant line-through"
                 : "text-on-surface"
-            }`}
+            } ${isTitleExpanded ? "line-clamp-none" : "line-clamp-2"}`}
+            title={problem.title}
           >
             {problem.title}
           </h3>
+          {problem.onHold && problem.onHoldReason && (
+            <span
+              className="max-w-[40%] shrink cursor-help truncate text-xs text-yellow-700 dark:text-yellow-300"
+              title={problem.onHoldReason}
+            >
+              - Em espera:{" "}
+              {problem.onHoldReason.length > 24
+                ? `${problem.onHoldReason.substring(0, 24)}...`
+                : problem.onHoldReason}
+            </span>
+          )}
         </div>
+        {shouldShowExpandTitle && (
+          <div className="-mt-1 flex items-center">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleTitleExpanded(problem.id);
+              }}
+              className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/10"
+            >
+              {isTitleExpanded ? "Ver menos" : "Ver mais"}
+            </button>
+          </div>
+        )}
+        {problem.description && (
+          <p className="line-clamp-2 text-xs text-on-surface-variant/80">
+            {problem.description}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-4 text-[11px] leading-normal text-on-surface-variant/70">
           <span className="inline-flex items-center gap-1">
             <span className="material-symbols-outlined text-[14px] text-on-surface-variant/60">
@@ -233,7 +286,31 @@ function SortableProblemRow({
       <div className="mt-0.5 flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
         <button
           type="button"
-          onClick={() => onMoveToOtherKind(problem.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleOnHold(problem.id);
+          }}
+          disabled={problem.resolved}
+          className={`rounded-lg p-2 transition-all ${
+            problem.onHold
+              ? "text-yellow-700 hover:bg-yellow-50 hover:text-yellow-800 dark:text-yellow-300 dark:hover:bg-yellow-900/30"
+              : "text-outline opacity-70 hover:bg-yellow-50 hover:text-yellow-700 dark:hover:bg-yellow-900/30"
+          } ${problem.resolved ? "cursor-not-allowed opacity-40" : ""}`}
+          title={problem.onHold ? "Remover da espera" : "Colocar em espera"}
+          aria-label={problem.onHold ? "Remover problema da espera" : "Colocar problema em espera"}
+        >
+          {problem.onHold ? (
+            <span className="material-symbols-outlined text-lg">play_circle</span>
+          ) : (
+            <span className="material-symbols-outlined text-lg">pause_circle</span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoveToOtherKind(problem.id);
+          }}
           className="rounded-lg p-2 text-outline opacity-70 transition-all hover:bg-surface-container-high hover:text-primary"
           title={
             problem.kind === "market"
@@ -250,7 +327,10 @@ function SortableProblemRow({
         </button>
         <button
           type="button"
-          onClick={() => onDelete(problem.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(problem.id);
+          }}
           className="rounded-lg p-2 text-outline opacity-70 transition-all hover:bg-surface-container-high hover:text-error"
           aria-label="Excluir problema"
         >
@@ -275,6 +355,18 @@ export default function ProblemsPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
+  const [showOnHoldModal, setShowOnHoldModal] = useState(false);
+  const [problemToPutOnHold, setProblemToPutOnHold] = useState<Problem | null>(null);
+  const [onHoldReason, setOnHoldReason] = useState("");
+  const [showEditProblemModal, setShowEditProblemModal] = useState(false);
+  const [savingEditProblem, setSavingEditProblem] = useState(false);
+  const [expandedTitleIds, setExpandedTitleIds] = useState<string[]>([]);
+  const [editingProblem, setEditingProblem] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    projectIds: string[];
+  } | null>(null);
 
   /** Projetos do formulário rápido (vários) */
   const [quickProjectIds, setQuickProjectIds] = useState<string[]>([]);
@@ -345,7 +437,8 @@ export default function ProblemsPage() {
   const sortedList = useMemo(() => {
     const copy = [...searched];
     copy.sort((a, b) => {
-      if (a.pos !== b.pos) return a.pos - b.pos;
+      const byRules = sortProblemsForDisplay(a, b);
+      if (byRules !== 0) return byRules;
       return a.id.localeCompare(b.id);
     });
     return copy;
@@ -386,6 +479,7 @@ export default function ProblemsPage() {
     try {
       const row = await problemsService.createProblem(user.id, {
         title: draft.trim(),
+        description: "",
         project_id: quickProjectIds[0] ?? null,
         project_ids: quickProjectIds,
         kind: kindTab,
@@ -452,6 +546,122 @@ export default function ProblemsPage() {
       console.error(e);
       const raw = getSupabaseErrorMessage(e);
       setError(friendlySchemaHint(raw) ?? `Não foi possível atualizar: ${raw}`);
+    }
+  };
+
+  const handleToggleOnHold = async (id: string) => {
+    const p = problems.find((x) => x.id === id);
+    if (!p || p.resolved) return;
+    setError(null);
+    if (p.onHold) {
+      try {
+        const pos = appendPosForKindProblems(problems, p.kind, p.id);
+        const row = await problemsService.updateProblem(id, {
+          on_hold: false,
+          on_hold_reason: null,
+          pos,
+        });
+        setProblems((prev) => prev.map((x) => (x.id === id ? fromDbProblem(row) : x)));
+      } catch (e) {
+        console.error(e);
+        const raw = getSupabaseErrorMessage(e);
+        setError(friendlySchemaHint(raw) ?? `Não foi possível remover da espera: ${raw}`);
+      }
+      return;
+    }
+    setProblemToPutOnHold(p);
+    setOnHoldReason("");
+    setShowOnHoldModal(true);
+  };
+
+  const handleConfirmOnHold = async () => {
+    if (!problemToPutOnHold) return;
+    if (!onHoldReason.trim()) {
+      setError("Informe o motivo da espera.");
+      return;
+    }
+    try {
+      const pos = appendPosForOnHoldAtBottomForProblems(
+        problems,
+        problemToPutOnHold.kind,
+        problemToPutOnHold.id
+      );
+      const row = await problemsService.updateProblem(problemToPutOnHold.id, {
+        on_hold: true,
+        on_hold_reason: onHoldReason.trim(),
+        pos,
+      });
+      setProblems((prev) =>
+        prev.map((x) => (x.id === problemToPutOnHold.id ? fromDbProblem(row) : x))
+      );
+      setShowOnHoldModal(false);
+      setProblemToPutOnHold(null);
+      setOnHoldReason("");
+    } catch (e) {
+      console.error(e);
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível colocar em espera: ${raw}`);
+    }
+  };
+
+  const handleCancelOnHold = () => {
+    setShowOnHoldModal(false);
+    setProblemToPutOnHold(null);
+    setOnHoldReason("");
+  };
+
+  const handleOpenEditProblem = (problem: Problem) => {
+    setEditingProblem({
+      id: problem.id,
+      title: problem.title,
+      description: problem.description ?? "",
+      projectIds: [...problem.projectIds],
+    });
+    setShowEditProblemModal(true);
+    setError(null);
+  };
+
+  const handleCancelEditProblem = () => {
+    if (savingEditProblem) return;
+    setShowEditProblemModal(false);
+    setEditingProblem(null);
+  };
+
+  const toggleTitleExpanded = (problemId: string) => {
+    setExpandedTitleIds((prev) =>
+      prev.includes(problemId) ? prev.filter((id) => id !== problemId) : [...prev, problemId]
+    );
+  };
+
+  const handleSaveEditProblem = async () => {
+    if (!editingProblem) return;
+    if (!editingProblem.title.trim()) {
+      setError("Informe o título do problema.");
+      return;
+    }
+    const original = problems.find((p) => p.id === editingProblem.id);
+    if (!original) return;
+    setSavingEditProblem(true);
+    setError(null);
+    try {
+      let row = await problemsService.updateProblem(editingProblem.id, {
+        title: editingProblem.title.trim(),
+        description: editingProblem.description.trim() || null,
+      });
+      const oldProjects = [...original.projectIds].sort().join(",");
+      const newProjects = [...editingProblem.projectIds].sort().join(",");
+      if (oldProjects !== newProjects) {
+        row = await problemsService.setProblemProjects(editingProblem.id, editingProblem.projectIds);
+      }
+      setProblems((prev) => prev.map((p) => (p.id === editingProblem.id ? fromDbProblem(row) : p)));
+      setShowEditProblemModal(false);
+      setEditingProblem(null);
+    } catch (e) {
+      console.error(e);
+      const raw = getSupabaseErrorMessage(e);
+      setError(friendlySchemaHint(raw) ?? `Não foi possível salvar o problema: ${raw}`);
+    } finally {
+      setSavingEditProblem(false);
     }
   };
 
@@ -759,6 +969,10 @@ export default function ProblemsPage() {
                     onTogglePriority={togglePriority}
                     onProjectsChange={assignProjects}
                     onMoveToOtherKind={moveToOtherKind}
+                    onToggleOnHold={handleToggleOnHold}
+                    onOpenEdit={handleOpenEditProblem}
+                    isTitleExpanded={expandedTitleIds.includes(p.id)}
+                    onToggleTitleExpanded={toggleTitleExpanded}
                     onDelete={deleteProblem}
                   />
                 ))
@@ -809,6 +1023,140 @@ export default function ProblemsPage() {
           <span className="material-symbols-outlined text-3xl">add</span>
         </button>
       </div>
+
+      {showOnHoldModal && (
+        <ModalOverlay
+          isOpen={showOnHoldModal}
+          onClose={handleCancelOnHold}
+          onBackdropClick={handleConfirmOnHold}
+        >
+          <ModalPanel maxWidthClass="max-w-md" padding="none">
+            <div className="flex items-center justify-between border-b border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900">Colocar problema em espera</h2>
+              <button
+                onClick={handleCancelOnHold}
+                className="text-gray-400 transition-colors hover:text-gray-600"
+                aria-label="Fechar"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6">
+              <label htmlFor="problem_on_hold_reason" className="mb-2 block text-sm font-medium text-gray-700">
+                Motivo da espera
+              </label>
+              <textarea
+                id="problem_on_hold_reason"
+                value={onHoldReason}
+                onChange={(e) => setOnHoldReason(e.target.value)}
+                placeholder="Explique por que este problema está aguardando..."
+                className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 p-6">
+              <button
+                onClick={handleCancelOnHold}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmOnHold}
+                disabled={!onHoldReason.trim()}
+                className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Confirmar
+              </button>
+            </div>
+          </ModalPanel>
+        </ModalOverlay>
+      )}
+
+      {showEditProblemModal && editingProblem && (
+        <ModalOverlay
+          isOpen={showEditProblemModal}
+          onClose={handleCancelEditProblem}
+          onBackdropClick={handleSaveEditProblem}
+        >
+          <ModalPanel maxWidthClass="max-w-2xl" padding="none">
+            <div className="flex items-center justify-between border-b border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900">Editar problema</h2>
+              <button
+                onClick={handleCancelEditProblem}
+                className="text-gray-400 transition-colors hover:text-gray-600"
+                aria-label="Fechar"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="space-y-5 p-6">
+              <div>
+                <label htmlFor="problem_edit_title" className="mb-2 block text-sm font-medium text-gray-700">
+                  Título
+                </label>
+                <input
+                  id="problem_edit_title"
+                  type="text"
+                  value={editingProblem.title}
+                  onChange={(e) =>
+                    setEditingProblem((prev) =>
+                      prev ? { ...prev, title: e.target.value } : prev
+                    )
+                  }
+                  placeholder="Título do problema..."
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="problem_edit_description" className="mb-2 block text-sm font-medium text-gray-700">
+                  Descrição
+                </label>
+                <textarea
+                  id="problem_edit_description"
+                  value={editingProblem.description}
+                  onChange={(e) =>
+                    setEditingProblem((prev) =>
+                      prev ? { ...prev, description: e.target.value } : prev
+                    )
+                  }
+                  placeholder="Adicione detalhes, contexto, hipótese, evidências..."
+                  rows={6}
+                  className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <span className="mb-2 block text-sm font-medium text-gray-700">Projetos</span>
+                <ProjectIdsPicker
+                  projects={projects}
+                  value={editingProblem.projectIds}
+                  onChange={(ids) =>
+                    setEditingProblem((prev) =>
+                      prev ? { ...prev, projectIds: ids } : prev
+                    )
+                  }
+                  variant="default"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 p-6">
+              <button
+                onClick={handleCancelEditProblem}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveEditProblem}
+                disabled={savingEditProblem || !editingProblem.title.trim()}
+                className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingEditProblem ? "Salvando..." : "Salvar alterações"}
+              </button>
+            </div>
+          </ModalPanel>
+        </ModalOverlay>
+      )}
     </div>
   );
 }

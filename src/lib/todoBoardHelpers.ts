@@ -87,6 +87,48 @@ export function computePosAtNewIndex(reordered: Todo[], activeId: string): numbe
   return newPos
 }
 
+/**
+ * Calcula nova posição respeitando o "bucket visual" (onHold + prioridade).
+ * Evita quebrar reordenação quando há blocos de prioridade acima/abaixo.
+ */
+export function computePosAtNewIndexInVisualBucket(
+  reordered: Todo[],
+  activeId: string
+): number | null {
+  const moved = reordered.find((t) => t.id === activeId)
+  if (!moved) return null
+  const movedIndex = reordered.indexOf(moved)
+  const sameBucket = (t: Todo) =>
+    Boolean(t.onHold) === Boolean(moved.onHold) &&
+    Boolean(t.isHighPriority) === Boolean(moved.isHighPriority)
+
+  let prev: Todo | undefined
+  for (let i = movedIndex - 1; i >= 0; i -= 1) {
+    if (sameBucket(reordered[i])) {
+      prev = reordered[i]
+      break
+    }
+  }
+
+  let next: Todo | undefined
+  for (let i = movedIndex + 1; i < reordered.length; i += 1) {
+    if (sameBucket(reordered[i])) {
+      next = reordered[i]
+      break
+    }
+  }
+
+  if (!prev && !next) return moved.pos
+  if (!prev) return next ? next.pos - 1000 : 1000
+  if (!next) return prev.pos + 1000
+
+  let newPos = Math.round((prev.pos + next.pos) / 2)
+  if (newPos <= prev.pos || newPos >= next.pos) {
+    newPos = prev.pos + (next.pos - prev.pos) / 2
+  }
+  return newPos
+}
+
 export function columnStatusFromId(
   id: string
 ): Todo['status'] | null {

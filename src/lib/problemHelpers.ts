@@ -1,8 +1,55 @@
 import type { Problem } from '@/lib/planning'
 
 export function sortProblemsForDisplay(a: Problem, b: Problem): number {
+  const holdA = Boolean(a.onHold)
+  const holdB = Boolean(b.onHold)
+  if (holdA !== holdB) return holdA ? 1 : -1
   if (a.resolved !== b.resolved) return a.resolved ? 1 : -1
   return a.pos - b.pos
+}
+
+function computeNextPosForKindProblems(
+  problems: { pos: number; onHold: boolean }[]
+): number {
+  if (problems.length === 0) return 1000
+  const active = problems.filter((p) => !p.onHold)
+  const paused = problems.filter((p) => Boolean(p.onHold))
+  if (paused.length === 0) {
+    return Math.max(...active.map((p) => p.pos), 0) + 1000
+  }
+  if (active.length === 0) {
+    return Math.min(...paused.map((p) => p.pos)) - 1000
+  }
+  const maxActive = Math.max(...active.map((p) => p.pos))
+  const minPaused = Math.min(...paused.map((p) => p.pos))
+  const candidate = maxActive + 1000
+  if (candidate < minPaused) return candidate
+  return maxActive + (minPaused - maxActive) / 2
+}
+
+export function appendPosForOnHoldAtBottomForProblems(
+  allProblems: Problem[],
+  kind: Problem['kind'],
+  excludeProblemId?: string
+): number {
+  const col = allProblems.filter(
+    (p) => p.kind === kind && !p.resolved && p.id !== excludeProblemId
+  )
+  if (col.length === 0) return 1000
+  return Math.max(...col.map((p) => p.pos)) + 1000
+}
+
+export function appendPosForKindProblems(
+  allProblems: Problem[],
+  kind: Problem['kind'],
+  excludeProblemId?: string
+): number {
+  const col = allProblems.filter(
+    (p) => p.kind === kind && !p.resolved && p.id !== excludeProblemId
+  )
+  return computeNextPosForKindProblems(
+    col.map((p) => ({ pos: p.pos, onHold: p.onHold }))
+  )
 }
 
 /** Próxima posição ao fim da lista do mesmo projeto (inclui project_id null). */

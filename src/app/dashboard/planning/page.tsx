@@ -13,6 +13,7 @@ import 'react-datepicker/dist/react-datepicker.css'
 import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
 import { useMicroCompleteToggle } from '@/hooks/useMicroCompleteToggle'
+import { useAuthContext } from '@/contexts/AuthContext'
 import {
   burstOnHold,
   burstPriorityStar,
@@ -52,10 +53,17 @@ import {
   appendPosForOnHoldAtBottom,
   appendPosForStatus,
   columnStatusFromId,
-  computePosAtNewIndex,
+  computePosAtNewIndexInVisualBucket,
   sortTodosByPriorityAndPos,
 } from '@/lib/todoBoardHelpers'
-import { DBReminder, type Todo, type Goal } from '@/lib/planning'
+import {
+  DBReminder,
+  cyclesService,
+  fromDbTaskCycle,
+  type TaskCycle,
+  type Todo,
+  type Goal,
+} from '@/lib/planning'
 import { ProjectIdsPicker } from '@/components/ProjectIdsPicker'
 
 function cloneTodoList(list: Todo[]): Todo[] {
@@ -439,6 +447,7 @@ interface Task {
 type Reminder = DBReminder
 
 export default function PlanningPage() {
+  const { user } = useAuthContext()
   // Hook para gerenciar dados de planejamento
   const {
     projects,
@@ -467,11 +476,62 @@ export default function PlanningPage() {
   } = usePlanningData()
 
   const [boardError, setBoardError] = useState<string | null>(null)
+  const [activeCycle, setActiveCycle] = useState<TaskCycle | null>(null)
+  const [cycleBusy, setCycleBusy] = useState(false)
 
   const showError = useCallback((msg: string) => {
     setBoardError(msg)
     setTimeout(() => setBoardError(null), 5000)
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    let mounted = true
+    cyclesService
+      .getActiveCycle(user.id)
+      .then((row) => {
+        if (!mounted) return
+        setActiveCycle(row ? fromDbTaskCycle(row) : null)
+      })
+      .catch((err) => {
+        console.error(err)
+        if (!mounted) return
+        showError('Não foi possível carregar o ciclo ativo.')
+      })
+    return () => {
+      mounted = false
+    }
+  }, [user, showError])
+
+  const handleStartCycle = useCallback(async () => {
+    if (!user || cycleBusy) return
+    setCycleBusy(true)
+    try {
+      const row = await cyclesService.startCycle(user.id)
+      setActiveCycle(fromDbTaskCycle(row))
+    } catch (err) {
+      console.error(err)
+      const msg = err instanceof Error ? err.message : 'Não foi possível iniciar o ciclo.'
+      showError(msg)
+    } finally {
+      setCycleBusy(false)
+    }
+  }, [user, cycleBusy, showError])
+
+  const handleFinishCycle = useCallback(async () => {
+    if (!user || cycleBusy) return
+    setCycleBusy(true)
+    try {
+      const row = await cyclesService.finishActiveCycle(user.id)
+      setActiveCycle(null)
+    } catch (err) {
+      console.error(err)
+      const msg = err instanceof Error ? err.message : 'Não foi possível finalizar o ciclo.'
+      showError(msg)
+    } finally {
+      setCycleBusy(false)
+    }
+  }, [user, cycleBusy, showError])
 
   const weekTodos = useMemo(
     () => todos.filter((t) => t.status === 'current_week' && !t.completed).sort(sortTodosByPriorityAndPos),
@@ -490,6 +550,9 @@ export default function PlanningPage() {
   const weekInlineFormRef = useRef<HTMLDivElement>(null)
   const backlogInlineFormRef = useRef<HTMLDivElement>(null)
   const inProgressInlineFormRef = useRef<HTMLDivElement>(null)
+  const weekInlineTitleInputRef = useRef<HTMLInputElement>(null)
+  const backlogInlineTitleInputRef = useRef<HTMLInputElement>(null)
+  const inProgressInlineTitleInputRef = useRef<HTMLInputElement>(null)
   /** Snapshot para reverter ordem/coluna se o update no Supabase falhar após DnD */
   const dragRollbackRef = useRef<Todo[] | null>(null)
   const activeDragTodo = useMemo(() => {
@@ -1055,7 +1118,7 @@ export default function PlanningPage() {
       const newIdx = col.findIndex((t) => t.id === overId)
       if (oldIdx < 0 || newIdx < 0) return
       const reordered = arrayMove(col, oldIdx, newIdx)
-      const newPos = computePosAtNewIndex(reordered, activeId)
+      const newPos = computePosAtNewIndexInVisualBucket(reordered, activeId)
       if (newPos === null) return
       applyOptimistic((prev) =>
         prev.map((t) => (t.id === activeId ? { ...t, pos: newPos } : t))
@@ -1310,6 +1373,30 @@ export default function PlanningPage() {
 
   useEffect(() => {
     if (!showInlineCreateForm) return
+    const raf = window.requestAnimationFrame(() => {
+      weekInlineTitleInputRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(raf)
+  }, [showInlineCreateForm])
+
+  useEffect(() => {
+    if (!showBacklogCreateForm) return
+    const raf = window.requestAnimationFrame(() => {
+      backlogInlineTitleInputRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(raf)
+  }, [showBacklogCreateForm])
+
+  useEffect(() => {
+    if (!showInProgressCreateForm) return
+    const raf = window.requestAnimationFrame(() => {
+      inProgressInlineTitleInputRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(raf)
+  }, [showInProgressCreateForm])
+
+  useEffect(() => {
+    if (!showInlineCreateForm) return
     const onDown = (e: MouseEvent) => {
       const el = weekInlineFormRef.current
       if (!el || el.contains(e.target as Node)) return
@@ -1388,6 +1475,31 @@ export default function PlanningPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="inline-flex items-center gap-2 rounded-lg bg-surface-container-low px-3 py-2 text-xs font-semibold text-on-surface-variant">
+            <span className="material-symbols-outlined text-base text-primary">sync</span>
+            {activeCycle ? `Ciclo ${activeCycle.cycleNumber} ativo` : 'Sem ciclo ativo'}
+          </div>
+          {activeCycle ? (
+            <button
+              type="button"
+              onClick={() => void handleFinishCycle()}
+              disabled={cycleBusy}
+              className="inline-flex items-center gap-2 rounded-lg bg-tertiary px-4 py-2 text-sm font-semibold text-on-tertiary transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span className="material-symbols-outlined text-[18px]">flag</span>
+              Finalizar Ciclo
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleStartCycle()}
+              disabled={cycleBusy}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span className="material-symbols-outlined text-[18px]">play_arrow</span>
+              Iniciar Novo Ciclo
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowProjectsModal(true)}
@@ -1635,6 +1747,7 @@ export default function PlanningPage() {
                             className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
                           />
                           <input
+                            ref={inProgressInlineTitleInputRef}
                             type="text"
                             value={newInProgressTodo.title}
                             onChange={(e) =>
@@ -1645,7 +1758,6 @@ export default function PlanningPage() {
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') void handleCreateInProgressTodo()
                             }}
-                            autoFocus
                           />
                           <button
                             type="button"
@@ -1702,13 +1814,11 @@ export default function PlanningPage() {
                   )
                 ) : (
                   <SortableContext
-                    items={inProgressTodos.sort(sortTodosByPriorityAndPos).map((todo) => todo.id)}
+                    items={inProgressTodos.map((todo) => todo.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-2">
-                      {inProgressTodos
-                        .sort(sortTodosByPriorityAndPos)
-                        .map((todo) => (
+                      {inProgressTodos.map((todo) => (
                           <SortableTodoItem
                             key={todo.id}
                             todo={todo}
@@ -1720,7 +1830,7 @@ export default function PlanningPage() {
                             onMoveToProgress={handleMoveToProgress}
                             onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
                           />
-                        ))}
+                      ))}
                     </div>
                   </SortableContext>
                 )}
@@ -1804,17 +1914,17 @@ export default function PlanningPage() {
                     
                     {/* Input do título */}
                     <input
+                      ref={weekInlineTitleInputRef}
                       type="text"
                       value={newTodo.title}
                       onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
                       placeholder="Título da tarefa..."
                       className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      onKeyPress={(e) => {
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           handleCreateTodo()
                         }
                       }}
-                      autoFocus
                     />
                     
                     {/* Botão de fechar */}
@@ -1956,17 +2066,17 @@ export default function PlanningPage() {
                     
                     {/* Input do título */}
                     <input
+                      ref={backlogInlineTitleInputRef}
                       type="text"
                       value={newBacklogTodo.title}
                       onChange={(e) => setNewBacklogTodo({ ...newBacklogTodo, title: e.target.value })}
                       placeholder="Título da tarefa..."
                       className="flex-1 px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      onKeyPress={(e) => {
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           handleCreateBacklogTodo()
                         }
                       }}
-                      autoFocus
                     />
                     
                     {/* Botão de fechar */}
@@ -2011,13 +2121,11 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   <SortableContext
-                    items={backlogTodos.sort(sortTodosByPriorityAndPos).map((todo) => todo.id)}
+                    items={backlogTodos.map((todo) => todo.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-2">
-                      {backlogTodos
-                        .sort(sortTodosByPriorityAndPos)
-                        .map((todo) => (
+                      {backlogTodos.map((todo) => (
                           <SortableTodoItem
                             key={todo.id}
                             todo={todo}
@@ -2029,7 +2137,7 @@ export default function PlanningPage() {
                             onMoveToProgress={handleMoveToProgress}
                             onDeleteFromAnyBlock={handleDeleteTodoFromAnyBlock}
                           />
-                        ))}
+                      ))}
                     </div>
                   </SortableContext>
                 )}

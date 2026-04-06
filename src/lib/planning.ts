@@ -41,7 +41,7 @@ export interface DBTodo {
   is_high_priority: boolean
   time_sensitive: boolean
   on_hold: boolean
-  on_hold_reason?: string
+  on_hold_reason?: string | null
   status: 'backlog' | 'in_progress' | 'current_week'
   pos: number // Nova coluna para ordenação persistente
   // RELACIONAMENTOS OPCIONAIS (podem ser NULL)
@@ -99,6 +99,22 @@ export interface DBReminder {
   updated_at: string
 }
 
+export type CycleStatus = 'active' | 'closed'
+
+export interface DBTaskCycle {
+  id: string
+  user_id: string
+  cycle_number: number
+  status: CycleStatus
+  started_at: string
+  ended_at?: string | null
+  planned_count: number
+  delivered_count: number
+  effectiveness_pct: number
+  created_at: string
+  updated_at: string
+}
+
 export type ProblemKind = 'market' | 'operational'
 
 export interface DBProblem {
@@ -106,10 +122,13 @@ export interface DBProblem {
   user_id: string
   project_id: string | null
   title: string
+  description?: string | null
   resolved: boolean
   pos: number
   kind: ProblemKind
   is_high_priority: boolean
+  on_hold: boolean
+  on_hold_reason?: string | null
   created_at: string
   updated_at: string
 }
@@ -121,10 +140,13 @@ export interface Problem {
   /** Todos os projetos associados. */
   projectIds: string[]
   title: string
+  description?: string
   resolved: boolean
   pos: number
   kind: ProblemKind
   isHighPriority: boolean
+  onHold: boolean
+  onHoldReason?: string
   createdAt: string
   updatedAt: string
 }
@@ -550,6 +572,137 @@ export const todosService = {
   }
 }
 
+export const cyclesService = {
+  async getActiveCycle(userId: string): Promise<DBTaskCycle | null> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('task_cycles')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('cycle_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      console.error('Erro ao buscar ciclo ativo:', error)
+      throw error
+    }
+    return (data as DBTaskCycle | null) ?? null
+  },
+
+  async getCycles(userId: string, limit = 12): Promise<DBTaskCycle[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('task_cycles')
+      .select('*')
+      .eq('user_id', userId)
+      .order('cycle_number', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      console.error('Erro ao buscar ciclos:', error)
+      throw error
+    }
+    return (data || []) as DBTaskCycle[]
+  },
+
+  async startCycle(userId: string): Promise<DBTaskCycle> {
+    const supabase = createClient()
+
+    const active = await cyclesService.getActiveCycle(userId)
+    if (active) {
+      throw new Error(`Já existe um ciclo ativo (Ciclo ${active.cycle_number}).`)
+    }
+
+    const { data: lastCycle, error: lastErr } = await supabase
+      .from('task_cycles')
+      .select('cycle_number')
+      .eq('user_id', userId)
+      .order('cycle_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (lastErr) {
+      console.error('Erro ao buscar último ciclo:', lastErr)
+      throw lastErr
+    }
+    const nextCycleNumber = (lastCycle?.cycle_number ?? 0) + 1
+
+    const { count: plannedCount, error: countErr } = await supabase
+      .from('todos')
+      .select('id', { head: true, count: 'exact' })
+      .eq('user_id', userId)
+    if (countErr) {
+      console.error('Erro ao contar tarefas para ciclo:', countErr)
+      throw countErr
+    }
+
+    const now = new Date().toISOString()
+    const { data, error } = await supabase
+      .from('task_cycles')
+      .insert({
+        user_id: userId,
+        cycle_number: nextCycleNumber,
+        status: 'active',
+        started_at: now,
+        planned_count: plannedCount ?? 0,
+        delivered_count: 0,
+        effectiveness_pct: 0,
+      })
+      .select('*')
+      .single()
+
+    if (error || !data) {
+      console.error('Erro ao iniciar ciclo:', error)
+      throw error
+    }
+    return data as DBTaskCycle
+  },
+
+  async finishActiveCycle(userId: string): Promise<DBTaskCycle> {
+    const supabase = createClient()
+    const active = await cyclesService.getActiveCycle(userId)
+    if (!active) throw new Error('Nenhum ciclo ativo para finalizar.')
+
+    const endedAt = new Date().toISOString()
+    const { count: deliveredCount, error: deliveredErr } = await supabase
+      .from('todos')
+      .select('id', { head: true, count: 'exact' })
+      .eq('user_id', userId)
+      .eq('completed', true)
+      .gte('completed_at', active.started_at)
+      .lte('completed_at', endedAt)
+    if (deliveredErr) {
+      console.error('Erro ao contar tarefas entregues no ciclo:', deliveredErr)
+      throw deliveredErr
+    }
+
+    const planned = active.planned_count || 0
+    const delivered = deliveredCount ?? 0
+    const effectiveness = planned > 0 ? Number(((delivered / planned) * 100).toFixed(1)) : 0
+
+    const { data, error } = await supabase
+      .from('task_cycles')
+      .update({
+        status: 'closed',
+        ended_at: endedAt,
+        delivered_count: delivered,
+        effectiveness_pct: effectiveness,
+        updated_at: endedAt,
+      })
+      .eq('id', active.id)
+      .eq('user_id', userId)
+      .select('*')
+      .single()
+
+    if (error || !data) {
+      console.error('Erro ao finalizar ciclo:', error)
+      throw error
+    }
+    return data as DBTaskCycle
+  },
+}
+
 const problemSelectWithProjects =
   '*, problem_projects(project_id)' as const
 
@@ -573,6 +726,7 @@ export const problemsService = {
     userId: string,
     data: {
       title: string
+      description?: string
       project_id: string | null
       kind: ProblemKind
       project_ids?: string[]
@@ -615,6 +769,7 @@ export const problemsService = {
       .insert({
         user_id: userId,
         title: data.title.trim(),
+        description: data.description?.trim() || null,
         project_id: primary,
         pos: nextPos,
         resolved: false,
@@ -1014,7 +1169,7 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
     isHighPriority: row.is_high_priority,
     timeSensitive: row.time_sensitive,
     onHold: row.on_hold,
-    onHoldReason: row.on_hold_reason,
+    onHoldReason: row.on_hold_reason ?? undefined,
     status: row.status,
     pos: row.pos,
     tags: [],
@@ -1118,6 +1273,19 @@ export interface Initiative {
   updated_at: string;
 }
 
+export interface TaskCycle {
+  id: string
+  cycleNumber: number
+  status: CycleStatus
+  startedAt: string
+  endedAt?: string
+  plannedCount: number
+  deliveredCount: number
+  effectivenessPct: number
+  createdAt: string
+  updatedAt: string
+}
+
 // Adapters para Goal
 export function fromDbGoal(row: DBGoal): Goal {
   return {
@@ -1182,6 +1350,21 @@ export function toDbInitiative(initiative: Partial<Initiative>): Partial<DBIniti
   return out;
 }
 
+export function fromDbTaskCycle(row: DBTaskCycle): TaskCycle {
+  return {
+    id: row.id,
+    cycleNumber: row.cycle_number,
+    status: row.status,
+    startedAt: row.started_at,
+    endedAt: row.ended_at ?? undefined,
+    plannedCount: row.planned_count,
+    deliveredCount: row.delivered_count,
+    effectivenessPct: row.effectiveness_pct,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
 export function fromDbProblem(row: DBProblemWithLinks): Problem {
   const k = row.kind === 'operational' ? 'operational' : 'market'
   const fromLinks = (row.problem_projects ?? []).map((x) => x.project_id)
@@ -1196,10 +1379,13 @@ export function fromDbProblem(row: DBProblemWithLinks): Problem {
     projectId: projectIds[0] ?? null,
     projectIds,
     title: row.title,
+    description: row.description ?? undefined,
     resolved: row.resolved,
     pos: row.pos,
     kind: k,
     isHighPriority: Boolean(row.is_high_priority),
+    onHold: Boolean(row.on_hold),
+    onHoldReason: row.on_hold_reason ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
