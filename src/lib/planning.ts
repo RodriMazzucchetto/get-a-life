@@ -50,6 +50,8 @@ export interface DBTodo {
   initiative_id?: string
   created_at: string
   updated_at: string
+  /** Instantâneo em que a tarefa foi marcada como concluída (migração + toDbUpdate). */
+  completed_at?: string | null
 }
 
 export interface DBGoal {
@@ -725,7 +727,117 @@ export const cyclesService = {
       console.error('Erro ao finalizar ciclo:', error)
       throw error
     }
+
+    const { error: snapErr } = await supabase.rpc('snapshot_task_cycle_project_stats', {
+      p_cycle_id: data.id,
+    })
+    if (snapErr) {
+      console.error('Erro ao gravar estatísticas por projeto do ciclo:', snapErr)
+    }
+
     return data as DBTaskCycle
+  },
+
+  /** Totais globais: tarefas ligadas vs concluídas por projeto. */
+  async getUserProjectTodoTotals(): Promise<ProjectTodoStatRow[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase.rpc('user_project_todo_totals')
+    if (error) {
+      console.error('Erro ao buscar totais por projeto:', error)
+      throw error
+    }
+    const rows = (data || []) as {
+      project_id: string
+      project_name: string
+      project_color: string
+      tasks_linked: number
+      tasks_completed: number
+    }[]
+    return rows.map((r) => ({
+      projectId: r.project_id,
+      projectName: r.project_name,
+      projectColor: r.project_color,
+      tasksLinked: r.tasks_linked,
+      tasksCompleted: r.tasks_completed,
+    }))
+  },
+
+  /**
+   * Ciclo em aberto: concluídas entre o início do ciclo e `pEnd` (normalmente agora).
+   * `tasksLinked` = inventário atual (igual aos totais).
+   */
+  async getUserProjectStatsInWindow(
+    cycleStartIso: string,
+    cycleEndIso: string
+  ): Promise<ProjectTodoStatRow[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase.rpc('user_project_stats_in_window', {
+      p_start: cycleStartIso,
+      p_end: cycleEndIso,
+    })
+    if (error) {
+      console.error('Erro ao buscar stats por projeto na janela:', error)
+      throw error
+    }
+    const rows = (data || []) as {
+      project_id: string
+      project_name: string
+      project_color: string
+      tasks_linked: number
+      tasks_completed_in_window: number
+    }[]
+    return rows.map((r) => ({
+      projectId: r.project_id,
+      projectName: r.project_name,
+      projectColor: r.project_color,
+      tasksLinked: r.tasks_linked,
+      tasksCompleted: r.tasks_completed_in_window,
+    }))
+  },
+
+  /** Linhas persistidas ao fechar cada ciclo (histórico). */
+  async getClosedCyclesProjectStats(cycleIds: string[]): Promise<CycleProjectStatRow[]> {
+    if (cycleIds.length === 0) return []
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('task_cycle_project_stats')
+      .select(
+        `
+        task_cycle_id,
+        tasks_linked,
+        tasks_completed_in_cycle,
+        project_id,
+        projects ( name, color )
+      `
+      )
+      .in('task_cycle_id', cycleIds)
+
+    if (error) {
+      console.error('Erro ao buscar stats por projeto dos ciclos:', error)
+      throw error
+    }
+
+    type Row = {
+      task_cycle_id: string
+      tasks_linked: number
+      tasks_completed_in_cycle: number
+      project_id: string
+      projects: { name: string; color: string } | { name: string; color: string }[] | null
+    }
+
+    return ((data || []) as Row[]).map((r) => {
+      const pr = r.projects
+      const proj = Array.isArray(pr) ? pr[0] : pr
+      return {
+        cycleId: r.task_cycle_id,
+        projectId: r.project_id,
+        projectName: proj?.name ?? 'Projeto',
+        projectColor: proj?.color ?? '#6366f1',
+        tasksLinked: r.tasks_linked,
+        tasksCompleted: r.tasks_completed_in_cycle,
+        tasksCompletedInCycle: r.tasks_completed_in_cycle,
+      }
+    })
   },
 }
 
@@ -1218,7 +1330,14 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.priority !== undefined) out.priority = patch.priority;
   if (patch.category !== undefined) out.category = patch.category;
   if (patch.dueDate !== undefined) out.due_date = patch.dueDate;
-  if (patch.completed !== undefined) out.completed = patch.completed;
+  if (patch.completed !== undefined) {
+    out.completed = patch.completed;
+    if (patch.completed === true) {
+      out.completed_at = new Date().toISOString();
+    } else {
+      out.completed_at = null;
+    }
+  }
   if (patch.isHighPriority !== undefined) out.is_high_priority = patch.isHighPriority;
   if (patch.timeSensitive !== undefined) out.time_sensitive = patch.timeSensitive;
   if (patch.onHold !== undefined) out.on_hold = patch.onHold;
@@ -1311,6 +1430,23 @@ export interface TaskCycle {
   effectivenessPct: number
   createdAt: string
   updatedAt: string
+}
+
+/** Uma linha de estatísticas de tarefas por projeto (totais ou dentro de um ciclo). */
+export interface ProjectTodoStatRow {
+  projectId: string
+  projectName: string
+  projectColor: string
+  /** Tarefas distintas ligadas ao projeto (via todo_projects ou project_id). */
+  tasksLinked: number
+  /** Tarefas concluídas (lifetime ou na janela, conforme a query). */
+  tasksCompleted: number
+}
+
+export interface CycleProjectStatRow extends ProjectTodoStatRow {
+  cycleId: string
+  /** Alias semântico para ciclo fechado: concluídas entre início e fim do ciclo. */
+  tasksCompletedInCycle: number
 }
 
 // Adapters para Goal

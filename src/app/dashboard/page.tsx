@@ -3,10 +3,73 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { cyclesService, fromDbTaskCycle, type TaskCycle } from "@/lib/planning";
+import {
+  cyclesService,
+  fromDbTaskCycle,
+  type TaskCycle,
+  type ProjectTodoStatRow,
+  type CycleProjectStatRow,
+} from "@/lib/planning";
 
 function formatPct(value: number): string {
   return `${value.toFixed(1)}%`;
+}
+
+function ProjectStatsTable({
+  subtitle,
+  rows,
+  completedLabel,
+}: {
+  subtitle?: string;
+  rows: ProjectTodoStatRow[];
+  completedLabel: string;
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-on-surface-variant">
+        Nenhum projeto com tarefas atribuídas ainda.
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[320px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-outline-variant/20 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+            <th className="py-2 pr-3">Projeto</th>
+            <th className="py-2 pr-3">Tarefas ligadas</th>
+            <th className="py-2">{completedLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr
+              key={r.projectId}
+              className="border-b border-outline-variant/10 last:border-0"
+            >
+              <td className="py-2 pr-3">
+                <span
+                  className="inline-flex items-center gap-2 font-medium text-on-surface"
+                  title={r.projectName}
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-outline-variant/30"
+                    style={{ backgroundColor: r.projectColor }}
+                  />
+                  {r.projectName}
+                </span>
+              </td>
+              <td className="py-2 pr-3 tabular-nums text-on-surface">{r.tasksLinked}</td>
+              <td className="py-2 tabular-nums text-on-surface">{r.tasksCompleted}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {subtitle ? (
+        <p className="mt-3 text-xs text-on-surface-variant">{subtitle}</p>
+      ) : null}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -15,16 +78,28 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [globalProjectTotals, setGlobalProjectTotals] = useState<ProjectTodoStatRow[]>([]);
+  const [activeCycleProjectRows, setActiveCycleProjectRows] = useState<ProjectTodoStatRow[]>([]);
+  const [closedCycleProjectStats, setClosedCycleProjectStats] = useState<CycleProjectStatRow[]>([]);
+  const [projStatsError, setProjStatsError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user) return;
     let mounted = true;
     setLoading(true);
-    cyclesService
-      .getCycles(user.id, 12)
-      .then((rows) => {
+    Promise.all([
+      cyclesService.getCycles(user.id, 12),
+      cyclesService.getUserProjectTodoTotals().catch((err) => {
+        console.error(err);
+        return [] as ProjectTodoStatRow[];
+      }),
+    ])
+      .then(([rows, totals]) => {
         if (!mounted) return;
         setCycles(rows.map(fromDbTaskCycle));
+        setGlobalProjectTotals(totals);
         setError(null);
+        setProjStatsError(null);
       })
       .catch((err) => {
         console.error(err);
@@ -43,10 +118,86 @@ export default function DashboardPage() {
     () => cycles.find((c) => c.status === "active") ?? null,
     [cycles]
   );
+
+  useEffect(() => {
+    if (!user || !activeCycle) {
+      setActiveCycleProjectRows([]);
+      return;
+    }
+    let mounted = true;
+    const end = new Date().toISOString();
+    cyclesService
+      .getUserProjectStatsInWindow(activeCycle.startedAt, end)
+      .then((rows) => {
+        if (mounted) setActiveCycleProjectRows(rows);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (mounted) {
+          setProjStatsError(
+            "Estatísticas por projeto indisponíveis. Confirme se a migração SQL mais recente foi aplicada no Supabase."
+          );
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [user, activeCycle]);
+
   const closedCycles = useMemo(
-    () => cycles.filter((c) => c.status === "closed").sort((a, b) => a.cycleNumber - b.cycleNumber),
+    () =>
+      cycles
+        .filter((c) => c.status === "closed")
+        .sort((a, b) => a.cycleNumber - b.cycleNumber),
     [cycles]
   );
+
+  const closedCycleIdsKey = useMemo(
+    () => closedCycles.map((c) => c.id).join("|"),
+    [closedCycles]
+  );
+
+  useEffect(() => {
+    if (!closedCycleIdsKey) {
+      setClosedCycleProjectStats([]);
+      return;
+    }
+    let mounted = true;
+    const ids = closedCycleIdsKey.split("|");
+    cyclesService
+      .getClosedCyclesProjectStats(ids)
+      .then((rows) => {
+        if (mounted) setClosedCycleProjectStats(rows);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (mounted) {
+          setProjStatsError(
+            "Não foi possível carregar o detalhe por projeto nos ciclos fechados."
+          );
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [closedCycleIdsKey]);
+
+  const statsByClosedCycle = useMemo(() => {
+    const map = new Map<string, CycleProjectStatRow[]>();
+    for (const row of closedCycleProjectStats) {
+      const list = map.get(row.cycleId) ?? [];
+      list.push(row);
+      map.set(row.cycleId, list);
+    }
+    for (const [, list] of map) {
+      list.sort(
+        (a, b) =>
+          b.tasksLinked - a.tasksLinked ||
+          b.tasksCompletedInCycle - a.tasksCompletedInCycle
+      );
+    }
+    return map;
+  }, [closedCycleProjectStats]);
 
   const latestClosed = closedCycles.length > 0 ? closedCycles[closedCycles.length - 1] : null;
   const previousClosed = closedCycles.length > 1 ? closedCycles[closedCycles.length - 2] : null;
@@ -94,15 +245,24 @@ export default function DashboardPage() {
             {error}
           </div>
         )}
+        {projStatsError && (
+          <div className="rounded-lg border border-tertiary/40 bg-tertiary/10 px-4 py-2 text-sm text-on-surface">
+            {projStatsError}
+          </div>
+        )}
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <article className="rounded-xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Total Planejado</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+            Total Planejado
+          </p>
           <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">{planned}</p>
         </article>
         <article className="rounded-xl border-l-4 border-primary bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Total Entregue</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+            Total Entregue
+          </p>
           <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">{delivered}</p>
           <p className="text-xs font-semibold text-tertiary">{formatPct(effectiveness)} de eficácia</p>
         </article>
@@ -121,6 +281,35 @@ export default function DashboardPage() {
           </p>
         </article>
       </section>
+
+      <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
+        <h2 className="font-headline text-xl font-bold text-on-surface">Projetos — visão global</h2>
+        <p className="mt-1 text-sm text-on-surface-variant">
+          Tarefas ligadas a cada projeto (via painel de tarefas) e total já concluído.
+        </p>
+        <div className="mt-4">
+          <ProjectStatsTable rows={globalProjectTotals} completedLabel="Concluídas (total)" />
+        </div>
+      </section>
+
+      {activeCycle ? (
+        <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
+          <h2 className="font-headline text-xl font-bold text-on-surface">
+            Ciclo {activeCycle.cycleNumber} (aberto) — por projeto
+          </h2>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Concluídas desde o início deste ciclo até agora. &quot;Tarefas ligadas&quot; reflete o teu
+            quadro atual.
+          </p>
+          <div className="mt-4">
+            <ProjectStatsTable
+              rows={activeCycleProjectRows}
+              completedLabel="Concluídas no ciclo (até agora)"
+              subtitle="Ao fechar o ciclo, estes números ficam guardados no histórico abaixo."
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <article className="rounded-xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
@@ -172,7 +361,53 @@ export default function DashboardPage() {
                       title={`Entregue: ${cycle.deliveredCount} (${formatPct(cycle.effectivenessPct)})`}
                     />
                   </div>
-                  <span className="text-[11px] font-bold text-on-surface-variant">Ciclo {cycle.cycleNumber}</span>
+                  <span className="text-[11px] font-bold text-on-surface-variant">
+                    Ciclo {cycle.cycleNumber}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
+        <h2 className="font-headline text-xl font-bold text-on-surface">Projetos por ciclo (fechados)</h2>
+        <p className="mt-1 text-sm text-on-surface-variant">
+          Ao finalizar um ciclo, guardamos quantas tarefas estavam ligadas a cada projeto e quantas
+          foram concluídas entre o início e o fim desse ciclo.
+        </p>
+        {chartData.length === 0 ? (
+          <p className="mt-4 text-sm text-on-surface-variant">
+            Finalize um ciclo em Tarefas para ver o detalhe por projeto aqui.
+          </p>
+        ) : (
+          <div className="mt-6 space-y-8">
+            {[...chartData].reverse().map((cycle) => {
+              const rows = statsByClosedCycle.get(cycle.id) ?? [];
+              const asProjectRows: ProjectTodoStatRow[] = rows.map((r) => ({
+                projectId: r.projectId,
+                projectName: r.projectName,
+                projectColor: r.projectColor,
+                tasksLinked: r.tasksLinked,
+                tasksCompleted: r.tasksCompletedInCycle,
+              }));
+              return (
+                <div key={cycle.id}>
+                  <h3 className="font-headline text-base font-bold text-on-surface">
+                    Ciclo {cycle.cycleNumber}
+                  </h3>
+                  <div className="mt-3">
+                    <ProjectStatsTable
+                      rows={asProjectRows}
+                      completedLabel="Concluídas neste ciclo"
+                      subtitle={
+                        rows.length === 0
+                          ? "Sem dados guardados para este ciclo (ciclos antigos antes desta atualização não têm snapshot)."
+                          : undefined
+                      }
+                    />
+                  </div>
                 </div>
               );
             })}
