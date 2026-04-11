@@ -501,20 +501,11 @@ export const todosService = {
       .limit(1)
       .maybeSingle()
 
-    if (activeCycle?.id) {
-      const now = new Date().toISOString()
-      const { error: cyclePatchErr } = await supabase
-        .from('task_cycles')
-        .update({
-          planned_count: (activeCycle.planned_count ?? 0) + 1,
-          added_after_start_count: (activeCycle.added_after_start_count ?? 0) + 1,
-          updated_at: now,
-        })
-        .eq('id', activeCycle.id)
-        .eq('user_id', userId)
-      if (cyclePatchErr) {
-        console.error('Erro ao atualizar ciclo ativo após criação de tarefa:', cyclePatchErr)
-      }
+    if (activeCycle?.id && isSprintBoardStatus(todoData.status)) {
+      await cyclesService.adjustActiveCyclePlannedCount(userId, {
+        plannedDelta: 1,
+        addedAfterDelta: 1,
+      })
     }
 
     return todosService.setTodoProjects(data.id, linkIds)
@@ -522,6 +513,23 @@ export const todosService = {
 
   async updateTodo(todoId: string, updates: Partial<DBTodo>): Promise<DBTodoWithLinks> {
     const supabase = createClient()
+
+    const { data: priorRow, error: priorErr } = await supabase
+      .from('todos')
+      .select('user_id, status, completed')
+      .eq('id', todoId)
+      .single()
+    if (priorErr || !priorRow) {
+      console.error('Erro ao carregar tarefa antes de atualizar:', priorErr)
+      throw priorErr ?? new Error('Tarefa não encontrada')
+    }
+
+    const syncCycleIfNeeded = async (next: DBTodoWithLinks) => {
+      await cyclesService.syncCyclePlannedAfterTodoChange(priorRow.user_id, priorRow, {
+        status: next.status,
+        completed: next.completed,
+      })
+    }
 
     if (updates.pos !== undefined) {
       const { error: rpcError } = await supabase.rpc('move_todo', {
@@ -554,7 +562,9 @@ export const todosService = {
           throw error
         }
 
-        return data as DBTodoWithLinks
+        const row = data as DBTodoWithLinks
+        await syncCycleIfNeeded(row)
+        return row
       }
 
       const { data, error } = await supabase
@@ -568,7 +578,9 @@ export const todosService = {
         throw error
       }
 
-      return data as DBTodoWithLinks
+      const rowOnly = data as DBTodoWithLinks
+      await syncCycleIfNeeded(rowOnly)
+      return rowOnly
     }
 
     const { data, error } = await supabase
@@ -583,25 +595,106 @@ export const todosService = {
       throw error
     }
 
-    return data as DBTodoWithLinks
+    const rowFinal = data as DBTodoWithLinks
+    await syncCycleIfNeeded(rowFinal)
+    return rowFinal
   },
 
   // Deletar tarefa
   async deleteTodo(todoId: string): Promise<void> {
     const supabase = createClient()
-    const { error } = await supabase
+    const { data: prior } = await supabase
       .from('todos')
-      .delete()
+      .select('user_id, status, completed')
       .eq('id', todoId)
+      .maybeSingle()
+
+    const { error } = await supabase.from('todos').delete().eq('id', todoId)
 
     if (error) {
       console.error('Erro ao deletar tarefa:', error)
       throw error
     }
+
+    if (prior) {
+      const d = plannedCountDeltaOnDelete(prior)
+      if (d !== 0) {
+        await cyclesService.adjustActiveCyclePlannedCount(prior.user_id, { plannedDelta: d })
+      }
+    }
   }
 }
 
+/** Semana atual ou Em progresso — exclui backlog das métricas de ciclo. */
+export function isSprintBoardStatus(status: string): boolean {
+  return status === 'current_week' || status === 'in_progress'
+}
+
+function countsTowardCyclePlanned(t: { status: string; completed: boolean }): boolean {
+  return isSprintBoardStatus(t.status) && !t.completed
+}
+
+/** Variação do planned do ciclo ao mudar uma tarefa (toggle só de concluído não altera o planeado). */
+function plannedCountDeltaOnTodoChange(
+  prior: { status: string; completed: boolean },
+  next: { status: string; completed: boolean }
+): number {
+  if (prior.status === next.status && prior.completed !== next.completed) {
+    return 0
+  }
+  const p = countsTowardCyclePlanned(prior) ? 1 : 0
+  const n = countsTowardCyclePlanned(next) ? 1 : 0
+  return n - p
+}
+
+function plannedCountDeltaOnDelete(t: { status: string; completed: boolean }): number {
+  if (!isSprintBoardStatus(t.status) || t.completed) return 0
+  return -1
+}
+
 export const cyclesService = {
+  /** Ajusta planned (e opcionalmente added_after) no ciclo ativo. */
+  async adjustActiveCyclePlannedCount(
+    userId: string,
+    opts: { plannedDelta: number; addedAfterDelta?: number }
+  ): Promise<void> {
+    if (opts.plannedDelta === 0 && (opts.addedAfterDelta ?? 0) === 0) return
+    const active = await cyclesService.getActiveCycle(userId)
+    if (!active?.id) return
+    const supabase = createClient()
+    const now = new Date().toISOString()
+    const newPlanned = Math.max(0, (active.planned_count ?? 0) + opts.plannedDelta)
+    const patch: Record<string, unknown> = {
+      planned_count: newPlanned,
+      updated_at: now,
+    }
+    if (opts.addedAfterDelta !== undefined && opts.addedAfterDelta !== 0) {
+      patch.added_after_start_count = Math.max(
+        0,
+        (active.added_after_start_count ?? 0) + opts.addedAfterDelta
+      )
+    }
+    const { error } = await supabase
+      .from('task_cycles')
+      .update(patch)
+      .eq('id', active.id)
+      .eq('user_id', userId)
+    if (error) {
+      console.error('Erro ao ajustar contadores do ciclo ativo:', error)
+    }
+  },
+
+  async syncCyclePlannedAfterTodoChange(
+    userId: string,
+    prior: { status: string; completed: boolean },
+    next: { status: string; completed: boolean }
+  ): Promise<void> {
+    const delta = plannedCountDeltaOnTodoChange(prior, next)
+    if (delta !== 0) {
+      await cyclesService.adjustActiveCyclePlannedCount(userId, { plannedDelta: delta })
+    }
+  },
+
   async getActiveCycle(userId: string): Promise<DBTaskCycle | null> {
     const supabase = createClient()
     const { data, error } = await supabase
@@ -657,10 +750,13 @@ export const cyclesService = {
     }
     const nextCycleNumber = (lastCycle?.cycle_number ?? 0) + 1
 
+    // Apenas Semana Atual e Em progresso, não concluídas — backlog fica fora do ciclo
     const { count: plannedCount, error: countErr } = await supabase
       .from('todos')
       .select('id', { head: true, count: 'exact' })
       .eq('user_id', userId)
+      .eq('completed', false)
+      .in('status', ['current_week', 'in_progress'])
     if (countErr) {
       console.error('Erro ao contar tarefas para ciclo:', countErr)
       throw countErr
@@ -700,6 +796,7 @@ export const cyclesService = {
       .select('id', { head: true, count: 'exact' })
       .eq('user_id', userId)
       .eq('completed', true)
+      .in('status', ['current_week', 'in_progress'])
     if (deliveredErr) {
       console.error('Erro ao contar tarefas entregues no ciclo:', deliveredErr)
       throw deliveredErr
