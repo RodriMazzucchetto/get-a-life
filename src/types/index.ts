@@ -73,14 +73,6 @@ export interface MoodEntry {
 }
 
 // Tipos para o onboarding
-/** Registo manual ao consultar platform.openai.com — o app não chama a API OpenAI. */
-export interface OpenaiBalanceTracker {
-  /** Texto livre, ex.: "$12,40" ou "Créditos OK" */
-  lastBalanceLabel: string
-  lastCheckedAt: string
-  notes?: string
-}
-
 export interface OnboardingData {
   city: string
   comfortLevel: 'comfort' | 'routine' | 'challenge' | 'surprise'
@@ -90,7 +82,6 @@ export interface OnboardingData {
   healthConditions: HealthCondition[]
   completed: boolean
   completedAt?: string
-  openaiBalanceTracker?: OpenaiBalanceTracker
 }
 
 export interface HealthCondition {
