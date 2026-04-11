@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { PlusIcon, FolderIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, FolderIcon, PlayIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ModalPanel } from '@/components/ModalPanel'
 import { ProjectManagementModal } from '@/components/ProjectManagementModal'
@@ -389,10 +389,7 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             ) : (
-              // Ícone de play (enviar para em progresso)
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l4 1L6 17H17l2-10L9 4l9-3z" />
-              </svg>
+              <PlayIcon className="h-4 w-4" aria-hidden />
             )}
           </button>
         )}
