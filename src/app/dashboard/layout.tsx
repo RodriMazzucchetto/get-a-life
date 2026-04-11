@@ -34,6 +34,12 @@ const mainNav: {
     active: (pathname) => pathname === "/dashboard/problems",
   },
   {
+    name: "OpenAI",
+    href: "/dashboard/openai-api",
+    icon: "account_balance_wallet",
+    active: (pathname) => pathname === "/dashboard/openai-api",
+  },
+  {
     name: "Relatórios",
     href: "#",
     icon: "analytics",
