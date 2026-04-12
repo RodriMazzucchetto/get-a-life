@@ -1427,14 +1427,8 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.priority !== undefined) out.priority = patch.priority;
   if (patch.category !== undefined) out.category = patch.category;
   if (patch.dueDate !== undefined) out.due_date = patch.dueDate;
-  if (patch.completed !== undefined) {
-    out.completed = patch.completed;
-    if (patch.completed === true) {
-      out.completed_at = new Date().toISOString();
-    } else {
-      out.completed_at = null;
-    }
-  }
+  // completed_at é preenchido no Postgres (migração + trigger) para não falhar se a coluna ainda não existir no projeto.
+  if (patch.completed !== undefined) out.completed = patch.completed;
   if (patch.isHighPriority !== undefined) out.is_high_priority = patch.isHighPriority;
   if (patch.timeSensitive !== undefined) out.time_sensitive = patch.timeSensitive;
   if (patch.onHold !== undefined) out.on_hold = patch.onHold;
