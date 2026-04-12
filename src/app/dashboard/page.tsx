@@ -641,7 +641,7 @@ export default function DashboardPage() {
     return {
       title: `Ciclo ${sel.cycleNumber}`,
       description:
-        "Guardado ao finalizar o ciclo: tarefas ligadas ao projeto no fecho e concluídas entre o início e o fim desse período.",
+        "Guardado ao finalizar o ciclo: «ligadas» = tarefas na sprint (Semana atual / Em progresso) pendentes ou concluídas nesse período — não entra backlog antigo ligado ao projeto.",
       rows,
       linkedColumnTitle: "Tarefas ligadas (no fecho)",
       completedColumnTitle: "Concluídas no ciclo",
@@ -868,8 +868,9 @@ export default function DashboardPage() {
       <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
         <h2 className="font-headline text-xl font-bold text-on-surface">Histórico — ciclos fechados</h2>
         <p className="mt-1 max-w-3xl text-sm text-on-surface-variant">
-          Guardado ao finalizar cada ciclo: tarefas ligadas ao projeto no fecho, concluídas entre o
-          início e o fim desse ciclo, e efetividade. Filtra pelo menu Análise; em &quot;Todos os
+          Guardado ao finalizar cada ciclo: «ligadas» contam só o âmbito da sprint (pendentes na
+          Semana atual ou Em progresso, mais concluídas entre o início e o fim do ciclo) — não o
+          inventário histórico completo do projeto. Filtra pelo menu Análise; em &quot;Todos os
           ciclos&quot; vês cada período em blocos separados.
         </p>
         {closedCycles.length === 0 ? (
