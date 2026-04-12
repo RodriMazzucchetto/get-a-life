@@ -7,7 +7,6 @@ import {
   cyclesService,
   fromDbTaskCycle,
   type TaskCycle,
-  type ProjectTodoStatRow,
   type CycleProjectStatRow,
 } from "@/lib/planning";
 
@@ -15,30 +14,47 @@ function formatPct(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-function ProjectStatsTable({
+/** Efetividade = concluídas ÷ tarefas ligadas ao projeto (mesmo âmbito das duas colunas). */
+function projectEffectivenessPct(linked: number, completed: number): string {
+  if (linked <= 0) return "—";
+  return formatPct((completed / linked) * 100);
+}
+
+type CycleProjectRow = {
+  projectId: string;
+  projectName: string;
+  projectColor: string;
+  tasksLinked: number;
+  tasksCompleted: number;
+};
+
+function CycleProjectStatsTable({
   subtitle,
   rows,
-  completedLabel,
+  linkedColumnTitle,
+  completedColumnTitle,
 }: {
   subtitle?: string;
-  rows: ProjectTodoStatRow[];
-  completedLabel: string;
+  rows: CycleProjectRow[];
+  linkedColumnTitle: string;
+  completedColumnTitle: string;
 }) {
   if (rows.length === 0) {
     return (
       <p className="text-sm text-on-surface-variant">
-        Nenhum projeto com tarefas atribuídas ainda.
+        Nenhum projeto com dados neste período.
       </p>
     );
   }
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[320px] text-left text-sm">
+      <table className="w-full min-w-[360px] text-left text-sm">
         <thead>
           <tr className="border-b border-outline-variant/20 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
             <th className="py-2 pr-3">Projeto</th>
-            <th className="py-2 pr-3">Tarefas ligadas</th>
-            <th className="py-2">{completedLabel}</th>
+            <th className="py-2 pr-3">{linkedColumnTitle}</th>
+            <th className="py-2 pr-3">{completedColumnTitle}</th>
+            <th className="py-2">Efetividade</th>
           </tr>
         </thead>
         <tbody>
@@ -60,7 +76,10 @@ function ProjectStatsTable({
                 </span>
               </td>
               <td className="py-2 pr-3 tabular-nums text-on-surface">{r.tasksLinked}</td>
-              <td className="py-2 tabular-nums text-on-surface">{r.tasksCompleted}</td>
+              <td className="py-2 pr-3 tabular-nums text-on-surface">{r.tasksCompleted}</td>
+              <td className="py-2 tabular-nums font-medium text-primary">
+                {projectEffectivenessPct(r.tasksLinked, r.tasksCompleted)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -78,8 +97,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [globalProjectTotals, setGlobalProjectTotals] = useState<ProjectTodoStatRow[]>([]);
-  const [activeCycleProjectRows, setActiveCycleProjectRows] = useState<ProjectTodoStatRow[]>([]);
+  const [activeCycleProjectRows, setActiveCycleProjectRows] = useState<
+    {
+      projectId: string;
+      projectName: string;
+      projectColor: string;
+      tasksLinked: number;
+      tasksCompleted: number;
+    }[]
+  >([]);
   const [closedCycleProjectStats, setClosedCycleProjectStats] = useState<CycleProjectStatRow[]>([]);
   const [projStatsError, setProjStatsError] = useState<string | null>(null);
 
@@ -87,17 +113,11 @@ export default function DashboardPage() {
     if (!user) return;
     let mounted = true;
     setLoading(true);
-    Promise.all([
-      cyclesService.getCycles(user.id, 12),
-      cyclesService.getUserProjectTodoTotals().catch((err) => {
-        console.error(err);
-        return [] as ProjectTodoStatRow[];
-      }),
-    ])
-      .then(([rows, totals]) => {
+    cyclesService
+      .getCycles(user.id, 12)
+      .then((rows) => {
         if (!mounted) return;
         setCycles(rows.map(fromDbTaskCycle));
-        setGlobalProjectTotals(totals);
         setError(null);
         setProjStatsError(null);
       })
@@ -283,33 +303,38 @@ export default function DashboardPage() {
       </section>
 
       <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
-        <h2 className="font-headline text-xl font-bold text-on-surface">Projetos — visão global</h2>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Tarefas ligadas a cada projeto (via painel de tarefas) e total já concluído.
+        <h2 className="font-headline text-xl font-bold text-on-surface">Projetos no ciclo</h2>
+        <p className="mt-1 max-w-3xl text-sm leading-relaxed text-on-surface-variant">
+          Por projeto: quantas tarefas estão ligadas ao projeto no período considerado, quantas foram
+          concluídas nesse mesmo âmbito, e a efetividade (concluídas ÷ ligadas). Isto é sempre por{" "}
+          <strong className="font-semibold text-on-surface">ciclo</strong>, não um total histórico da
+          conta.
         </p>
-        <div className="mt-4">
-          <ProjectStatsTable rows={globalProjectTotals} completedLabel="Concluídas (total)" />
-        </div>
-      </section>
 
-      {activeCycle ? (
-        <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
-          <h2 className="font-headline text-xl font-bold text-on-surface">
-            Ciclo {activeCycle.cycleNumber} (aberto) — por projeto
-          </h2>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Concluídas desde o início deste ciclo até agora. &quot;Tarefas ligadas&quot; reflete o teu
-            quadro atual.
-          </p>
-          <div className="mt-4">
-            <ProjectStatsTable
-              rows={activeCycleProjectRows}
-              completedLabel="Concluídas no ciclo (até agora)"
-              subtitle="Ao fechar o ciclo, estes números ficam guardados no histórico abaixo."
-            />
+        {activeCycle ? (
+          <div className="mt-8">
+            <h3 className="font-headline text-base font-bold text-on-surface">
+              Ciclo {activeCycle.cycleNumber} (em curso)
+            </h3>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              &quot;Ligadas&quot; = inventário atual no quadro. &quot;Concluídas&quot; = neste ciclo,
+              desde o início até agora.
+            </p>
+            <div className="mt-4">
+              <CycleProjectStatsTable
+                rows={activeCycleProjectRows}
+                linkedColumnTitle="Tarefas ligadas (agora)"
+                completedColumnTitle="Concluídas no ciclo"
+                subtitle="Ao fechar o ciclo, o quadro abaixo passa a mostrar o registo fechado de cada período."
+              />
+            </div>
           </div>
-        </section>
-      ) : null}
+        ) : (
+          <p className="mt-6 text-sm text-on-surface-variant">
+            Sem ciclo ativo. Inicia um ciclo em Tarefas para ver aqui o acompanhamento por projeto.
+          </p>
+        )}
+      </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <article className="rounded-xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
@@ -372,10 +397,10 @@ export default function DashboardPage() {
       </section>
 
       <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
-        <h2 className="font-headline text-xl font-bold text-on-surface">Projetos por ciclo (fechados)</h2>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Ao finalizar um ciclo, guardamos quantas tarefas estavam ligadas a cada projeto e quantas
-          foram concluídas entre o início e o fim desse ciclo.
+        <h2 className="font-headline text-xl font-bold text-on-surface">Histórico — ciclos fechados</h2>
+        <p className="mt-1 max-w-3xl text-sm text-on-surface-variant">
+          Guardado ao finalizar cada ciclo: tarefas ligadas ao projeto no fecho, concluídas entre o
+          início e o fim desse ciclo, e efetividade.
         </p>
         {chartData.length === 0 ? (
           <p className="mt-4 text-sm text-on-surface-variant">
@@ -385,7 +410,7 @@ export default function DashboardPage() {
           <div className="mt-6 space-y-8">
             {[...chartData].reverse().map((cycle) => {
               const rows = statsByClosedCycle.get(cycle.id) ?? [];
-              const asProjectRows: ProjectTodoStatRow[] = rows.map((r) => ({
+              const asRows: CycleProjectRow[] = rows.map((r) => ({
                 projectId: r.projectId,
                 projectName: r.projectName,
                 projectColor: r.projectColor,
@@ -398,9 +423,10 @@ export default function DashboardPage() {
                     Ciclo {cycle.cycleNumber}
                   </h3>
                   <div className="mt-3">
-                    <ProjectStatsTable
-                      rows={asProjectRows}
-                      completedLabel="Concluídas neste ciclo"
+                    <CycleProjectStatsTable
+                      rows={asRows}
+                      linkedColumnTitle="Tarefas ligadas (no fecho)"
+                      completedColumnTitle="Concluídas no ciclo"
                       subtitle={
                         rows.length === 0
                           ? "Sem dados guardados para este ciclo (ciclos antigos antes desta atualização não têm snapshot)."
