@@ -14,6 +14,160 @@ function formatPct(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
+/** Gráfico de linhas: planejado e entregue normalizados 0–100 pelo máximo do período; efetividade já é %. */
+function CyclePerformanceLineChart({
+  cycles,
+  maxCount,
+}: {
+  cycles: TaskCycle[];
+  maxCount: number;
+}) {
+  const vbW = 720;
+  const vbH = 280;
+  const padL = 40;
+  const padR = 20;
+  const padT = 20;
+  const padB = 48;
+  const plotW = vbW - padL - padR;
+  const plotH = vbH - padT - padB;
+  const n = cycles.length;
+
+  const xAt = (index: number) => {
+    if (n <= 1) return padL + plotW / 2;
+    return padL + (index / (n - 1)) * plotW;
+  };
+
+  const yAt = (value0to100: number) =>
+    padT + plotH * (1 - Math.min(100, Math.max(0, value0to100)) / 100);
+
+  const plannedVals = cycles.map((c) =>
+    maxCount > 0 ? (c.plannedCount / maxCount) * 100 : 0
+  );
+  const deliveredVals = cycles.map((c) =>
+    maxCount > 0 ? (c.deliveredCount / maxCount) * 100 : 0
+  );
+  const effVals = cycles.map((c) => Math.min(100, Math.max(0, c.effectivenessPct)));
+
+  const pointsAttr = (vals: number[]) =>
+    vals.map((v, i) => `${xAt(i)},${yAt(v)}`).join(" ");
+
+  const gridLines = [0, 25, 50, 75, 100];
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <svg
+        viewBox={`0 0 ${vbW} ${vbH}`}
+        className="h-auto w-full min-w-[320px] max-h-[320px] text-on-surface-variant"
+        role="img"
+        aria-label="Histórico de performance por ciclo em linhas"
+      >
+        <title>Planejado, entregue e efetividade por ciclo</title>
+        {gridLines.map((g) => {
+          const y = yAt(g);
+          return (
+            <line
+              key={g}
+              x1={padL}
+              x2={padL + plotW}
+              y1={y}
+              y2={y}
+              className="stroke-outline-variant/25"
+              strokeWidth={1}
+            />
+          );
+        })}
+        {gridLines.map((g) => (
+          <text
+            key={`yl-${g}`}
+            x={padL - 8}
+            y={yAt(g) + 4}
+            textAnchor="end"
+            className="fill-on-surface-variant text-[10px] font-medium"
+          >
+            {g}
+          </text>
+        ))}
+        <text
+          x={padL}
+          y={14}
+          className="fill-on-surface-variant text-[10px]"
+        >
+          0–100 (planej./entregue relativos ao máximo do gráfico; efetiv. = %)
+        </text>
+
+        {n >= 2 ? (
+          <>
+            <polyline
+              fill="none"
+              strokeWidth={2.5}
+              className="stroke-primary-container"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={pointsAttr(plannedVals)}
+            />
+            <polyline
+              fill="none"
+              strokeWidth={2.5}
+              className="stroke-primary"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={pointsAttr(deliveredVals)}
+            />
+            <polyline
+              fill="none"
+              strokeWidth={2.5}
+              className="stroke-tertiary"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={pointsAttr(effVals)}
+            />
+          </>
+        ) : null}
+
+        {cycles.map((c, i) => (
+          <g key={c.id}>
+            <circle
+              cx={xAt(i)}
+              cy={yAt(plannedVals[i])}
+              r={5}
+              className="fill-primary-container stroke-primary-container"
+              strokeWidth={1}
+            >
+              <title>{`Planejado: ${c.plannedCount} (+${c.addedAfterStartCount} após início)`}</title>
+            </circle>
+            <circle
+              cx={xAt(i)}
+              cy={yAt(deliveredVals[i])}
+              r={5}
+              className="fill-primary stroke-primary"
+              strokeWidth={1}
+            >
+              <title>{`Entregue: ${c.deliveredCount}`}</title>
+            </circle>
+            <circle
+              cx={xAt(i)}
+              cy={yAt(effVals[i])}
+              r={5}
+              className="fill-tertiary stroke-tertiary"
+              strokeWidth={1}
+            >
+              <title>{`Efetividade: ${formatPct(c.effectivenessPct)}`}</title>
+            </circle>
+            <text
+              x={xAt(i)}
+              y={vbH - 12}
+              textAnchor="middle"
+              className="fill-on-surface-variant text-[11px] font-bold"
+            >
+              {`Ciclo ${c.cycleNumber}`}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 /** Efetividade = concluídas ÷ tarefas ligadas ao projeto (mesmo âmbito das duas colunas). */
 function projectEffectivenessPct(linked: number, completed: number): string {
   if (linked <= 0) return "—";
@@ -364,7 +518,8 @@ export default function DashboardPage() {
               Histórico de Performance por Ciclo
             </h2>
             <p className="text-sm text-on-surface-variant">
-              Planejado vs entregue (escala comum) e efetividade % (escala 0–100%).
+              Três linhas: planejado e entregue (escala 0–100 relativa ao maior valor do período) e
+              efetividade %. Com um ciclo vês três pontos; a linha liga-se quando houver mais ciclos.
             </p>
           </div>
         </div>
@@ -376,87 +531,21 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="mt-4 rounded-xl border border-outline-variant/20 bg-surface-container-low/40 px-3 py-4">
-            <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-on-surface-variant">
+            <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-on-surface-variant">
               <span className="inline-flex items-center gap-2">
-                <span className="h-3 w-3 shrink-0 rounded-sm bg-primary-container/30" />
+                <span className="h-0.5 w-6 shrink-0 rounded-full bg-primary-container" />
                 Planejado
               </span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-3 w-3 shrink-0 rounded-sm bg-primary" />
+                <span className="h-0.5 w-6 shrink-0 rounded-full bg-primary" />
                 Entregue
               </span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-3 w-2 shrink-0 rounded-sm bg-tertiary" />
+                <span className="h-0.5 w-6 shrink-0 rounded-full bg-tertiary" />
                 Efetividade %
               </span>
             </div>
-            <div className="flex min-h-[260px] justify-center gap-2 sm:gap-4">
-              {chartData.map((cycle) => {
-                const plannedPct = (cycle.plannedCount / chartMaxCount) * 100;
-                const deliveredPct = (cycle.deliveredCount / chartMaxCount) * 100;
-                const effPct = Math.min(100, Math.max(0, cycle.effectivenessPct));
-                return (
-                  <div
-                    key={cycle.id}
-                    className="flex min-w-0 flex-1 flex-col items-center gap-2"
-                  >
-                    {/* Altura fixa + colunas flex-col justify-end = % nas barras funciona em todos os browsers */}
-                    <div className="flex h-[220px] w-full max-w-[104px] items-stretch gap-1.5 sm:gap-2">
-                      <div
-                        className="flex min-h-0 min-w-0 flex-1 flex-col justify-end"
-                        title={`Planejado: ${cycle.plannedCount} (extras após início: +${cycle.addedAfterStartCount})`}
-                      >
-                        <div
-                          className="w-full rounded-t-md bg-primary-container/30"
-                          style={{
-                            height:
-                              cycle.plannedCount > 0
-                                ? `${Math.max(plannedPct, 5)}%`
-                                : "0%",
-                            minHeight: cycle.plannedCount > 0 ? 6 : 0,
-                          }}
-                        />
-                      </div>
-                      <div
-                        className="flex min-h-0 min-w-0 flex-1 flex-col justify-end"
-                        title={`Entregue: ${cycle.deliveredCount}`}
-                      >
-                        <div
-                          className="w-full rounded-t-md bg-primary"
-                          style={{
-                            height:
-                              cycle.deliveredCount > 0
-                                ? `${Math.max(deliveredPct, 5)}%`
-                                : "0%",
-                            minHeight: cycle.deliveredCount > 0 ? 6 : 0,
-                          }}
-                        />
-                      </div>
-                      <div
-                        className="flex min-h-0 min-w-0 flex-1 flex-col justify-end"
-                        title={`Efetividade: ${formatPct(cycle.effectivenessPct)}`}
-                      >
-                        <div
-                          className="w-full max-w-[18px] self-center rounded-t-sm bg-tertiary"
-                          style={{
-                            height: effPct > 0 ? `${Math.max(effPct, 3)}%` : "0%",
-                            minHeight: effPct > 0 ? 4 : 0,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5 text-center">
-                      <span className="text-[11px] font-bold text-on-surface-variant">
-                        Ciclo {cycle.cycleNumber}
-                      </span>
-                      <span className="text-[10px] tabular-nums text-tertiary">
-                        {formatPct(cycle.effectivenessPct)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <CyclePerformanceLineChart cycles={chartData} maxCount={chartMaxCount} />
           </div>
         )}
       </section>
