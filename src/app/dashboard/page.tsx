@@ -234,7 +234,14 @@ export default function DashboardPage() {
       : null;
 
   const chartData = closedCycles.slice(-8);
-  const maxPlanned = Math.max(1, ...chartData.map((c) => c.plannedCount));
+  const chartMaxCount = useMemo(
+    () =>
+      Math.max(
+        1,
+        ...chartData.flatMap((c) => [c.plannedCount, c.deliveredCount])
+      ),
+    [chartData]
+  );
 
   return (
     <div className="space-y-8 pb-8">
@@ -357,7 +364,7 @@ export default function DashboardPage() {
               Histórico de Performance por Ciclo
             </h2>
             <p className="text-sm text-on-surface-variant">
-              Planejado vs entregue por ciclo finalizado.
+              Planejado vs entregue (escala comum) e efetividade % (escala 0–100%).
             </p>
           </div>
         </div>
@@ -368,30 +375,88 @@ export default function DashboardPage() {
             Ainda não há ciclos finalizados para exibir.
           </div>
         ) : (
-          <div className="flex h-[320px] items-end gap-3 rounded-lg border-b border-outline-variant/25 px-2 pb-4">
-            {chartData.map((cycle) => {
-              const plannedHeight = Math.max(10, (cycle.plannedCount / maxPlanned) * 100);
-              const deliveredHeight = Math.max(8, (cycle.deliveredCount / maxPlanned) * 100);
-              return (
-                <div key={cycle.id} className="group flex flex-1 flex-col items-center gap-2">
-                  <div className="flex h-full w-full max-w-[60px] items-end gap-1">
-                    <div
-                      className="w-1/2 rounded-t-md bg-primary-container/30"
-                      style={{ height: `${plannedHeight}%` }}
-                      title={`Planejado: ${cycle.plannedCount} (extras: +${cycle.addedAfterStartCount})`}
-                    />
-                    <div
-                      className="w-1/2 rounded-t-md bg-primary"
-                      style={{ height: `${deliveredHeight}%` }}
-                      title={`Entregue: ${cycle.deliveredCount} (${formatPct(cycle.effectivenessPct)})`}
-                    />
+          <div className="mt-4 rounded-xl border border-outline-variant/20 bg-surface-container-low/40 px-3 py-4">
+            <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-on-surface-variant">
+              <span className="inline-flex items-center gap-2">
+                <span className="h-3 w-3 shrink-0 rounded-sm bg-primary-container/30" />
+                Planejado
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-3 w-3 shrink-0 rounded-sm bg-primary" />
+                Entregue
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-3 w-2 shrink-0 rounded-sm bg-tertiary" />
+                Efetividade %
+              </span>
+            </div>
+            <div className="flex min-h-[260px] justify-center gap-2 sm:gap-4">
+              {chartData.map((cycle) => {
+                const plannedPct = (cycle.plannedCount / chartMaxCount) * 100;
+                const deliveredPct = (cycle.deliveredCount / chartMaxCount) * 100;
+                const effPct = Math.min(100, Math.max(0, cycle.effectivenessPct));
+                return (
+                  <div
+                    key={cycle.id}
+                    className="flex min-w-0 flex-1 flex-col items-center gap-2"
+                  >
+                    {/* Altura fixa + colunas flex-col justify-end = % nas barras funciona em todos os browsers */}
+                    <div className="flex h-[220px] w-full max-w-[104px] items-stretch gap-1.5 sm:gap-2">
+                      <div
+                        className="flex min-h-0 min-w-0 flex-1 flex-col justify-end"
+                        title={`Planejado: ${cycle.plannedCount} (extras após início: +${cycle.addedAfterStartCount})`}
+                      >
+                        <div
+                          className="w-full rounded-t-md bg-primary-container/30"
+                          style={{
+                            height:
+                              cycle.plannedCount > 0
+                                ? `${Math.max(plannedPct, 5)}%`
+                                : "0%",
+                            minHeight: cycle.plannedCount > 0 ? 6 : 0,
+                          }}
+                        />
+                      </div>
+                      <div
+                        className="flex min-h-0 min-w-0 flex-1 flex-col justify-end"
+                        title={`Entregue: ${cycle.deliveredCount}`}
+                      >
+                        <div
+                          className="w-full rounded-t-md bg-primary"
+                          style={{
+                            height:
+                              cycle.deliveredCount > 0
+                                ? `${Math.max(deliveredPct, 5)}%`
+                                : "0%",
+                            minHeight: cycle.deliveredCount > 0 ? 6 : 0,
+                          }}
+                        />
+                      </div>
+                      <div
+                        className="flex min-h-0 min-w-0 flex-1 flex-col justify-end"
+                        title={`Efetividade: ${formatPct(cycle.effectivenessPct)}`}
+                      >
+                        <div
+                          className="w-full max-w-[18px] self-center rounded-t-sm bg-tertiary"
+                          style={{
+                            height: effPct > 0 ? `${Math.max(effPct, 3)}%` : "0%",
+                            minHeight: effPct > 0 ? 4 : 0,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-center">
+                      <span className="text-[11px] font-bold text-on-surface-variant">
+                        Ciclo {cycle.cycleNumber}
+                      </span>
+                      <span className="text-[10px] tabular-nums text-tertiary">
+                        {formatPct(cycle.effectivenessPct)}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[11px] font-bold text-on-surface-variant">
-                    Ciclo {cycle.cycleNumber}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </section>
