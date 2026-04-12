@@ -14,6 +14,11 @@ function formatPct(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
+/** Cores fixas contrastantes (independentes do token primary, que colidia com primary-container). */
+const CHART_COLOR_PLANNED = "#0284c7";
+const CHART_COLOR_DELIVERED = "#ea580c";
+const CHART_COLOR_EFFECT = "#7c3aed";
+
 /** Gráfico de linhas: planejado e entregue normalizados 0–100 pelo máximo do período; efetividade já é %. */
 function CyclePerformanceLineChart({
   cycles,
@@ -99,24 +104,25 @@ function CyclePerformanceLineChart({
           <>
             <polyline
               fill="none"
-              strokeWidth={2.5}
-              className="stroke-primary-container"
+              stroke={CHART_COLOR_PLANNED}
+              strokeWidth={2.75}
+              strokeDasharray="8 5"
               strokeLinecap="round"
               strokeLinejoin="round"
               points={pointsAttr(plannedVals)}
             />
             <polyline
               fill="none"
-              strokeWidth={2.5}
-              className="stroke-primary"
+              stroke={CHART_COLOR_DELIVERED}
+              strokeWidth={2.75}
               strokeLinecap="round"
               strokeLinejoin="round"
               points={pointsAttr(deliveredVals)}
             />
             <polyline
               fill="none"
-              strokeWidth={2.5}
-              className="stroke-tertiary"
+              stroke={CHART_COLOR_EFFECT}
+              strokeWidth={2.75}
               strokeLinecap="round"
               strokeLinejoin="round"
               points={pointsAttr(effVals)}
@@ -130,8 +136,9 @@ function CyclePerformanceLineChart({
               cx={xAt(i)}
               cy={yAt(plannedVals[i])}
               r={5}
-              className="fill-primary-container stroke-primary-container"
-              strokeWidth={1}
+              fill={CHART_COLOR_PLANNED}
+              stroke="#fff"
+              strokeWidth={1.5}
             >
               <title>{`Planejado: ${c.plannedCount} (+${c.addedAfterStartCount} após início)`}</title>
             </circle>
@@ -139,8 +146,9 @@ function CyclePerformanceLineChart({
               cx={xAt(i)}
               cy={yAt(deliveredVals[i])}
               r={5}
-              className="fill-primary stroke-primary"
-              strokeWidth={1}
+              fill={CHART_COLOR_DELIVERED}
+              stroke="#fff"
+              strokeWidth={1.5}
             >
               <title>{`Entregue: ${c.deliveredCount}`}</title>
             </circle>
@@ -148,8 +156,9 @@ function CyclePerformanceLineChart({
               cx={xAt(i)}
               cy={yAt(effVals[i])}
               r={5}
-              className="fill-tertiary stroke-tertiary"
-              strokeWidth={1}
+              fill={CHART_COLOR_EFFECT}
+              stroke="#fff"
+              strokeWidth={1.5}
             >
               <title>{`Efetividade: ${formatPct(c.effectivenessPct)}`}</title>
             </circle>
@@ -533,15 +542,24 @@ export default function DashboardPage() {
           <div className="mt-4 rounded-xl border border-outline-variant/20 bg-surface-container-low/40 px-3 py-4">
             <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-on-surface-variant">
               <span className="inline-flex items-center gap-2">
-                <span className="h-0.5 w-6 shrink-0 rounded-full bg-primary-container" />
+                <span
+                  className="inline-block h-0 w-6 shrink-0 border-t-[2.5px] border-dashed"
+                  style={{ borderColor: CHART_COLOR_PLANNED }}
+                />
                 Planejado
               </span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-0.5 w-6 shrink-0 rounded-full bg-primary" />
+                <span
+                  className="h-0.5 w-6 shrink-0 rounded-full"
+                  style={{ backgroundColor: CHART_COLOR_DELIVERED }}
+                />
                 Entregue
               </span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-0.5 w-6 shrink-0 rounded-full bg-tertiary" />
+                <span
+                  className="h-0.5 w-6 shrink-0 rounded-full"
+                  style={{ backgroundColor: CHART_COLOR_EFFECT }}
+                />
                 Efetividade %
               </span>
             </div>
