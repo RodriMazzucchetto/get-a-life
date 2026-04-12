@@ -330,6 +330,9 @@ export default function DashboardPage() {
   const [closedCycleProjectStats, setClosedCycleProjectStats] = useState<CycleProjectStatRow[]>([]);
   const [projStatsError, setProjStatsError] = useState<string | null>(null);
   const [analysisScope, setAnalysisScope] = useState<string>("all");
+  const [statsRefreshTick, setStatsRefreshTick] = useState(0);
+  const [rebuildSnapshotsLoading, setRebuildSnapshotsLoading] = useState(false);
+  const [rebuildSnapshotsMessage, setRebuildSnapshotsMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -422,7 +425,7 @@ export default function DashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [closedCycleIdsKey]);
+  }, [closedCycleIdsKey, statsRefreshTick]);
 
   const statsByClosedCycle = useMemo(() => {
     const map = new Map<string, CycleProjectStatRow[]>();
@@ -801,6 +804,44 @@ export default function DashboardPage() {
             />
           </div>
         </div>
+
+        {user && closedCycles.length > 0 ? (
+          <div className="mt-6 flex flex-col gap-2 border-t border-outline-variant/15 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-xl text-xs text-on-surface-variant">
+              Se os números por projeto parecerem antigos (antes da correção do cálculo), recalcula os
+              snapshots guardados na base. Isto não altera o gráfico de linhas acima.
+            </p>
+            <button
+              type="button"
+              disabled={rebuildSnapshotsLoading}
+              onClick={async () => {
+                setRebuildSnapshotsMessage(null);
+                setRebuildSnapshotsLoading(true);
+                try {
+                  await cyclesService.rebuildMyClosedCycleSnapshots();
+                  setStatsRefreshTick((t) => t + 1);
+                  setRebuildSnapshotsMessage("Snapshots atualizados. Os valores da tabela devem refletir a nova lógica.");
+                } catch (e) {
+                  console.error(e);
+                  setRebuildSnapshotsMessage(
+                    "Não foi possível recalcular. Confirma que as migrações Supabase mais recentes foram aplicadas (inclui a função rebuild_my_closed_cycle_snapshots)."
+                  );
+                } finally {
+                  setRebuildSnapshotsLoading(false);
+                }
+              }}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-high px-4 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-highest disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {rebuildSnapshotsLoading ? "hourglass_empty" : "refresh"}
+              </span>
+              {rebuildSnapshotsLoading ? "A recalcular…" : "Recalcular snapshots (ciclos fechados)"}
+            </button>
+          </div>
+        ) : null}
+        {rebuildSnapshotsMessage ? (
+          <p className="mt-3 text-sm text-on-surface-variant">{rebuildSnapshotsMessage}</p>
+        ) : null}
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -862,97 +903,6 @@ export default function DashboardPage() {
             </div>
             <CyclePerformanceLineChart cycles={chartData} maxCount={chartMaxCount} />
           </div>
-        )}
-      </section>
-
-      <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
-        <h2 className="font-headline text-xl font-bold text-on-surface">Histórico — ciclos fechados</h2>
-        <p className="mt-1 max-w-3xl text-sm text-on-surface-variant">
-          Guardado ao finalizar cada ciclo: «ligadas» contam só o âmbito da sprint (pendentes na
-          Semana atual ou Em progresso, mais concluídas entre o início e o fim do ciclo) — não o
-          inventário histórico completo do projeto. Filtra pelo menu Análise; em &quot;Todos os
-          ciclos&quot; vês cada período em blocos separados.
-        </p>
-        {closedCycles.length === 0 ? (
-          <p className="mt-4 text-sm text-on-surface-variant">
-            Finalize um ciclo em Tarefas para ver o detalhe por projeto aqui.
-          </p>
-        ) : analysisScope === "all" ? (
-          <div className="mt-6 space-y-8">
-            {[...closedCycles].reverse().map((cycle) => {
-              const rows = statsByClosedCycle.get(cycle.id) ?? [];
-              const asRows: CycleProjectRow[] = rows.map((r) => ({
-                projectId: r.projectId,
-                projectName: r.projectName,
-                projectColor: r.projectColor,
-                tasksLinked: r.tasksLinked,
-                tasksCompleted: r.tasksCompletedInCycle,
-              }));
-              return (
-                <div key={cycle.id}>
-                  <h3 className="font-headline text-base font-bold text-on-surface">
-                    Ciclo {cycle.cycleNumber}
-                  </h3>
-                  <div className="mt-3">
-                    <CycleProjectStatsTable
-                      rows={asRows}
-                      linkedColumnTitle="Tarefas ligadas (no fecho)"
-                      completedColumnTitle="Concluídas no ciclo"
-                      subtitle={
-                        rows.length === 0
-                          ? "Sem dados guardados para este ciclo (ciclos antigos antes desta atualização não têm snapshot)."
-                          : undefined
-                      }
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : analysisScope !== "all" &&
-          cycles.find((c) => c.id === analysisScope)?.status === "active" ? (
-          <p className="mt-4 text-sm text-on-surface-variant">
-            Os snapshots por projeto são gravados ao fechar cada ciclo. Para o período em curso, usa a
-            secção &quot;Projetos no ciclo&quot; acima.
-          </p>
-        ) : (
-          (() => {
-            const sel = cycles.find((c) => c.id === analysisScope);
-            if (!sel || sel.status !== "closed") {
-              return (
-                <p className="mt-4 text-sm text-on-surface-variant">
-                  Seleciona um ciclo fechado no menu Análise para ver o detalhe guardado.
-                </p>
-              );
-            }
-            const rows = statsByClosedCycle.get(sel.id) ?? [];
-            const asRows: CycleProjectRow[] = rows.map((r) => ({
-              projectId: r.projectId,
-              projectName: r.projectName,
-              projectColor: r.projectColor,
-              tasksLinked: r.tasksLinked,
-              tasksCompleted: r.tasksCompletedInCycle,
-            }));
-            return (
-              <div className="mt-6">
-                <h3 className="font-headline text-base font-bold text-on-surface">
-                  Ciclo {sel.cycleNumber}
-                </h3>
-                <div className="mt-3">
-                  <CycleProjectStatsTable
-                    rows={asRows}
-                    linkedColumnTitle="Tarefas ligadas (no fecho)"
-                    completedColumnTitle="Concluídas no ciclo"
-                    subtitle={
-                      rows.length === 0
-                        ? "Sem dados guardados para este ciclo (ciclos antigos antes desta atualização não têm snapshot)."
-                        : undefined
-                    }
-                  />
-                </div>
-              </div>
-            );
-          })()
         )}
       </section>
     </div>

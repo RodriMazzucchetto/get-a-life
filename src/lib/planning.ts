@@ -936,6 +936,16 @@ export const cyclesService = {
       }
     })
   },
+
+  /** Recalcula linhas em `task_cycle_project_stats` para todos os ciclos fechados do utilizador (RPC). */
+  async rebuildMyClosedCycleSnapshots(): Promise<void> {
+    const supabase = createClient()
+    const { error } = await supabase.rpc('rebuild_my_closed_cycle_snapshots')
+    if (error) {
+      console.error('Erro ao recalcular snapshots por projeto:', error)
+      throw error
+    }
+  },
 }
 
 const problemSelectWithProjects =
