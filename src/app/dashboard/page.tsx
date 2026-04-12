@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
+} from "@headlessui/react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import {
   cyclesService,
@@ -191,6 +196,59 @@ type CycleProjectRow = {
   tasksCompleted: number;
 };
 
+function aggregateClosedProjectSnapshots(stats: CycleProjectStatRow[]): CycleProjectRow[] {
+  const map = new Map<
+    string,
+    { projectName: string; projectColor: string; linked: number; completed: number }
+  >();
+  for (const r of stats) {
+    const cur = map.get(r.projectId);
+    if (!cur) {
+      map.set(r.projectId, {
+        projectName: r.projectName,
+        projectColor: r.projectColor,
+        linked: r.tasksLinked,
+        completed: r.tasksCompletedInCycle,
+      });
+    } else {
+      cur.linked += r.tasksLinked;
+      cur.completed += r.tasksCompletedInCycle;
+    }
+  }
+  return Array.from(map.entries())
+    .map(([projectId, v]) => ({
+      projectId,
+      projectName: v.projectName,
+      projectColor: v.projectColor,
+      tasksLinked: v.linked,
+      tasksCompleted: v.completed,
+    }))
+    .sort(
+      (a, b) =>
+        b.tasksLinked - a.tasksLinked || b.tasksCompleted - a.tasksCompleted
+    );
+}
+
+function mergeActiveIntoAggregate(
+  base: CycleProjectRow[],
+  activeRows: CycleProjectRow[]
+): CycleProjectRow[] {
+  const map = new Map(base.map((r) => [r.projectId, { ...r }]));
+  for (const r of activeRows) {
+    const cur = map.get(r.projectId);
+    if (!cur) {
+      map.set(r.projectId, { ...r });
+    } else {
+      cur.tasksLinked += r.tasksLinked;
+      cur.tasksCompleted += r.tasksCompleted;
+    }
+  }
+  return Array.from(map.values()).sort(
+    (a, b) =>
+      b.tasksLinked - a.tasksLinked || b.tasksCompleted - a.tasksCompleted
+  );
+}
+
 function CycleProjectStatsTable({
   subtitle,
   rows,
@@ -271,6 +329,7 @@ export default function DashboardPage() {
   >([]);
   const [closedCycleProjectStats, setClosedCycleProjectStats] = useState<CycleProjectStatRow[]>([]);
   const [projStatsError, setProjStatsError] = useState<string | null>(null);
+  const [analysisScope, setAnalysisScope] = useState<string>("all");
 
   useEffect(() => {
     if (!user) return;
@@ -383,18 +442,235 @@ export default function DashboardPage() {
   }, [closedCycleProjectStats]);
 
   const latestClosed = closedCycles.length > 0 ? closedCycles[closedCycles.length - 1] : null;
-  const previousClosed = closedCycles.length > 1 ? closedCycles[closedCycles.length - 2] : null;
 
-  const planned = latestClosed?.plannedCount ?? activeCycle?.plannedCount ?? 0;
-  const addedAfterStart =
-    latestClosed?.addedAfterStartCount ?? activeCycle?.addedAfterStartCount ?? 0;
-  const delivered = latestClosed?.deliveredCount ?? 0;
-  const pending = Math.max(planned - delivered, 0);
-  const effectiveness = latestClosed?.effectivenessPct ?? 0;
-  const deltaVsPrevious =
-    latestClosed && previousClosed
-      ? latestClosed.effectivenessPct - previousClosed.effectivenessPct
-      : null;
+  const analysisOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [
+      { value: "all", label: "Todos os ciclos" },
+    ];
+    if (activeCycle) {
+      opts.push({
+        value: activeCycle.id,
+        label: `Ciclo ${activeCycle.cycleNumber} (em curso)`,
+      });
+    }
+    for (const c of closedCycles) {
+      opts.push({ value: c.id, label: `Ciclo ${c.cycleNumber}` });
+    }
+    return opts;
+  }, [activeCycle, closedCycles]);
+
+  useEffect(() => {
+    if (analysisOptions.some((o) => o.value === analysisScope)) return;
+    setAnalysisScope("all");
+  }, [analysisOptions, analysisScope]);
+
+  const sumActiveDeliveredEstimate = useMemo(
+    () => activeCycleProjectRows.reduce((s, r) => s + r.tasksCompleted, 0),
+    [activeCycleProjectRows]
+  );
+
+  const analysisKpi = useMemo(() => {
+    if (analysisScope === "all") {
+      if (closedCycles.length === 0) {
+        if (!activeCycle) {
+          return {
+            planned: 0,
+            delivered: 0,
+            addedAfterStart: 0,
+            effectivenessPct: 0,
+            pending: 0,
+            deltaVsPrevious: null as number | null,
+          };
+        }
+        const planned = activeCycle.plannedCount;
+        const delivered = sumActiveDeliveredEstimate;
+        const effectivenessPct = planned > 0 ? (delivered / planned) * 100 : 0;
+        return {
+          planned,
+          delivered,
+          addedAfterStart: activeCycle.addedAfterStartCount,
+          effectivenessPct,
+          pending: Math.max(0, planned - delivered),
+          deltaVsPrevious:
+            latestClosed != null
+              ? effectivenessPct - latestClosed.effectivenessPct
+              : null,
+        };
+      }
+      let planned = closedCycles.reduce((s, c) => s + c.plannedCount, 0);
+      let delivered = closedCycles.reduce((s, c) => s + c.deliveredCount, 0);
+      let addedAfterStart = closedCycles.reduce((s, c) => s + c.addedAfterStartCount, 0);
+      if (activeCycle) {
+        planned += activeCycle.plannedCount;
+        delivered += sumActiveDeliveredEstimate;
+        addedAfterStart += activeCycle.addedAfterStartCount;
+      }
+      const effectivenessPct = planned > 0 ? (delivered / planned) * 100 : 0;
+      return {
+        planned,
+        delivered,
+        addedAfterStart,
+        effectivenessPct,
+        pending: Math.max(0, planned - delivered),
+        deltaVsPrevious: null as number | null,
+      };
+    }
+
+    const selected = cycles.find((c) => c.id === analysisScope);
+    if (!selected) {
+      return {
+        planned: 0,
+        delivered: 0,
+        addedAfterStart: 0,
+        effectivenessPct: 0,
+        pending: 0,
+        deltaVsPrevious: null as number | null,
+      };
+    }
+    if (selected.status === "active") {
+      const planned = selected.plannedCount;
+      const delivered = sumActiveDeliveredEstimate;
+      const effectivenessPct = planned > 0 ? (delivered / planned) * 100 : 0;
+      return {
+        planned,
+        delivered,
+        addedAfterStart: selected.addedAfterStartCount,
+        effectivenessPct,
+        pending: Math.max(0, planned - delivered),
+        deltaVsPrevious:
+          latestClosed != null
+            ? effectivenessPct - latestClosed.effectivenessPct
+            : null,
+      };
+    }
+
+    const prev =
+      closedCycles
+        .filter((c) => c.cycleNumber < selected.cycleNumber)
+        .sort((a, b) => b.cycleNumber - a.cycleNumber)[0] ?? null;
+    return {
+      planned: selected.plannedCount,
+      delivered: selected.deliveredCount,
+      addedAfterStart: selected.addedAfterStartCount,
+      effectivenessPct: selected.effectivenessPct,
+      pending: Math.max(0, selected.plannedCount - selected.deliveredCount),
+      deltaVsPrevious:
+        prev != null ? selected.effectivenessPct - prev.effectivenessPct : null,
+    };
+  }, [
+    analysisScope,
+    activeCycle,
+    closedCycles,
+    cycles,
+    latestClosed,
+    sumActiveDeliveredEstimate,
+  ]);
+
+  const projectAnalysis = useMemo(() => {
+    if (analysisScope === "all") {
+      if (closedCycles.length === 0) {
+        if (!activeCycle) {
+          return {
+            title: "Nenhum ciclo",
+            description:
+              "Inicia um ciclo em Tarefas para ver aqui o acompanhamento por projeto.",
+            rows: [] as CycleProjectRow[],
+            linkedColumnTitle: "Tarefas ligadas",
+            completedColumnTitle: "Concluídas",
+            tableSubtitle: undefined as string | undefined,
+          };
+        }
+        return {
+          title: "Todos os ciclos (só em curso)",
+          description:
+            "«Ligadas» = inventário atual no quadro. «Concluídas» = neste ciclo, desde o início até agora. Sem ciclos fechados ainda, a vista corresponde ao ciclo ativo.",
+          rows: activeCycleProjectRows,
+          linkedColumnTitle: "Tarefas ligadas (agora)",
+          completedColumnTitle: "Concluídas no ciclo",
+          tableSubtitle:
+            "Ao fechar o ciclo, o quadro abaixo passa a mostrar o registo fechado de cada período.",
+        };
+      }
+      let agg = aggregateClosedProjectSnapshots(closedCycleProjectStats);
+      if (activeCycle) {
+        agg = mergeActiveIntoAggregate(agg, activeCycleProjectRows);
+      }
+      return {
+        title: "Todos os ciclos (agregado)",
+        description:
+          "Soma dos snapshots dos ciclos fechados (por projeto) e, se existir ciclo em curso, soma também os valores atuais desse período. Não é um total histórico da conta — apenas os ciclos considerados.",
+        rows: agg,
+        linkedColumnTitle: "Tarefas ligadas (soma)",
+        completedColumnTitle: "Concluídas (soma)",
+        tableSubtitle:
+          "A efetividade por linha continua a ser concluídas ÷ ligadas no agregado mostrado.",
+      };
+    }
+
+    const sel = cycles.find((c) => c.id === analysisScope);
+    if (!sel) {
+      return {
+        title: "—",
+        description: "",
+        rows: [] as CycleProjectRow[],
+        linkedColumnTitle: "Tarefas ligadas",
+        completedColumnTitle: "Concluídas",
+        tableSubtitle: undefined as string | undefined,
+      };
+    }
+    if (sel.status === "active") {
+      return {
+        title: `Ciclo ${sel.cycleNumber} (em curso)`,
+        description:
+          "«Ligadas» = inventário atual no quadro. «Concluídas» = neste ciclo, desde o início até agora.",
+        rows: activeCycleProjectRows,
+        linkedColumnTitle: "Tarefas ligadas (agora)",
+        completedColumnTitle: "Concluídas no ciclo",
+        tableSubtitle:
+          "Ao fechar o ciclo, o quadro abaixo passa a mostrar o registo fechado de cada período.",
+      };
+    }
+    const snap = statsByClosedCycle.get(sel.id) ?? [];
+    const rows: CycleProjectRow[] = snap.map((r) => ({
+      projectId: r.projectId,
+      projectName: r.projectName,
+      projectColor: r.projectColor,
+      tasksLinked: r.tasksLinked,
+      tasksCompleted: r.tasksCompletedInCycle,
+    }));
+    return {
+      title: `Ciclo ${sel.cycleNumber}`,
+      description:
+        "Guardado ao finalizar o ciclo: tarefas ligadas ao projeto no fecho e concluídas entre o início e o fim desse período.",
+      rows,
+      linkedColumnTitle: "Tarefas ligadas (no fecho)",
+      completedColumnTitle: "Concluídas no ciclo",
+      tableSubtitle:
+        snap.length === 0
+          ? "Sem dados guardados para este ciclo (ciclos antigos antes desta atualização não têm snapshot)."
+          : undefined,
+    };
+  }, [
+    analysisScope,
+    activeCycle,
+    activeCycleProjectRows,
+    closedCycleProjectStats,
+    closedCycles.length,
+    cycles,
+    statsByClosedCycle,
+  ]);
+
+  const analysisLabel =
+    analysisOptions.find((o) => o.value === analysisScope)?.label ?? "Análise";
+
+  const {
+    planned,
+    delivered,
+    addedAfterStart,
+    effectivenessPct,
+    pending,
+    deltaVsPrevious,
+  } = analysisKpi;
 
   const chartData = closedCycles.slice(-8);
   const chartMaxCount = useMemo(
@@ -422,13 +698,39 @@ export default function DashboardPage() {
                   : "Nenhum ciclo iniciado ainda"}
             </p>
           </div>
-          <Link
-            href="/dashboard/planning"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:opacity-95"
-          >
-            <span className="material-symbols-outlined text-[18px]">sync</span>
-            Gerenciar ciclos em Tarefas
-          </Link>
+          <div className="relative w-full sm:w-auto sm:min-w-[min(100%,280px)]">
+            <Listbox value={analysisScope} onChange={setAnalysisScope}>
+              <ListboxButton className="inline-flex w-full items-center justify-between gap-2 rounded-lg bg-primary px-4 py-2.5 text-left text-sm font-semibold text-on-primary shadow-sm ring-1 ring-on-primary/15 hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-on-primary/40 data-[hover]:opacity-95">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="material-symbols-outlined shrink-0 text-[20px]">
+                    analytics
+                  </span>
+                  <span className="truncate">{analysisLabel}</span>
+                </span>
+                <span className="material-symbols-outlined shrink-0 text-[20px] opacity-90">
+                  expand_more
+                </span>
+              </ListboxButton>
+              <ListboxOptions
+                transition
+                className="absolute right-0 z-50 mt-1 max-h-72 w-full min-w-[260px] overflow-auto rounded-xl border border-outline-variant/20 bg-surface-container-highest py-1 shadow-lg outline-none data-[closed]:data-[leave]:opacity-0 data-[leave]:transition data-[leave]:duration-100 sm:right-0 sm:w-[min(100vw-2rem,320px)]"
+              >
+                {analysisOptions.map((opt) => (
+                  <ListboxOption
+                    key={opt.value}
+                    value={opt.value}
+                    className="cursor-pointer px-3 py-2.5 text-sm text-on-surface data-[focus]:bg-primary/10 data-[selected]:font-semibold data-[selected]:text-primary"
+                  >
+                    {opt.label}
+                  </ListboxOption>
+                ))}
+              </ListboxOptions>
+            </Listbox>
+            <p className="mt-1.5 text-[11px] leading-snug text-on-surface-variant sm:text-right">
+              Afeta cartões e tabelas abaixo; o gráfico de linhas mantém sempre os ciclos
+              finalizados.
+            </p>
+          </div>
         </div>
         {error && (
           <div className="rounded-lg border border-error/40 bg-error/10 px-4 py-2 text-sm text-error">
@@ -454,7 +756,9 @@ export default function DashboardPage() {
             Total Entregue
           </p>
           <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">{delivered}</p>
-          <p className="text-xs font-semibold text-tertiary">{formatPct(effectiveness)} de eficácia</p>
+          <p className="text-xs font-semibold text-tertiary">
+            {formatPct(effectivenessPct)} de eficácia
+          </p>
         </article>
         <article className="rounded-xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
           <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Pendente</p>
@@ -463,11 +767,13 @@ export default function DashboardPage() {
         </article>
         <article className="rounded-xl bg-primary p-5 text-on-primary shadow-lg">
           <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Meta Global</p>
-          <p className="mt-2 font-headline text-3xl font-extrabold">{formatPct(effectiveness)}</p>
+          <p className="mt-2 font-headline text-3xl font-extrabold">{formatPct(effectivenessPct)}</p>
           <p className="text-xs opacity-85">
-            {deltaVsPrevious == null
-              ? "Sem base comparativa ainda"
-              : `${deltaVsPrevious >= 0 ? "+" : ""}${deltaVsPrevious.toFixed(1)} p.p. vs ciclo anterior`}
+            {analysisScope === "all"
+              ? "Vista agregada: sem comparação ciclo a ciclo"
+              : deltaVsPrevious == null
+                ? "Sem base comparativa ainda"
+                : `${deltaVsPrevious >= 0 ? "+" : ""}${deltaVsPrevious.toFixed(1)} p.p. vs ciclo anterior`}
           </p>
         </article>
       </section>
@@ -476,34 +782,25 @@ export default function DashboardPage() {
         <h2 className="font-headline text-xl font-bold text-on-surface">Projetos no ciclo</h2>
         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-on-surface-variant">
           Por projeto: quantas tarefas estão ligadas ao projeto no período considerado, quantas foram
-          concluídas nesse mesmo âmbito, e a efetividade (concluídas ÷ ligadas). Isto é sempre por{" "}
-          <strong className="font-semibold text-on-surface">ciclo</strong>, não um total histórico da
-          conta.
+          concluídas nesse mesmo âmbito, e a efetividade (concluídas ÷ ligadas). O âmbito segue o menu{" "}
+          <strong className="font-semibold text-on-surface">Análise</strong> no topo (agregado ou um
+          ciclo).
         </p>
 
-        {activeCycle ? (
-          <div className="mt-8">
-            <h3 className="font-headline text-base font-bold text-on-surface">
-              Ciclo {activeCycle.cycleNumber} (em curso)
-            </h3>
-            <p className="mt-1 text-sm text-on-surface-variant">
-              &quot;Ligadas&quot; = inventário atual no quadro. &quot;Concluídas&quot; = neste ciclo,
-              desde o início até agora.
-            </p>
-            <div className="mt-4">
-              <CycleProjectStatsTable
-                rows={activeCycleProjectRows}
-                linkedColumnTitle="Tarefas ligadas (agora)"
-                completedColumnTitle="Concluídas no ciclo"
-                subtitle="Ao fechar o ciclo, o quadro abaixo passa a mostrar o registo fechado de cada período."
-              />
-            </div>
+        <div className="mt-8">
+          <h3 className="font-headline text-base font-bold text-on-surface">
+            {projectAnalysis.title}
+          </h3>
+          <p className="mt-1 text-sm text-on-surface-variant">{projectAnalysis.description}</p>
+          <div className="mt-4">
+            <CycleProjectStatsTable
+              rows={projectAnalysis.rows}
+              linkedColumnTitle={projectAnalysis.linkedColumnTitle}
+              completedColumnTitle={projectAnalysis.completedColumnTitle}
+              subtitle={projectAnalysis.tableSubtitle}
+            />
           </div>
-        ) : (
-          <p className="mt-6 text-sm text-on-surface-variant">
-            Sem ciclo ativo. Inicia um ciclo em Tarefas para ver aqui o acompanhamento por projeto.
-          </p>
-        )}
+        </div>
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -572,15 +869,16 @@ export default function DashboardPage() {
         <h2 className="font-headline text-xl font-bold text-on-surface">Histórico — ciclos fechados</h2>
         <p className="mt-1 max-w-3xl text-sm text-on-surface-variant">
           Guardado ao finalizar cada ciclo: tarefas ligadas ao projeto no fecho, concluídas entre o
-          início e o fim desse ciclo, e efetividade.
+          início e o fim desse ciclo, e efetividade. Filtra pelo menu Análise; em &quot;Todos os
+          ciclos&quot; vês cada período em blocos separados.
         </p>
-        {chartData.length === 0 ? (
+        {closedCycles.length === 0 ? (
           <p className="mt-4 text-sm text-on-surface-variant">
             Finalize um ciclo em Tarefas para ver o detalhe por projeto aqui.
           </p>
-        ) : (
+        ) : analysisScope === "all" ? (
           <div className="mt-6 space-y-8">
-            {[...chartData].reverse().map((cycle) => {
+            {[...closedCycles].reverse().map((cycle) => {
               const rows = statsByClosedCycle.get(cycle.id) ?? [];
               const asRows: CycleProjectRow[] = rows.map((r) => ({
                 projectId: r.projectId,
@@ -610,6 +908,50 @@ export default function DashboardPage() {
               );
             })}
           </div>
+        ) : analysisScope !== "all" &&
+          cycles.find((c) => c.id === analysisScope)?.status === "active" ? (
+          <p className="mt-4 text-sm text-on-surface-variant">
+            Os snapshots por projeto são gravados ao fechar cada ciclo. Para o período em curso, usa a
+            secção &quot;Projetos no ciclo&quot; acima.
+          </p>
+        ) : (
+          (() => {
+            const sel = cycles.find((c) => c.id === analysisScope);
+            if (!sel || sel.status !== "closed") {
+              return (
+                <p className="mt-4 text-sm text-on-surface-variant">
+                  Seleciona um ciclo fechado no menu Análise para ver o detalhe guardado.
+                </p>
+              );
+            }
+            const rows = statsByClosedCycle.get(sel.id) ?? [];
+            const asRows: CycleProjectRow[] = rows.map((r) => ({
+              projectId: r.projectId,
+              projectName: r.projectName,
+              projectColor: r.projectColor,
+              tasksLinked: r.tasksLinked,
+              tasksCompleted: r.tasksCompletedInCycle,
+            }));
+            return (
+              <div className="mt-6">
+                <h3 className="font-headline text-base font-bold text-on-surface">
+                  Ciclo {sel.cycleNumber}
+                </h3>
+                <div className="mt-3">
+                  <CycleProjectStatsTable
+                    rows={asRows}
+                    linkedColumnTitle="Tarefas ligadas (no fecho)"
+                    completedColumnTitle="Concluídas no ciclo"
+                    subtitle={
+                      rows.length === 0
+                        ? "Sem dados guardados para este ciclo (ciclos antigos antes desta atualização não têm snapshot)."
+                        : undefined
+                    }
+                  />
+                </div>
+              </div>
+            );
+          })()
         )}
       </section>
     </div>
