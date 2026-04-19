@@ -33,7 +33,9 @@ export function useMicroCompleteToggle(opts: {
     }
     setIsCompleting(true)
     timerRef.current = setTimeout(() => {
-      onConfirm()
+      void Promise.resolve(onConfirm()).finally(() => {
+        setIsCompleting(false)
+      })
       timerRef.current = null
     }, COMPLETE_DELAY_MS)
   }, [completed, onConfirm])

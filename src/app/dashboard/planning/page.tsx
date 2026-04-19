@@ -319,8 +319,11 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
           </div>
       </div>
 
-      {/* Botões de ação (hover) */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 self-start shrink-0 bg-surface-container-lowest/95 backdrop-blur-sm rounded-md px-1 py-0.5">
+      {/* Botões de ação (hover) — stopPropagation evita o DnD capturar o clique como arrasto */}
+      <div
+        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 self-start shrink-0 bg-surface-container-lowest/95 backdrop-blur-sm rounded-md px-1 py-0.5"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         {/* Botão de editar */}
         <button
           type="button"
@@ -929,8 +932,8 @@ export default function PlanningPage() {
 
   const handleDeleteReminder = async (reminderId: string, anchorRect?: DOMRect) => {
     if (!confirm('Remover este lembrete?')) return
-    if (anchorRect) burstTaskDelete(anchorRect)
     const ok = await deleteReminder(reminderId)
+    if (ok && anchorRect) burstTaskDelete(anchorRect)
     if (!ok) showError('Não foi possível excluir o lembrete.')
     if (editingReminder?.id === reminderId) {
       setShowEditReminderForm(false)
@@ -1274,9 +1277,13 @@ export default function PlanningPage() {
   // Função para deletar item com confirmação de qualquer bloco
   const handleDeleteTodoFromAnyBlock = async (todo: Todo, anchorRect?: DOMRect) => {
     if (!confirm('Tem certeza que deseja deletar esta tarefa? Esta ação não pode ser desfeita.')) return
-    if (anchorRect) burstTaskDelete(anchorRect)
     const success = await deleteTodo(todo.id)
+    if (success && anchorRect) burstTaskDelete(anchorRect)
     if (!success) showError('Não foi possível excluir a tarefa.')
+    if (success && editingTodo?.id === todo.id) {
+      setEditingTodo(null)
+      setShowEditTodoModal(false)
+    }
   }
 
   // Funções para backlog
@@ -1452,10 +1459,12 @@ export default function PlanningPage() {
     return () => window.removeEventListener('keydown', onEsc)
   }, [showInProgressCreateForm])
 
-  // Configuração dos sensores para drag and drop
+  // Configuração dos sensores para drag and drop (distância evita arrastar ao clicar em botões)
   const sensors = useSensors(
-  useSensor(PointerSensor),
-  useSensor(KeyboardSensor, {
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
