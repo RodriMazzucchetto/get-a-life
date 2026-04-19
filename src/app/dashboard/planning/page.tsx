@@ -319,11 +319,8 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
           </div>
       </div>
 
-      {/* Botões de ação (hover) — stopPropagation evita o DnD capturar o clique como arrasto */}
-      <div
-        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 self-start shrink-0 bg-surface-container-lowest/95 backdrop-blur-sm rounded-md px-1 py-0.5"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
+      {/* Botões (hover): sem pointer-events até hover no cartão — evita área invisível a roubar cliques */}
+      <div className="pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-2 self-start shrink-0 bg-surface-container-lowest/95 backdrop-blur-sm rounded-md px-1 py-0.5">
         {/* Botão de editar */}
         <button
           type="button"
@@ -595,6 +592,11 @@ export default function PlanningPage() {
   const [on_hold_reason, setOnHoldReason] = useState('')
   const [todoToPutOnHold, setTodoToPutOnHold] = useState<Todo | null>(null)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
+  /** Confirmação in-app (window.confirm falha em vários ambientes / com eventos sintéticos). */
+  const [todoDeleteConfirm, setTodoDeleteConfirm] = useState<{
+    todo: Todo
+    anchorRect?: DOMRect
+  } | null>(null)
   const [showInlineCreateForm, setShowInlineCreateForm] = useState(false)
   // Estados de tags REMOVIDOS - será reimplementado do zero
   const [newTodo, setNewTodo] = useState({
@@ -1027,17 +1029,11 @@ export default function PlanningPage() {
     if (!result) showError('Não foi possível atualizar a tarefa.')
   }
 
-  const handleDeleteTodo = async (todoId: string) => {
-    if (!confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) return
-    const success = await deleteTodo(todoId)
-    if (success) {
-      if (editingTodo?.id === todoId) {
-        setEditingTodo(null)
-        setShowEditTodoModal(false)
-      }
-    } else {
-      showError('Não foi possível excluir a tarefa.')
-    }
+  const handleDeleteTodo = (todoId: string) => {
+    const todo =
+      editingTodo?.id === todoId ? editingTodo : todos.find((t) => t.id === todoId)
+    if (!todo) return
+    setTodoDeleteConfirm({ todo })
   }
 
   const handleTogglePriority = async (todoId: string) => {
@@ -1274,9 +1270,10 @@ export default function PlanningPage() {
     }
   }
 
-  // Função para deletar item com confirmação de qualquer bloco
-  const handleDeleteTodoFromAnyBlock = async (todo: Todo, anchorRect?: DOMRect) => {
-    if (!confirm('Tem certeza que deseja deletar esta tarefa? Esta ação não pode ser desfeita.')) return
+  const executeConfirmedTodoDelete = async () => {
+    if (!todoDeleteConfirm) return
+    const { todo, anchorRect } = todoDeleteConfirm
+    setTodoDeleteConfirm(null)
     const success = await deleteTodo(todo.id)
     if (success && anchorRect) burstTaskDelete(anchorRect)
     if (!success) showError('Não foi possível excluir a tarefa.')
@@ -1284,6 +1281,10 @@ export default function PlanningPage() {
       setEditingTodo(null)
       setShowEditTodoModal(false)
     }
+  }
+
+  const handleDeleteTodoFromAnyBlock = (todo: Todo, anchorRect?: DOMRect) => {
+    setTodoDeleteConfirm({ todo, anchorRect })
   }
 
   // Funções para backlog
@@ -1339,12 +1340,6 @@ export default function PlanningPage() {
         completed: !currentTodo.completed
       })
     }
-  }
-
-  const handleDeleteBacklogTodo = async (todoId: string) => {
-    if (!confirm('Tem certeza que deseja deletar este to-do? Esta ação não pode ser desfeita.')) return
-    const success = await deleteTodo(todoId)
-    if (!success) showError('Não foi possível excluir a tarefa.')
   }
 
   const handleToggleBacklogPriority = async (todoId: string) => {
@@ -2703,6 +2698,38 @@ export default function PlanningPage() {
                 </div>
               </div>
             )}
+          </div>
+        </ModalPanel>
+      </ModalOverlay>
+
+      <ModalOverlay
+        isOpen={!!todoDeleteConfirm}
+        onClose={() => setTodoDeleteConfirm(null)}
+      >
+        <ModalPanel maxWidthClass="max-w-md">
+          <div className="mt-2">
+            <h3 className="text-lg font-semibold text-gray-900">Excluir tarefa?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              {todoDeleteConfirm
+                ? `«${todoDeleteConfirm.todo.title.trim() || 'Sem título'}» será removida permanentemente.`
+                : null}
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setTodoDeleteConfirm(null)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void executeConfirmedTodoDelete()}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                Excluir
+              </button>
+            </div>
           </div>
         </ModalPanel>
       </ModalOverlay>
