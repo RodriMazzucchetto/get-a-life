@@ -19,6 +19,12 @@ function formatPct(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
+/** Eficácia no dashboard: concluídas ÷ âmbito planejado, nunca acima de 100%. */
+function effectivenessPctCapped(delivered: number, planned: number): number {
+  if (planned <= 0) return 0;
+  return Math.min(100, (delivered / planned) * 100);
+}
+
 /** Cores fixas contrastantes (independentes do token primary, que colidia com primary-container). */
 const CHART_COLOR_PLANNED = "#0284c7";
 const CHART_COLOR_DELIVERED = "#ea580c";
@@ -491,6 +497,11 @@ export default function DashboardPage() {
     [activeCycleProjectRows]
   );
 
+  const sumActiveLinkedEstimate = useMemo(
+    () => activeCycleProjectRows.reduce((s, r) => s + r.tasksLinked, 0),
+    [activeCycleProjectRows]
+  );
+
   const analysisKpi = useMemo(() => {
     if (analysisScope === "all") {
       if (closedCycles.length === 0) {
@@ -504,9 +515,10 @@ export default function DashboardPage() {
             deltaVsPrevious: null as number | null,
           };
         }
-        const planned = activeCycle.plannedCount;
+        const planned =
+          sumActiveLinkedEstimate > 0 ? sumActiveLinkedEstimate : activeCycle.plannedCount;
         const delivered = sumActiveDeliveredEstimate;
-        const effectivenessPct = planned > 0 ? (delivered / planned) * 100 : 0;
+        const effectivenessPct = effectivenessPctCapped(delivered, planned);
         return {
           planned,
           delivered,
@@ -515,19 +527,41 @@ export default function DashboardPage() {
           pending: Math.max(0, planned - delivered),
           deltaVsPrevious:
             latestClosed != null
-              ? effectivenessPct - latestClosed.effectivenessPct
+              ? effectivenessPct -
+                effectivenessPctCapped(
+                  statsByClosedCycle.get(latestClosed.id)?.reduce(
+                    (s, r) => s + r.tasksCompletedInCycle,
+                    0
+                  ) ?? latestClosed.deliveredCount,
+                  statsByClosedCycle.get(latestClosed.id)?.reduce((s, r) => s + r.tasksLinked, 0) ??
+                    latestClosed.plannedCount
+                )
               : null,
         };
       }
-      let planned = closedCycles.reduce((s, c) => s + c.plannedCount, 0);
-      let delivered = closedCycles.reduce((s, c) => s + c.deliveredCount, 0);
+      let planned = 0;
+      let delivered = 0;
+      for (const c of closedCycles) {
+        const rows = statsByClosedCycle.get(c.id) ?? [];
+        if (rows.length > 0) {
+          planned += rows.reduce((s, r) => s + r.tasksLinked, 0);
+          delivered += rows.reduce((s, r) => s + r.tasksCompletedInCycle, 0);
+        } else {
+          planned += c.plannedCount;
+          delivered += c.deliveredCount;
+        }
+      }
       let addedAfterStart = closedCycles.reduce((s, c) => s + c.addedAfterStartCount, 0);
       if (activeCycle) {
-        planned += activeCycle.plannedCount;
+        if (sumActiveLinkedEstimate > 0) {
+          planned += sumActiveLinkedEstimate;
+        } else {
+          planned += activeCycle.plannedCount;
+        }
         delivered += sumActiveDeliveredEstimate;
         addedAfterStart += activeCycle.addedAfterStartCount;
       }
-      const effectivenessPct = planned > 0 ? (delivered / planned) * 100 : 0;
+      const effectivenessPct = effectivenessPctCapped(delivered, planned);
       return {
         planned,
         delivered,
@@ -550,9 +584,10 @@ export default function DashboardPage() {
       };
     }
     if (selected.status === "active") {
-      const planned = selected.plannedCount;
+      const planned =
+        sumActiveLinkedEstimate > 0 ? sumActiveLinkedEstimate : selected.plannedCount;
       const delivered = sumActiveDeliveredEstimate;
-      const effectivenessPct = planned > 0 ? (delivered / planned) * 100 : 0;
+      const effectivenessPct = effectivenessPctCapped(delivered, planned);
       return {
         planned,
         delivered,
@@ -561,7 +596,15 @@ export default function DashboardPage() {
         pending: Math.max(0, planned - delivered),
         deltaVsPrevious:
           latestClosed != null
-            ? effectivenessPct - latestClosed.effectivenessPct
+            ? effectivenessPct -
+              effectivenessPctCapped(
+                statsByClosedCycle.get(latestClosed.id)?.reduce(
+                  (s, r) => s + r.tasksCompletedInCycle,
+                  0
+                ) ?? latestClosed.deliveredCount,
+                statsByClosedCycle.get(latestClosed.id)?.reduce((s, r) => s + r.tasksLinked, 0) ??
+                  latestClosed.plannedCount
+              )
             : null,
       };
     }
@@ -575,7 +618,7 @@ export default function DashboardPage() {
     if (snapRows.length > 0) {
       const delivered = snapRows.reduce((s, r) => s + r.tasksCompletedInCycle, 0);
       const linked = snapRows.reduce((s, r) => s + r.tasksLinked, 0);
-      const effectivenessPct = linked > 0 ? (delivered / linked) * 100 : 0;
+      const effectivenessPct = effectivenessPctCapped(delivered, linked);
 
       const prevEff =
         prev != null
@@ -584,18 +627,18 @@ export default function DashboardPage() {
               if (pr.length > 0) {
                 const d = pr.reduce((s, x) => s + x.tasksCompletedInCycle, 0);
                 const l = pr.reduce((s, x) => s + x.tasksLinked, 0);
-                return l > 0 ? (d / l) * 100 : 0;
+                return effectivenessPctCapped(d, l);
               }
               return prev.effectivenessPct;
             })()
           : null;
 
       return {
-        planned: selected.plannedCount,
+        planned: linked,
         delivered,
         addedAfterStart: selected.addedAfterStartCount,
         effectivenessPct,
-        pending: Math.max(0, selected.plannedCount - delivered),
+        pending: Math.max(0, linked - delivered),
         deltaVsPrevious:
           prev != null ? effectivenessPct - (prevEff ?? prev.effectivenessPct) : null,
       };
@@ -605,7 +648,7 @@ export default function DashboardPage() {
       planned: selected.plannedCount,
       delivered: selected.deliveredCount,
       addedAfterStart: selected.addedAfterStartCount,
-      effectivenessPct: selected.effectivenessPct,
+      effectivenessPct: effectivenessPctCapped(selected.deliveredCount, selected.plannedCount),
       pending: Math.max(0, selected.plannedCount - selected.deliveredCount),
       deltaVsPrevious:
         prev != null ? selected.effectivenessPct - prev.effectivenessPct : null,
@@ -617,6 +660,7 @@ export default function DashboardPage() {
     cycles,
     latestClosed,
     sumActiveDeliveredEstimate,
+    sumActiveLinkedEstimate,
     statsByClosedCycle,
   ]);
 
