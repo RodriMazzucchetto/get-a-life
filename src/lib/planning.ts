@@ -791,28 +791,13 @@ export const cyclesService = {
     if (!active) throw new Error('Nenhum ciclo ativo para finalizar.')
 
     const endedAt = new Date().toISOString()
-    const { count: deliveredCount, error: deliveredErr } = await supabase
-      .from('todos')
-      .select('id', { head: true, count: 'exact' })
-      .eq('user_id', userId)
-      .eq('completed', true)
-      .in('status', ['current_week', 'in_progress'])
-    if (deliveredErr) {
-      console.error('Erro ao contar tarefas entregues no ciclo:', deliveredErr)
-      throw deliveredErr
-    }
-
-    const planned = active.planned_count || 0
-    const delivered = deliveredCount ?? 0
-    const effectiveness = planned > 0 ? Number(((delivered / planned) * 100).toFixed(1)) : 0
-
     const { data, error } = await supabase
       .from('task_cycles')
       .update({
         status: 'closed',
         ended_at: endedAt,
-        delivered_count: delivered,
-        effectiveness_pct: effectiveness,
+        delivered_count: 0,
+        effectiveness_pct: 0,
         updated_at: endedAt,
       })
       .eq('id', active.id)
@@ -832,7 +817,42 @@ export const cyclesService = {
       console.error('Erro ao gravar estatísticas por projeto do ciclo:', snapErr)
     }
 
-    return data as DBTaskCycle
+    const { data: statRows, error: statErr } = await supabase
+      .from('task_cycle_project_stats')
+      .select('tasks_linked, tasks_completed_in_cycle')
+      .eq('task_cycle_id', data.id)
+
+    if (statErr) {
+      console.error('Erro ao agregar snapshot do ciclo:', statErr)
+    }
+
+    let linkedSum = 0
+    let deliveredSum = 0
+    for (const r of statRows ?? []) {
+      linkedSum += r.tasks_linked ?? 0
+      deliveredSum += r.tasks_completed_in_cycle ?? 0
+    }
+    const effectiveness =
+      linkedSum > 0 ? Number(((deliveredSum / linkedSum) * 100).toFixed(1)) : 0
+
+    const { data: finalRow, error: patchErr } = await supabase
+      .from('task_cycles')
+      .update({
+        delivered_count: deliveredSum,
+        effectiveness_pct: effectiveness,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.id)
+      .eq('user_id', userId)
+      .select('*')
+      .single()
+
+    if (patchErr || !finalRow) {
+      console.error('Erro ao atualizar totais do ciclo a partir do snapshot:', patchErr)
+      return data as DBTaskCycle
+    }
+
+    return finalRow as DBTaskCycle
   },
 
   /** Totais globais: tarefas ligadas vs concluídas por projeto. */

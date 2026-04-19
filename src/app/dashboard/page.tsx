@@ -114,6 +114,7 @@ function CyclePerformanceLineChart({
               strokeDasharray="8 5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              pointerEvents="none"
               points={pointsAttr(plannedVals)}
             />
             <polyline
@@ -122,6 +123,7 @@ function CyclePerformanceLineChart({
               strokeWidth={2.75}
               strokeLinecap="round"
               strokeLinejoin="round"
+              pointerEvents="none"
               points={pointsAttr(deliveredVals)}
             />
             <polyline
@@ -130,53 +132,70 @@ function CyclePerformanceLineChart({
               strokeWidth={2.75}
               strokeLinecap="round"
               strokeLinejoin="round"
+              pointerEvents="none"
               points={pointsAttr(effVals)}
             />
           </>
         ) : null}
 
-        {cycles.map((c, i) => (
-          <g key={c.id}>
-            <circle
-              cx={xAt(i)}
-              cy={yAt(plannedVals[i])}
-              r={5}
-              fill={CHART_COLOR_PLANNED}
-              stroke="#fff"
-              strokeWidth={1.5}
-            >
-              <title>{`Planejado: ${c.plannedCount} (+${c.addedAfterStartCount} após início)`}</title>
-            </circle>
-            <circle
-              cx={xAt(i)}
-              cy={yAt(deliveredVals[i])}
-              r={5}
-              fill={CHART_COLOR_DELIVERED}
-              stroke="#fff"
-              strokeWidth={1.5}
-            >
-              <title>{`Entregue: ${c.deliveredCount}`}</title>
-            </circle>
-            <circle
-              cx={xAt(i)}
-              cy={yAt(effVals[i])}
-              r={5}
-              fill={CHART_COLOR_EFFECT}
-              stroke="#fff"
-              strokeWidth={1.5}
-            >
-              <title>{`Efetividade: ${formatPct(c.effectivenessPct)}`}</title>
-            </circle>
-            <text
-              x={xAt(i)}
-              y={vbH - 12}
-              textAnchor="middle"
-              className="fill-on-surface-variant text-[11px] font-bold"
-            >
-              {`Ciclo ${c.cycleNumber}`}
-            </text>
-          </g>
-        ))}
+        {cycles.map((c, i) => {
+          const py = yAt(plannedVals[i]);
+          const dy = yAt(deliveredVals[i]);
+          const ey = yAt(effVals[i]);
+          const top = Math.min(py, dy, ey);
+          const bottom = Math.max(py, dy, ey);
+          const hitPad = 12;
+          return (
+            <g key={c.id}>
+              <text
+                x={xAt(i)}
+                y={vbH - 12}
+                textAnchor="middle"
+                className="fill-on-surface-variant text-[11px] font-bold"
+                pointerEvents="none"
+              >
+                {`Ciclo ${c.cycleNumber}`}
+              </text>
+              <circle
+                cx={xAt(i)}
+                cy={py}
+                r={5}
+                fill={CHART_COLOR_PLANNED}
+                stroke="#fff"
+                strokeWidth={1.5}
+                pointerEvents="none"
+              />
+              <circle
+                cx={xAt(i)}
+                cy={dy}
+                r={5}
+                fill={CHART_COLOR_DELIVERED}
+                stroke="#fff"
+                strokeWidth={1.5}
+                pointerEvents="none"
+              />
+              <circle
+                cx={xAt(i)}
+                cy={ey}
+                r={5}
+                fill={CHART_COLOR_EFFECT}
+                stroke="#fff"
+                strokeWidth={1.5}
+                pointerEvents="none"
+              />
+              <rect
+                x={xAt(i) - 22}
+                y={top - hitPad}
+                width={44}
+                height={Math.max(bottom - top + hitPad * 2, 28)}
+                fill="transparent"
+                className="cursor-default"
+              >
+                <title>{`Planejado: ${c.plannedCount} (+${c.addedAfterStartCount} após início) · Entregue: ${c.deliveredCount} · Efetividade: ${formatPct(c.effectivenessPct)}`}</title>
+              </rect>
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
@@ -551,6 +570,37 @@ export default function DashboardPage() {
       closedCycles
         .filter((c) => c.cycleNumber < selected.cycleNumber)
         .sort((a, b) => b.cycleNumber - a.cycleNumber)[0] ?? null;
+
+    const snapRows = statsByClosedCycle.get(selected.id) ?? [];
+    if (snapRows.length > 0) {
+      const delivered = snapRows.reduce((s, r) => s + r.tasksCompletedInCycle, 0);
+      const linked = snapRows.reduce((s, r) => s + r.tasksLinked, 0);
+      const effectivenessPct = linked > 0 ? (delivered / linked) * 100 : 0;
+
+      const prevEff =
+        prev != null
+          ? (() => {
+              const pr = statsByClosedCycle.get(prev.id) ?? [];
+              if (pr.length > 0) {
+                const d = pr.reduce((s, x) => s + x.tasksCompletedInCycle, 0);
+                const l = pr.reduce((s, x) => s + x.tasksLinked, 0);
+                return l > 0 ? (d / l) * 100 : 0;
+              }
+              return prev.effectivenessPct;
+            })()
+          : null;
+
+      return {
+        planned: selected.plannedCount,
+        delivered,
+        addedAfterStart: selected.addedAfterStartCount,
+        effectivenessPct,
+        pending: Math.max(0, selected.plannedCount - delivered),
+        deltaVsPrevious:
+          prev != null ? effectivenessPct - (prevEff ?? prev.effectivenessPct) : null,
+      };
+    }
+
     return {
       planned: selected.plannedCount,
       delivered: selected.deliveredCount,
@@ -567,6 +617,7 @@ export default function DashboardPage() {
     cycles,
     latestClosed,
     sumActiveDeliveredEstimate,
+    statsByClosedCycle,
   ]);
 
   const projectAnalysis = useMemo(() => {
@@ -675,14 +726,31 @@ export default function DashboardPage() {
     deltaVsPrevious,
   } = analysisKpi;
 
-  const chartData = closedCycles.slice(-8);
+  const chartDataRaw = useMemo(() => closedCycles.slice(-8), [closedCycles]);
+  /** Entregue/efetividade a partir do snapshot por projeto (mesma base que a tabela), não dos campos antigos em task_cycles. */
+  const chartCycles = useMemo(() => {
+    return chartDataRaw.map((c) => {
+      const rows = statsByClosedCycle.get(c.id) ?? [];
+      if (rows.length === 0) return c;
+      const delivered = rows.reduce((s, r) => s + r.tasksCompletedInCycle, 0);
+      const linked = rows.reduce((s, r) => s + r.tasksLinked, 0);
+      const effectivenessPct =
+        linked > 0 ? Number(((delivered / linked) * 100).toFixed(1)) : 0;
+      return {
+        ...c,
+        deliveredCount: delivered,
+        effectivenessPct,
+      };
+    });
+  }, [chartDataRaw, statsByClosedCycle]);
+
   const chartMaxCount = useMemo(
     () =>
       Math.max(
         1,
-        ...chartData.flatMap((c) => [c.plannedCount, c.deliveredCount])
+        ...chartCycles.flatMap((c) => [c.plannedCount, c.deliveredCount])
       ),
-    [chartData]
+    [chartCycles]
   );
 
   return (
@@ -809,7 +877,7 @@ export default function DashboardPage() {
           <div className="mt-6 flex flex-col gap-2 border-t border-outline-variant/15 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-xl text-xs text-on-surface-variant">
               Se os números por projeto parecerem antigos (antes da correção do cálculo), recalcula os
-              snapshots guardados na base. Isto não altera o gráfico de linhas acima.
+              snapshots guardados na base. O histórico em linhas usa estes totais quando existem.
             </p>
             <button
               type="button"
@@ -872,7 +940,7 @@ export default function DashboardPage() {
         </div>
         {loading ? (
           <div className="py-12 text-center text-sm text-on-surface-variant">Carregando ciclos...</div>
-        ) : chartData.length === 0 ? (
+        ) : chartCycles.length === 0 ? (
           <div className="py-12 text-center text-sm text-on-surface-variant">
             Ainda não há ciclos finalizados para exibir.
           </div>
@@ -901,7 +969,7 @@ export default function DashboardPage() {
                 Efetividade %
               </span>
             </div>
-            <CyclePerformanceLineChart cycles={chartData} maxCount={chartMaxCount} />
+            <CyclePerformanceLineChart cycles={chartCycles} maxCount={chartMaxCount} />
           </div>
         )}
       </section>
