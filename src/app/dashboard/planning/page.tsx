@@ -2130,44 +2130,48 @@ export default function PlanningPage() {
           />
         ) : null}
 
-        <div className="fixed bottom-8 right-6 lg:right-10 z-40">
-          {showQuickActionsMenu ? (
-            <div className="mb-3 w-64 rounded-xl border border-outline-variant/25 bg-surface-container-lowest p-2 shadow-2xl ring-1 ring-outline-variant/10">
+        <div className="fixed inset-x-0 bottom-8 z-40 pointer-events-none lg:pl-64">
+          <div className="mx-auto flex w-full max-w-7xl justify-end px-4 sm:px-6 lg:px-8">
+            <div className="pointer-events-auto">
+              {showQuickActionsMenu ? (
+                <div className="mb-3 w-64 rounded-xl border border-outline-variant/25 bg-surface-container-lowest p-2 shadow-2xl ring-1 ring-outline-variant/10">
+                  <button
+                    type="button"
+                    onClick={handleOpenBacklogFromQuickActions}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-on-surface hover:bg-surface-container-high"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add_task</span>
+                    Adicionar nova tarefa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowQuickActionsMenu(false)
+                      setShowFinishCycleConfirm(true)
+                    }}
+                    disabled={!activeCycle || cycleBusy}
+                    className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-on-surface hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">flag</span>
+                    Finalizar ciclo
+                  </button>
+                </div>
+              ) : null}
+
               <button
                 type="button"
-                onClick={handleOpenBacklogFromQuickActions}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-on-surface hover:bg-surface-container-high"
+                onClick={() => setShowQuickActionsMenu((v) => !v)}
+                className="h-14 w-14 rounded-full bg-primary text-on-primary shadow-2xl transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
+                title="Ações rápidas"
+                aria-label="Abrir ações rápidas"
+                aria-expanded={showQuickActionsMenu}
               >
-                <span className="material-symbols-outlined text-[18px]">add_task</span>
-                Adicionar nova tarefa
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickActionsMenu(false)
-                  setShowFinishCycleConfirm(true)
-                }}
-                disabled={!activeCycle || cycleBusy}
-                className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-on-surface hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-[18px]">flag</span>
-                Finalizar ciclo
+                <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  bolt
+                </span>
               </button>
             </div>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={() => setShowQuickActionsMenu((v) => !v)}
-            className="h-14 w-14 rounded-full bg-primary text-on-primary shadow-2xl transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
-            title="Ações rápidas"
-            aria-label="Abrir ações rápidas"
-            aria-expanded={showQuickActionsMenu}
-          >
-            <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              bolt
-            </span>
-          </button>
+          </div>
         </div>
 
         <DragOverlay adjustScale={false}>
