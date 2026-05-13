@@ -279,7 +279,7 @@ function CyclePerformanceBarChart({
 
             return (
               <div key={cycle.id} className="flex flex-1 flex-col items-center gap-3">
-                <div className="flex w-full items-end justify-center gap-2">
+                <div className="flex h-52 w-full items-end justify-center gap-2">
                   {mode === "delivery" ? (
                     <>
                       <div
