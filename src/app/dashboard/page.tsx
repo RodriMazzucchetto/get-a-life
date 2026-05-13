@@ -25,10 +25,10 @@ function effectivenessPctCapped(delivered: number, planned: number): number {
   return Math.min(100, (delivered / planned) * 100);
 }
 
-/** Cores fixas contrastantes (independentes do token primary, que colidia com primary-container). */
-const CHART_COLOR_PLANNED = "#0284c7";
-const CHART_COLOR_DELIVERED = "#ea580c";
-const CHART_COLOR_EFFECT = "#7c3aed";
+/** Cores dos gráficos alinhadas ao design system (tokens globais). */
+const CHART_COLOR_PLANNED = "var(--color-primary-container)";
+const CHART_COLOR_DELIVERED = "var(--color-tertiary-container)";
+const CHART_COLOR_EFFECT = "var(--color-secondary)";
 
 /** Gráfico de linhas com escala real para contagens e eixo de % para efetividade. */
 function CyclePerformanceLineChart({
