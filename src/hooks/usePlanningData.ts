@@ -387,6 +387,7 @@ export function usePlanningData() {
           toUpdate.map((initiative) =>
             initiativesService.updateInitiative(initiative.id, {
               title: initiative.title,
+              status: initiative.completed ? 'completed' : 'active',
             })
           )
         )

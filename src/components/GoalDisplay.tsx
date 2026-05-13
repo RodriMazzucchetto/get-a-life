@@ -70,6 +70,7 @@ export function GoalDisplay({
   const [draftByGoal, setDraftByGoal] = useState<Record<string, GoalDraft>>({})
   const [descriptionExpandedByGoal, setDescriptionExpandedByGoal] = useState<Record<string, boolean>>({})
   const [editingNextStepByGoal, setEditingNextStepByGoal] = useState<Record<string, boolean>>({})
+  const [editingDescriptionByGoal, setEditingDescriptionByGoal] = useState<Record<string, boolean>>({})
   const [newInitiativeByGoal, setNewInitiativeByGoal] = useState<Record<string, string>>({})
   const [editingInitiativeId, setEditingInitiativeId] = useState<string | null>(null)
   const [editingInitiativeTitle, setEditingInitiativeTitle] = useState('')
@@ -444,30 +445,57 @@ export function GoalDisplay({
                     <label className="block text-sm">
                       <div className="mb-1 flex items-center justify-between">
                         <span className="font-semibold text-on-surface">Descrição</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDescriptionExpandedByGoal((prev) => ({
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDescriptionExpandedByGoal((prev) => ({
+                                ...prev,
+                                [goal.id]: !descExpanded,
+                              }))
+                            }
+                            className="text-xs font-semibold text-primary hover:underline"
+                          >
+                            {descExpanded ? 'Ver menos' : 'Ver mais'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingDescriptionByGoal((prev) => ({
+                                ...prev,
+                                [goal.id]: !prev[goal.id],
+                              }))
+                            }
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">edit</span>
+                            {editingDescriptionByGoal[goal.id] ? 'Concluir edição' : 'Editar'}
+                          </button>
+                        </div>
+                      </div>
+                      {editingDescriptionByGoal[goal.id] ? (
+                        <textarea
+                          rows={descExpanded ? 12 : 4}
+                          value={draft.description}
+                          onChange={(e) =>
+                            setDraftByGoal((prev) => ({
                               ...prev,
-                              [goal.id]: !descExpanded,
+                              [goal.id]: { ...draft, description: e.target.value },
                             }))
                           }
-                          className="text-xs font-semibold text-primary hover:underline"
-                        >
-                          {descExpanded ? 'Ver menos' : 'Ver mais'}
-                        </button>
-                      </div>
-                      <textarea
-                        rows={descExpanded ? 8 : 2}
-                        value={draft.description}
-                        onChange={(e) =>
-                          setDraftByGoal((prev) => ({
-                            ...prev,
-                            [goal.id]: { ...draft, description: e.target.value },
-                          }))
-                        }
-                        className="w-full rounded-md border border-outline-variant/40 px-3 py-2"
-                      />
+                          className="w-full rounded-md border border-outline-variant/40 px-3 py-2"
+                        />
+                      ) : (
+                        <div className="rounded-lg border border-outline-variant/30 bg-surface-container-low p-3">
+                          <p
+                            className={`whitespace-pre-wrap text-sm text-on-surface ${
+                              descExpanded ? '' : 'line-clamp-2'
+                            }`}
+                          >
+                            {draft.description || 'Sem descrição.'}
+                          </p>
+                        </div>
+                      )}
                     </label>
 
                     <div className="space-y-2">

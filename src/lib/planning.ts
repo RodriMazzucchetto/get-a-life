@@ -349,12 +349,16 @@ export const initiativesService = {
   },
 
   // Atualizar iniciativa
-  async updateInitiative(initiativeId: string, updates: { title?: string }): Promise<DBInitiative> {
+  async updateInitiative(
+    initiativeId: string,
+    updates: { title?: string; status?: DBInitiative['status'] }
+  ): Promise<DBInitiative> {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('initiatives')
       .update({
-        title: updates.title
+        ...(updates.title !== undefined ? { title: updates.title } : {}),
+        ...(updates.status !== undefined ? { status: updates.status } : {}),
       })
       .eq('id', initiativeId)
       .select()
