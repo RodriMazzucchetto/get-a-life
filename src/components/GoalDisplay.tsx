@@ -69,6 +69,7 @@ export function GoalDisplay({
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set())
   const [draftByGoal, setDraftByGoal] = useState<Record<string, GoalDraft>>({})
   const [descriptionExpandedByGoal, setDescriptionExpandedByGoal] = useState<Record<string, boolean>>({})
+  const [editingNextStepByGoal, setEditingNextStepByGoal] = useState<Record<string, boolean>>({})
   const [newInitiativeByGoal, setNewInitiativeByGoal] = useState<Record<string, string>>({})
   const [editingInitiativeId, setEditingInitiativeId] = useState<string | null>(null)
   const [editingInitiativeTitle, setEditingInitiativeTitle] = useState('')
@@ -149,6 +150,15 @@ export function GoalDisplay({
       nextSteps: draft.nextSteps.trim() || undefined,
       dueDate: draft.dueDate ? new Date(`${draft.dueDate}T00:00:00`).toISOString() : undefined,
     })
+  }
+
+  const handleSummaryProgressChange = async (goalId: string, progress: number) => {
+    setDraftByGoal((prev) => {
+      const current = prev[goalId]
+      if (!current) return prev
+      return { ...prev, [goalId]: { ...current, progress } }
+    })
+    await onUpdateGoal(goalId, { progress })
   }
 
   const handleSaveCreateGoal = async () => {
@@ -329,9 +339,11 @@ export function GoalDisplay({
                 <SortableGoalItem
                   key={goal.id}
                   goal={goal}
+                  summaryProgress={draft.progress}
                   project={project}
                   expanded={expandedGoals.has(goal.id)}
                   onToggleExpand={() => toggleGoalExpansion(goal)}
+                  onChangeProgress={handleSummaryProgressChange}
                   getProgressColor={getProgressColor}
                   getProgressTextColor={getProgressTextColor}
                   formatDate={formatDate}
@@ -376,24 +388,6 @@ export function GoalDisplay({
 
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="text-sm">
-                        <span className="mb-1 block font-semibold text-on-surface">
-                          Progresso ({draft.progress}%)
-                        </span>
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={draft.progress}
-                          onChange={(e) =>
-                            setDraftByGoal((prev) => ({
-                              ...prev,
-                              [goal.id]: { ...draft, progress: Number(e.target.value) },
-                            }))
-                          }
-                          className="w-full"
-                        />
-                      </label>
-                      <label className="text-sm">
                         <span className="mb-1 block font-semibold text-on-surface">Prazo</span>
                         <input
                           type="date"
@@ -410,18 +404,41 @@ export function GoalDisplay({
                     </div>
 
                     <label className="block text-sm">
-                      <span className="mb-1 block font-semibold text-on-surface">Próximo passo</span>
-                      <textarea
-                        rows={3}
-                        value={draft.nextSteps}
-                        onChange={(e) =>
-                          setDraftByGoal((prev) => ({
-                            ...prev,
-                            [goal.id]: { ...draft, nextSteps: e.target.value },
-                          }))
-                        }
-                        className="w-full rounded-md border border-outline-variant/40 px-3 py-2"
-                      />
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="font-semibold text-on-surface">Próximo passo</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingNextStepByGoal((prev) => ({ ...prev, [goal.id]: !prev[goal.id] }))
+                          }
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">edit</span>
+                          {editingNextStepByGoal[goal.id] ? 'Concluir edição' : 'Editar'}
+                        </button>
+                      </div>
+                      {editingNextStepByGoal[goal.id] ? (
+                        <textarea
+                          rows={3}
+                          value={draft.nextSteps}
+                          onChange={(e) =>
+                            setDraftByGoal((prev) => ({
+                              ...prev,
+                              [goal.id]: { ...draft, nextSteps: e.target.value },
+                            }))
+                          }
+                          className="w-full rounded-md border border-outline-variant/40 px-3 py-2"
+                        />
+                      ) : (
+                        <div className="rounded-lg border border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-yellow-800">
+                            Próximo passo
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap text-sm text-yellow-700">
+                            {draft.nextSteps || 'Nenhum próximo passo definido.'}
+                          </p>
+                        </div>
+                      )}
                     </label>
 
                     <label className="block text-sm">
@@ -613,18 +630,22 @@ export function GoalDisplay({
 
 function SortableGoalItem({
   goal,
+  summaryProgress,
   project,
   expanded,
   onToggleExpand,
+  onChangeProgress,
   getProgressColor,
   getProgressTextColor,
   formatDate,
   children,
 }: {
   goal: Goal
+  summaryProgress: number
   project?: Project
   expanded: boolean
   onToggleExpand: () => void
+  onChangeProgress: (goalId: string, progress: number) => Promise<void>
   getProgressColor: (progress: number) => string
   getProgressTextColor: (progress: number) => string
   formatDate: (dateString?: string) => string
@@ -685,14 +706,30 @@ function SortableGoalItem({
             {goal.title}
           </h3>
 
-          <span className={`text-sm font-bold ${getProgressTextColor(goal.progress)}`}>{goal.progress}%</span>
+          <span className={`text-sm font-bold ${getProgressTextColor(summaryProgress)}`}>{summaryProgress}%</span>
           <span className="material-symbols-outlined text-on-surface-variant">
             {expanded ? 'expand_less' : 'expand_more'}
           </span>
         </div>
 
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high">
-          <div className={`${getProgressColor(goal.progress)} h-full`} style={{ width: `${goal.progress}%` }} />
+        <div
+          className="relative mt-2 h-3"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="absolute inset-0 top-[3px] h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high">
+            <div className={`${getProgressColor(summaryProgress)} h-full`} style={{ width: `${summaryProgress}%` }} />
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={summaryProgress}
+            onChange={(e) => void onChangeProgress(goal.id, Number(e.target.value))}
+            className="absolute inset-0 h-3 w-full cursor-ew-resize appearance-none bg-transparent opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 [&::-webkit-slider-runnable-track]:h-3 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-0 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-primary/40 [&::-webkit-slider-thumb]:bg-surface-container-lowest [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-primary/40 [&::-moz-range-thumb]:bg-surface-container-lowest"
+            aria-label={`Progresso da meta ${goal.title}`}
+          />
         </div>
 
         <div className="mt-2 flex items-center justify-between text-[11px] text-on-surface-variant">
