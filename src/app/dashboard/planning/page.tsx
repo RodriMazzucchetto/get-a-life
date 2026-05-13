@@ -787,7 +787,7 @@ export default function PlanningPage() {
             </div>
           </div>
         ) : (
-          <div className="min-w-0 pr-14">
+          <div className="min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-1.5">
                 <span
                   className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusMeta.chipClass}`}
@@ -815,7 +815,7 @@ export default function PlanningPage() {
                   {item.notes}
                 </p>
               ) : null}
-            <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+            <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 opacity-100 transition-opacity md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100">
               <button
                 type="button"
                 onClick={() => handleStartEditWeeklyPriority(item)}
