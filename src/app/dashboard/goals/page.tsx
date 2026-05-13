@@ -8,7 +8,17 @@ import type { Goal } from "@/lib/planning";
 
 export default function GoalsPage() {
   const { user } = useAuthContext();
-  const { goals, projects, createGoal, updateGoal, deleteGoal } = usePlanningData();
+  const {
+    goals,
+    projects,
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    createInitiative,
+    updateInitiative,
+    deleteInitiative,
+    reloadData,
+  } = usePlanningData();
   const [orderedGoalIds, setOrderedGoalIds] = useState<string[]>([]);
 
   const storageKey = useMemo(
@@ -86,22 +96,24 @@ export default function GoalsPage() {
   };
 
   const handleAddInitiative = async (goalId: string, title: string) => {
-    const goal = goals.find((g) => g.id === goalId);
-    if (!goal) return;
-    const updatedInitiatives = [
-      ...(goal.initiatives ?? []),
-      { id: `temp-${Date.now()}`, title, completed: false },
-    ];
-    await handleUpdateGoal(goalId, { initiatives: updatedInitiatives });
+    const created = await createInitiative(goalId, {
+      goalId,
+      title,
+      status: "active",
+      priority: "medium",
+    });
+    if (created) await reloadData();
   };
 
   const handleToggleInitiative = async (goalId: string, initiativeId: string) => {
     const goal = goals.find((g) => g.id === goalId);
     if (!goal) return;
-    const updatedInitiatives = goal.initiatives.map((i) =>
-      i.id === initiativeId ? { ...i, completed: !i.completed } : i
-    );
-    await handleUpdateGoal(goalId, { initiatives: updatedInitiatives });
+    const current = goal.initiatives.find((i) => i.id === initiativeId);
+    if (!current) return;
+    const updated = await updateInitiative(initiativeId, {
+      status: current.completed ? "active" : "completed",
+    });
+    if (updated) await reloadData();
   };
 
   const handleEditInitiative = async (
@@ -109,19 +121,13 @@ export default function GoalsPage() {
     initiativeId: string,
     newTitle: string
   ) => {
-    const goal = goals.find((g) => g.id === goalId);
-    if (!goal) return;
-    const updatedInitiatives = goal.initiatives.map((i) =>
-      i.id === initiativeId ? { ...i, title: newTitle } : i
-    );
-    await handleUpdateGoal(goalId, { initiatives: updatedInitiatives });
+    const updated = await updateInitiative(initiativeId, { title: newTitle });
+    if (updated) await reloadData();
   };
 
   const handleDeleteInitiative = async (goalId: string, initiativeId: string) => {
-    const goal = goals.find((g) => g.id === goalId);
-    if (!goal) return;
-    const updatedInitiatives = goal.initiatives.filter((i) => i.id !== initiativeId);
-    await handleUpdateGoal(goalId, { initiatives: updatedInitiatives });
+    const ok = await deleteInitiative(initiativeId);
+    if (ok) await reloadData();
   };
 
   const handleReorderGoals = (nextGoalIds: string[]) => {

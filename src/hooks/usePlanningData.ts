@@ -623,7 +623,13 @@ export function usePlanningData() {
     
     updateInitiative: async (initiativeId: string, updates: Partial<Initiative>) => {
       try {
-        const updatedInitiative = await initiativesService.updateInitiative(initiativeId, { title: updates.title })
+        const updatedInitiative = await initiativesService.updateInitiative(initiativeId, {
+          ...(updates.title !== undefined ? { title: updates.title } : {}),
+          ...(updates.status !== undefined ? { status: updates.status } : {}),
+          ...(updates.status !== undefined
+            ? { completed: updates.status === 'completed' }
+            : {}),
+        })
         setInitiatives(prev => prev.map(i => i.id === initiativeId ? fromDbInitiative(updatedInitiative) : i))
         return fromDbInitiative(updatedInitiative)
       } catch (error) {
