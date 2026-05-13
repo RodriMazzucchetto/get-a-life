@@ -695,7 +695,7 @@ export default function PlanningPage() {
     return (
       <article
         key={item.id}
-        className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4"
+        className="group relative rounded-xl border border-outline-variant/20 bg-surface-container-low p-3"
       >
         {isEditing ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -787,9 +787,8 @@ export default function PlanningPage() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div className="min-w-0">
-              <div className="mb-1 flex flex-wrap items-center gap-2">
+          <div className="min-w-0 pr-14">
+            <div className="mb-1 flex flex-wrap items-center gap-1.5">
                 <span
                   className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusMeta.chipClass}`}
                 >
@@ -808,12 +807,15 @@ export default function PlanningPage() {
                   </span>
                 )}
               </div>
-              <h3 className="font-headline text-base font-bold text-on-surface">{item.title}</h3>
+              <h3 className="font-headline text-[15px] font-bold leading-snug text-on-surface">
+                {item.title}
+              </h3>
               {item.notes ? (
-                <p className="mt-1 text-sm text-on-surface-variant">{item.notes}</p>
+                <p className="mt-1 line-clamp-3 text-sm leading-snug text-on-surface-variant">
+                  {item.notes}
+                </p>
               ) : null}
-            </div>
-            <div className="flex items-center gap-1 self-end md:self-start">
+            <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
               <button
                 type="button"
                 onClick={() => handleStartEditWeeklyPriority(item)}
