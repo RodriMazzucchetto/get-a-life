@@ -34,9 +34,11 @@ const CHART_COLOR_EFFECT = "#7c3aed";
 function CyclePerformanceLineChart({
   cycles,
   maxCount,
+  mode = "all",
 }: {
   cycles: TaskCycle[];
   maxCount: number;
+  mode?: "all" | "delivery" | "effectiveness";
 }) {
   const vbW = 720;
   const vbH = 280;
@@ -113,34 +115,40 @@ function CyclePerformanceLineChart({
 
         {n >= 2 ? (
           <>
-            <polyline
-              fill="none"
-              stroke={CHART_COLOR_PLANNED}
-              strokeWidth={2.75}
-              strokeDasharray="8 5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              pointerEvents="none"
-              points={pointsAttr(plannedVals)}
-            />
-            <polyline
-              fill="none"
-              stroke={CHART_COLOR_DELIVERED}
-              strokeWidth={2.75}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              pointerEvents="none"
-              points={pointsAttr(deliveredVals)}
-            />
-            <polyline
-              fill="none"
-              stroke={CHART_COLOR_EFFECT}
-              strokeWidth={2.75}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              pointerEvents="none"
-              points={pointsAttr(effVals)}
-            />
+            {mode !== "effectiveness" ? (
+              <polyline
+                fill="none"
+                stroke={CHART_COLOR_PLANNED}
+                strokeWidth={2.75}
+                strokeDasharray="8 5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents="none"
+                points={pointsAttr(plannedVals)}
+              />
+            ) : null}
+            {mode !== "effectiveness" ? (
+              <polyline
+                fill="none"
+                stroke={CHART_COLOR_DELIVERED}
+                strokeWidth={2.75}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents="none"
+                points={pointsAttr(deliveredVals)}
+              />
+            ) : null}
+            {mode !== "delivery" ? (
+              <polyline
+                fill="none"
+                stroke={CHART_COLOR_EFFECT}
+                strokeWidth={2.75}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents="none"
+                points={pointsAttr(effVals)}
+              />
+            ) : null}
           </>
         ) : null}
 
@@ -162,33 +170,39 @@ function CyclePerformanceLineChart({
               >
                 {`Ciclo ${c.cycleNumber}`}
               </text>
-              <circle
-                cx={xAt(i)}
-                cy={py}
-                r={5}
-                fill={CHART_COLOR_PLANNED}
-                stroke="#fff"
-                strokeWidth={1.5}
-                pointerEvents="none"
-              />
-              <circle
-                cx={xAt(i)}
-                cy={dy}
-                r={5}
-                fill={CHART_COLOR_DELIVERED}
-                stroke="#fff"
-                strokeWidth={1.5}
-                pointerEvents="none"
-              />
-              <circle
-                cx={xAt(i)}
-                cy={ey}
-                r={5}
-                fill={CHART_COLOR_EFFECT}
-                stroke="#fff"
-                strokeWidth={1.5}
-                pointerEvents="none"
-              />
+              {mode !== "effectiveness" ? (
+                <circle
+                  cx={xAt(i)}
+                  cy={py}
+                  r={5}
+                  fill={CHART_COLOR_PLANNED}
+                  stroke="#fff"
+                  strokeWidth={1.5}
+                  pointerEvents="none"
+                />
+              ) : null}
+              {mode !== "effectiveness" ? (
+                <circle
+                  cx={xAt(i)}
+                  cy={dy}
+                  r={5}
+                  fill={CHART_COLOR_DELIVERED}
+                  stroke="#fff"
+                  strokeWidth={1.5}
+                  pointerEvents="none"
+                />
+              ) : null}
+              {mode !== "delivery" ? (
+                <circle
+                  cx={xAt(i)}
+                  cy={ey}
+                  r={5}
+                  fill={CHART_COLOR_EFFECT}
+                  stroke="#fff"
+                  strokeWidth={1.5}
+                  pointerEvents="none"
+                />
+              ) : null}
               <rect
                 x={xAt(i) - 22}
                 y={top - hitPad}
@@ -203,6 +217,91 @@ function CyclePerformanceLineChart({
           );
         })}
       </svg>
+    </div>
+  );
+}
+
+function CyclePerformanceBarChart({
+  cycles,
+  mode = "delivery",
+}: {
+  cycles: TaskCycle[];
+  mode?: "delivery" | "effectiveness";
+}) {
+  if (cycles.length === 0) {
+    return (
+      <div className="py-12 text-center text-sm text-on-surface-variant">
+        Ainda não há ciclos finalizados para exibir.
+      </div>
+    );
+  }
+
+  const maxValue =
+    mode === "effectiveness"
+      ? 100
+      : Math.max(1, ...cycles.flatMap((c) => [c.plannedCount, c.deliveredCount]));
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cycles.map((cycle) => {
+          const plannedPct = Math.max(3, (cycle.plannedCount / maxValue) * 100);
+          const deliveredPct = Math.max(3, (cycle.deliveredCount / maxValue) * 100);
+          const effPct = Math.max(3, Math.min(100, cycle.effectivenessPct));
+
+          return (
+            <article
+              key={cycle.id}
+              className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-4"
+            >
+              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">
+                Ciclo {cycle.cycleNumber}
+              </p>
+              {mode === "delivery" ? (
+                <div className="mt-3 space-y-2">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-[11px] font-semibold">
+                      <span className="text-on-surface-variant">Planejado</span>
+                      <span className="text-on-surface">{cycle.plannedCount}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-surface-container-high">
+                      <div
+                        className="h-2 rounded-full"
+                        style={{ width: `${plannedPct}%`, backgroundColor: CHART_COLOR_PLANNED }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-[11px] font-semibold">
+                      <span className="text-on-surface-variant">Entregue</span>
+                      <span className="text-on-surface">{cycle.deliveredCount}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-surface-container-high">
+                      <div
+                        className="h-2 rounded-full"
+                        style={{ width: `${deliveredPct}%`, backgroundColor: CHART_COLOR_DELIVERED }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <div className="mb-1 flex items-center justify-between text-[11px] font-semibold">
+                    <span className="text-on-surface-variant">Efetividade</span>
+                    <span className="text-on-surface">{formatPct(cycle.effectivenessPct)}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-surface-container-high">
+                    <div
+                      className="h-2 rounded-full"
+                      style={{ width: `${effPct}%`, backgroundColor: CHART_COLOR_EFFECT }}
+                    />
+                  </div>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -355,6 +454,10 @@ export default function DashboardPage() {
   const [closedCycleProjectStats, setClosedCycleProjectStats] = useState<CycleProjectStatRow[]>([]);
   const [projStatsError, setProjStatsError] = useState<string | null>(null);
   const [analysisScope, setAnalysisScope] = useState<string>("all");
+  const [chartType, setChartType] = useState<"line" | "bar">("line");
+  const [chartSeriesMode, setChartSeriesMode] = useState<
+    "all" | "delivery" | "effectiveness"
+  >("delivery");
   const [statsRefreshTick, setStatsRefreshTick] = useState(0);
   const [rebuildSnapshotsLoading, setRebuildSnapshotsLoading] = useState(false);
   const [rebuildSnapshotsMessage, setRebuildSnapshotsMessage] = useState<string | null>(null);
@@ -798,9 +901,9 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-8 pb-8">
-      <section className="flex flex-col gap-4 rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6 pb-8">
+      <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface">
               Dashboard de Performance
@@ -813,23 +916,15 @@ export default function DashboardPage() {
                   : "Nenhum ciclo iniciado ainda"}
             </p>
           </div>
-          <div className="relative w-full sm:w-auto sm:min-w-[min(100%,280px)]">
+          <div className="relative w-full sm:w-auto sm:min-w-[280px]">
             <Listbox value={analysisScope} onChange={setAnalysisScope}>
-              <ListboxButton className="inline-flex w-full items-center justify-between gap-2 rounded-lg bg-primary px-4 py-2.5 text-left text-sm font-semibold text-on-primary shadow-sm ring-1 ring-on-primary/15 hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-on-primary/40 data-[hover]:opacity-95">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="material-symbols-outlined shrink-0 text-[20px]">
-                    analytics
-                  </span>
-                  <span className="truncate">{analysisLabel}</span>
-                </span>
-                <span className="material-symbols-outlined shrink-0 text-[20px] opacity-90">
+              <ListboxButton className="inline-flex w-full items-center justify-between gap-2 rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2.5 text-left text-sm font-semibold text-on-surface hover:bg-surface-container-high">
+                <span className="truncate">{analysisLabel}</span>
+                <span className="material-symbols-outlined text-[20px] text-on-surface-variant">
                   expand_more
                 </span>
               </ListboxButton>
-              <ListboxOptions
-                transition
-                className="absolute right-0 z-50 mt-1 max-h-72 w-full min-w-[260px] overflow-auto rounded-xl border border-outline-variant/20 bg-surface-container-highest py-1 shadow-lg outline-none data-[closed]:data-[leave]:opacity-0 data-[leave]:transition data-[leave]:duration-100 sm:right-0 sm:w-[min(100vw-2rem,320px)]"
-              >
+              <ListboxOptions className="absolute right-0 z-50 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-outline-variant/20 bg-surface-container-highest py-1 shadow-lg outline-none">
                 {analysisOptions.map((opt) => (
                   <ListboxOption
                     key={opt.value}
@@ -841,88 +936,169 @@ export default function DashboardPage() {
                 ))}
               </ListboxOptions>
             </Listbox>
-            <p className="mt-1.5 text-[11px] leading-snug text-on-surface-variant sm:text-right">
-              Afeta cartões e tabelas abaixo; o gráfico de linhas mantém sempre os ciclos
-              finalizados.
-            </p>
           </div>
         </div>
-        {error && (
-          <div className="rounded-lg border border-error/40 bg-error/10 px-4 py-2 text-sm text-error">
+        {error ? (
+          <div className="mt-4 rounded-lg border border-error/40 bg-error/10 px-4 py-2 text-sm text-error">
             {error}
           </div>
-        )}
-        {projStatsError && (
-          <div className="rounded-lg border border-tertiary/40 bg-tertiary/10 px-4 py-2 text-sm text-on-surface">
+        ) : null}
+        {projStatsError ? (
+          <div className="mt-3 rounded-lg border border-tertiary/40 bg-tertiary/10 px-4 py-2 text-sm text-on-surface">
             {projStatsError}
           </div>
-        )}
+        ) : null}
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <article className="rounded-xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
-            Total Planejado
-          </p>
-          <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">{planned}</p>
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="material-symbols-outlined text-primary">assignment_turned_in</span>
+            <span className="rounded-full bg-tertiary-fixed px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-tertiary-fixed-variant">
+              Planned
+            </span>
+          </div>
+          <p className="text-sm font-medium text-on-surface-variant">Total Planned</p>
+          <p className="mt-1 font-headline text-4xl font-extrabold text-on-surface">{planned}</p>
         </article>
-        <article className="rounded-xl border-l-4 border-primary bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
-            Total Entregue
-          </p>
-          <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">{delivered}</p>
-          <p className="text-xs font-semibold text-tertiary">
-            {formatPct(effectivenessPct)} de eficácia
+        <article className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="material-symbols-outlined text-primary">check_circle</span>
+            <span className="rounded-full bg-tertiary-fixed-dim px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-tertiary-fixed-variant">
+              Delivered
+            </span>
+          </div>
+          <p className="text-sm font-medium text-on-surface-variant">Total Delivered</p>
+          <p className="mt-1 font-headline text-4xl font-extrabold text-on-surface">{delivered}</p>
+        </article>
+        <article className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="material-symbols-outlined text-primary">bolt</span>
+            <span className="rounded-full bg-primary-fixed px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-primary-fixed-variant">
+              Rate
+            </span>
+          </div>
+          <p className="text-sm font-medium text-on-surface-variant">Efficiency</p>
+          <p className="mt-1 font-headline text-4xl font-extrabold text-on-surface">
+            {formatPct(effectivenessPct)}
           </p>
         </article>
-        <article className="rounded-xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Pendente</p>
-          <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">{pending}</p>
-          <p className="text-xs text-on-surface-variant">Planejado e não entregue no ciclo</p>
-        </article>
-        <article className="rounded-xl bg-primary p-5 text-on-primary shadow-lg">
-          <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Meta Global</p>
-          <p className="mt-2 font-headline text-3xl font-extrabold">{formatPct(effectivenessPct)}</p>
-          <p className="text-xs opacity-85">
-            {analysisScope === "all"
-              ? "Vista agregada: sem comparação ciclo a ciclo"
-              : deltaVsPrevious == null
-                ? "Sem base comparativa ainda"
-                : `${deltaVsPrevious >= 0 ? "+" : ""}${deltaVsPrevious.toFixed(1)} p.p. vs ciclo anterior`}
-          </p>
+        <article className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="material-symbols-outlined text-error">hourglass_empty</span>
+            <span className="rounded-full bg-error-container px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-error-container">
+              Action
+            </span>
+          </div>
+          <p className="text-sm font-medium text-on-surface-variant">Pending</p>
+          <p className="mt-1 font-headline text-4xl font-extrabold text-on-surface">{pending}</p>
         </article>
       </section>
 
       <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
-        <h2 className="font-headline text-xl font-bold text-on-surface">Projetos no ciclo</h2>
-        <p className="mt-1 max-w-3xl text-sm leading-relaxed text-on-surface-variant">
-          Por projeto: quantas tarefas estão ligadas ao projeto no período considerado, quantas foram
-          concluídas nesse mesmo âmbito, e a efetividade (concluídas ÷ ligadas). O âmbito segue o menu{" "}
-          <strong className="font-semibold text-on-surface">Análise</strong> no topo (agregado ou um
-          ciclo).
-        </p>
-
-        <div className="mt-8">
-          <h3 className="font-headline text-base font-bold text-on-surface">
-            {projectAnalysis.title}
-          </h3>
-          <p className="mt-1 text-sm text-on-surface-variant">{projectAnalysis.description}</p>
-          <div className="mt-4">
-            <CycleProjectStatsTable
-              rows={projectAnalysis.rows}
-              linkedColumnTitle={projectAnalysis.linkedColumnTitle}
-              completedColumnTitle={projectAnalysis.completedColumnTitle}
-              subtitle={projectAnalysis.tableSubtitle}
-            />
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="font-headline text-xl font-bold text-on-surface">
+              Histórico de Performance (Ciclos)
+            </h2>
+            <p className="text-sm text-on-surface-variant">
+              Comparativo real entre planejamento, entrega e efetividade por ciclo fechado.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-lg bg-surface-container-low p-1">
+              <button
+                type="button"
+                onClick={() => setChartType("line")}
+                className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                  chartType === "line"
+                    ? "bg-surface-container-lowest text-primary shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Linhas
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartType("bar")}
+                className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                  chartType === "bar"
+                    ? "bg-surface-container-lowest text-primary shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Barras
+              </button>
+            </div>
+            <div className="inline-flex rounded-lg bg-surface-container-low p-1">
+              <button
+                type="button"
+                onClick={() => setChartSeriesMode("delivery")}
+                className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                  chartSeriesMode === "delivery"
+                    ? "bg-surface-container-lowest text-primary shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Planned vs Delivered
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartSeriesMode("effectiveness")}
+                className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                  chartSeriesMode === "effectiveness"
+                    ? "bg-surface-container-lowest text-primary shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Only Effectiveness
+              </button>
+            </div>
           </div>
         </div>
 
+        {loading ? (
+          <div className="py-12 text-center text-sm text-on-surface-variant">Carregando ciclos...</div>
+        ) : chartCycles.length === 0 ? (
+          <div className="py-12 text-center text-sm text-on-surface-variant">
+            Ainda não há ciclos finalizados para exibir.
+          </div>
+        ) : chartType === "line" ? (
+          <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low/30 px-3 py-4">
+            <CyclePerformanceLineChart
+              cycles={chartCycles}
+              maxCount={chartMaxCount}
+              mode={chartSeriesMode}
+            />
+          </div>
+        ) : (
+          <CyclePerformanceBarChart
+            cycles={chartCycles}
+            mode={chartSeriesMode === "effectiveness" ? "effectiveness" : "delivery"}
+          />
+        )}
+      </section>
+
+      <section className="rounded-xl bg-surface-container-lowest ring-1 ring-outline-variant/10">
+        <div className="flex flex-col gap-3 border-b border-outline-variant/15 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-headline text-xl font-bold text-on-surface">Performance por Projeto</h2>
+            <p className="text-sm text-on-surface-variant">{projectAnalysis.title}</p>
+          </div>
+          <span className="text-xs text-on-surface-variant">
+            {projectAnalysis.rows.length} projetos no recorte selecionado
+          </span>
+        </div>
+        <div className="px-6 py-5">
+          <CycleProjectStatsTable
+            rows={projectAnalysis.rows}
+            linkedColumnTitle={projectAnalysis.linkedColumnTitle}
+            completedColumnTitle={projectAnalysis.completedColumnTitle}
+            subtitle={projectAnalysis.tableSubtitle}
+          />
+        </div>
         {user && closedCycles.length > 0 ? (
-          <div className="mt-6 flex flex-col gap-2 border-t border-outline-variant/15 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="max-w-xl text-xs text-on-surface-variant">
-              Se os números por projeto parecerem antigos (antes da correção do cálculo), recalcula os
-              snapshots guardados na base. O histórico em linhas usa estes totais quando existem.
-            </p>
+          <div className="border-t border-outline-variant/15 px-6 py-4">
             <button
               type="button"
               disabled={rebuildSnapshotsLoading}
@@ -932,32 +1108,32 @@ export default function DashboardPage() {
                 try {
                   await cyclesService.rebuildMyClosedCycleSnapshots();
                   setStatsRefreshTick((t) => t + 1);
-                  setRebuildSnapshotsMessage("Snapshots atualizados. Os valores da tabela devem refletir a nova lógica.");
+                  setRebuildSnapshotsMessage("Snapshots atualizados.");
                 } catch (e) {
                   console.error(e);
                   setRebuildSnapshotsMessage(
-                    "Não foi possível recalcular. Confirma que as migrações Supabase mais recentes foram aplicadas (inclui a função rebuild_my_closed_cycle_snapshots)."
+                    "Não foi possível recalcular os snapshots de ciclos fechados."
                   );
                 } finally {
                   setRebuildSnapshotsLoading(false);
                 }
               }}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-high px-4 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-highest disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-high px-4 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-highest disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">
                 {rebuildSnapshotsLoading ? "hourglass_empty" : "refresh"}
               </span>
-              {rebuildSnapshotsLoading ? "A recalcular…" : "Recalcular snapshots (ciclos fechados)"}
+              {rebuildSnapshotsLoading ? "A recalcular..." : "Recalcular snapshots"}
             </button>
+            {rebuildSnapshotsMessage ? (
+              <p className="mt-2 text-sm text-on-surface-variant">{rebuildSnapshotsMessage}</p>
+            ) : null}
           </div>
-        ) : null}
-        {rebuildSnapshotsMessage ? (
-          <p className="mt-3 text-sm text-on-surface-variant">{rebuildSnapshotsMessage}</p>
         ) : null}
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <article className="rounded-xl bg-surface-container-lowest p-5 ring-1 ring-outline-variant/10">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <article className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5">
           <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
             Itens adicionados após início
           </p>
@@ -965,57 +1141,22 @@ export default function DashboardPage() {
             {addedAfterStart}
           </p>
           <p className="text-xs text-on-surface-variant">
-            Estes itens entram no planejado total do ciclo e impactam a eficácia.
+            Impacto de scope change dentro dos ciclos monitorados.
           </p>
         </article>
-      </section>
-
-      <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-headline text-xl font-bold text-on-surface">
-              Histórico de Performance por Ciclo
-            </h2>
-            <p className="text-sm text-on-surface-variant">
-              Três linhas: planejado e entregue (escala 0–100 relativa ao maior valor do período) e
-              efetividade %. Com um ciclo vês três pontos; a linha liga-se quando houver mais ciclos.
-            </p>
-          </div>
-        </div>
-        {loading ? (
-          <div className="py-12 text-center text-sm text-on-surface-variant">Carregando ciclos...</div>
-        ) : chartCycles.length === 0 ? (
-          <div className="py-12 text-center text-sm text-on-surface-variant">
-            Ainda não há ciclos finalizados para exibir.
-          </div>
-        ) : (
-          <div className="mt-4 rounded-xl border border-outline-variant/20 bg-surface-container-low/40 px-3 py-4">
-            <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-on-surface-variant">
-              <span className="inline-flex items-center gap-2">
-                <span
-                  className="inline-block h-0 w-6 shrink-0 border-t-[2.5px] border-dashed"
-                  style={{ borderColor: CHART_COLOR_PLANNED }}
-                />
-                Planejado
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span
-                  className="h-0.5 w-6 shrink-0 rounded-full"
-                  style={{ backgroundColor: CHART_COLOR_DELIVERED }}
-                />
-                Entregue
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span
-                  className="h-0.5 w-6 shrink-0 rounded-full"
-                  style={{ backgroundColor: CHART_COLOR_EFFECT }}
-                />
-                Efetividade %
-              </span>
-            </div>
-            <CyclePerformanceLineChart cycles={chartCycles} maxCount={chartMaxCount} />
-          </div>
-        )}
+        <article className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+            Variação vs ciclo anterior
+          </p>
+          <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">
+            {deltaVsPrevious == null
+              ? "—"
+              : `${deltaVsPrevious >= 0 ? "+" : ""}${deltaVsPrevious.toFixed(1)} p.p.`}
+          </p>
+          <p className="text-xs text-on-surface-variant">
+            Considera o escopo selecionado em análise.
+          </p>
+        </article>
       </section>
     </div>
   );
