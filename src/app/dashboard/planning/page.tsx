@@ -5,7 +5,6 @@ import { PlayIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ModalPanel } from '@/components/ModalPanel'
 import { GoalManagementModal } from '@/components/GoalManagementModal'
-import { GoalDisplay } from '@/components/GoalDisplay'
 import { RemindersModal } from '@/components/RemindersModal'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -1550,112 +1549,6 @@ export default function PlanningPage() {
           <p className="text-xs font-semibold text-tertiary uppercase tracking-wider mb-1">Lembretes</p>
           <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.reminders}</p>
         </button>
-      </div>
-
-      <div id="metas-section" className="mb-8">
-      {/* Elemento de Metas */}
-      <div className="bg-surface-container-lowest rounded-xl shadow-sm ring-1 ring-outline-variant/10 overflow-hidden flex flex-col">
-        <div 
-          className="p-5 flex justify-between items-center border-b border-outline-variant/15 cursor-pointer hover:bg-surface-container-high/20 transition-colors"
-          onClick={() => setGoalsExpanded(!goalsExpanded)}
-        >
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="material-symbols-outlined text-primary text-2xl">ads_click</span>
-            <h2 className="font-headline font-bold text-lg text-on-surface">Metas Trimestrais</h2>
-            <span className="bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-              {goals.length > 0 ? `${Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length)}%` : '0%'} média
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {goals.length > 0 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setEditingGoal(null)
-                  setShowGoalModal(true)
-                }}
-                className="inline-flex items-center justify-center w-8 h-8 bg-primary text-on-primary rounded-full hover:bg-primary-container transition-colors"
-                title="Nova meta"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            )}
-            <button
-              type="button"
-              className="p-1 rounded-lg hover:bg-surface-container-high transition-colors"
-              onClick={(e) => {
-                e.stopPropagation()
-                setGoalsExpanded(!goalsExpanded)
-              }}
-              aria-expanded={goalsExpanded}
-            >
-              <span className={`material-symbols-outlined text-on-surface-variant transition-transform ${goalsExpanded ? 'rotate-180' : ''}`}>
-                expand_more
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Conteúdo expandido */}
-        {goalsExpanded && (
-          <div className="px-6 pb-6 border-t border-outline-variant/15">
-            {goals.length === 0 ? (
-              <div className="p-8 flex flex-col md:flex-row items-center gap-8 justify-center">
-                <div className="w-20 h-20 rounded-full bg-surface-container-low flex items-center justify-center relative overflow-hidden shrink-0 ring-1 ring-outline-variant/10">
-                  <img
-                    alt=""
-                    className="w-12 h-12 object-cover z-10 rounded-md"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2voAUwzAD7ptpQvfdImRg_R6NtEtvgcNhVQL-5zJqXJI1-O4k3EPuy7loSJxsAVNKWdk1q19VCyMVVuCoX5YH75z7-gP7SUTDzjTlOxTzgkVOs2XhD-arVlvAyqxG2jiKTLPJb2LsdBOYTS0AkCOJ6nE13qIbntH8vi1rZS_WXNeBZwFe1mfIWu9lij9LRS62Mkpa02fimyAf0QljOoA5d45UxogWsGujyGyXqVdCglk4d3fKbszQA5BmRNf5pThcFnIw7J8xupJO"
-                    width={48}
-                    height={48}
-                  />
-                </div>
-                <div className="text-center md:text-left">
-                  <h3 className="font-headline font-bold text-lg text-on-surface mb-1">
-                    Defina seus objetivos principais
-                  </h3>
-                  <p className="text-on-surface-variant text-sm mb-4 max-w-md">
-                    Mantenha o foco no que realmente importa criando metas trimestrais ou mensais.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingGoal(null)
-                      setShowGoalModal(true)
-                    }}
-                    className="px-5 py-2 border border-primary text-primary rounded-lg font-semibold text-sm hover:bg-primary/5 transition-colors"
-                  >
-                    Criar Primeira Meta
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-medium text-gray-700">Suas Metas</h4>
-                </div>
-                
-                {/* Exibição das metas usando o componente GoalDisplay */}
-                <GoalDisplay
-                  goals={goals}
-                  projects={projects}
-                  onEditGoal={(goal) => {
-                    setEditingGoal(goal)
-                    setShowGoalModal(true)
-                  }}
-                  onUpdateGoalProgress={handleUpdateGoalProgressNew}
-                  onToggleInitiative={handleToggleInitiativeNew}
-                  onEditInitiative={handleEditInitiativeNew}
-                  onDeleteInitiative={handleDeleteInitiativeNew}
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
       </div>
 
       <DndContext

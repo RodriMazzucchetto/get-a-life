@@ -22,6 +22,12 @@ const mainNav: {
     active: (pathname) => pathname === "/dashboard",
   },
   {
+    name: "Metas",
+    href: "/dashboard/goals",
+    icon: "ads_click",
+    active: (pathname) => pathname === "/dashboard/goals",
+  },
+  {
     name: "Tarefas",
     href: "/dashboard/planning",
     icon: "checklist",
