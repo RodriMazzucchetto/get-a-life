@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { PlusIcon, PlayIcon } from '@heroicons/react/24/outline'
+import { PlayIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ModalPanel } from '@/components/ModalPanel'
 import { GoalManagementModal } from '@/components/GoalManagementModal'
@@ -555,6 +555,8 @@ export default function PlanningPage() {
 
   const [showRemindersModal, setShowRemindersModal] = useState(false)
   const [showGoalModal, setShowGoalModal] = useState(false)
+  const [showQuickActionsMenu, setShowQuickActionsMenu] = useState(false)
+  const [showFinishCycleConfirm, setShowFinishCycleConfirm] = useState(false)
   // Estado de showNewProjectForm REMOVIDO
   // Estado de showNewTagForm REMOVIDO
   // Estado de editingProject REMOVIDO
@@ -1364,6 +1366,14 @@ export default function PlanningPage() {
     setShowInProgressCreateForm(true)
   }
 
+  const handleOpenBacklogFromQuickActions = useCallback(() => {
+    setShowQuickActionsMenu(false)
+    openBacklogInlineCreate()
+    window.requestAnimationFrame(() => {
+      document.getElementById('backlog-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
+
   useEffect(() => {
     if (!showInlineCreateForm) return
     const raf = window.requestAnimationFrame(() => {
@@ -1474,17 +1484,7 @@ export default function PlanningPage() {
             <span className="material-symbols-outlined text-base text-primary">sync</span>
             {activeCycle ? `Ciclo ${activeCycle.cycleNumber} ativo` : 'Sem ciclo ativo'}
           </div>
-          {activeCycle ? (
-            <button
-              type="button"
-              onClick={() => void handleFinishCycle()}
-              disabled={cycleBusy}
-              className="inline-flex items-center gap-2 rounded-lg bg-tertiary px-4 py-2 text-sm font-semibold text-on-tertiary transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span className="material-symbols-outlined text-[18px]">flag</span>
-              Finalizar Ciclo
-            </button>
-          ) : (
+          {!activeCycle ? (
             <button
               type="button"
               onClick={() => void handleStartCycle()}
@@ -1494,20 +1494,7 @@ export default function PlanningPage() {
               <span className="material-symbols-outlined text-[18px]">play_arrow</span>
               Iniciar Novo Ciclo
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              openWeekInlineCreate()
-              requestAnimationFrame(() => {
-                document.getElementById('semana-atual')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              })
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-headline font-bold rounded-lg shadow-sm hover:opacity-95 transition-all active:scale-[0.98]"
-          >
-            <PlusIcon className="h-4 w-4 shrink-0" />
-            Nova Tarefa
-          </button>
+          ) : null}
           <div className="hidden sm:block h-6 w-px bg-outline-variant/40" aria-hidden />
           <button
             type="button"
@@ -1995,7 +1982,7 @@ export default function PlanningPage() {
           </div>
 
           {/* Seção de Backlog */}
-          <div className="flex flex-col gap-4 h-full">
+          <div id="backlog-section" className="flex flex-col gap-4 h-full">
             <div className="flex justify-between items-center gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <h2 className="font-headline font-bold text-on-surface truncate">Backlog</h2>
@@ -2134,16 +2121,54 @@ export default function PlanningPage() {
           </div>
         </div>
 
-        <a
-          href="#pomodoro-section"
-          className="fixed bottom-8 right-6 lg:right-10 z-30 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-          title="Ir ao timer Pomodoro"
-          aria-label="Ir ao timer Pomodoro"
-        >
-          <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-            play_arrow
-          </span>
-        </a>
+        {showQuickActionsMenu ? (
+          <button
+            type="button"
+            className="fixed inset-0 z-30 bg-transparent"
+            aria-label="Fechar menu de ações"
+            onClick={() => setShowQuickActionsMenu(false)}
+          />
+        ) : null}
+
+        <div className="fixed bottom-8 right-6 lg:right-10 z-40">
+          {showQuickActionsMenu ? (
+            <div className="mb-3 w-64 rounded-xl border border-outline-variant/25 bg-surface-container-lowest p-2 shadow-2xl ring-1 ring-outline-variant/10">
+              <button
+                type="button"
+                onClick={handleOpenBacklogFromQuickActions}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-on-surface hover:bg-surface-container-high"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_task</span>
+                Adicionar nova tarefa
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickActionsMenu(false)
+                  setShowFinishCycleConfirm(true)
+                }}
+                disabled={!activeCycle || cycleBusy}
+                className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-on-surface hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[18px]">flag</span>
+                Finalizar ciclo
+              </button>
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setShowQuickActionsMenu((v) => !v)}
+            className="h-14 w-14 rounded-full bg-primary text-on-primary shadow-2xl transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
+            title="Ações rápidas"
+            aria-label="Abrir ações rápidas"
+            aria-expanded={showQuickActionsMenu}
+          >
+            <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+              bolt
+            </span>
+          </button>
+        </div>
 
         <DragOverlay adjustScale={false}>
           {activeDragTodo ? (
@@ -2153,6 +2178,42 @@ export default function PlanningPage() {
       </DndContext>
 
       {/* Modal de Projetos e Tags REMOVIDO - será reimplementado do zero */}
+
+      {showFinishCycleConfirm && (
+        <ModalOverlay
+          isOpen={showFinishCycleConfirm}
+          onClose={() => setShowFinishCycleConfirm(false)}
+        >
+          <ModalPanel maxWidthClass="max-w-md" padding="none">
+            <div className="border-b border-outline-variant/15 px-6 py-5">
+              <h2 className="text-lg font-semibold text-on-surface">Finalizar ciclo?</h2>
+              <p className="mt-1 text-sm text-on-surface-variant">
+                Esta ação é irreversível e vai fechar o ciclo atual.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowFinishCycleConfirm(false)}
+                className="rounded-lg border border-outline-variant/40 px-4 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowFinishCycleConfirm(false)
+                  await handleFinishCycle()
+                }}
+                disabled={!activeCycle || cycleBusy}
+                className="rounded-lg bg-tertiary px-4 py-2 text-sm font-semibold text-on-tertiary hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {cycleBusy ? 'Finalizando...' : 'Confirmar finalização'}
+              </button>
+            </div>
+          </ModalPanel>
+        </ModalOverlay>
+      )}
 
       {/* Reminders Modal */}
       <RemindersModal
