@@ -1935,12 +1935,6 @@ export default function PlanningPage() {
         <div className="mt-4 space-y-3">
           {weeklyPriorityLoading ? (
             <p className="text-sm text-on-surface-variant">Carregando itens prioritários...</p>
-          ) : weeklyPriorityItems.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-outline-variant/35 bg-surface-container-low px-4 py-6 text-center">
-              <p className="text-sm font-medium text-on-surface-variant">
-                Ainda não há itens prioritários da semana.
-              </p>
-            </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
               {weeklyPriorityProjects.map((project) => {
