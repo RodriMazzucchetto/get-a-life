@@ -242,65 +242,88 @@ function CyclePerformanceBarChart({
       : Math.max(1, ...cycles.flatMap((c) => [c.plannedCount, c.deliveredCount]));
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cycles.map((cycle) => {
-          const plannedPct = Math.max(3, (cycle.plannedCount / maxValue) * 100);
-          const deliveredPct = Math.max(3, (cycle.deliveredCount / maxValue) * 100);
-          const effPct = Math.max(3, Math.min(100, cycle.effectivenessPct));
+    <div className="space-y-3 rounded-xl border border-outline-variant/20 bg-surface-container-low/30 p-4">
+      <div className="flex flex-wrap items-center gap-4 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+        {mode === "delivery" ? (
+          <>
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: CHART_COLOR_PLANNED, opacity: 0.3 }}
+              />
+              Planned
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: CHART_COLOR_DELIVERED }}
+              />
+              Delivered
+            </span>
+          </>
+        ) : (
+          <span className="inline-flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_EFFECT }} />
+            Effectiveness
+          </span>
+        )}
+      </div>
 
-          return (
-            <article
-              key={cycle.id}
-              className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-4"
-            >
-              <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">
-                Ciclo {cycle.cycleNumber}
-              </p>
-              {mode === "delivery" ? (
-                <div className="mt-3 space-y-2">
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-[11px] font-semibold">
-                      <span className="text-on-surface-variant">Planejado</span>
-                      <span className="text-on-surface">{cycle.plannedCount}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-surface-container-high">
+      <div className="relative h-72 overflow-x-auto">
+        <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none">
+          <div className="absolute inset-x-0 bottom-1/4 h-px bg-outline-variant/20" />
+          <div className="absolute inset-x-0 bottom-2/4 h-px bg-outline-variant/20" />
+          <div className="absolute inset-x-0 bottom-3/4 h-px bg-outline-variant/20" />
+        </div>
+        <div className="relative flex h-full min-w-[520px] items-end gap-6 border-b border-outline-variant/25 pb-8">
+          {cycles.map((cycle) => {
+            const plannedPct = Math.max(4, (cycle.plannedCount / maxValue) * 100);
+            const deliveredPct = Math.max(4, (cycle.deliveredCount / maxValue) * 100);
+            const effPct = Math.max(4, Math.min(100, cycle.effectivenessPct));
+
+            return (
+              <div key={cycle.id} className="flex min-w-[88px] flex-1 flex-col items-center gap-3">
+                <div className="flex h-52 w-full items-end justify-center gap-2">
+                  {mode === "delivery" ? (
+                    <>
                       <div
-                        className="h-2 rounded-full"
-                        style={{ width: `${plannedPct}%`, backgroundColor: CHART_COLOR_PLANNED }}
+                        className="w-7 rounded-t-md transition-opacity hover:opacity-80"
+                        style={{
+                          height: `${plannedPct}%`,
+                          backgroundColor: CHART_COLOR_PLANNED,
+                          opacity: 0.3,
+                        }}
+                        title={`Ciclo ${cycle.cycleNumber} · Planejado: ${cycle.plannedCount}`}
                       />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-[11px] font-semibold">
-                      <span className="text-on-surface-variant">Entregue</span>
-                      <span className="text-on-surface">{cycle.deliveredCount}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-surface-container-high">
                       <div
-                        className="h-2 rounded-full"
-                        style={{ width: `${deliveredPct}%`, backgroundColor: CHART_COLOR_DELIVERED }}
+                        className="w-7 rounded-t-md transition-opacity hover:opacity-90"
+                        style={{
+                          height: `${deliveredPct}%`,
+                          backgroundColor: CHART_COLOR_DELIVERED,
+                        }}
+                        title={`Ciclo ${cycle.cycleNumber} · Entregue: ${cycle.deliveredCount}`}
                       />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-3">
-                  <div className="mb-1 flex items-center justify-between text-[11px] font-semibold">
-                    <span className="text-on-surface-variant">Efetividade</span>
-                    <span className="text-on-surface">{formatPct(cycle.effectivenessPct)}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-surface-container-high">
+                    </>
+                  ) : (
                     <div
-                      className="h-2 rounded-full"
-                      style={{ width: `${effPct}%`, backgroundColor: CHART_COLOR_EFFECT }}
+                      className="w-9 rounded-t-md transition-opacity hover:opacity-90"
+                      style={{
+                        height: `${effPct}%`,
+                        backgroundColor: CHART_COLOR_EFFECT,
+                      }}
+                      title={`Ciclo ${cycle.cycleNumber} · Efetividade: ${formatPct(
+                        cycle.effectivenessPct
+                      )}`}
                     />
-                  </div>
+                  )}
                 </div>
-              )}
-            </article>
-          );
-        })}
+                <span className="text-xs font-bold text-on-surface-variant">
+                  Ciclo {cycle.cycleNumber}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
