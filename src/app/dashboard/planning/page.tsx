@@ -2161,7 +2161,7 @@ export default function PlanningPage() {
               <button
                 type="button"
                 onClick={() => setShowQuickActionsMenu((v) => !v)}
-                className="h-14 w-14 rounded-full bg-primary text-on-primary shadow-2xl transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
+                className="h-14 w-14 rounded-full bg-tertiary text-on-tertiary shadow-2xl transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
                 title="Ações rápidas"
                 aria-label="Abrir ações rápidas"
                 aria-expanded={showQuickActionsMenu}
