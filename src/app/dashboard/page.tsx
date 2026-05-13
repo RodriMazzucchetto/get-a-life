@@ -30,7 +30,7 @@ const CHART_COLOR_PLANNED = "#0284c7";
 const CHART_COLOR_DELIVERED = "#ea580c";
 const CHART_COLOR_EFFECT = "#7c3aed";
 
-/** Gráfico de linhas: planejado e entregue normalizados 0–100 pelo máximo do período; efetividade já é %. */
+/** Gráfico de linhas com escala real para contagens e eixo de % para efetividade. */
 function CyclePerformanceLineChart({
   cycles,
   maxCount,
@@ -49,25 +49,26 @@ function CyclePerformanceLineChart({
   const plotW = vbW - padL - padR;
   const plotH = vbH - padT - padB;
   const n = cycles.length;
+  const rawCountMax = Math.max(1, maxCount);
+  const countAxisMax =
+    rawCountMax <= 10 ? 10 : Math.ceil((rawCountMax * 1.1) / 10) * 10;
 
   const xAt = (index: number) => {
     if (n <= 1) return padL + plotW / 2;
     return padL + (index / (n - 1)) * plotW;
   };
 
-  const yAt = (value0to100: number) =>
-    padT + plotH * (1 - Math.min(100, Math.max(0, value0to100)) / 100);
+  const yAtCount = (value: number) =>
+    padT + plotH * (1 - Math.min(countAxisMax, Math.max(0, value)) / countAxisMax);
+  const yAtPct = (pct: number) =>
+    padT + plotH * (1 - Math.min(100, Math.max(0, pct)) / 100);
 
-  const plannedVals = cycles.map((c) =>
-    maxCount > 0 ? (c.plannedCount / maxCount) * 100 : 0
-  );
-  const deliveredVals = cycles.map((c) =>
-    maxCount > 0 ? (c.deliveredCount / maxCount) * 100 : 0
-  );
+  const plannedVals = cycles.map((c) => c.plannedCount);
+  const deliveredVals = cycles.map((c) => c.deliveredCount);
   const effVals = cycles.map((c) => Math.min(100, Math.max(0, c.effectivenessPct)));
 
-  const pointsAttr = (vals: number[]) =>
-    vals.map((v, i) => `${xAt(i)},${yAt(v)}`).join(" ");
+  const pointsAttr = (vals: number[], yMapper: (v: number) => number) =>
+    vals.map((v, i) => `${xAt(i)},${yMapper(v)}`).join(" ");
 
   const gridLines = [0, 25, 50, 75, 100];
 
@@ -81,7 +82,7 @@ function CyclePerformanceLineChart({
       >
         <title>Planejado, entregue e efetividade por ciclo</title>
         {gridLines.map((g) => {
-          const y = yAt(g);
+          const y = mode === "effectiveness" ? yAtPct(g) : yAtCount((g / 100) * countAxisMax);
           return (
             <line
               key={g}
@@ -98,19 +99,36 @@ function CyclePerformanceLineChart({
           <text
             key={`yl-${g}`}
             x={padL - 8}
-            y={yAt(g) + 4}
+            y={(mode === "effectiveness" ? yAtPct(g) : yAtCount((g / 100) * countAxisMax)) + 4}
             textAnchor="end"
             className="fill-on-surface-variant text-[10px] font-medium"
           >
-            {g}
+            {mode === "effectiveness" ? `${g}%` : Math.round((g / 100) * countAxisMax)}
           </text>
         ))}
+        {mode === "all"
+          ? gridLines.map((g) => (
+              <text
+                key={`yr-${g}`}
+                x={padL + plotW + 8}
+                y={yAtPct(g) + 4}
+                textAnchor="start"
+                className="fill-on-surface-variant text-[10px] font-medium"
+              >
+                {`${g}%`}
+              </text>
+            ))
+          : null}
         <text
           x={padL}
           y={14}
           className="fill-on-surface-variant text-[10px]"
         >
-          0–100 (planej./entregue relativos ao máximo do gráfico; efetiv. = %)
+          {mode === "effectiveness"
+            ? "Eixo em porcentagem de efetividade"
+            : mode === "delivery"
+              ? "Eixo em números reais de tarefas (planejado e entregue)"
+              : "Esquerda: tarefas reais | Direita: efetividade (%)"}
         </text>
 
         {n >= 2 ? (
@@ -124,7 +142,7 @@ function CyclePerformanceLineChart({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 pointerEvents="none"
-                points={pointsAttr(plannedVals)}
+                points={pointsAttr(plannedVals, yAtCount)}
               />
             ) : null}
             {mode !== "effectiveness" ? (
@@ -135,7 +153,7 @@ function CyclePerformanceLineChart({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 pointerEvents="none"
-                points={pointsAttr(deliveredVals)}
+                points={pointsAttr(deliveredVals, yAtCount)}
               />
             ) : null}
             {mode !== "delivery" ? (
@@ -146,19 +164,46 @@ function CyclePerformanceLineChart({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 pointerEvents="none"
-                points={pointsAttr(effVals)}
+                points={pointsAttr(effVals, yAtPct)}
               />
             ) : null}
           </>
         ) : null}
 
         {cycles.map((c, i) => {
-          const py = yAt(plannedVals[i]);
-          const dy = yAt(deliveredVals[i]);
-          const ey = yAt(effVals[i]);
+          const py = yAtCount(plannedVals[i]);
+          const dy = yAtCount(deliveredVals[i]);
+          const ey = yAtPct(effVals[i]);
           const top = Math.min(py, dy, ey);
           const bottom = Math.max(py, dy, ey);
           const hitPad = 12;
+          const labelText = (value: string, x: number, y: number, color: string) => {
+            const width = Math.max(28, value.length * 6 + 10);
+            return (
+              <g>
+                <rect
+                  x={x - width / 2}
+                  y={y - 9}
+                  width={width}
+                  height={16}
+                  rx={8}
+                  fill="#ffffff"
+                  stroke={color}
+                  strokeOpacity={0.25}
+                  strokeWidth={1}
+                />
+                <text
+                  x={x}
+                  y={y + 2}
+                  textAnchor="middle"
+                  style={{ fill: color }}
+                  className="text-[9px] font-semibold"
+                >
+                  {value}
+                </text>
+              </g>
+            );
+          };
           return (
             <g key={c.id}>
               <text
@@ -171,37 +216,46 @@ function CyclePerformanceLineChart({
                 {`Ciclo ${c.cycleNumber}`}
               </text>
               {mode !== "effectiveness" ? (
-                <circle
-                  cx={xAt(i)}
-                  cy={py}
-                  r={5}
-                  fill={CHART_COLOR_PLANNED}
-                  stroke="#fff"
-                  strokeWidth={1.5}
-                  pointerEvents="none"
-                />
+                <>
+                  <circle
+                    cx={xAt(i)}
+                    cy={py}
+                    r={5}
+                    fill={CHART_COLOR_PLANNED}
+                    stroke="#fff"
+                    strokeWidth={1.5}
+                    pointerEvents="none"
+                  />
+                  {labelText(String(c.plannedCount), xAt(i) - 20, py - 12, CHART_COLOR_PLANNED)}
+                </>
               ) : null}
               {mode !== "effectiveness" ? (
-                <circle
-                  cx={xAt(i)}
-                  cy={dy}
-                  r={5}
-                  fill={CHART_COLOR_DELIVERED}
-                  stroke="#fff"
-                  strokeWidth={1.5}
-                  pointerEvents="none"
-                />
+                <>
+                  <circle
+                    cx={xAt(i)}
+                    cy={dy}
+                    r={5}
+                    fill={CHART_COLOR_DELIVERED}
+                    stroke="#fff"
+                    strokeWidth={1.5}
+                    pointerEvents="none"
+                  />
+                  {labelText(String(c.deliveredCount), xAt(i) + 20, dy - 12, CHART_COLOR_DELIVERED)}
+                </>
               ) : null}
               {mode !== "delivery" ? (
-                <circle
-                  cx={xAt(i)}
-                  cy={ey}
-                  r={5}
-                  fill={CHART_COLOR_EFFECT}
-                  stroke="#fff"
-                  strokeWidth={1.5}
-                  pointerEvents="none"
-                />
+                <>
+                  <circle
+                    cx={xAt(i)}
+                    cy={ey}
+                    r={5}
+                    fill={CHART_COLOR_EFFECT}
+                    stroke="#fff"
+                    strokeWidth={1.5}
+                    pointerEvents="none"
+                  />
+                  {labelText(formatPct(c.effectivenessPct), xAt(i), ey - 18, CHART_COLOR_EFFECT)}
+                </>
               ) : null}
               <rect
                 x={xAt(i) - 22}
