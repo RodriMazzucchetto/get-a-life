@@ -74,6 +74,29 @@ function CyclePerformanceLineChart({
 
   return (
     <div className="w-full overflow-x-auto">
+      <div className="mb-2 flex justify-end gap-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+        {mode !== "effectiveness" ? (
+          <>
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: CHART_COLOR_PLANNED, opacity: 0.3 }}
+              />
+              Planned
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_DELIVERED }} />
+              Delivered
+            </span>
+          </>
+        ) : null}
+        {mode !== "delivery" ? (
+          <span className="inline-flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_EFFECT }} />
+            Effectiveness
+          </span>
+        ) : null}
+      </div>
       <svg
         viewBox={`0 0 ${vbW} ${vbH}`}
         className="h-auto w-full min-w-[320px] max-h-[320px] text-on-surface-variant"
