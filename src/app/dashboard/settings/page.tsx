@@ -4,6 +4,8 @@ import { useAuthContext } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
+import { usePlanningData } from '@/hooks/usePlanningData'
+import { ProjectManagementModal } from '@/components/ProjectManagementModal'
 
 export default function SettingsPage() {
   const { user, loading } = useAuthContext()
@@ -14,6 +16,14 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [showProjectsModal, setShowProjectsModal] = useState(false)
+  const {
+    projects,
+    isLoading: isPlanningLoading,
+    createProject,
+    updateProject,
+    deleteProject,
+  } = usePlanningData()
 
   useEffect(() => {
     if (!loading && !user) {
@@ -130,6 +140,35 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 max-w-lg">
+        <h2 className="text-lg font-medium text-gray-900 mb-2">Gestão de projetos</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          A gestão de projetos foi movida para esta área de configurações.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowProjectsModal(true)}
+            disabled={isPlanningLoading}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isPlanningLoading ? 'Carregando projetos...' : 'Abrir gestão de projetos'}
+          </button>
+          <span className="text-sm text-gray-600">
+            {projects.length} {projects.length === 1 ? 'projeto' : 'projetos'}
+          </span>
+        </div>
+      </div>
+
+      <ProjectManagementModal
+        isOpen={showProjectsModal}
+        onClose={() => setShowProjectsModal(false)}
+        projects={projects}
+        onCreateProject={createProject}
+        onUpdateProject={updateProject}
+        onDeleteProject={deleteProject}
+      />
     </div>
   )
 }

@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { PlusIcon, FolderIcon, PlayIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PlayIcon } from '@heroicons/react/24/outline'
 import ModalOverlay from '@/components/ModalOverlay'
 import { ModalPanel } from '@/components/ModalPanel'
-import { ProjectManagementModal } from '@/components/ProjectManagementModal'
 import { GoalManagementModal } from '@/components/GoalManagementModal'
 import { GoalDisplay } from '@/components/GoalDisplay'
 import { RemindersModal } from '@/components/RemindersModal'
@@ -454,9 +453,6 @@ export default function PlanningPage() {
     isLoading,
     setGoals,
     setReminders,
-    createProject,
-    updateProject,
-    deleteProject,
     createTodo,
     updateTodo,
     deleteTodo,
@@ -558,9 +554,7 @@ export default function PlanningPage() {
   }, [activeDragId, todos])
 
   const [showRemindersModal, setShowRemindersModal] = useState(false)
-  const [showProjectsModal, setShowProjectsModal] = useState(false)
   const [showGoalModal, setShowGoalModal] = useState(false)
-  // Estado de showProjectsModal REMOVIDO
   // Estado de showNewProjectForm REMOVIDO
   // Estado de showNewTagForm REMOVIDO
   // Estado de editingProject REMOVIDO
@@ -1501,14 +1495,6 @@ export default function PlanningPage() {
               Iniciar Novo Ciclo
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setShowProjectsModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-outline-variant text-primary bg-surface-container-lowest hover:bg-surface-container-high transition-all active:scale-[0.98]"
-          >
-            <FolderIcon className="h-5 w-5 text-primary shrink-0" aria-hidden />
-            Projetos
-          </button>
           <button
             type="button"
             onClick={() => {
@@ -2793,16 +2779,6 @@ export default function PlanningPage() {
           </ModalPanel>
         </ModalOverlay>
       )}
-
-      {/* Modal de Gerenciamento de Projetos */}
-      <ProjectManagementModal
-        isOpen={showProjectsModal}
-        onClose={() => setShowProjectsModal(false)}
-        projects={projects}
-        onCreateProject={createProject}
-        onUpdateProject={updateProject}
-        onDeleteProject={deleteProject}
-      />
 
       {/* Modal de Gerenciamento de Metas */}
       <GoalManagementModal
