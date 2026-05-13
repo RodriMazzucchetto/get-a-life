@@ -242,61 +242,57 @@ function CyclePerformanceBarChart({
       : Math.max(1, ...cycles.flatMap((c) => [c.plannedCount, c.deliveredCount]));
 
   return (
-    <div className="space-y-3 rounded-xl border border-outline-variant/20 bg-surface-container-low/30 p-4">
-      <div className="flex flex-wrap items-center gap-4 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-        {mode === "delivery" ? (
-          <>
+    <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low/30 p-4">
+      <div className="relative h-72 w-full overflow-x-auto">
+        <div className="absolute -top-6 right-1 flex gap-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+          {mode === "delivery" ? (
+            <>
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: CHART_COLOR_PLANNED, opacity: 0.3 }}
+                />
+                Planned
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_DELIVERED }} />
+                Delivered
+              </span>
+            </>
+          ) : (
             <span className="inline-flex items-center gap-2">
-              <span
-                className="h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: CHART_COLOR_PLANNED, opacity: 0.3 }}
-              />
-              Planned
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_EFFECT }} />
+              Effectiveness
             </span>
-            <span className="inline-flex items-center gap-2">
-              <span
-                className="h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: CHART_COLOR_DELIVERED }}
-              />
-              Delivered
-            </span>
-          </>
-        ) : (
-          <span className="inline-flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_EFFECT }} />
-            Effectiveness
-          </span>
-        )}
-      </div>
-
-      <div className="relative h-72 overflow-x-auto">
-        <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none">
-          <div className="absolute inset-x-0 bottom-1/4 h-px bg-outline-variant/20" />
-          <div className="absolute inset-x-0 bottom-2/4 h-px bg-outline-variant/20" />
-          <div className="absolute inset-x-0 bottom-3/4 h-px bg-outline-variant/20" />
+          )}
         </div>
-        <div className="relative flex h-full min-w-[520px] items-end gap-6 border-b border-outline-variant/25 pb-8">
+
+        <div className="absolute inset-x-0 bottom-[25%] h-px bg-outline-variant/15" />
+        <div className="absolute inset-x-0 bottom-[50%] h-px bg-outline-variant/15" />
+        <div className="absolute inset-x-0 bottom-[75%] h-px bg-outline-variant/15" />
+
+        <div className="flex h-full min-w-[620px] items-end gap-10 border-b border-outline-variant/30 px-2 pb-2">
           {cycles.map((cycle) => {
-            const plannedPct = Math.max(4, (cycle.plannedCount / maxValue) * 100);
-            const deliveredPct = Math.max(4, (cycle.deliveredCount / maxValue) * 100);
-            const effPct = Math.max(4, Math.min(100, cycle.effectivenessPct));
+            const plannedPct = Math.max(6, (cycle.plannedCount / maxValue) * 100);
+            const deliveredPct = Math.max(6, (cycle.deliveredCount / maxValue) * 100);
+            const effPct = Math.max(6, Math.min(100, cycle.effectivenessPct));
 
             return (
-              <div key={cycle.id} className="flex min-w-[88px] flex-1 flex-col items-center gap-3">
-                <div className="flex h-52 w-full items-end justify-center gap-2">
+              <div key={cycle.id} className="flex flex-1 flex-col items-center gap-3">
+                <div className="flex w-full items-end justify-center gap-2">
                   {mode === "delivery" ? (
                     <>
                       <div
-                        className="w-7 rounded-t-md transition-opacity hover:opacity-80"
+                        className="w-8 rounded-t-md transition-colors hover:opacity-85"
                         style={{
                           height: `${plannedPct}%`,
                           backgroundColor: CHART_COLOR_PLANNED,
-                          opacity: 0.3,
+                          opacity: 0.28,
                         }}
                         title={`Ciclo ${cycle.cycleNumber} · Planejado: ${cycle.plannedCount}`}
                       />
                       <div
-                        className="w-7 rounded-t-md transition-opacity hover:opacity-90"
+                        className="w-8 rounded-t-md transition-colors hover:opacity-90"
                         style={{
                           height: `${deliveredPct}%`,
                           backgroundColor: CHART_COLOR_DELIVERED,
@@ -306,7 +302,7 @@ function CyclePerformanceBarChart({
                     </>
                   ) : (
                     <div
-                      className="w-9 rounded-t-md transition-opacity hover:opacity-90"
+                      className="w-10 rounded-t-md transition-colors hover:opacity-90"
                       style={{
                         height: `${effPct}%`,
                         backgroundColor: CHART_COLOR_EFFECT,
@@ -317,9 +313,7 @@ function CyclePerformanceBarChart({
                     />
                   )}
                 </div>
-                <span className="text-xs font-bold text-on-surface-variant">
-                  Ciclo {cycle.cycleNumber}
-                </span>
+                <span className="text-xs font-bold text-on-surface-variant">Ciclo {cycle.cycleNumber}</span>
               </div>
             );
           })}
