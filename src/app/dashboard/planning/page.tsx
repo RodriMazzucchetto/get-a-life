@@ -803,14 +803,6 @@ export default function PlanningPage() {
     }
   }
 
-  const taskStats = {
-    inProgress: inProgressTodos.length,
-    currentWeek: weekTodos.length,
-    backlog: backlogTodos.length,
-    completed: todos.filter((t) => t.completed).length,
-    reminders: reminders.length,
-  }
-
   // Funções para iniciativas
   const handleAddInitiative = () => {
     if (newInitiative.trim() && editingGoal) {
@@ -1501,7 +1493,6 @@ export default function PlanningPage() {
             title="Lembretes"
           >
             <span className="material-symbols-outlined text-[22px]">notifications</span>
-            <span className="text-xs font-bold text-on-surface-variant sm:hidden">{taskStats.reminders}</span>
           </button>
         </div>
       </header>
@@ -1514,42 +1505,6 @@ export default function PlanningPage() {
           {boardError}
         </div>
       )}
-
-      {/* Resumo — cartões */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-2">
-        <div className="bg-primary/5 p-4 rounded-xl shadow-sm border-2 border-primary/20">
-          <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
-            Em Progresso
-          </p>
-          <p className="text-2xl font-bold font-headline text-primary">{taskStats.inProgress}</p>
-        </div>
-        <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/10 ring-1 ring-outline-variant/5">
-          <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
-            Semana Atual
-          </p>
-          <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.currentWeek}</p>
-        </div>
-        <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/30 ring-1 ring-outline-variant/5">
-          <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
-            Backlog
-          </p>
-          <p className="text-2xl font-bold font-headline text-primary">{taskStats.backlog}</p>
-        </div>
-        <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-primary/10 ring-1 ring-outline-variant/5">
-          <p className="text-xs font-semibold text-on-secondary-fixed-variant uppercase tracking-wider mb-1">
-            Concluídas
-          </p>
-          <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.completed}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowRemindersModal(true)}
-          className="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-b-2 border-tertiary/20 ring-1 ring-outline-variant/5 hover:bg-surface-container-high/80 transition-colors text-left col-span-2 md:col-span-1"
-        >
-          <p className="text-xs font-semibold text-tertiary uppercase tracking-wider mb-1">Lembretes</p>
-          <p className="text-2xl font-bold font-headline text-on-surface">{taskStats.reminders}</p>
-        </button>
-      </div>
 
       <DndContext
         sensors={sensors}
