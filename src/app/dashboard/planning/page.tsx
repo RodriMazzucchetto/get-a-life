@@ -475,7 +475,7 @@ export default function PlanningPage() {
   const [cycleBusy, setCycleBusy] = useState(false)
   const [weeklyPriorityItems, setWeeklyPriorityItems] = useState<WeeklyPriorityItem[]>([])
   const [weeklyPriorityLoading, setWeeklyPriorityLoading] = useState(false)
-  const [showWeeklyPriorityForm, setShowWeeklyPriorityForm] = useState(false)
+  const [addingWeeklyPriorityProjectId, setAddingWeeklyPriorityProjectId] = useState<string | null>(null)
   const [editingWeeklyPriorityId, setEditingWeeklyPriorityId] = useState<string | null>(null)
   const [weeklyPriorityDraft, setWeeklyPriorityDraft] = useState<{
     title: string
@@ -582,7 +582,7 @@ export default function PlanningPage() {
       })
       setWeeklyPriorityItems((prev) => [fromDbWeeklyPriorityItem(row), ...prev])
       resetWeeklyPriorityDraft()
-      setShowWeeklyPriorityForm(false)
+      setAddingWeeklyPriorityProjectId(null)
     } catch (err) {
       console.error(err)
       showError('Não foi possível criar o item prioritário.')
@@ -597,7 +597,7 @@ export default function PlanningPage() {
       projectId: item.projectId ?? '',
       deliveryStatus: item.deliveryStatus,
     })
-    setShowWeeklyPriorityForm(false)
+    setAddingWeeklyPriorityProjectId(null)
   }, [])
 
   const handleSaveEditWeeklyPriority = useCallback(async () => {
@@ -1829,108 +1829,7 @@ export default function PlanningPage() {
               Define foco estratégico, vínculo com projeto e status de entrega para análise por ciclo.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setEditingWeeklyPriorityId(null)
-              resetWeeklyPriorityDraft()
-              setShowWeeklyPriorityForm((prev) => !prev)
-            }}
-            className="inline-flex items-center gap-1 rounded-lg bg-tertiary px-3 py-2 text-sm font-semibold text-on-tertiary hover:opacity-95"
-          >
-            <span className="material-symbols-outlined text-base">add</span>
-            Novo item
-          </button>
         </div>
-
-        {showWeeklyPriorityForm && (
-          <div className="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 md:grid-cols-2">
-            <label className="md:col-span-2">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-                Título
-              </span>
-              <input
-                type="text"
-                value={weeklyPriorityDraft.title}
-                onChange={(e) =>
-                  setWeeklyPriorityDraft((prev) => ({ ...prev, title: e.target.value }))
-                }
-                placeholder="Ex.: Finalizar landing page de aquisição"
-                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-              />
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-                Projeto
-              </span>
-              <select
-                value={weeklyPriorityDraft.projectId}
-                onChange={(e) =>
-                  setWeeklyPriorityDraft((prev) => ({ ...prev, projectId: e.target.value }))
-                }
-                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-              >
-                <option value="">Sem projeto</option>
-                {weeklyPriorityProjects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-                Status de entrega
-              </span>
-              <select
-                value={weeklyPriorityDraft.deliveryStatus}
-                onChange={(e) =>
-                  setWeeklyPriorityDraft((prev) => ({
-                    ...prev,
-                    deliveryStatus: e.target.value as WeeklyPriorityDeliveryStatus,
-                  }))
-                }
-                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-              >
-                <option value="not_delivered">Não entregue</option>
-                <option value="partially_delivered">Entregue parcialmente</option>
-                <option value="delivered">Entregue</option>
-              </select>
-            </label>
-            <label className="md:col-span-2">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-                Contexto (opcional)
-              </span>
-              <textarea
-                value={weeklyPriorityDraft.notes}
-                onChange={(e) =>
-                  setWeeklyPriorityDraft((prev) => ({ ...prev, notes: e.target.value }))
-                }
-                rows={2}
-                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-              />
-            </label>
-            <div className="md:col-span-2 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  resetWeeklyPriorityDraft()
-                  setShowWeeklyPriorityForm(false)
-                }}
-                className="rounded-lg border border-outline-variant/30 px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleCreateWeeklyPriorityItem()}
-                className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-on-primary hover:opacity-95"
-              >
-                Salvar item
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="mt-4 space-y-3">
           {weeklyPriorityLoading ? (
@@ -1939,6 +1838,7 @@ export default function PlanningPage() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
               {weeklyPriorityProjects.map((project) => {
                 const items = weeklyPriorityItemsByProject.grouped.get(project.id) ?? []
+                const isAddingHere = addingWeeklyPriorityProjectId === project.id
                 return (
                   <div
                     key={project.id}
@@ -1952,10 +1852,76 @@ export default function PlanningPage() {
                       >
                         {project.name}
                       </span>
-                      <span className="rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-semibold text-on-surface-variant">
-                        {items.length}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-semibold text-on-surface-variant">
+                          {items.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingWeeklyPriorityId(null)
+                            setWeeklyPriorityDraft({
+                              title: '',
+                              notes: '',
+                              projectId: project.id,
+                              deliveryStatus: 'not_delivered',
+                            })
+                            setAddingWeeklyPriorityProjectId((prev) =>
+                              prev === project.id ? null : project.id
+                            )
+                          }}
+                          className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                          title={`Adicionar item em ${project.name}`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">add</span>
+                        </button>
+                      </div>
                     </div>
+                    {isAddingHere ? (
+                      <div className="mb-2 space-y-2 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-2">
+                        <input
+                          type="text"
+                          value={weeklyPriorityDraft.title}
+                          onChange={(e) =>
+                            setWeeklyPriorityDraft((prev) => ({ ...prev, title: e.target.value }))
+                          }
+                          placeholder="Novo item importante..."
+                          className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-2.5 py-2 text-sm text-on-surface outline-none focus:border-primary"
+                        />
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <select
+                            value={weeklyPriorityDraft.deliveryStatus}
+                            onChange={(e) =>
+                              setWeeklyPriorityDraft((prev) => ({
+                                ...prev,
+                                deliveryStatus: e.target.value as WeeklyPriorityDeliveryStatus,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-2.5 py-2 text-sm text-on-surface outline-none focus:border-primary"
+                          >
+                            <option value="not_delivered">Não entregue</option>
+                            <option value="partially_delivered">Entregue parcialmente</option>
+                            <option value="delivered">Entregue</option>
+                          </select>
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setAddingWeeklyPriorityProjectId(null)}
+                              className="flex-1 rounded-lg border border-outline-variant/30 px-2 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-high"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleCreateWeeklyPriorityItem()}
+                              className="flex-1 rounded-lg bg-primary px-2 py-2 text-xs font-semibold text-on-primary hover:opacity-95"
+                            >
+                              Salvar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                     {items.length === 0 ? (
                       <p className="rounded-lg bg-surface-container-lowest px-3 py-2 text-xs text-on-surface-variant">
                         Sem itens desta semana.
