@@ -241,83 +241,143 @@ function CyclePerformanceBarChart({
       ? 100
       : Math.max(1, ...cycles.flatMap((c) => [c.plannedCount, c.deliveredCount]));
 
+  const vbW = 760;
+  const vbH = 280;
+  const padL = 24;
+  const padR = 16;
+  const padT = 16;
+  const padB = 44;
+  const plotW = vbW - padL - padR;
+  const plotH = vbH - padT - padB;
+  const n = Math.max(1, cycles.length);
+  const groupW = plotW / n;
+  const barW = mode === "delivery" ? Math.min(22, groupW * 0.22) : Math.min(28, groupW * 0.3);
+  const barGap = mode === "delivery" ? Math.min(8, groupW * 0.08) : 0;
+
+  const yAtPercent = (pct: number) => padT + plotH - (Math.max(0, Math.min(100, pct)) / 100) * plotH;
+
   return (
     <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low/30 p-4">
-      <div className="relative h-72 w-full overflow-x-auto">
-        <div className="absolute -top-6 right-1 flex gap-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-          {mode === "delivery" ? (
-            <>
-              <span className="inline-flex items-center gap-2">
-                <span
-                  className="h-2.5 w-2.5 rounded-sm"
-                  style={{ backgroundColor: CHART_COLOR_PLANNED, opacity: 0.3 }}
-                />
-                Planned
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_DELIVERED }} />
-                Delivered
-              </span>
-            </>
-          ) : (
+      <div className="mb-2 flex justify-end gap-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+        {mode === "delivery" ? (
+          <>
             <span className="inline-flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_EFFECT }} />
-              Effectiveness
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: CHART_COLOR_PLANNED, opacity: 0.3 }}
+              />
+              Planned
             </span>
-          )}
-        </div>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_DELIVERED }} />
+              Delivered
+            </span>
+          </>
+        ) : (
+          <span className="inline-flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_EFFECT }} />
+            Effectiveness
+          </span>
+        )}
+      </div>
+      <div className="w-full overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${vbW} ${vbH}`}
+          className="h-auto w-full min-w-[620px]"
+          role="img"
+          aria-label="Histórico de performance por ciclo em barras"
+        >
+          <title>Barras de planejado, entregue e efetividade por ciclo</title>
+          {[25, 50, 75].map((v) => (
+            <line
+              key={`g-${v}`}
+              x1={padL}
+              x2={padL + plotW}
+              y1={yAtPercent(v)}
+              y2={yAtPercent(v)}
+              className="stroke-outline-variant/20"
+              strokeWidth={1}
+            />
+          ))}
+          <line
+            x1={padL}
+            x2={padL + plotW}
+            y1={padT + plotH}
+            y2={padT + plotH}
+            className="stroke-outline-variant/30"
+            strokeWidth={1}
+          />
 
-        <div className="absolute inset-x-0 bottom-[25%] h-px bg-outline-variant/15" />
-        <div className="absolute inset-x-0 bottom-[50%] h-px bg-outline-variant/15" />
-        <div className="absolute inset-x-0 bottom-[75%] h-px bg-outline-variant/15" />
+          {cycles.map((cycle, idx) => {
+            const cx = padL + groupW * idx + groupW / 2;
+            const plannedPct = (cycle.plannedCount / maxValue) * 100;
+            const deliveredPct = (cycle.deliveredCount / maxValue) * 100;
+            const effPct = cycle.effectivenessPct;
 
-        <div className="flex h-full min-w-[620px] items-end gap-10 border-b border-outline-variant/30 px-2 pb-2">
-          {cycles.map((cycle) => {
-            const plannedPct = Math.max(6, (cycle.plannedCount / maxValue) * 100);
-            const deliveredPct = Math.max(6, (cycle.deliveredCount / maxValue) * 100);
-            const effPct = Math.max(6, Math.min(100, cycle.effectivenessPct));
+            if (mode === "delivery") {
+              const plannedH = Math.max(4, (Math.max(0, plannedPct) / 100) * plotH);
+              const deliveredH = Math.max(4, (Math.max(0, deliveredPct) / 100) * plotH);
+              const plannedX = cx - barGap / 2 - barW;
+              const deliveredX = cx + barGap / 2;
+              const plannedY = padT + plotH - plannedH;
+              const deliveredY = padT + plotH - deliveredH;
+
+              return (
+                <g key={cycle.id}>
+                  <rect
+                    x={plannedX}
+                    y={plannedY}
+                    width={barW}
+                    height={plannedH}
+                    rx={4}
+                    fill={CHART_COLOR_PLANNED}
+                    opacity={0.28}
+                  >
+                    <title>{`Ciclo ${cycle.cycleNumber} · Planejado: ${cycle.plannedCount}`}</title>
+                  </rect>
+                  <rect
+                    x={deliveredX}
+                    y={deliveredY}
+                    width={barW}
+                    height={deliveredH}
+                    rx={4}
+                    fill={CHART_COLOR_DELIVERED}
+                  >
+                    <title>{`Ciclo ${cycle.cycleNumber} · Entregue: ${cycle.deliveredCount}`}</title>
+                  </rect>
+                  <text
+                    x={cx}
+                    y={vbH - 12}
+                    textAnchor="middle"
+                    className="fill-on-surface-variant text-[11px] font-bold"
+                  >
+                    {`Ciclo ${cycle.cycleNumber}`}
+                  </text>
+                </g>
+              );
+            }
+
+            const effH = Math.max(4, (Math.max(0, Math.min(100, effPct)) / 100) * plotH);
+            const effX = cx - barW / 2;
+            const effY = padT + plotH - effH;
 
             return (
-              <div key={cycle.id} className="flex flex-1 flex-col items-center gap-3">
-                <div className="flex h-52 w-full items-end justify-center gap-2">
-                  {mode === "delivery" ? (
-                    <>
-                      <div
-                        className="w-8 rounded-t-md transition-colors hover:opacity-85"
-                        style={{
-                          height: `${plannedPct}%`,
-                          backgroundColor: CHART_COLOR_PLANNED,
-                          opacity: 0.28,
-                        }}
-                        title={`Ciclo ${cycle.cycleNumber} · Planejado: ${cycle.plannedCount}`}
-                      />
-                      <div
-                        className="w-8 rounded-t-md transition-colors hover:opacity-90"
-                        style={{
-                          height: `${deliveredPct}%`,
-                          backgroundColor: CHART_COLOR_DELIVERED,
-                        }}
-                        title={`Ciclo ${cycle.cycleNumber} · Entregue: ${cycle.deliveredCount}`}
-                      />
-                    </>
-                  ) : (
-                    <div
-                      className="w-10 rounded-t-md transition-colors hover:opacity-90"
-                      style={{
-                        height: `${effPct}%`,
-                        backgroundColor: CHART_COLOR_EFFECT,
-                      }}
-                      title={`Ciclo ${cycle.cycleNumber} · Efetividade: ${formatPct(
-                        cycle.effectivenessPct
-                      )}`}
-                    />
-                  )}
-                </div>
-                <span className="text-xs font-bold text-on-surface-variant">Ciclo {cycle.cycleNumber}</span>
-              </div>
+              <g key={cycle.id}>
+                <rect x={effX} y={effY} width={barW} height={effH} rx={4} fill={CHART_COLOR_EFFECT}>
+                  <title>{`Ciclo ${cycle.cycleNumber} · Efetividade: ${formatPct(cycle.effectivenessPct)}`}</title>
+                </rect>
+                <text
+                  x={cx}
+                  y={vbH - 12}
+                  textAnchor="middle"
+                  className="fill-on-surface-variant text-[11px] font-bold"
+                >
+                  {`Ciclo ${cycle.cycleNumber}`}
+                </text>
+              </g>
             );
           })}
-        </div>
+        </svg>
       </div>
     </div>
   );
