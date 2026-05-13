@@ -85,7 +85,7 @@ export function usePlanningData() {
             initiatives: initiatives.map((i: DBInitiative) => ({
               id: i.id,
               title: i.title || '',
-              completed: i.status === 'completed',
+              completed: i.completed === true || i.status === 'completed',
             })),
           }
         })
@@ -312,7 +312,7 @@ export function usePlanningData() {
                          initiatives: newInitiatives.map((i: DBInitiative) => ({
                id: i.id,
                title: i.title || '',
-               completed: i.status === 'completed'
+               completed: i.completed === true || i.status === 'completed'
              }))
           }
           
@@ -388,6 +388,7 @@ export function usePlanningData() {
             initiativesService.updateInitiative(initiative.id, {
               title: initiative.title,
               status: initiative.completed ? 'completed' : 'active',
+              completed: initiative.completed,
             })
           )
         )
@@ -402,7 +403,7 @@ export function usePlanningData() {
         initiatives: finalInitiatives.map((i: DBInitiative) => ({
           id: i.id,
           title: i.title || '',
-          completed: i.status === 'completed'
+          completed: i.completed === true || i.status === 'completed'
         }))
       }
       console.log('🎯 Hook: Estado final da meta:', finalGoalWithInitiatives)
