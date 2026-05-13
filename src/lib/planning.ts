@@ -73,7 +73,6 @@ export interface DBInitiative {
   title: string
   description?: string
   status: string
-  completed?: boolean
   priority: string
   due_date?: string
   user_id: string
@@ -352,7 +351,7 @@ export const initiativesService = {
   // Atualizar iniciativa
   async updateInitiative(
     initiativeId: string,
-    updates: { title?: string; status?: DBInitiative['status']; completed?: boolean }
+    updates: { title?: string; status?: DBInitiative['status'] }
   ): Promise<DBInitiative> {
     const supabase = createClient()
     const { data, error } = await supabase
@@ -360,7 +359,6 @@ export const initiativesService = {
       .update({
         ...(updates.title !== undefined ? { title: updates.title } : {}),
         ...(updates.status !== undefined ? { status: updates.status } : {}),
-        ...(updates.completed !== undefined ? { completed: updates.completed } : {}),
       })
       .eq('id', initiativeId)
       .select()
