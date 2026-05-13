@@ -833,18 +833,26 @@ export default function DashboardPage() {
       }
       let planned = 0;
       let delivered = 0;
+      const pendingPerCycle: number[] = [];
       for (const c of closedCycles) {
         const rows = statsByClosedCycle.get(c.id) ?? [];
         if (rows.length > 0) {
-          planned += rows.reduce((s, r) => s + r.tasksLinked, 0);
-          delivered += rows.reduce((s, r) => s + r.tasksCompletedInCycle, 0);
+          const cyclePlanned = rows.reduce((s, r) => s + r.tasksLinked, 0);
+          const cycleDelivered = rows.reduce((s, r) => s + r.tasksCompletedInCycle, 0);
+          planned += cyclePlanned;
+          delivered += cycleDelivered;
+          pendingPerCycle.push(Math.max(0, cyclePlanned - cycleDelivered));
         } else {
           planned += c.plannedCount;
           delivered += c.deliveredCount;
+          pendingPerCycle.push(Math.max(0, c.plannedCount - c.deliveredCount));
         }
       }
       let addedAfterStart = closedCycles.reduce((s, c) => s + c.addedAfterStartCount, 0);
       if (activeCycle) {
+        const activePlanned =
+          sumActiveLinkedEstimate > 0 ? sumActiveLinkedEstimate : activeCycle.plannedCount;
+        const activeDelivered = sumActiveDeliveredEstimate;
         if (sumActiveLinkedEstimate > 0) {
           planned += sumActiveLinkedEstimate;
         } else {
@@ -852,14 +860,22 @@ export default function DashboardPage() {
         }
         delivered += sumActiveDeliveredEstimate;
         addedAfterStart += activeCycle.addedAfterStartCount;
+        pendingPerCycle.push(Math.max(0, activePlanned - activeDelivered));
       }
       const effectivenessPct = effectivenessPctCapped(delivered, planned);
+      const pendingAverage =
+        pendingPerCycle.length > 0
+          ? Math.round(
+              pendingPerCycle.reduce((sum, pendingInCycle) => sum + pendingInCycle, 0) /
+                pendingPerCycle.length
+            )
+          : 0;
       return {
         planned,
         delivered,
         addedAfterStart,
         effectivenessPct,
-        pending: Math.max(0, planned - delivered),
+        pending: pendingAverage,
         deltaVsPrevious: null as number | null,
       };
     }
@@ -1181,6 +1197,11 @@ export default function DashboardPage() {
           </div>
           <p className="text-sm font-medium text-on-surface-variant">Pending</p>
           <p className="mt-1 font-headline text-4xl font-extrabold text-on-surface">{pending}</p>
+          <p className="mt-1 text-xs text-on-surface-variant">
+            {analysisScope === "all"
+              ? "Média de planejados não entregues por ciclo"
+              : "Planejados não entregues no ciclo selecionado"}
+          </p>
         </article>
       </section>
 
