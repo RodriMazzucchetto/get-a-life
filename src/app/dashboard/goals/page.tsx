@@ -1,15 +1,55 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GoalDisplay } from "@/components/GoalDisplay";
 import { GoalManagementModal } from "@/components/GoalManagementModal";
 import { usePlanningData } from "@/hooks/usePlanningData";
+import { useAuthContext } from "@/contexts/AuthContext";
 import type { Goal } from "@/lib/planning";
 
 export default function GoalsPage() {
+  const { user } = useAuthContext();
   const { goals, projects, createGoal, updateGoal, deleteGoal } = usePlanningData();
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [orderedGoalIds, setOrderedGoalIds] = useState<string[]>([]);
+
+  const storageKey = useMemo(
+    () => (user?.id ? `taskarchitect-goal-order-${user.id}` : "taskarchitect-goal-order-anon"),
+    [user?.id]
+  );
+
+  useEffect(() => {
+    const currentIds = goals.map((goal) => goal.id);
+    setOrderedGoalIds((prev) => {
+      let base = prev;
+      if (base.length === 0 && typeof window !== "undefined") {
+        try {
+          const saved = localStorage.getItem(storageKey);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              base = parsed.filter((id): id is string => typeof id === "string");
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao carregar ordem de metas:", error);
+        }
+      }
+      const valid = base.filter((id) => currentIds.includes(id));
+      const missing = currentIds.filter((id) => !valid.includes(id));
+      return [...valid, ...missing];
+    });
+  }, [goals, storageKey]);
+
+  const orderedGoals = useMemo(() => {
+    const goalsById = new Map(goals.map((goal) => [goal.id, goal]));
+    const ordered = orderedGoalIds
+      .map((goalId) => goalsById.get(goalId))
+      .filter((goal): goal is Goal => Boolean(goal));
+    const leftovers = goals.filter((goal) => !orderedGoalIds.includes(goal.id));
+    return [...ordered, ...leftovers];
+  }, [goals, orderedGoalIds]);
 
   const averageProgress = useMemo(() => {
     if (goals.length === 0) return 0;
@@ -55,6 +95,16 @@ export default function GoalsPage() {
     await handleUpdateGoal(goalId, { progress });
   };
 
+  const handleAddInitiative = async (goalId: string, title: string) => {
+    const goal = goals.find((g) => g.id === goalId);
+    if (!goal) return;
+    const updatedInitiatives = [
+      ...(goal.initiatives ?? []),
+      { id: `temp-${Date.now()}`, title, completed: false },
+    ];
+    await handleUpdateGoal(goalId, { initiatives: updatedInitiatives });
+  };
+
   const handleToggleInitiative = async (goalId: string, initiativeId: string) => {
     const goal = goals.find((g) => g.id === goalId);
     if (!goal) return;
@@ -82,6 +132,13 @@ export default function GoalsPage() {
     if (!goal) return;
     const updatedInitiatives = goal.initiatives.filter((i) => i.id !== initiativeId);
     await handleUpdateGoal(goalId, { initiatives: updatedInitiatives });
+  };
+
+  const handleReorderGoals = (nextGoalIds: string[]) => {
+    setOrderedGoalIds(nextGoalIds);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(storageKey, JSON.stringify(nextGoalIds));
+    }
   };
 
   return (
@@ -116,7 +173,7 @@ export default function GoalsPage() {
       </section>
 
       <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
-        {goals.length === 0 ? (
+        {orderedGoals.length === 0 ? (
           <div className="p-8 text-center">
             <h2 className="font-headline text-xl font-bold text-on-surface">
               Defina seus objetivos principais
@@ -138,16 +195,19 @@ export default function GoalsPage() {
           </div>
         ) : (
           <GoalDisplay
-            goals={goals}
+            goals={orderedGoals}
             projects={projects}
             onEditGoal={(goal) => {
               setEditingGoal(goal);
               setShowGoalModal(true);
             }}
+            onDeleteGoal={handleDeleteGoal}
             onUpdateGoalProgress={handleUpdateGoalProgress}
+            onAddInitiative={handleAddInitiative}
             onToggleInitiative={handleToggleInitiative}
             onEditInitiative={handleEditInitiative}
             onDeleteInitiative={handleDeleteInitiative}
+            onReorderGoals={handleReorderGoals}
           />
         )}
       </section>
