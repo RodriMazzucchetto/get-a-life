@@ -21,7 +21,6 @@ import {
   burstTaskComplete,
   burstTaskDelete,
 } from '@/lib/microEffects'
-import PomodoroTimer from '@/components/Timer/PomodoroTimer'
 import {
   DndContext,
   DragOverlay,
@@ -1762,19 +1761,17 @@ export default function PlanningPage() {
                     </>
                   ) : (
                     <div className="py-10 md:py-12 px-4 flex flex-col items-center justify-center text-center bg-gradient-to-b from-primary/[0.02] to-transparent rounded-xl border border-dashed border-outline-variant/40">
-                      <button
-                        type="button"
-                        onClick={() => document.getElementById('pomodoro-section')?.scrollIntoView({ behavior: 'smooth' })}
-                        className="w-20 h-20 md:w-24 md:h-24 mb-5 flex items-center justify-center bg-surface-container-lowest rounded-3xl shadow-md ring-1 ring-outline-variant/10 group hover:scale-105 transition-transform cursor-pointer"
-                        aria-label="Ir ao timer Pomodoro"
+                      <div
+                        className="w-20 h-20 md:w-24 md:h-24 mb-5 flex items-center justify-center bg-surface-container-lowest rounded-3xl shadow-md ring-1 ring-outline-variant/10"
+                        aria-hidden
                       >
-                        <span className="material-symbols-outlined text-4xl md:text-5xl text-outline group-hover:text-primary transition-colors">
+                        <span className="material-symbols-outlined text-4xl md:text-5xl text-outline">
                           play_circle
                         </span>
-                      </button>
+                      </div>
                       <h3 className="font-headline font-bold text-lg text-on-surface mb-2">Nenhuma tarefa em progresso</h3>
                       <p className="text-on-surface-variant text-sm max-w-md mb-5">
-                        Arraste uma tarefa da semana ou do backlog para cá, ou crie uma nova. O timer Pomodoro fica abaixo para sessões focadas.
+                        Arraste uma tarefa da semana ou do backlog para cá, ou crie uma nova para começar a execução.
                       </p>
                       <button
                         type="button"
@@ -1810,18 +1807,6 @@ export default function PlanningPage() {
                 )}
               </DroppableColumn>
 
-              <div
-                id="pomodoro-section"
-                className="border-t border-outline-variant/15 pt-4 shrink-0"
-              >
-                <p className="text-xs font-medium text-on-surface-variant mb-2">Timer Pomodoro (opcional)</p>
-                <PomodoroTimer
-                  compact
-                  onCycleComplete={(cycles) => {
-                    console.log(`Ciclo completado! Total de ciclos hoje: ${cycles}`)
-                  }}
-                />
-              </div>
             </div>
           </div>
         </section>
