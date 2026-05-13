@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { GoalDisplay } from "@/components/GoalDisplay";
-import { GoalManagementModal } from "@/components/GoalManagementModal";
 import { usePlanningData } from "@/hooks/usePlanningData";
 import { useAuthContext } from "@/contexts/AuthContext";
 import type { Goal } from "@/lib/planning";
@@ -10,8 +9,6 @@ import type { Goal } from "@/lib/planning";
 export default function GoalsPage() {
   const { user } = useAuthContext();
   const { goals, projects, createGoal, updateGoal, deleteGoal } = usePlanningData();
-  const [showGoalModal, setShowGoalModal] = useState(false);
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [orderedGoalIds, setOrderedGoalIds] = useState<string[]>([]);
 
   const storageKey = useMemo(
@@ -81,18 +78,11 @@ export default function GoalsPage() {
   const handleDeleteGoal = async (goalId: string) => {
     try {
       const success = await deleteGoal(goalId);
-      if (success && editingGoal?.id === goalId) {
-        setEditingGoal(null);
-      }
       return success;
     } catch (error) {
       console.error("Erro ao deletar meta:", error);
       return false;
     }
-  };
-
-  const handleUpdateGoalProgress = async (goalId: string, progress: number) => {
-    await handleUpdateGoal(goalId, { progress });
   };
 
   const handleAddInitiative = async (goalId: string, title: string) => {
@@ -157,70 +147,24 @@ export default function GoalsPage() {
             <span className="rounded-full bg-tertiary-fixed px-3 py-1 text-xs font-bold uppercase text-on-tertiary-fixed-variant">
               {averageProgress}% média
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingGoal(null);
-                setShowGoalModal(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:opacity-95"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              Nova meta
-            </button>
           </div>
         </div>
       </section>
 
       <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">
-        {orderedGoals.length === 0 ? (
-          <div className="p-8 text-center">
-            <h2 className="font-headline text-xl font-bold text-on-surface">
-              Defina seus objetivos principais
-            </h2>
-            <p className="mt-2 text-sm text-on-surface-variant">
-              Crie metas trimestrais ou mensais para manter foco no que importa.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingGoal(null);
-                setShowGoalModal(true);
-              }}
-              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              Criar primeira meta
-            </button>
-          </div>
-        ) : (
-          <GoalDisplay
-            goals={orderedGoals}
-            projects={projects}
-            onEditGoal={(goal) => {
-              setEditingGoal(goal);
-              setShowGoalModal(true);
-            }}
-            onDeleteGoal={handleDeleteGoal}
-            onUpdateGoalProgress={handleUpdateGoalProgress}
-            onAddInitiative={handleAddInitiative}
-            onToggleInitiative={handleToggleInitiative}
-            onEditInitiative={handleEditInitiative}
-            onDeleteInitiative={handleDeleteInitiative}
-            onReorderGoals={handleReorderGoals}
-          />
-        )}
+        <GoalDisplay
+          goals={orderedGoals}
+          projects={projects}
+          onCreateGoal={handleCreateGoal}
+          onUpdateGoal={handleUpdateGoal}
+          onDeleteGoal={handleDeleteGoal}
+          onAddInitiative={handleAddInitiative}
+          onToggleInitiative={handleToggleInitiative}
+          onEditInitiative={handleEditInitiative}
+          onDeleteInitiative={handleDeleteInitiative}
+          onReorderGoals={handleReorderGoals}
+        />
       </section>
-
-      <GoalManagementModal
-        isOpen={showGoalModal}
-        onClose={() => setShowGoalModal(false)}
-        goal={editingGoal}
-        projects={projects}
-        onCreateGoal={handleCreateGoal}
-        onUpdateGoal={handleUpdateGoal}
-        onDeleteGoal={handleDeleteGoal}
-      />
     </div>
   );
 }
