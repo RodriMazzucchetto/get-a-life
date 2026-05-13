@@ -375,6 +375,8 @@ function CyclePerformanceBarChart({
               const deliveredX = cx + barGap / 2;
               const plannedY = padT + plotH - plannedH;
               const deliveredY = padT + plotH - deliveredH;
+              const plannedLabelY = Math.max(padT + 10, plannedY - 6);
+              const deliveredLabelY = Math.max(padT + 10, deliveredY - 6);
 
               return (
                 <g key={cycle.id}>
@@ -400,6 +402,24 @@ function CyclePerformanceBarChart({
                     <title>{`Ciclo ${cycle.cycleNumber} · Entregue: ${cycle.deliveredCount}`}</title>
                   </rect>
                   <text
+                    x={plannedX + barW / 2}
+                    y={plannedLabelY}
+                    textAnchor="middle"
+                    style={{ fill: CHART_COLOR_PLANNED }}
+                    className="text-[10px] font-semibold"
+                  >
+                    {cycle.plannedCount}
+                  </text>
+                  <text
+                    x={deliveredX + barW / 2}
+                    y={deliveredLabelY}
+                    textAnchor="middle"
+                    style={{ fill: CHART_COLOR_DELIVERED }}
+                    className="text-[10px] font-semibold"
+                  >
+                    {cycle.deliveredCount}
+                  </text>
+                  <text
                     x={cx}
                     y={vbH - 12}
                     textAnchor="middle"
@@ -414,12 +434,22 @@ function CyclePerformanceBarChart({
             const effH = Math.max(4, (Math.max(0, Math.min(100, effPct)) / 100) * plotH);
             const effX = cx - barW / 2;
             const effY = padT + plotH - effH;
+            const effLabelY = Math.max(padT + 10, effY - 6);
 
             return (
               <g key={cycle.id}>
                 <rect x={effX} y={effY} width={barW} height={effH} rx={4} fill={CHART_COLOR_EFFECT}>
                   <title>{`Ciclo ${cycle.cycleNumber} · Efetividade: ${formatPct(cycle.effectivenessPct)}`}</title>
                 </rect>
+                <text
+                  x={cx}
+                  y={effLabelY}
+                  textAnchor="middle"
+                  style={{ fill: CHART_COLOR_EFFECT }}
+                  className="text-[10px] font-semibold"
+                >
+                  {formatPct(cycle.effectivenessPct)}
+                </text>
                 <text
                   x={cx}
                   y={vbH - 12}
