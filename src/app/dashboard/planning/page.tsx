@@ -130,7 +130,9 @@ function TodoDragOverlayPreview({
           </span>
         ))}
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="truncate text-sm text-gray-900">{todo.title}</span>
+          <span className="truncate text-sm text-gray-900" title={todo.title}>
+            {todo.title}
+          </span>
           {todo.onHold && todo.onHoldReason && (
             <span className="max-w-32 truncate text-sm text-yellow-600">
               - Em espera:{' '}
@@ -307,7 +309,9 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
 
           {/* Título + espera */}
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="truncate text-sm text-gray-900">{todo.title}</span>
+            <span className="truncate text-sm text-gray-900" title={todo.title}>
+              {todo.title}
+            </span>
             {todo.onHold && todo.onHoldReason && (
               <span
                 className="max-w-[40%] shrink cursor-help truncate text-sm text-yellow-600"
