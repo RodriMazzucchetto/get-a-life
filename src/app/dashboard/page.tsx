@@ -11,8 +11,11 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import {
   cyclesService,
   fromDbTaskCycle,
+  fromDbWeeklyPriorityItem,
   type TaskCycle,
   type CycleProjectStatRow,
+  type WeeklyPriorityItem,
+  weeklyPriorityItemsService,
 } from "@/lib/planning";
 
 function formatPct(value: number): string {
@@ -650,6 +653,7 @@ export default function DashboardPage() {
   const [statsRefreshTick, setStatsRefreshTick] = useState(0);
   const [rebuildSnapshotsLoading, setRebuildSnapshotsLoading] = useState(false);
   const [rebuildSnapshotsMessage, setRebuildSnapshotsMessage] = useState<string | null>(null);
+  const [weeklyPriorityItems, setWeeklyPriorityItems] = useState<WeeklyPriorityItem[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -670,6 +674,26 @@ export default function DashboardPage() {
       })
       .finally(() => {
         if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setWeeklyPriorityItems([]);
+      return;
+    }
+    let mounted = true;
+    weeklyPriorityItemsService
+      .getWeeklyPriorityItems(user.id)
+      .then((rows) => {
+        if (!mounted) return;
+        setWeeklyPriorityItems(rows.map(fromDbWeeklyPriorityItem));
+      })
+      .catch((err) => {
+        console.error(err);
       });
     return () => {
       mounted = false;
@@ -972,6 +996,23 @@ export default function DashboardPage() {
     statsByClosedCycle,
   ]);
 
+  const weeklyPriorityStats = useMemo(() => {
+    const inScope = weeklyPriorityItems.filter((item) => {
+      if (analysisScope === "all") return true;
+      return item.cycleId === analysisScope;
+    });
+    const delivered = inScope.filter((item) => item.deliveryStatus === "delivered").length;
+    const partial = inScope.filter(
+      (item) => item.deliveryStatus === "partially_delivered"
+    ).length;
+    const notDelivered = inScope.filter(
+      (item) => item.deliveryStatus === "not_delivered"
+    ).length;
+    const total = inScope.length;
+    const completionPct = total > 0 ? ((delivered + partial * 0.5) / total) * 100 : 0;
+    return { delivered, partial, notDelivered, total, completionPct };
+  }, [weeklyPriorityItems, analysisScope]);
+
   const projectAnalysis = useMemo(() => {
     if (analysisScope === "all") {
       if (closedCycles.length === 0) {
@@ -1203,6 +1244,53 @@ export default function DashboardPage() {
               : "Planejados não entregues no ciclo selecionado"}
           </p>
         </article>
+      </section>
+
+      <section className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-headline text-lg font-bold text-on-surface">
+              Entrega dos Itens Mais Importantes
+            </h2>
+            <p className="text-sm text-on-surface-variant">
+              {analysisScope === "all"
+                ? "Agregado de todos os ciclos"
+                : "Recorte do ciclo selecionado"}
+            </p>
+          </div>
+          <span className="rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-on-surface-variant">
+            Total: {weeklyPriorityStats.total}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <article className="rounded-lg bg-tertiary-fixed/40 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              Entregues
+            </p>
+            <p className="mt-1 text-2xl font-extrabold text-on-surface">
+              {weeklyPriorityStats.delivered}
+            </p>
+          </article>
+          <article className="rounded-lg bg-primary-fixed/40 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              Parcialmente Entregues
+            </p>
+            <p className="mt-1 text-2xl font-extrabold text-on-surface">
+              {weeklyPriorityStats.partial}
+            </p>
+          </article>
+          <article className="rounded-lg bg-error-container/60 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              Não Entregues
+            </p>
+            <p className="mt-1 text-2xl font-extrabold text-on-surface">
+              {weeklyPriorityStats.notDelivered}
+            </p>
+          </article>
+        </div>
+        <p className="mt-3 text-xs text-on-surface-variant">
+          Índice ponderado de entrega: {formatPct(weeklyPriorityStats.completionPct)}
+        </p>
       </section>
 
       <section className="rounded-xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/10">

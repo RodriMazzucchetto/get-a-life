@@ -118,6 +118,23 @@ export interface DBTaskCycle {
   updated_at: string
 }
 
+export type WeeklyPriorityDeliveryStatus =
+  | 'not_delivered'
+  | 'partially_delivered'
+  | 'delivered'
+
+export interface DBWeeklyPriorityItem {
+  id: string
+  user_id: string
+  cycle_id?: string | null
+  project_id?: string | null
+  title: string
+  notes?: string | null
+  delivery_status: WeeklyPriorityDeliveryStatus
+  created_at: string
+  updated_at: string
+}
+
 export type ProblemKind = 'market' | 'operational'
 
 export interface DBProblem {
@@ -1415,6 +1432,101 @@ export const remindersService = {
   }
 }
 
+export const weeklyPriorityItemsService = {
+  async getWeeklyPriorityItems(userId: string): Promise<DBWeeklyPriorityItem[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('weekly_priority_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar itens prioritários da semana:', error)
+      throw error
+    }
+    return (data || []) as DBWeeklyPriorityItem[]
+  },
+
+  async createWeeklyPriorityItem(
+    userId: string,
+    item: {
+      title: string
+      notes?: string
+      project_id?: string | null
+      cycle_id?: string | null
+      delivery_status?: WeeklyPriorityDeliveryStatus
+    }
+  ): Promise<DBWeeklyPriorityItem> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('weekly_priority_items')
+      .insert({
+        user_id: userId,
+        title: item.title.trim(),
+        notes: item.notes?.trim() || null,
+        project_id: item.project_id ?? null,
+        cycle_id: item.cycle_id ?? null,
+        delivery_status: item.delivery_status ?? 'not_delivered',
+      })
+      .select('*')
+      .single()
+
+    if (error) {
+      console.error('Erro ao criar item prioritário da semana:', error)
+      throw error
+    }
+    return data as DBWeeklyPriorityItem
+  },
+
+  async updateWeeklyPriorityItem(
+    itemId: string,
+    updates: Partial<{
+      title: string
+      notes: string | null
+      project_id: string | null
+      cycle_id: string | null
+      delivery_status: WeeklyPriorityDeliveryStatus
+    }>
+  ): Promise<DBWeeklyPriorityItem> {
+    const supabase = createClient()
+    const patch: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+    if (updates.title !== undefined) patch.title = updates.title.trim()
+    if (updates.notes !== undefined) patch.notes = updates.notes
+    if (updates.project_id !== undefined) patch.project_id = updates.project_id
+    if (updates.cycle_id !== undefined) patch.cycle_id = updates.cycle_id
+    if (updates.delivery_status !== undefined) patch.delivery_status = updates.delivery_status
+
+    const { data, error } = await supabase
+      .from('weekly_priority_items')
+      .update(patch)
+      .eq('id', itemId)
+      .select('*')
+      .single()
+
+    if (error) {
+      console.error('Erro ao atualizar item prioritário da semana:', error)
+      throw error
+    }
+    return data as DBWeeklyPriorityItem
+  },
+
+  async deleteWeeklyPriorityItem(itemId: string): Promise<void> {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('weekly_priority_items')
+      .delete()
+      .eq('id', itemId)
+
+    if (error) {
+      console.error('Erro ao deletar item prioritário da semana:', error)
+      throw error
+    }
+  },
+}
+
 // Adapters para converter entre DBTodo e Todo
 export function fromDbTodo(row: DBTodoWithLinks): Todo {
   console.log('🔄 Adapter: Convertendo DBTodo para Todo:', { id: row.id })
@@ -1557,6 +1669,17 @@ export interface TaskCycle {
   updatedAt: string
 }
 
+export interface WeeklyPriorityItem {
+  id: string
+  cycleId?: string
+  projectId?: string
+  title: string
+  notes?: string
+  deliveryStatus: WeeklyPriorityDeliveryStatus
+  createdAt: string
+  updatedAt: string
+}
+
 /** Uma linha de estatísticas de tarefas por projeto (totais ou dentro de um ciclo). */
 export interface ProjectTodoStatRow {
   projectId: string
@@ -1572,6 +1695,19 @@ export interface CycleProjectStatRow extends ProjectTodoStatRow {
   cycleId: string
   /** Alias semântico para ciclo fechado: concluídas entre início e fim do ciclo. */
   tasksCompletedInCycle: number
+}
+
+export function fromDbWeeklyPriorityItem(row: DBWeeklyPriorityItem): WeeklyPriorityItem {
+  return {
+    id: row.id,
+    cycleId: row.cycle_id ?? undefined,
+    projectId: row.project_id ?? undefined,
+    title: row.title,
+    notes: row.notes ?? undefined,
+    deliveryStatus: row.delivery_status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
 }
 
 // Adapters para Goal

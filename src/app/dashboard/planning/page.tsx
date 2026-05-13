@@ -57,9 +57,13 @@ import {
   DBReminder,
   cyclesService,
   fromDbTaskCycle,
+  fromDbWeeklyPriorityItem,
+  weeklyPriorityItemsService,
   type TaskCycle,
   type Todo,
   type Goal,
+  type WeeklyPriorityDeliveryStatus,
+  type WeeklyPriorityItem,
 } from '@/lib/planning'
 import { ProjectIdsPicker } from '@/components/ProjectIdsPicker'
 
@@ -469,6 +473,21 @@ export default function PlanningPage() {
   const [boardError, setBoardError] = useState<string | null>(null)
   const [activeCycle, setActiveCycle] = useState<TaskCycle | null>(null)
   const [cycleBusy, setCycleBusy] = useState(false)
+  const [weeklyPriorityItems, setWeeklyPriorityItems] = useState<WeeklyPriorityItem[]>([])
+  const [weeklyPriorityLoading, setWeeklyPriorityLoading] = useState(false)
+  const [showWeeklyPriorityForm, setShowWeeklyPriorityForm] = useState(false)
+  const [editingWeeklyPriorityId, setEditingWeeklyPriorityId] = useState<string | null>(null)
+  const [weeklyPriorityDraft, setWeeklyPriorityDraft] = useState<{
+    title: string
+    notes: string
+    projectId: string
+    deliveryStatus: WeeklyPriorityDeliveryStatus
+  }>({
+    title: '',
+    notes: '',
+    projectId: '',
+    deliveryStatus: 'not_delivered',
+  })
 
   const showError = useCallback((msg: string) => {
     setBoardError(msg)
@@ -493,6 +512,24 @@ export default function PlanningPage() {
       mounted = false
     }
   }, [user, showError])
+
+  const loadWeeklyPriorityItems = useCallback(async () => {
+    if (!user) return
+    setWeeklyPriorityLoading(true)
+    try {
+      const rows = await weeklyPriorityItemsService.getWeeklyPriorityItems(user.id)
+      setWeeklyPriorityItems(rows.map(fromDbWeeklyPriorityItem))
+    } catch (err) {
+      console.error(err)
+      showError('Não foi possível carregar os itens mais importantes da semana.')
+    } finally {
+      setWeeklyPriorityLoading(false)
+    }
+  }, [user, showError])
+
+  useEffect(() => {
+    void loadWeeklyPriorityItems()
+  }, [loadWeeklyPriorityItems])
 
   const handleStartCycle = useCallback(async () => {
     if (!user || cycleBusy) return
@@ -523,6 +560,101 @@ export default function PlanningPage() {
       setCycleBusy(false)
     }
   }, [user, cycleBusy, showError])
+
+  const resetWeeklyPriorityDraft = useCallback(() => {
+    setWeeklyPriorityDraft({
+      title: '',
+      notes: '',
+      projectId: '',
+      deliveryStatus: 'not_delivered',
+    })
+  }, [])
+
+  const handleCreateWeeklyPriorityItem = useCallback(async () => {
+    if (!user || !weeklyPriorityDraft.title.trim()) return
+    try {
+      const row = await weeklyPriorityItemsService.createWeeklyPriorityItem(user.id, {
+        title: weeklyPriorityDraft.title.trim(),
+        notes: weeklyPriorityDraft.notes.trim() || undefined,
+        project_id: weeklyPriorityDraft.projectId || null,
+        cycle_id: activeCycle?.id ?? null,
+        delivery_status: weeklyPriorityDraft.deliveryStatus,
+      })
+      setWeeklyPriorityItems((prev) => [fromDbWeeklyPriorityItem(row), ...prev])
+      resetWeeklyPriorityDraft()
+      setShowWeeklyPriorityForm(false)
+    } catch (err) {
+      console.error(err)
+      showError('Não foi possível criar o item prioritário.')
+    }
+  }, [user, weeklyPriorityDraft, activeCycle, resetWeeklyPriorityDraft, showError])
+
+  const handleStartEditWeeklyPriority = useCallback((item: WeeklyPriorityItem) => {
+    setEditingWeeklyPriorityId(item.id)
+    setWeeklyPriorityDraft({
+      title: item.title,
+      notes: item.notes ?? '',
+      projectId: item.projectId ?? '',
+      deliveryStatus: item.deliveryStatus,
+    })
+    setShowWeeklyPriorityForm(false)
+  }, [])
+
+  const handleSaveEditWeeklyPriority = useCallback(async () => {
+    if (!editingWeeklyPriorityId || !weeklyPriorityDraft.title.trim()) return
+    try {
+      const row = await weeklyPriorityItemsService.updateWeeklyPriorityItem(editingWeeklyPriorityId, {
+        title: weeklyPriorityDraft.title.trim(),
+        notes: weeklyPriorityDraft.notes.trim() || null,
+        project_id: weeklyPriorityDraft.projectId || null,
+        delivery_status: weeklyPriorityDraft.deliveryStatus,
+      })
+      const updated = fromDbWeeklyPriorityItem(row)
+      setWeeklyPriorityItems((prev) =>
+        prev.map((item) => (item.id === editingWeeklyPriorityId ? updated : item))
+      )
+      setEditingWeeklyPriorityId(null)
+      resetWeeklyPriorityDraft()
+    } catch (err) {
+      console.error(err)
+      showError('Não foi possível atualizar o item prioritário.')
+    }
+  }, [editingWeeklyPriorityId, weeklyPriorityDraft, resetWeeklyPriorityDraft, showError])
+
+  const handleDeleteWeeklyPriority = useCallback(
+    async (itemId: string) => {
+      try {
+        await weeklyPriorityItemsService.deleteWeeklyPriorityItem(itemId)
+        setWeeklyPriorityItems((prev) => prev.filter((item) => item.id !== itemId))
+        if (editingWeeklyPriorityId === itemId) {
+          setEditingWeeklyPriorityId(null)
+          resetWeeklyPriorityDraft()
+        }
+      } catch (err) {
+        console.error(err)
+        showError('Não foi possível remover o item prioritário.')
+      }
+    },
+    [editingWeeklyPriorityId, resetWeeklyPriorityDraft, showError]
+  )
+
+  const deliveryStatusMeta: Record<
+    WeeklyPriorityDeliveryStatus,
+    { label: string; chipClass: string }
+  > = {
+    delivered: {
+      label: 'Entregue',
+      chipClass: 'bg-tertiary-fixed text-on-tertiary-fixed-variant',
+    },
+    partially_delivered: {
+      label: 'Entregue parcialmente',
+      chipClass: 'bg-primary-fixed text-on-primary-fixed-variant',
+    },
+    not_delivered: {
+      label: 'Não entregue',
+      chipClass: 'bg-error-container text-on-error-container',
+    },
+  }
 
   const weekTodos = useMemo(
     () => todos.filter((t) => t.status === 'current_week' && !t.completed).sort(sortTodosByPriorityAndPos),
@@ -1505,6 +1637,284 @@ export default function PlanningPage() {
           {boardError}
         </div>
       )}
+
+      <section className="rounded-2xl bg-surface-container-lowest p-5 shadow-sm ring-1 ring-outline-variant/15">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-headline text-lg font-bold text-on-surface">
+              Mais importantes da semana
+            </h2>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              Define foco estratégico, vínculo com projeto e status de entrega para análise por ciclo.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingWeeklyPriorityId(null)
+              resetWeeklyPriorityDraft()
+              setShowWeeklyPriorityForm((prev) => !prev)
+            }}
+            className="inline-flex items-center gap-1 rounded-lg bg-tertiary px-3 py-2 text-sm font-semibold text-on-tertiary hover:opacity-95"
+          >
+            <span className="material-symbols-outlined text-base">add</span>
+            Novo item
+          </button>
+        </div>
+
+        {showWeeklyPriorityForm && (
+          <div className="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 md:grid-cols-2">
+            <label className="md:col-span-2">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Título
+              </span>
+              <input
+                type="text"
+                value={weeklyPriorityDraft.title}
+                onChange={(e) =>
+                  setWeeklyPriorityDraft((prev) => ({ ...prev, title: e.target.value }))
+                }
+                placeholder="Ex.: Finalizar landing page de aquisição"
+                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Projeto
+              </span>
+              <select
+                value={weeklyPriorityDraft.projectId}
+                onChange={(e) =>
+                  setWeeklyPriorityDraft((prev) => ({ ...prev, projectId: e.target.value }))
+                }
+                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+              >
+                <option value="">Sem projeto</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Status de entrega
+              </span>
+              <select
+                value={weeklyPriorityDraft.deliveryStatus}
+                onChange={(e) =>
+                  setWeeklyPriorityDraft((prev) => ({
+                    ...prev,
+                    deliveryStatus: e.target.value as WeeklyPriorityDeliveryStatus,
+                  }))
+                }
+                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+              >
+                <option value="not_delivered">Não entregue</option>
+                <option value="partially_delivered">Entregue parcialmente</option>
+                <option value="delivered">Entregue</option>
+              </select>
+            </label>
+            <label className="md:col-span-2">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Contexto (opcional)
+              </span>
+              <textarea
+                value={weeklyPriorityDraft.notes}
+                onChange={(e) =>
+                  setWeeklyPriorityDraft((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                rows={2}
+                className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+              />
+            </label>
+            <div className="md:col-span-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  resetWeeklyPriorityDraft()
+                  setShowWeeklyPriorityForm(false)
+                }}
+                className="rounded-lg border border-outline-variant/30 px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleCreateWeeklyPriorityItem()}
+                className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-on-primary hover:opacity-95"
+              >
+                Salvar item
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 space-y-3">
+          {weeklyPriorityLoading ? (
+            <p className="text-sm text-on-surface-variant">Carregando itens prioritários...</p>
+          ) : weeklyPriorityItems.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-outline-variant/35 bg-surface-container-low px-4 py-6 text-center">
+              <p className="text-sm font-medium text-on-surface-variant">
+                Ainda não há itens prioritários da semana.
+              </p>
+            </div>
+          ) : (
+            weeklyPriorityItems.map((item) => {
+              const project = item.projectId
+                ? projects.find((candidate) => candidate.id === item.projectId)
+                : null
+              const statusMeta = deliveryStatusMeta[item.deliveryStatus]
+              const isEditing = editingWeeklyPriorityId === item.id
+
+              return (
+                <article
+                  key={item.id}
+                  className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4"
+                >
+                  {isEditing ? (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                          Título
+                        </span>
+                        <input
+                          type="text"
+                          value={weeklyPriorityDraft.title}
+                          onChange={(e) =>
+                            setWeeklyPriorityDraft((prev) => ({ ...prev, title: e.target.value }))
+                          }
+                          className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+                        />
+                      </label>
+                      <label>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                          Projeto
+                        </span>
+                        <select
+                          value={weeklyPriorityDraft.projectId}
+                          onChange={(e) =>
+                            setWeeklyPriorityDraft((prev) => ({
+                              ...prev,
+                              projectId: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+                        >
+                          <option value="">Sem projeto</option>
+                          {projects.map((projectOption) => (
+                            <option key={projectOption.id} value={projectOption.id}>
+                              {projectOption.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                          Status de entrega
+                        </span>
+                        <select
+                          value={weeklyPriorityDraft.deliveryStatus}
+                          onChange={(e) =>
+                            setWeeklyPriorityDraft((prev) => ({
+                              ...prev,
+                              deliveryStatus: e.target.value as WeeklyPriorityDeliveryStatus,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+                        >
+                          <option value="not_delivered">Não entregue</option>
+                          <option value="partially_delivered">Entregue parcialmente</option>
+                          <option value="delivered">Entregue</option>
+                        </select>
+                      </label>
+                      <label className="md:col-span-2">
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                          Contexto (opcional)
+                        </span>
+                        <textarea
+                          rows={2}
+                          value={weeklyPriorityDraft.notes}
+                          onChange={(e) =>
+                            setWeeklyPriorityDraft((prev) => ({ ...prev, notes: e.target.value }))
+                          }
+                          className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+                        />
+                      </label>
+                      <div className="md:col-span-2 flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingWeeklyPriorityId(null)
+                            resetWeeklyPriorityDraft()
+                          }}
+                          className="rounded-lg border border-outline-variant/30 px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-container-high"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleSaveEditWeeklyPriority()}
+                          className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-on-primary hover:opacity-95"
+                        >
+                          Salvar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusMeta.chipClass}`}
+                          >
+                            {statusMeta.label}
+                          </span>
+                          {project ? (
+                            <span
+                              className="inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                              style={{ borderColor: project.color, color: project.color }}
+                            >
+                              {project.name}
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
+                              Sem projeto
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-headline text-base font-bold text-on-surface">{item.title}</h3>
+                        {item.notes ? (
+                          <p className="mt-1 text-sm text-on-surface-variant">{item.notes}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-1 self-end md:self-start">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditWeeklyPriority(item)}
+                          className="rounded p-1.5 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                          title="Editar item"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteWeeklyPriority(item.id)}
+                          className="rounded p-1.5 text-on-surface-variant hover:bg-error-container hover:text-on-error-container"
+                          title="Remover item"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              )
+            })
+          )}
+        </div>
+      </section>
 
       <DndContext
         sensors={sensors}
