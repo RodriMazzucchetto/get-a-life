@@ -1405,7 +1405,7 @@ export default function DashboardPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="font-headline text-lg font-bold text-on-surface">
-              Entrega dos Itens Mais Importantes
+              Entrega dos Itens Mais Importantes (gráfico)
             </h2>
             <p className="text-sm text-on-surface-variant">
               {analysisScope === "all"
