@@ -935,8 +935,8 @@ export default function PlanningPage() {
   const [visibleActions, setVisibleActions] = useState<Record<EisenhowerAction, boolean>>({
     now: true,
     schedule: true,
-    delegate: false,
-    delete: false,
+    delegate: true,
+    delete: true,
   })
   const isTodoVisibleByAction = useCallback(
     (todo: Todo) => {
