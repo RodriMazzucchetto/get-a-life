@@ -60,6 +60,21 @@ function WeeklyPriorityBarsChart({
     );
   }
 
+  const yMax =
+    maxValue <= 4 ? 4 : maxValue <= 10 ? 10 : Math.ceil(maxValue / 5) * 5;
+  const vbW = 760;
+  const vbH = 300;
+  const padL = 46;
+  const padR = 18;
+  const padT = 20;
+  const padB = 54;
+  const plotW = vbW - padL - padR;
+  const plotH = vbH - padT - padB;
+  const barW = Math.min(140, plotW / 4.8);
+  const xAt = (i: number) => padL + ((i + 0.5) * plotW) / bars.length;
+  const yAt = (v: number) => padT + plotH * (1 - Math.max(0, Math.min(yMax, v)) / yMax);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((r) => Math.round(yMax * r));
+
   return (
     <div className="rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-4 text-[11px] font-semibold text-on-surface-variant">
@@ -76,41 +91,69 @@ function WeeklyPriorityBarsChart({
           Não entregues
         </span>
       </div>
-      <div className="grid grid-cols-[40px_1fr] gap-3">
-        <div className="relative h-48">
-          <div className="absolute inset-y-0 right-0 w-px bg-outline-variant/30" />
-          <span className="absolute -top-1 right-2 text-[10px] font-semibold text-on-surface-variant">
-            {maxValue}
-          </span>
-          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-[10px] font-semibold text-on-surface-variant">
-            {Math.round(maxValue / 2)}
-          </span>
-          <span className="absolute -bottom-1 right-2 text-[10px] font-semibold text-on-surface-variant">
-            0
-          </span>
-        </div>
-        <div className="h-48">
-          <div className="flex h-full items-end justify-center gap-6 rounded-md border border-outline-variant/20 bg-surface-container-lowest/60 px-4 py-3">
-            {bars.map((bar) => {
-              const height = Math.max(8, (bar.value / maxValue) * 165);
-              return (
-                <div key={bar.key} className="flex w-24 flex-col items-center gap-2">
-                  <div className="text-xs font-bold text-on-surface">{bar.value}</div>
-                  <div className="flex h-40 w-full items-end rounded-md bg-surface-container-high px-2 py-2">
-                    <div
-                      className="w-full rounded-sm"
-                      style={{ height: `${height}px`, backgroundColor: bar.color }}
-                      aria-hidden
-                    />
-                  </div>
-                  <div className="text-center text-[11px] font-semibold text-on-surface-variant">
-                    {bar.label}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      <div className="rounded-md border border-outline-variant/20 bg-surface-container-lowest/70 px-3 py-3">
+        <svg
+          viewBox={`0 0 ${vbW} ${vbH}`}
+          className="h-auto w-full max-h-[340px] min-h-[240px]"
+          role="img"
+          aria-label="Quantidade de itens por status: entregues, parciais e não entregues"
+        >
+          <title>Eixo X = status, Eixo Y = quantidade</title>
+          {ticks.map((tick) => (
+            <g key={`tick-${tick}`}>
+              <line
+                x1={padL}
+                x2={padL + plotW}
+                y1={yAt(tick)}
+                y2={yAt(tick)}
+                className="stroke-outline-variant/25"
+                strokeWidth={1}
+              />
+              <text
+                x={padL - 8}
+                y={yAt(tick) + 4}
+                textAnchor="end"
+                className="fill-on-surface-variant text-[11px] font-medium"
+              >
+                {tick}
+              </text>
+            </g>
+          ))}
+          {bars.map((bar, i) => {
+            const h = Math.max(4, (bar.value / yMax) * plotH);
+            const x = xAt(i) - barW / 2;
+            const y = padT + plotH - h;
+            return (
+              <g key={bar.key}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={barW}
+                  height={h}
+                  rx={10}
+                  fill={bar.color}
+                  stroke="rgba(0,0,0,0.04)"
+                />
+                <text
+                  x={xAt(i)}
+                  y={Math.max(padT + 14, y - 8)}
+                  textAnchor="middle"
+                  className="fill-on-surface text-[12px] font-extrabold"
+                >
+                  {bar.value}
+                </text>
+                <text
+                  x={xAt(i)}
+                  y={vbH - 18}
+                  textAnchor="middle"
+                  className="fill-on-surface-variant text-[12px] font-semibold"
+                >
+                  {bar.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
       </div>
     </div>
   );
@@ -1333,7 +1376,7 @@ export default function DashboardPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="font-headline text-lg font-bold text-on-surface">
-              Entrega dos Itens Mais Importantes (gráfico)
+              Entrega dos Itens Mais Importantes
             </h2>
             <p className="text-sm text-on-surface-variant">
               {analysisScope === "all"
@@ -1350,6 +1393,9 @@ export default function DashboardPage() {
           partial={weeklyPriorityStats.partial}
           notDelivered={weeklyPriorityStats.notDelivered}
         />
+        <p className="mt-2 text-xs text-on-surface-variant">
+          Eixo X: status dos itens · Eixo Y: quantidade.
+        </p>
         <p className="mt-3 text-xs text-on-surface-variant">
           Índice ponderado de entrega: {formatPct(weeklyPriorityStats.completionPct)}
         </p>
