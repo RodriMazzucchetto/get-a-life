@@ -812,6 +812,21 @@ export const cyclesService = {
     if (!active) throw new Error('Nenhum ciclo ativo para finalizar.')
 
     const endedAt = new Date().toISOString()
+
+    // Garante que itens semanais legados (sem ciclo) fiquem registrados no ciclo fechado.
+    const { error: bindWeeklyErr } = await supabase
+      .from('weekly_priority_items')
+      .update({
+        cycle_id: active.id,
+        updated_at: endedAt,
+      })
+      .eq('user_id', userId)
+      .is('cycle_id', null)
+
+    if (bindWeeklyErr) {
+      console.error('Erro ao vincular itens prioritários sem ciclo ao ciclo ativo:', bindWeeklyErr)
+    }
+
     const { data, error } = await supabase
       .from('task_cycles')
       .update({

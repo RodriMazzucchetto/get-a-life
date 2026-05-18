@@ -576,12 +576,16 @@ export default function PlanningPage() {
 
   const handleCreateWeeklyPriorityItem = useCallback(async () => {
     if (!user || !weeklyPriorityDraft.title.trim()) return
+    if (!activeCycle) {
+      showError('Inicie um ciclo para criar itens mais importantes da semana.')
+      return
+    }
     try {
       const row = await weeklyPriorityItemsService.createWeeklyPriorityItem(user.id, {
         title: weeklyPriorityDraft.title.trim(),
         notes: weeklyPriorityDraft.notes.trim() || undefined,
         project_id: weeklyPriorityDraft.projectId || null,
-        cycle_id: activeCycle?.id ?? null,
+        cycle_id: activeCycle.id,
         delivery_status: weeklyPriorityDraft.deliveryStatus,
       })
       setWeeklyPriorityItems((prev) => [fromDbWeeklyPriorityItem(row), ...prev])
@@ -673,12 +677,17 @@ export default function PlanningPage() {
     [projects]
   )
 
+  const visibleWeeklyPriorityItems = useMemo(
+    () => (activeCycle ? weeklyPriorityItems.filter((item) => item.cycleId === activeCycle.id) : []),
+    [weeklyPriorityItems, activeCycle]
+  )
+
   const weeklyPriorityItemsByProject = useMemo(() => {
     const grouped = new Map<string, WeeklyPriorityItem[]>()
     weeklyPriorityProjects.forEach((project) => grouped.set(project.id, []))
     const unassigned: WeeklyPriorityItem[] = []
 
-    for (const item of weeklyPriorityItems) {
+    for (const item of visibleWeeklyPriorityItems) {
       if (item.projectId && grouped.has(item.projectId)) {
         grouped.get(item.projectId)!.push(item)
       } else {
@@ -687,7 +696,7 @@ export default function PlanningPage() {
     }
 
     return { grouped, unassigned }
-  }, [weeklyPriorityItems, weeklyPriorityProjects])
+  }, [visibleWeeklyPriorityItems, weeklyPriorityProjects])
 
   const renderWeeklyPriorityItemCard = (item: WeeklyPriorityItem) => {
     const project = item.projectId
@@ -1864,6 +1873,7 @@ export default function PlanningPage() {
                         </span>
                         <button
                           type="button"
+                          disabled={!activeCycle}
                           onClick={() => {
                             setEditingWeeklyPriorityId(null)
                             setWeeklyPriorityDraft({
@@ -1876,8 +1886,12 @@ export default function PlanningPage() {
                               prev === project.id ? null : project.id
                             )
                           }}
-                          className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
-                          title={`Adicionar item em ${project.name}`}
+                          className="rounded p-1 text-on-surface-variant hover:bg-surface-container-high hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                          title={
+                            activeCycle
+                              ? `Adicionar item em ${project.name}`
+                              : 'Inicie um ciclo para adicionar itens'
+                          }
                         >
                           <span className="material-symbols-outlined text-[18px]">add</span>
                         </button>
@@ -1930,7 +1944,9 @@ export default function PlanningPage() {
                     ) : null}
                     {items.length === 0 ? (
                       <p className="rounded-lg bg-surface-container-lowest px-3 py-2 text-xs text-on-surface-variant">
-                        Sem itens desta semana.
+                        {activeCycle
+                          ? 'Sem itens desta semana.'
+                          : 'Inicie um ciclo para montar os itens desta semana.'}
                       </p>
                     ) : (
                       <div className="space-y-2">
