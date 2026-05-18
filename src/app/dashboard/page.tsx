@@ -32,6 +32,114 @@ function effectivenessPctCapped(delivered: number, planned: number): number {
 const CHART_COLOR_PLANNED = "var(--color-primary-container)";
 const CHART_COLOR_DELIVERED = "var(--color-tertiary-container)";
 const CHART_COLOR_EFFECT = "var(--color-secondary)";
+const CHART_COLOR_WP_DELIVERED = "var(--color-tertiary-fixed)";
+const CHART_COLOR_WP_PARTIAL = "var(--color-primary-fixed)";
+const CHART_COLOR_WP_NOT = "var(--color-error-container)";
+
+type WeeklyPriorityChartRow = {
+  key: string;
+  label: string;
+  delivered: number;
+  partial: number;
+  notDelivered: number;
+  total: number;
+};
+
+function WeeklyPriorityBarsChart({
+  mode,
+  rows,
+}: {
+  mode: "all" | "single";
+  rows: WeeklyPriorityChartRow[];
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-lg border border-outline-variant/20 bg-surface-container-low px-4 py-6 text-center text-sm text-on-surface-variant">
+        Sem dados de itens prioritários para exibir no gráfico.
+      </div>
+    );
+  }
+
+  if (mode === "single") {
+    const only = rows[0];
+    const bars = [
+      { key: "delivered", label: "Entregues", value: only.delivered, color: CHART_COLOR_WP_DELIVERED },
+      { key: "partial", label: "Parciais", value: only.partial, color: CHART_COLOR_WP_PARTIAL },
+      { key: "not", label: "Não entregues", value: only.notDelivered, color: CHART_COLOR_WP_NOT },
+    ];
+    const maxValue = Math.max(1, ...bars.map((b) => b.value));
+    return (
+      <div className="rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-4">
+        <div className="mb-3 text-xs font-semibold text-on-surface-variant">{only.label}</div>
+        <div className="flex items-end justify-center gap-6">
+          {bars.map((bar) => {
+            const height = Math.max(8, (bar.value / maxValue) * 140);
+            return (
+              <div key={bar.key} className="flex w-20 flex-col items-center gap-2">
+                <div className="text-xs font-bold text-on-surface">{bar.value}</div>
+                <div className="flex h-36 w-full items-end rounded-md bg-surface-container-high px-2 py-2">
+                  <div
+                    className="w-full rounded-sm"
+                    style={{ height: `${height}px`, backgroundColor: bar.color }}
+                    aria-hidden
+                  />
+                </div>
+                <div className="text-center text-[11px] font-semibold text-on-surface-variant">
+                  {bar.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const maxTotal = Math.max(1, ...rows.map((r) => r.total));
+  return (
+    <div className="rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-[11px] font-semibold text-on-surface-variant">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_WP_DELIVERED }} />
+          Entregues
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_WP_PARTIAL }} />
+          Parciais
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: CHART_COLOR_WP_NOT }} />
+          Não entregues
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max items-end gap-3 px-1">
+          {rows.map((row) => {
+            const barHeight = Math.max(12, (row.total / maxTotal) * 160);
+            const deliveredH = row.total > 0 ? (row.delivered / row.total) * barHeight : 0;
+            const partialH = row.total > 0 ? (row.partial / row.total) * barHeight : 0;
+            const notH = Math.max(0, barHeight - deliveredH - partialH);
+            return (
+              <div key={row.key} className="flex w-16 flex-col items-center gap-1.5">
+                <div className="text-xs font-bold text-on-surface">{row.total}</div>
+                <div className="flex h-44 w-full items-end rounded-md bg-surface-container-high px-1.5 py-1.5">
+                  <div className="flex w-full flex-col justify-end overflow-hidden rounded-sm">
+                    <div style={{ height: `${notH}px`, backgroundColor: CHART_COLOR_WP_NOT }} />
+                    <div style={{ height: `${partialH}px`, backgroundColor: CHART_COLOR_WP_PARTIAL }} />
+                    <div style={{ height: `${deliveredH}px`, backgroundColor: CHART_COLOR_WP_DELIVERED }} />
+                  </div>
+                </div>
+                <div className="text-center text-[10px] font-semibold text-on-surface-variant">
+                  {row.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Gráfico de linhas com escala real para contagens e eixo de % para efetividade. */
 function CyclePerformanceLineChart({
@@ -1013,6 +1121,53 @@ export default function DashboardPage() {
     return { delivered, partial, notDelivered, total, completionPct };
   }, [weeklyPriorityItems, analysisScope]);
 
+  const weeklyPriorityChart = useMemo(() => {
+    if (analysisScope !== "all") {
+      const selectedCycle = cycles.find((c) => c.id === analysisScope);
+      const scoped = weeklyPriorityItems.filter((item) => item.cycleId === analysisScope);
+      const delivered = scoped.filter((item) => item.deliveryStatus === "delivered").length;
+      const partial = scoped.filter((item) => item.deliveryStatus === "partially_delivered").length;
+      const notDelivered = scoped.filter((item) => item.deliveryStatus === "not_delivered").length;
+      return {
+        mode: "single" as const,
+        rows: [
+          {
+            key: analysisScope,
+            label: selectedCycle ? `Ciclo ${selectedCycle.cycleNumber}` : "Ciclo selecionado",
+            delivered,
+            partial,
+            notDelivered,
+            total: scoped.length,
+          },
+        ],
+      };
+    }
+
+    const rows: WeeklyPriorityChartRow[] = cycles
+      .slice()
+      .sort((a, b) => a.cycleNumber - b.cycleNumber)
+      .map((cycle) => {
+        const inCycle = weeklyPriorityItems.filter((item) => item.cycleId === cycle.id);
+        const delivered = inCycle.filter((item) => item.deliveryStatus === "delivered").length;
+        const partial = inCycle.filter((item) => item.deliveryStatus === "partially_delivered").length;
+        const notDelivered = inCycle.filter((item) => item.deliveryStatus === "not_delivered").length;
+        return {
+          key: cycle.id,
+          label: `C${cycle.cycleNumber}`,
+          delivered,
+          partial,
+          notDelivered,
+          total: inCycle.length,
+        };
+      })
+      .filter((row) => row.total > 0);
+
+    return {
+      mode: "all" as const,
+      rows,
+    };
+  }, [analysisScope, cycles, weeklyPriorityItems]);
+
   const projectAnalysis = useMemo(() => {
     if (analysisScope === "all") {
       if (closedCycles.length === 0) {
@@ -1262,32 +1417,7 @@ export default function DashboardPage() {
             Total: {weeklyPriorityStats.total}
           </span>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <article className="rounded-lg bg-tertiary-fixed/40 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-              Entregues
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-on-surface">
-              {weeklyPriorityStats.delivered}
-            </p>
-          </article>
-          <article className="rounded-lg bg-primary-fixed/40 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-              Parcialmente Entregues
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-on-surface">
-              {weeklyPriorityStats.partial}
-            </p>
-          </article>
-          <article className="rounded-lg bg-error-container/60 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-              Não Entregues
-            </p>
-            <p className="mt-1 text-2xl font-extrabold text-on-surface">
-              {weeklyPriorityStats.notDelivered}
-            </p>
-          </article>
-        </div>
+        <WeeklyPriorityBarsChart mode={weeklyPriorityChart.mode} rows={weeklyPriorityChart.rows} />
         <p className="mt-3 text-xs text-on-surface-variant">
           Índice ponderado de entrega: {formatPct(weeklyPriorityStats.completionPct)}
         </p>
