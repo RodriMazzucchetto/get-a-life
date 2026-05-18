@@ -554,8 +554,14 @@ export default function PlanningPage() {
     if (!user || cycleBusy) return
     setCycleBusy(true)
     try {
-      const row = await cyclesService.finishActiveCycle(user.id)
+      await cyclesService.finishActiveCycle(user.id)
       setActiveCycle(null)
+      setWeeklyPriorityItems([])
+      setAddingWeeklyPriorityProjectId(null)
+      if (editingWeeklyPriorityId) {
+        setEditingWeeklyPriorityId(null)
+        resetWeeklyPriorityDraft()
+      }
     } catch (err) {
       console.error(err)
       const msg = err instanceof Error ? err.message : 'Não foi possível finalizar o ciclo.'
@@ -563,7 +569,7 @@ export default function PlanningPage() {
     } finally {
       setCycleBusy(false)
     }
-  }, [user, cycleBusy, showError])
+  }, [user, cycleBusy, editingWeeklyPriorityId, resetWeeklyPriorityDraft, showError])
 
   const resetWeeklyPriorityDraft = useCallback(() => {
     setWeeklyPriorityDraft({
