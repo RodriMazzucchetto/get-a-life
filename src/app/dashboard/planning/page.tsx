@@ -55,11 +55,12 @@ import {
 } from '@/lib/todoBoardHelpers'
 import {
   DBReminder,
-  computeTodoPriorityScore,
+  deriveEisenhowerAction,
   cyclesService,
   fromDbTaskCycle,
   fromDbWeeklyPriorityItem,
   weeklyPriorityItemsService,
+  type EisenhowerAction,
   type TaskCycle,
   type Todo,
   type Goal,
@@ -72,6 +73,54 @@ function cloneTodoList(list: Todo[]): Todo[] {
   return list.map((t) => ({ ...t }))
 }
 
+const eisenhowerMeta: Record<
+  EisenhowerAction,
+  { shortLabel: string; longLabel: string; badgeClass: string; borderClass: string }
+> = {
+  now: {
+    shortLabel: 'Now',
+    longLabel: 'Now · fazer agora',
+    badgeClass: 'bg-error-container text-on-error-container',
+    borderClass: 'border-error/40',
+  },
+  schedule: {
+    shortLabel: 'Sch',
+    longLabel: 'Schedule · agendar',
+    badgeClass: 'bg-primary-fixed text-on-primary-fixed',
+    borderClass: 'border-primary/35',
+  },
+  delegate: {
+    shortLabel: 'Del',
+    longLabel: 'Delegate · despachar',
+    badgeClass: 'bg-tertiary-fixed text-on-tertiary-fixed',
+    borderClass: 'border-tertiary/40',
+  },
+  delete: {
+    shortLabel: 'Drop',
+    longLabel: 'Delete · eliminar',
+    badgeClass: 'bg-surface-container-high text-on-surface-variant',
+    borderClass: 'border-outline-variant/40',
+  },
+}
+
+function getNewTodoEisenhowerDefaults(
+  selectedProjectIds: string[],
+  projects: { id: string; name: string }[]
+): Pick<Todo, 'isImportant' | 'isUrgent' | 'delegateTimeboxMinutes'> {
+  const names = selectedProjectIds
+    .map((id) => projects.find((p) => p.id === id)?.name ?? '')
+    .map((name) => name.trim().toUpperCase())
+    .filter(Boolean)
+
+  if (names.includes('EXT')) {
+    return { isImportant: false, isUrgent: true, delegateTimeboxMinutes: 25 }
+  }
+  if (names.some((name) => name === 'ZTX' || name === 'KMN' || name === 'OWN')) {
+    return { isImportant: true, isUrgent: false, delegateTimeboxMinutes: undefined }
+  }
+  return { isImportant: true, isUrgent: false, delegateTimeboxMinutes: undefined }
+}
+
 // Componente para grupo de tags arrastável - será definido depois das funções
 
 // Preview do card no cursor (DragOverlay)
@@ -82,6 +131,8 @@ function TodoDragOverlayPreview({
   todo: Todo
   projects: { id: string; name: string; color: string }[]
 }) {
+  const action = deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
+  const actionMeta = eisenhowerMeta[action]
   const projectChips = (todo.projectIds ?? (todo.projectId ? [todo.projectId] : []))
     .map((id) => projects.find((p) => p.id === id))
     .filter(Boolean) as { id: string; name: string; color: string }[]
@@ -131,10 +182,10 @@ function TodoDragOverlayPreview({
           </span>
         ))}
         <span
-          className="inline-flex shrink-0 rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-surface ring-1 ring-outline-variant/25"
-          title="Score de prioridade (esforço × importância × urgência)"
+          className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${actionMeta.badgeClass} ${actionMeta.borderClass}`}
+          title={actionMeta.longLabel}
         >
-          Score {todo.priorityScore}
+          {actionMeta.shortLabel}
         </span>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate text-sm text-gray-900" title={todo.title}>
@@ -214,6 +265,8 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
   })
   const [priorityPopKey, setPriorityPopKey] = useState(0)
   const completeBurstFiredRef = useRef(false)
+  const action = deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
+  const actionMeta = eisenhowerMeta[action]
 
   useEffect(() => {
     if (!microComplete.isCompleting) {
@@ -324,10 +377,14 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
               {todo.title}
             </span>
             <span
-              className="inline-flex shrink-0 rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-surface ring-1 ring-outline-variant/25"
-              title="Score de prioridade (esforço × importância × urgência)"
+              className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${actionMeta.badgeClass} ${actionMeta.borderClass}`}
+              title={
+                action === 'delegate' && todo.delegateTimeboxMinutes
+                  ? `${actionMeta.longLabel} · ${todo.delegateTimeboxMinutes} min`
+                  : actionMeta.longLabel
+              }
             >
-              {todo.priorityScore}
+              {actionMeta.shortLabel}
             </span>
             {todo.onHold && todo.onHoldReason && (
               <span
@@ -875,17 +932,40 @@ export default function PlanningPage() {
     )
   }
 
+  const [visibleActions, setVisibleActions] = useState<Record<EisenhowerAction, boolean>>({
+    now: true,
+    schedule: true,
+    delegate: false,
+    delete: false,
+  })
+  const isTodoVisibleByAction = useCallback(
+    (todo: Todo) => {
+      const action = deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
+      return visibleActions[action]
+    },
+    [visibleActions]
+  )
+
   const weekTodos = useMemo(
-    () => todos.filter((t) => t.status === 'current_week' && !t.completed).sort(sortTodosByPriorityAndPos),
-    [todos]
+    () =>
+      todos
+        .filter((t) => t.status === 'current_week' && !t.completed && isTodoVisibleByAction(t))
+        .sort(sortTodosByPriorityAndPos),
+    [todos, isTodoVisibleByAction]
   )
   const backlogTodos = useMemo(
-    () => todos.filter((t) => t.status === 'backlog' && !t.completed).sort(sortTodosByPriorityAndPos),
-    [todos]
+    () =>
+      todos
+        .filter((t) => t.status === 'backlog' && !t.completed && isTodoVisibleByAction(t))
+        .sort(sortTodosByPriorityAndPos),
+    [todos, isTodoVisibleByAction]
   )
   const inProgressTodos = useMemo(
-    () => todos.filter((t) => t.status === 'in_progress' && !t.completed).sort(sortTodosByPriorityAndPos),
-    [todos]
+    () =>
+      todos
+        .filter((t) => t.status === 'in_progress' && !t.completed && isTodoVisibleByAction(t))
+        .sort(sortTodosByPriorityAndPos),
+    [todos, isTodoVisibleByAction]
   )
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -1295,6 +1375,7 @@ export default function PlanningPage() {
   // Funções para to-dos
   const handleCreateTodo = async () => {
     if (newTodo.title.trim()) {
+      const eisenhowerDefaults = getNewTodoEisenhowerDefaults(newTodo.projectIds, projects)
       const newTodoData = await createTodo({
         title: newTodo.title.trim(),
         description: newTodo.description.trim(),
@@ -1303,10 +1384,9 @@ export default function PlanningPage() {
         dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
-        effortScore: 3,
-        importanceScore: 3,
-        urgencyScore: 3,
-        priorityScore: 27,
+        isImportant: eisenhowerDefaults.isImportant,
+        isUrgent: eisenhowerDefaults.isUrgent,
+        delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
         timeSensitive: newTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
@@ -1335,6 +1415,11 @@ export default function PlanningPage() {
   const handleUpdateTodo = async () => {
     if (editingTodo && editingTodo.title.trim()) {
       const updatedTodo = await updateTodo(editingTodo.id, {
+        // Timebox só é relevante para tarefas "Delegate".
+        delegateTimeboxMinutes:
+          deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent) === 'delegate'
+            ? editingTodo.delegateTimeboxMinutes
+            : 0,
         title: editingTodo.title.trim(),
         description: editingTodo.description?.trim() || '',
         priority: editingTodo.priority,
@@ -1342,10 +1427,8 @@ export default function PlanningPage() {
         dueDate: editingTodo.dueDate || undefined,
         completed: editingTodo.completed,
         isHighPriority: editingTodo.isHighPriority,
-        effortScore: editingTodo.effortScore,
-        importanceScore: editingTodo.importanceScore,
-        urgencyScore: editingTodo.urgencyScore,
-        priorityScore: editingTodo.priorityScore,
+        isImportant: editingTodo.isImportant,
+        isUrgent: editingTodo.isUrgent,
         timeSensitive: editingTodo.timeSensitive,
         onHold: editingTodo.onHold,
         onHoldReason: editingTodo.onHoldReason,
@@ -1506,6 +1589,7 @@ export default function PlanningPage() {
   // Funções para itens em progresso
   const handleCreateInProgressTodo = async () => {
     if (newInProgressTodo.title.trim()) {
+      const eisenhowerDefaults = getNewTodoEisenhowerDefaults(newInProgressTodo.projectIds, projects)
       const newTodoData = {
         title: newInProgressTodo.title.trim(),
         description: newInProgressTodo.description.trim(),
@@ -1514,10 +1598,9 @@ export default function PlanningPage() {
         dueDate: newInProgressTodo.dueDate ? newInProgressTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
-        effortScore: 3,
-        importanceScore: 3,
-        urgencyScore: 3,
-        priorityScore: 27,
+        isImportant: eisenhowerDefaults.isImportant,
+        isUrgent: eisenhowerDefaults.isUrgent,
+        delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
         timeSensitive: newInProgressTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
@@ -1639,6 +1722,7 @@ export default function PlanningPage() {
   // Funções para backlog
   const handleCreateBacklogTodo = async () => {
     if (newBacklogTodo.title.trim()) {
+      const eisenhowerDefaults = getNewTodoEisenhowerDefaults(newBacklogTodo.projectIds, projects)
       const newTodoData = {
         title: newBacklogTodo.title.trim(),
         description: newBacklogTodo.description.trim(),
@@ -1647,10 +1731,9 @@ export default function PlanningPage() {
         dueDate: newBacklogTodo.dueDate ? newBacklogTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
-        effortScore: 3,
-        importanceScore: 3,
-        urgencyScore: 3,
-        priorityScore: 27,
+        isImportant: eisenhowerDefaults.isImportant,
+        isUrgent: eisenhowerDefaults.isUrgent,
+        delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
         timeSensitive: newBacklogTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
@@ -1872,6 +1955,39 @@ export default function PlanningPage() {
           {boardError}
         </div>
       )}
+
+      <section className="rounded-xl bg-surface-container-low p-3 ring-1 ring-outline-variant/15">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+            Filtro Eisenhower
+          </span>
+          {(Object.keys(eisenhowerMeta) as EisenhowerAction[]).map((actionKey) => {
+            const meta = eisenhowerMeta[actionKey]
+            const isOn = visibleActions[actionKey]
+            return (
+              <button
+                key={`filter-${actionKey}`}
+                type="button"
+                onClick={() =>
+                  setVisibleActions((prev) => ({
+                    ...prev,
+                    [actionKey]: !prev[actionKey],
+                  }))
+                }
+                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-colors ${
+                  isOn
+                    ? `${meta.badgeClass} ${meta.borderClass}`
+                    : 'border-outline-variant/35 bg-surface-container-lowest text-on-surface-variant'
+                }`}
+                title={meta.longLabel}
+                aria-pressed={isOn}
+              >
+                {meta.shortLabel}
+              </button>
+            )
+          })}
+        </div>
+      </section>
 
       <section className="rounded-2xl bg-surface-container-lowest p-5 shadow-sm ring-1 ring-outline-variant/15">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -3011,95 +3127,84 @@ export default function PlanningPage() {
                   />
                 </div>
 
-                {/* Priorização inteligente (1-5) */}
+                {/* Classificação Eisenhower */}
                 <section className="rounded-xl border border-outline-variant/25 bg-surface-container-low p-4">
                   <div className="mb-3">
-                    <h4 className="text-sm font-semibold text-on-surface">Score de prioridade</h4>
+                    <h4 className="text-sm font-semibold text-on-surface">Classificação Eisenhower</h4>
                     <p className="text-xs text-on-surface-variant">
-                      Defina esforço, importância e urgência. O sistema multiplica os 3 valores.
+                      Defina se a tarefa é importante e urgente para derivar a ação recomendada.
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <label className="text-sm">
-                      <span className="mb-1 block font-medium text-on-surface-variant">Esforço (1-5)</span>
-                      <select
-                        value={editingTodo.effortScore}
-                        onChange={(e) => {
-                          const effortScore = Number(e.target.value)
-                          setEditingTodo({
-                            ...editingTodo,
-                            effortScore,
-                            priorityScore: computeTodoPriorityScore(
-                              effortScore,
-                              editingTodo.importanceScore,
-                              editingTodo.urgencyScore
-                            ),
-                          })
-                        }}
-                        className="w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-                      >
-                        {[1, 2, 3, 4, 5].map((value) => (
-                          <option key={`effort-${value}`} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="text-sm">
-                      <span className="mb-1 block font-medium text-on-surface-variant">Importância (1-5)</span>
-                      <select
-                        value={editingTodo.importanceScore}
-                        onChange={(e) => {
-                          const importanceScore = Number(e.target.value)
-                          setEditingTodo({
-                            ...editingTodo,
-                            importanceScore,
-                            priorityScore: computeTodoPriorityScore(
-                              editingTodo.effortScore,
-                              importanceScore,
-                              editingTodo.urgencyScore
-                            ),
-                          })
-                        }}
-                        className="w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-                      >
-                        {[1, 2, 3, 4, 5].map((value) => (
-                          <option key={`importance-${value}`} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="text-sm">
-                      <span className="mb-1 block font-medium text-on-surface-variant">Urgência (1-5)</span>
-                      <select
-                        value={editingTodo.urgencyScore}
-                        onChange={(e) => {
-                          const urgencyScore = Number(e.target.value)
-                          setEditingTodo({
-                            ...editingTodo,
-                            urgencyScore,
-                            priorityScore: computeTodoPriorityScore(
-                              editingTodo.effortScore,
-                              editingTodo.importanceScore,
-                              urgencyScore
-                            ),
-                          })
-                        }}
-                        className="w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-                      >
-                        {[1, 2, 3, 4, 5].map((value) => (
-                          <option key={`urgency-${value}`} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingTodo({
+                          ...editingTodo,
+                          isImportant: !editingTodo.isImportant,
+                        })
+                      }
+                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+                        editingTodo.isImportant
+                          ? 'border-primary/35 bg-primary-fixed/30 text-on-surface'
+                          : 'border-outline-variant/35 bg-surface-container-lowest text-on-surface-variant'
+                      }`}
+                    >
+                      <span>Importante</span>
+                      <span>{editingTodo.isImportant ? 'Sim' : 'Não'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingTodo({
+                          ...editingTodo,
+                          isUrgent: !editingTodo.isUrgent,
+                        })
+                      }
+                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+                        editingTodo.isUrgent
+                          ? 'border-error/35 bg-error-container/70 text-on-surface'
+                          : 'border-outline-variant/35 bg-surface-container-lowest text-on-surface-variant'
+                      }`}
+                    >
+                      <span>Urgente</span>
+                      <span>{editingTodo.isUrgent ? 'Sim' : 'Não'}</span>
+                    </button>
                   </div>
-                  <div className="mt-3 rounded-lg bg-tertiary-fixed/40 px-3 py-2 text-sm font-semibold text-on-surface ring-1 ring-outline-variant/20">
-                    Score final: {editingTodo.priorityScore} ({editingTodo.effortScore} x{' '}
-                    {editingTodo.importanceScore} x {editingTodo.urgencyScore})
-                  </div>
+                  {(() => {
+                    const action = deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent)
+                    const meta = eisenhowerMeta[action]
+                    return (
+                      <div
+                        className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${meta.badgeClass} ${meta.borderClass}`}
+                      >
+                        {meta.longLabel}
+                      </div>
+                    )
+                  })()}
+                  {deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent) === 'delegate' ? (
+                    <div className="mt-3">
+                      <label className="mb-1 block text-sm font-medium text-on-surface-variant">
+                        Timebox (minutos)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={editingTodo.delegateTimeboxMinutes ?? ''}
+                        onChange={(e) => {
+                          const raw = Number(e.target.value)
+                          setEditingTodo({
+                            ...editingTodo,
+                            delegateTimeboxMinutes:
+                              Number.isFinite(raw) && raw > 0 ? Math.round(raw) : undefined,
+                          })
+                        }}
+                        placeholder="Ex.: 25"
+                        className="w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+                      />
+                    </div>
+                  ) : null}
                 </section>
 
                 <div>

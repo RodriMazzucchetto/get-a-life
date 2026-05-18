@@ -44,6 +44,9 @@ export interface DBTodo {
   on_hold_reason?: string | null
   status: 'backlog' | 'in_progress' | 'current_week'
   pos: number // Nova coluna para ordenação persistente
+  is_important?: boolean | null
+  is_urgent?: boolean | null
+  delegate_timebox_minutes?: number | null
   effort_score?: number | null
   importance_score?: number | null
   urgency_score?: number | null
@@ -415,22 +418,20 @@ export type DBTodoWithLinks = DBTodo & {
   todo_projects?: { project_id: string }[]
 }
 
-export function normalizePriorityAxis(value: number | null | undefined): number {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed)) return 3
-  return Math.max(1, Math.min(5, Math.round(parsed)))
+export type EisenhowerAction = 'now' | 'schedule' | 'delegate' | 'delete'
+
+export function deriveEisenhowerAction(isImportant: boolean, isUrgent: boolean): EisenhowerAction {
+  if (isImportant && isUrgent) return 'now'
+  if (isImportant && !isUrgent) return 'schedule'
+  if (!isImportant && isUrgent) return 'delegate'
+  return 'delete'
 }
 
-export function computeTodoPriorityScore(
-  effortScore: number | null | undefined,
-  importanceScore: number | null | undefined,
-  urgencyScore: number | null | undefined
-): number {
-  return (
-    normalizePriorityAxis(effortScore) *
-    normalizePriorityAxis(importanceScore) *
-    normalizePriorityAxis(urgencyScore)
-  )
+export function normalizeDelegateTimeboxMinutes(value: number | null | undefined): number | undefined {
+  if (value == null) return undefined
+  const parsed = Math.round(Number(value))
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined
+  return parsed
 }
 
 // Serviço de Tarefas
@@ -1576,13 +1577,14 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
         ? [row.project_id]
         : []
 
-  const effortScore = normalizePriorityAxis(row.effort_score)
-  const importanceScore = normalizePriorityAxis(row.importance_score)
-  const urgencyScore = normalizePriorityAxis(row.urgency_score)
-  const priorityScore =
-    row.priority_score && Number.isFinite(row.priority_score)
-      ? Number(row.priority_score)
-      : computeTodoPriorityScore(effortScore, importanceScore, urgencyScore)
+  const isImportant =
+    typeof row.is_important === 'boolean'
+      ? row.is_important
+      : Number(row.importance_score ?? 0) >= 4
+  const isUrgent =
+    typeof row.is_urgent === 'boolean'
+      ? row.is_urgent
+      : Number(row.urgency_score ?? 0) >= 4
 
   const todo = {
     id: row.id,
@@ -1598,10 +1600,9 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
     onHoldReason: row.on_hold_reason ?? undefined,
     status: row.status,
     pos: row.pos,
-    effortScore,
-    importanceScore,
-    urgencyScore,
-    priorityScore,
+    isImportant,
+    isUrgent,
+    delegateTimeboxMinutes: normalizeDelegateTimeboxMinutes(row.delegate_timebox_minutes),
     tags: [],
     projectId: projectIds[0],
     projectIds,
@@ -1630,21 +1631,10 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
   if (patch.status !== undefined) out.status = patch.status;
   if (patch.pos !== undefined) out.pos = patch.pos; // Coluna pos agora existe no banco
-  if (patch.effortScore !== undefined) out.effort_score = normalizePriorityAxis(patch.effortScore);
-  if (patch.importanceScore !== undefined) out.importance_score = normalizePriorityAxis(patch.importanceScore);
-  if (patch.urgencyScore !== undefined) out.urgency_score = normalizePriorityAxis(patch.urgencyScore);
-  if (patch.priorityScore !== undefined) out.priority_score = patch.priorityScore;
-  if (
-    patch.priorityScore === undefined &&
-    (patch.effortScore !== undefined ||
-      patch.importanceScore !== undefined ||
-      patch.urgencyScore !== undefined)
-  ) {
-    out.priority_score = computeTodoPriorityScore(
-      patch.effortScore ?? null,
-      patch.importanceScore ?? null,
-      patch.urgencyScore ?? null
-    );
+  if (patch.isImportant !== undefined) out.is_important = patch.isImportant;
+  if (patch.isUrgent !== undefined) out.is_urgent = patch.isUrgent;
+  if (patch.delegateTimeboxMinutes !== undefined) {
+    out.delegate_timebox_minutes = normalizeDelegateTimeboxMinutes(patch.delegateTimeboxMinutes) ?? null;
   }
   // if (patch.created_at !== undefined) out.created_at = patch.created_at; // Não precisamos mais atualizar created_at
   
@@ -1675,10 +1665,9 @@ export interface Todo {
   onHoldReason?: string;
   status: 'backlog' | 'in_progress' | 'current_week';
   pos: number; // Nova coluna para ordenação persistente
-  effortScore: number;
-  importanceScore: number;
-  urgencyScore: number;
-  priorityScore: number;
+  isImportant: boolean;
+  isUrgent: boolean;
+  delegateTimeboxMinutes?: number;
   tags?: { name: string; color: string }[];
   // RELACIONAMENTOS OPCIONAIS
   projectId?: string;

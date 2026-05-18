@@ -4,6 +4,13 @@ export const COL_IN_PROGRESS = 'col-in-progress'
 export const COL_CURRENT_WEEK = 'col-current-week'
 export const COL_BACKLOG = 'col-backlog'
 
+function eisenhowerRank(todo: Todo): number {
+  if (todo.isImportant && todo.isUrgent) return 0 // now
+  if (todo.isImportant && !todo.isUrgent) return 1 // schedule
+  if (!todo.isImportant && todo.isUrgent) return 2 // delegate
+  return 3 // delete
+}
+
 /**
  * Tarefas ativas (não em espera) primeiro — **todas** antes de qualquer pausada.
  * Depois prioridade alta e por fim pos (evita tarefa pausada “estrela” no topo).
@@ -12,7 +19,9 @@ export function sortTodosByPriorityAndPos(a: Todo, b: Todo): number {
   const holdA = Boolean(a.onHold)
   const holdB = Boolean(b.onHold)
   if (holdA !== holdB) return holdA ? 1 : -1
-  if (a.priorityScore !== b.priorityScore) return b.priorityScore - a.priorityScore
+  const actionA = eisenhowerRank(a)
+  const actionB = eisenhowerRank(b)
+  if (actionA !== actionB) return actionA - actionB
   if (a.isHighPriority && !b.isHighPriority) return -1
   if (!a.isHighPriority && b.isHighPriority) return 1
   return a.pos - b.pos
@@ -101,7 +110,8 @@ export function computePosAtNewIndexInVisualBucket(
   const movedIndex = reordered.indexOf(moved)
   const sameBucket = (t: Todo) =>
     Boolean(t.onHold) === Boolean(moved.onHold) &&
-    Number(t.priorityScore) === Number(moved.priorityScore) &&
+    Boolean(t.isImportant) === Boolean(moved.isImportant) &&
+    Boolean(t.isUrgent) === Boolean(moved.isUrgent) &&
     Boolean(t.isHighPriority) === Boolean(moved.isHighPriority)
 
   let prev: Todo | undefined
