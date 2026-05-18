@@ -19,9 +19,11 @@ export function sortTodosByPriorityAndPos(a: Todo, b: Todo): number {
   const holdA = Boolean(a.onHold)
   const holdB = Boolean(b.onHold)
   if (holdA !== holdB) return holdA ? 1 : -1
-  const actionA = eisenhowerRank(a)
-  const actionB = eisenhowerRank(b)
-  if (actionA !== actionB) return actionA - actionB
+  if (a.eisenhowerConfigured && b.eisenhowerConfigured) {
+    const actionA = eisenhowerRank(a)
+    const actionB = eisenhowerRank(b)
+    if (actionA !== actionB) return actionA - actionB
+  }
   if (a.isHighPriority && !b.isHighPriority) return -1
   if (!a.isHighPriority && b.isHighPriority) return 1
   return a.pos - b.pos
@@ -110,6 +112,7 @@ export function computePosAtNewIndexInVisualBucket(
   const movedIndex = reordered.indexOf(moved)
   const sameBucket = (t: Todo) =>
     Boolean(t.onHold) === Boolean(moved.onHold) &&
+    Boolean(t.eisenhowerConfigured) === Boolean(moved.eisenhowerConfigured) &&
     Boolean(t.isImportant) === Boolean(moved.isImportant) &&
     Boolean(t.isUrgent) === Boolean(moved.isUrgent) &&
     Boolean(t.isHighPriority) === Boolean(moved.isHighPriority)

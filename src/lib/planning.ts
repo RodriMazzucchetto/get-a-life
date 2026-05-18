@@ -46,6 +46,7 @@ export interface DBTodo {
   pos: number // Nova coluna para ordenação persistente
   is_important?: boolean | null
   is_urgent?: boolean | null
+  eisenhower_configured?: boolean | null
   delegate_timebox_minutes?: number | null
   effort_score?: number | null
   importance_score?: number | null
@@ -1577,6 +1578,7 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
         ? [row.project_id]
         : []
 
+  const eisenhowerConfigured = Boolean(row.eisenhower_configured)
   const isImportant =
     typeof row.is_important === 'boolean'
       ? row.is_important
@@ -1600,6 +1602,7 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
     onHoldReason: row.on_hold_reason ?? undefined,
     status: row.status,
     pos: row.pos,
+    eisenhowerConfigured,
     isImportant,
     isUrgent,
     delegateTimeboxMinutes: normalizeDelegateTimeboxMinutes(row.delegate_timebox_minutes),
@@ -1631,6 +1634,7 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
   if (patch.status !== undefined) out.status = patch.status;
   if (patch.pos !== undefined) out.pos = patch.pos; // Coluna pos agora existe no banco
+  if (patch.eisenhowerConfigured !== undefined) out.eisenhower_configured = patch.eisenhowerConfigured;
   if (patch.isImportant !== undefined) out.is_important = patch.isImportant;
   if (patch.isUrgent !== undefined) out.is_urgent = patch.isUrgent;
   if (patch.delegateTimeboxMinutes !== undefined) {
@@ -1665,6 +1669,7 @@ export interface Todo {
   onHoldReason?: string;
   status: 'backlog' | 'in_progress' | 'current_week';
   pos: number; // Nova coluna para ordenação persistente
+  eisenhowerConfigured: boolean;
   isImportant: boolean;
   isUrgent: boolean;
   delegateTimeboxMinutes?: number;

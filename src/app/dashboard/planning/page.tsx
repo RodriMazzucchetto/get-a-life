@@ -107,18 +107,9 @@ function getNewTodoEisenhowerDefaults(
   selectedProjectIds: string[],
   projects: { id: string; name: string }[]
 ): Pick<Todo, 'isImportant' | 'isUrgent' | 'delegateTimeboxMinutes'> {
-  const names = selectedProjectIds
-    .map((id) => projects.find((p) => p.id === id)?.name ?? '')
-    .map((name) => name.trim().toUpperCase())
-    .filter(Boolean)
-
-  if (names.includes('EXT')) {
-    return { isImportant: false, isUrgent: true, delegateTimeboxMinutes: 25 }
-  }
-  if (names.some((name) => name === 'ZTX' || name === 'KMN' || name === 'OWN')) {
-    return { isImportant: true, isUrgent: false, delegateTimeboxMinutes: undefined }
-  }
-  return { isImportant: true, isUrgent: false, delegateTimeboxMinutes: undefined }
+  void selectedProjectIds
+  void projects
+  return { isImportant: false, isUrgent: false, delegateTimeboxMinutes: undefined }
 }
 
 // Componente para grupo de tags arrastável - será definido depois das funções
@@ -131,8 +122,10 @@ function TodoDragOverlayPreview({
   todo: Todo
   projects: { id: string; name: string; color: string }[]
 }) {
-  const action = deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
-  const actionMeta = eisenhowerMeta[action]
+  const action = todo.eisenhowerConfigured
+    ? deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
+    : null
+  const actionMeta = action ? eisenhowerMeta[action] : null
   const projectChips = (todo.projectIds ?? (todo.projectId ? [todo.projectId] : []))
     .map((id) => projects.find((p) => p.id === id))
     .filter(Boolean) as { id: string; name: string; color: string }[]
@@ -181,12 +174,14 @@ function TodoDragOverlayPreview({
             <span className="truncate">{project.name.trim().toUpperCase()}</span>
           </span>
         ))}
-        <span
-          className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${actionMeta.badgeClass} ${actionMeta.borderClass}`}
-          title={actionMeta.longLabel}
-        >
-          {actionMeta.shortLabel}
-        </span>
+        {actionMeta ? (
+          <span
+            className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${actionMeta.badgeClass} ${actionMeta.borderClass}`}
+            title={actionMeta.longLabel}
+          >
+            {actionMeta.shortLabel}
+          </span>
+        ) : null}
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate text-sm text-gray-900" title={todo.title}>
             {todo.title}
@@ -265,8 +260,10 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
   })
   const [priorityPopKey, setPriorityPopKey] = useState(0)
   const completeBurstFiredRef = useRef(false)
-  const action = deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
-  const actionMeta = eisenhowerMeta[action]
+  const action = todo.eisenhowerConfigured
+    ? deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
+    : null
+  const actionMeta = action ? eisenhowerMeta[action] : null
 
   useEffect(() => {
     if (!microComplete.isCompleting) {
@@ -376,16 +373,18 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
             <span className="truncate text-sm text-gray-900" title={todo.title}>
               {todo.title}
             </span>
-            <span
-              className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${actionMeta.badgeClass} ${actionMeta.borderClass}`}
-              title={
-                action === 'delegate' && todo.delegateTimeboxMinutes
-                  ? `${actionMeta.longLabel} · ${todo.delegateTimeboxMinutes} min`
-                  : actionMeta.longLabel
-              }
-            >
-              {actionMeta.shortLabel}
-            </span>
+            {actionMeta ? (
+              <span
+                className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${actionMeta.badgeClass} ${actionMeta.borderClass}`}
+                title={
+                  action === 'delegate' && todo.delegateTimeboxMinutes
+                    ? `${actionMeta.longLabel} · ${todo.delegateTimeboxMinutes} min`
+                    : actionMeta.longLabel
+                }
+              >
+                {actionMeta.shortLabel}
+              </span>
+            ) : null}
             {todo.onHold && todo.onHoldReason && (
               <span
                 className="max-w-[40%] shrink cursor-help truncate text-sm text-yellow-600"
@@ -940,6 +939,7 @@ export default function PlanningPage() {
   })
   const isTodoVisibleByAction = useCallback(
     (todo: Todo) => {
+      if (!todo.eisenhowerConfigured) return true
       const action = deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
       return visibleActions[action]
     },
@@ -1384,6 +1384,7 @@ export default function PlanningPage() {
         dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
+        eisenhowerConfigured: false,
         isImportant: eisenhowerDefaults.isImportant,
         isUrgent: eisenhowerDefaults.isUrgent,
         delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
@@ -1415,6 +1416,7 @@ export default function PlanningPage() {
   const handleUpdateTodo = async () => {
     if (editingTodo && editingTodo.title.trim()) {
       const updatedTodo = await updateTodo(editingTodo.id, {
+        eisenhowerConfigured: true,
         // Timebox só é relevante para tarefas "Delegate".
         delegateTimeboxMinutes:
           deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent) === 'delegate'
@@ -1598,6 +1600,7 @@ export default function PlanningPage() {
         dueDate: newInProgressTodo.dueDate ? newInProgressTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
+        eisenhowerConfigured: false,
         isImportant: eisenhowerDefaults.isImportant,
         isUrgent: eisenhowerDefaults.isUrgent,
         delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
@@ -1731,6 +1734,7 @@ export default function PlanningPage() {
         dueDate: newBacklogTodo.dueDate ? newBacklogTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
+        eisenhowerConfigured: false,
         isImportant: eisenhowerDefaults.isImportant,
         isUrgent: eisenhowerDefaults.isUrgent,
         delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
@@ -3141,6 +3145,7 @@ export default function PlanningPage() {
                       onClick={() =>
                         setEditingTodo({
                           ...editingTodo,
+                          eisenhowerConfigured: true,
                           isImportant: !editingTodo.isImportant,
                         })
                       }
@@ -3158,6 +3163,7 @@ export default function PlanningPage() {
                       onClick={() =>
                         setEditingTodo({
                           ...editingTodo,
+                          eisenhowerConfigured: true,
                           isUrgent: !editingTodo.isUrgent,
                         })
                       }
@@ -3171,18 +3177,25 @@ export default function PlanningPage() {
                       <span>{editingTodo.isUrgent ? 'Sim' : 'Não'}</span>
                     </button>
                   </div>
-                  {(() => {
-                    const action = deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent)
-                    const meta = eisenhowerMeta[action]
-                    return (
-                      <div
-                        className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${meta.badgeClass} ${meta.borderClass}`}
-                      >
-                        {meta.longLabel}
-                      </div>
-                    )
-                  })()}
-                  {deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent) === 'delegate' ? (
+                  {editingTodo.eisenhowerConfigured ? (
+                    (() => {
+                      const action = deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent)
+                      const meta = eisenhowerMeta[action]
+                      return (
+                        <div
+                          className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${meta.badgeClass} ${meta.borderClass}`}
+                        >
+                          {meta.longLabel}
+                        </div>
+                      )
+                    })()
+                  ) : (
+                    <p className="mt-3 text-xs font-medium text-on-surface-variant">
+                      Sem classificação ainda.
+                    </p>
+                  )}
+                  {editingTodo.eisenhowerConfigured &&
+                  deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent) === 'delegate' ? (
                     <div className="mt-3">
                       <label className="mb-1 block text-sm font-medium text-on-surface-variant">
                         Timebox (minutos)
