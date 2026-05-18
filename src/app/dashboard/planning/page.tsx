@@ -131,7 +131,7 @@ function TodoDragOverlayPreview({
           </span>
         ))}
         <span
-          className="inline-flex shrink-0 rounded-full bg-primary-fixed px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary"
+          className="inline-flex shrink-0 rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-surface ring-1 ring-outline-variant/25"
           title="Score de prioridade (esforço × importância × urgência)"
         >
           Score {todo.priorityScore}
@@ -324,7 +324,7 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
               {todo.title}
             </span>
             <span
-              className="inline-flex shrink-0 rounded-full bg-primary-fixed px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary"
+              className="inline-flex shrink-0 rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-surface ring-1 ring-outline-variant/25"
               title="Score de prioridade (esforço × importância × urgência)"
             >
               {todo.priorityScore}
@@ -3012,7 +3012,7 @@ export default function PlanningPage() {
                 </div>
 
                 {/* Priorização inteligente (1-5) */}
-                <section className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+                <section className="rounded-xl border border-outline-variant/25 bg-surface-container-low p-4">
                   <div className="mb-3">
                     <h4 className="text-sm font-semibold text-on-surface">Score de prioridade</h4>
                     <p className="text-xs text-on-surface-variant">
@@ -3021,7 +3021,7 @@ export default function PlanningPage() {
                   </div>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                     <label className="text-sm">
-                      <span className="mb-1 block font-medium text-gray-700">Esforço (1-5)</span>
+                      <span className="mb-1 block font-medium text-on-surface-variant">Esforço (1-5)</span>
                       <select
                         value={editingTodo.effortScore}
                         onChange={(e) => {
@@ -3036,7 +3036,7 @@ export default function PlanningPage() {
                             ),
                           })
                         }}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
                       >
                         {[1, 2, 3, 4, 5].map((value) => (
                           <option key={`effort-${value}`} value={value}>
@@ -3046,7 +3046,7 @@ export default function PlanningPage() {
                       </select>
                     </label>
                     <label className="text-sm">
-                      <span className="mb-1 block font-medium text-gray-700">Importância (1-5)</span>
+                      <span className="mb-1 block font-medium text-on-surface-variant">Importância (1-5)</span>
                       <select
                         value={editingTodo.importanceScore}
                         onChange={(e) => {
@@ -3061,7 +3061,7 @@ export default function PlanningPage() {
                             ),
                           })
                         }}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
                       >
                         {[1, 2, 3, 4, 5].map((value) => (
                           <option key={`importance-${value}`} value={value}>
@@ -3071,7 +3071,7 @@ export default function PlanningPage() {
                       </select>
                     </label>
                     <label className="text-sm">
-                      <span className="mb-1 block font-medium text-gray-700">Urgência (1-5)</span>
+                      <span className="mb-1 block font-medium text-on-surface-variant">Urgência (1-5)</span>
                       <select
                         value={editingTodo.urgencyScore}
                         onChange={(e) => {
@@ -3086,7 +3086,7 @@ export default function PlanningPage() {
                             ),
                           })
                         }}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
                       >
                         {[1, 2, 3, 4, 5].map((value) => (
                           <option key={`urgency-${value}`} value={value}>
@@ -3096,7 +3096,7 @@ export default function PlanningPage() {
                       </select>
                     </label>
                   </div>
-                  <div className="mt-3 rounded-lg bg-primary-fixed/30 px-3 py-2 text-sm font-semibold text-primary">
+                  <div className="mt-3 rounded-lg bg-tertiary-fixed/40 px-3 py-2 text-sm font-semibold text-on-surface ring-1 ring-outline-variant/20">
                     Score final: {editingTodo.priorityScore} ({editingTodo.effortScore} x{' '}
                     {editingTodo.importanceScore} x {editingTodo.urgencyScore})
                   </div>
