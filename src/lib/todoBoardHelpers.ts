@@ -12,6 +12,7 @@ export function sortTodosByPriorityAndPos(a: Todo, b: Todo): number {
   const holdA = Boolean(a.onHold)
   const holdB = Boolean(b.onHold)
   if (holdA !== holdB) return holdA ? 1 : -1
+  if (a.priorityScore !== b.priorityScore) return b.priorityScore - a.priorityScore
   if (a.isHighPriority && !b.isHighPriority) return -1
   if (!a.isHighPriority && b.isHighPriority) return 1
   return a.pos - b.pos
@@ -100,6 +101,7 @@ export function computePosAtNewIndexInVisualBucket(
   const movedIndex = reordered.indexOf(moved)
   const sameBucket = (t: Todo) =>
     Boolean(t.onHold) === Boolean(moved.onHold) &&
+    Number(t.priorityScore) === Number(moved.priorityScore) &&
     Boolean(t.isHighPriority) === Boolean(moved.isHighPriority)
 
   let prev: Todo | undefined

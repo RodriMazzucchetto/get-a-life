@@ -55,6 +55,7 @@ import {
 } from '@/lib/todoBoardHelpers'
 import {
   DBReminder,
+  computeTodoPriorityScore,
   cyclesService,
   fromDbTaskCycle,
   fromDbWeeklyPriorityItem,
@@ -129,6 +130,12 @@ function TodoDragOverlayPreview({
             <span className="truncate">{project.name.trim().toUpperCase()}</span>
           </span>
         ))}
+        <span
+          className="inline-flex shrink-0 rounded-full bg-primary-fixed px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary"
+          title="Score de prioridade (esforço × importância × urgência)"
+        >
+          Score {todo.priorityScore}
+        </span>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate text-sm text-gray-900" title={todo.title}>
             {todo.title}
@@ -308,9 +315,19 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
           )}
 
           {/* Título + espera */}
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 hover:bg-surface-container-high/60"
+            onClick={() => onEdit(todo)}
+            title="Abrir detalhes da tarefa"
+          >
             <span className="truncate text-sm text-gray-900" title={todo.title}>
               {todo.title}
+            </span>
+            <span
+              className="inline-flex shrink-0 rounded-full bg-primary-fixed px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary"
+              title="Score de prioridade (esforço × importância × urgência)"
+            >
+              {todo.priorityScore}
             </span>
             {todo.onHold && todo.onHoldReason && (
               <span
@@ -550,6 +567,15 @@ export default function PlanningPage() {
     }
   }, [user, cycleBusy, showError])
 
+  const resetWeeklyPriorityDraft = useCallback(() => {
+    setWeeklyPriorityDraft({
+      title: '',
+      notes: '',
+      projectId: '',
+      deliveryStatus: 'not_delivered',
+    })
+  }, [])
+
   const handleFinishCycle = useCallback(async () => {
     if (!user || cycleBusy) return
     setCycleBusy(true)
@@ -570,15 +596,6 @@ export default function PlanningPage() {
       setCycleBusy(false)
     }
   }, [user, cycleBusy, editingWeeklyPriorityId, resetWeeklyPriorityDraft, showError])
-
-  const resetWeeklyPriorityDraft = useCallback(() => {
-    setWeeklyPriorityDraft({
-      title: '',
-      notes: '',
-      projectId: '',
-      deliveryStatus: 'not_delivered',
-    })
-  }, [])
 
   const handleCreateWeeklyPriorityItem = useCallback(async () => {
     if (!user || !weeklyPriorityDraft.title.trim()) return
@@ -1286,6 +1303,10 @@ export default function PlanningPage() {
         dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
+        effortScore: 3,
+        importanceScore: 3,
+        urgencyScore: 3,
+        priorityScore: 27,
         timeSensitive: newTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
@@ -1321,6 +1342,10 @@ export default function PlanningPage() {
         dueDate: editingTodo.dueDate || undefined,
         completed: editingTodo.completed,
         isHighPriority: editingTodo.isHighPriority,
+        effortScore: editingTodo.effortScore,
+        importanceScore: editingTodo.importanceScore,
+        urgencyScore: editingTodo.urgencyScore,
+        priorityScore: editingTodo.priorityScore,
         timeSensitive: editingTodo.timeSensitive,
         onHold: editingTodo.onHold,
         onHoldReason: editingTodo.onHoldReason,
@@ -1489,6 +1514,10 @@ export default function PlanningPage() {
         dueDate: newInProgressTodo.dueDate ? newInProgressTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
+        effortScore: 3,
+        importanceScore: 3,
+        urgencyScore: 3,
+        priorityScore: 27,
         timeSensitive: newInProgressTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
@@ -1618,6 +1647,10 @@ export default function PlanningPage() {
         dueDate: newBacklogTodo.dueDate ? newBacklogTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
+        effortScore: 3,
+        importanceScore: 3,
+        urgencyScore: 3,
+        priorityScore: 27,
         timeSensitive: newBacklogTodo.timeSensitive,
         onHold: false,
         onHoldReason: undefined,
@@ -2977,6 +3010,97 @@ export default function PlanningPage() {
                     placeholder="Adicione uma descrição (opcional)"
                   />
                 </div>
+
+                {/* Priorização inteligente (1-5) */}
+                <section className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-on-surface">Score de prioridade</h4>
+                    <p className="text-xs text-on-surface-variant">
+                      Defina esforço, importância e urgência. O sistema multiplica os 3 valores.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <label className="text-sm">
+                      <span className="mb-1 block font-medium text-gray-700">Esforço (1-5)</span>
+                      <select
+                        value={editingTodo.effortScore}
+                        onChange={(e) => {
+                          const effortScore = Number(e.target.value)
+                          setEditingTodo({
+                            ...editingTodo,
+                            effortScore,
+                            priorityScore: computeTodoPriorityScore(
+                              effortScore,
+                              editingTodo.importanceScore,
+                              editingTodo.urgencyScore
+                            ),
+                          })
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <option key={`effort-${value}`} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-sm">
+                      <span className="mb-1 block font-medium text-gray-700">Importância (1-5)</span>
+                      <select
+                        value={editingTodo.importanceScore}
+                        onChange={(e) => {
+                          const importanceScore = Number(e.target.value)
+                          setEditingTodo({
+                            ...editingTodo,
+                            importanceScore,
+                            priorityScore: computeTodoPriorityScore(
+                              editingTodo.effortScore,
+                              importanceScore,
+                              editingTodo.urgencyScore
+                            ),
+                          })
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <option key={`importance-${value}`} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-sm">
+                      <span className="mb-1 block font-medium text-gray-700">Urgência (1-5)</span>
+                      <select
+                        value={editingTodo.urgencyScore}
+                        onChange={(e) => {
+                          const urgencyScore = Number(e.target.value)
+                          setEditingTodo({
+                            ...editingTodo,
+                            urgencyScore,
+                            priorityScore: computeTodoPriorityScore(
+                              editingTodo.effortScore,
+                              editingTodo.importanceScore,
+                              urgencyScore
+                            ),
+                          })
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <option key={`urgency-${value}`} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="mt-3 rounded-lg bg-primary-fixed/30 px-3 py-2 text-sm font-semibold text-primary">
+                    Score final: {editingTodo.priorityScore} ({editingTodo.effortScore} x{' '}
+                    {editingTodo.importanceScore} x {editingTodo.urgencyScore})
+                  </div>
+                </section>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">
