@@ -36,23 +36,23 @@ const CHART_COLOR_WP_DELIVERED = "var(--color-tertiary-fixed)";
 const CHART_COLOR_WP_PARTIAL = "var(--color-primary-fixed)";
 const CHART_COLOR_WP_NOT = "var(--color-error-container)";
 
-type WeeklyPriorityChartRow = {
-  key: string;
-  label: string;
+function WeeklyPriorityBarsChart({
+  delivered,
+  partial,
+  notDelivered,
+}: {
   delivered: number;
   partial: number;
   notDelivered: number;
-  total: number;
-};
-
-function WeeklyPriorityBarsChart({
-  mode,
-  rows,
-}: {
-  mode: "all" | "single";
-  rows: WeeklyPriorityChartRow[];
 }) {
-  if (rows.length === 0) {
+  const bars = [
+    { key: "delivered", label: "Entregues", value: delivered, color: CHART_COLOR_WP_DELIVERED },
+    { key: "partial", label: "Parciais", value: partial, color: CHART_COLOR_WP_PARTIAL },
+    { key: "notDelivered", label: "Não entregues", value: notDelivered, color: CHART_COLOR_WP_NOT },
+  ];
+  const maxValue = Math.max(1, ...bars.map((bar) => bar.value));
+
+  if (delivered + partial + notDelivered === 0) {
     return (
       <div className="rounded-lg border border-outline-variant/20 bg-surface-container-low px-4 py-6 text-center text-sm text-on-surface-variant">
         Sem dados de itens prioritários para exibir no gráfico.
@@ -60,42 +60,6 @@ function WeeklyPriorityBarsChart({
     );
   }
 
-  if (mode === "single") {
-    const only = rows[0];
-    const bars = [
-      { key: "delivered", label: "Entregues", value: only.delivered, color: CHART_COLOR_WP_DELIVERED },
-      { key: "partial", label: "Parciais", value: only.partial, color: CHART_COLOR_WP_PARTIAL },
-      { key: "not", label: "Não entregues", value: only.notDelivered, color: CHART_COLOR_WP_NOT },
-    ];
-    const maxValue = Math.max(1, ...bars.map((b) => b.value));
-    return (
-      <div className="rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-4">
-        <div className="mb-3 text-xs font-semibold text-on-surface-variant">{only.label}</div>
-        <div className="flex items-end justify-center gap-6">
-          {bars.map((bar) => {
-            const height = Math.max(8, (bar.value / maxValue) * 140);
-            return (
-              <div key={bar.key} className="flex w-20 flex-col items-center gap-2">
-                <div className="text-xs font-bold text-on-surface">{bar.value}</div>
-                <div className="flex h-36 w-full items-end rounded-md bg-surface-container-high px-2 py-2">
-                  <div
-                    className="w-full rounded-sm"
-                    style={{ height: `${height}px`, backgroundColor: bar.color }}
-                    aria-hidden
-                  />
-                </div>
-                <div className="text-center text-[11px] font-semibold text-on-surface-variant">
-                  {bar.label}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  const maxTotal = Math.max(1, ...rows.map((r) => r.total));
   return (
     <div className="rounded-lg border border-outline-variant/20 bg-surface-container-low/40 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-4 text-[11px] font-semibold text-on-surface-variant">
@@ -112,29 +76,40 @@ function WeeklyPriorityBarsChart({
           Não entregues
         </span>
       </div>
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max items-end gap-3 px-1">
-          {rows.map((row) => {
-            const barHeight = Math.max(12, (row.total / maxTotal) * 160);
-            const deliveredH = row.total > 0 ? (row.delivered / row.total) * barHeight : 0;
-            const partialH = row.total > 0 ? (row.partial / row.total) * barHeight : 0;
-            const notH = Math.max(0, barHeight - deliveredH - partialH);
-            return (
-              <div key={row.key} className="flex w-16 flex-col items-center gap-1.5">
-                <div className="text-xs font-bold text-on-surface">{row.total}</div>
-                <div className="flex h-44 w-full items-end rounded-md bg-surface-container-high px-1.5 py-1.5">
-                  <div className="flex w-full flex-col justify-end overflow-hidden rounded-sm">
-                    <div style={{ height: `${notH}px`, backgroundColor: CHART_COLOR_WP_NOT }} />
-                    <div style={{ height: `${partialH}px`, backgroundColor: CHART_COLOR_WP_PARTIAL }} />
-                    <div style={{ height: `${deliveredH}px`, backgroundColor: CHART_COLOR_WP_DELIVERED }} />
+      <div className="grid grid-cols-[40px_1fr] gap-3">
+        <div className="relative h-48">
+          <div className="absolute inset-y-0 right-0 w-px bg-outline-variant/30" />
+          <span className="absolute -top-1 right-2 text-[10px] font-semibold text-on-surface-variant">
+            {maxValue}
+          </span>
+          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-[10px] font-semibold text-on-surface-variant">
+            {Math.round(maxValue / 2)}
+          </span>
+          <span className="absolute -bottom-1 right-2 text-[10px] font-semibold text-on-surface-variant">
+            0
+          </span>
+        </div>
+        <div className="h-48">
+          <div className="flex h-full items-end justify-center gap-6 rounded-md border border-outline-variant/20 bg-surface-container-lowest/60 px-4 py-3">
+            {bars.map((bar) => {
+              const height = Math.max(8, (bar.value / maxValue) * 165);
+              return (
+                <div key={bar.key} className="flex w-24 flex-col items-center gap-2">
+                  <div className="text-xs font-bold text-on-surface">{bar.value}</div>
+                  <div className="flex h-40 w-full items-end rounded-md bg-surface-container-high px-2 py-2">
+                    <div
+                      className="w-full rounded-sm"
+                      style={{ height: `${height}px`, backgroundColor: bar.color }}
+                      aria-hidden
+                    />
+                  </div>
+                  <div className="text-center text-[11px] font-semibold text-on-surface-variant">
+                    {bar.label}
                   </div>
                 </div>
-                <div className="text-center text-[10px] font-semibold text-on-surface-variant">
-                  {row.label}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -1121,53 +1096,6 @@ export default function DashboardPage() {
     return { delivered, partial, notDelivered, total, completionPct };
   }, [weeklyPriorityItems, analysisScope]);
 
-  const weeklyPriorityChart = useMemo(() => {
-    if (analysisScope !== "all") {
-      const selectedCycle = cycles.find((c) => c.id === analysisScope);
-      const scoped = weeklyPriorityItems.filter((item) => item.cycleId === analysisScope);
-      const delivered = scoped.filter((item) => item.deliveryStatus === "delivered").length;
-      const partial = scoped.filter((item) => item.deliveryStatus === "partially_delivered").length;
-      const notDelivered = scoped.filter((item) => item.deliveryStatus === "not_delivered").length;
-      return {
-        mode: "single" as const,
-        rows: [
-          {
-            key: analysisScope,
-            label: selectedCycle ? `Ciclo ${selectedCycle.cycleNumber}` : "Ciclo selecionado",
-            delivered,
-            partial,
-            notDelivered,
-            total: scoped.length,
-          },
-        ],
-      };
-    }
-
-    const rows: WeeklyPriorityChartRow[] = cycles
-      .slice()
-      .sort((a, b) => a.cycleNumber - b.cycleNumber)
-      .map((cycle) => {
-        const inCycle = weeklyPriorityItems.filter((item) => item.cycleId === cycle.id);
-        const delivered = inCycle.filter((item) => item.deliveryStatus === "delivered").length;
-        const partial = inCycle.filter((item) => item.deliveryStatus === "partially_delivered").length;
-        const notDelivered = inCycle.filter((item) => item.deliveryStatus === "not_delivered").length;
-        return {
-          key: cycle.id,
-          label: `C${cycle.cycleNumber}`,
-          delivered,
-          partial,
-          notDelivered,
-          total: inCycle.length,
-        };
-      })
-      .filter((row) => row.total > 0);
-
-    return {
-      mode: "all" as const,
-      rows,
-    };
-  }, [analysisScope, cycles, weeklyPriorityItems]);
-
   const projectAnalysis = useMemo(() => {
     if (analysisScope === "all") {
       if (closedCycles.length === 0) {
@@ -1417,7 +1345,11 @@ export default function DashboardPage() {
             Total: {weeklyPriorityStats.total}
           </span>
         </div>
-        <WeeklyPriorityBarsChart mode={weeklyPriorityChart.mode} rows={weeklyPriorityChart.rows} />
+        <WeeklyPriorityBarsChart
+          delivered={weeklyPriorityStats.delivered}
+          partial={weeklyPriorityStats.partial}
+          notDelivered={weeklyPriorityStats.notDelivered}
+        />
         <p className="mt-3 text-xs text-on-surface-variant">
           Índice ponderado de entrega: {formatPct(weeklyPriorityStats.completionPct)}
         </p>
