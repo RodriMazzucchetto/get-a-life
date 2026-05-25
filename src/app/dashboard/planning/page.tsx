@@ -51,65 +51,59 @@ import {
   appendPosForStatus,
   columnStatusFromId,
   computePosAtNewIndexInVisualBucket,
+  sortBacklogTodosByClassification,
   sortTodosByPriorityAndPos,
 } from '@/lib/todoBoardHelpers'
 import {
   DBReminder,
-  deriveEisenhowerAction,
   cyclesService,
   fromDbTaskCycle,
   fromDbWeeklyPriorityItem,
   weeklyPriorityItemsService,
-  type EisenhowerAction,
   type TaskCycle,
   type Todo,
   type Goal,
   type WeeklyPriorityDeliveryStatus,
   type WeeklyPriorityItem,
 } from '@/lib/planning'
+import { canMoveTodoToStatus } from '@/lib/taskClassification'
+import { ClassificationBadge } from '@/components/planning/ClassificationBadge'
+import {
+  TaskClassificationBlock,
+  classificationDraftToTodoPatch,
+} from '@/components/planning/TaskClassificationBlock'
+import {
+  ArchiveView,
+  LifeAdminView,
+} from '@/components/planning/PlanningSecondaryViews'
+import {
+  classificationDraftFromTodo,
+  isClassificationComplete,
+  type ClassificationDraft,
+} from '@/lib/taskClassification'
 import { ProjectIdsPicker } from '@/components/ProjectIdsPicker'
 
 function cloneTodoList(list: Todo[]): Todo[] {
   return list.map((t) => ({ ...t }))
 }
 
-const eisenhowerMeta: Record<
-  EisenhowerAction,
-  { shortLabel: string; longLabel: string; badgeClass: string; borderClass: string }
-> = {
-  now: {
-    shortLabel: 'Now',
-    longLabel: 'Now · fazer agora',
-    badgeClass: 'bg-error-container text-on-error-container',
-    borderClass: 'border-error/40',
-  },
-  schedule: {
-    shortLabel: 'Sch',
-    longLabel: 'Schedule · agendar',
-    badgeClass: 'bg-primary-fixed text-on-primary-fixed',
-    borderClass: 'border-primary/35',
-  },
-  delegate: {
-    shortLabel: 'Del',
-    longLabel: 'Delegate · despachar',
-    badgeClass: 'bg-tertiary-fixed text-on-tertiary-fixed',
-    borderClass: 'border-tertiary/40',
-  },
-  delete: {
-    shortLabel: 'Drop',
-    longLabel: 'Delete · eliminar',
-    badgeClass: 'bg-surface-container-high text-on-surface-variant',
-    borderClass: 'border-outline-variant/40',
-  },
-}
-
-function getNewTodoEisenhowerDefaults(
-  selectedProjectIds: string[],
-  projects: { id: string; name: string }[]
-): Pick<Todo, 'isImportant' | 'isUrgent' | 'delegateTimeboxMinutes'> {
-  void selectedProjectIds
-  void projects
-  return { isImportant: false, isUrgent: false, delegateTimeboxMinutes: undefined }
+function defaultNewTodoFields(): Pick<
+  Todo,
+  | 'taskType'
+  | 'statusClassification'
+  | 'lifeAdminSubtype'
+  | 'lifeAdminDeadline'
+  | 'revisaoEm'
+  | 'needsReclassification'
+> {
+  return {
+    taskType: null,
+    statusClassification: null,
+    lifeAdminSubtype: null,
+    lifeAdminDeadline: null,
+    revisaoEm: null,
+    needsReclassification: true,
+  }
 }
 
 // Componente para grupo de tags arrastável - será definido depois das funções
@@ -122,10 +116,6 @@ function TodoDragOverlayPreview({
   todo: Todo
   projects: { id: string; name: string; color: string }[]
 }) {
-  const action = todo.eisenhowerConfigured
-    ? deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
-    : null
-  const actionMeta = action ? eisenhowerMeta[action] : null
   const projectChips = (todo.projectIds ?? (todo.projectId ? [todo.projectId] : []))
     .map((id) => projects.find((p) => p.id === id))
     .filter(Boolean) as { id: string; name: string; color: string }[]
@@ -157,12 +147,22 @@ function TodoDragOverlayPreview({
           aria-hidden
         />
         <svg
-          className={`w-4 h-4 shrink-0 ${todo.isHighPriority ? 'text-red-500' : 'text-gray-400'}`}
+          className={`w-4 h-4 shrink-0 ${
+            todo.taskType === 'LIFE_ADMIN'
+              ? 'text-on-surface-variant'
+              : todo.isHighPriority
+                ? 'text-red-500'
+                : 'text-gray-400'
+          }`}
           fill="currentColor"
           viewBox="0 0 24 24"
           aria-hidden
         >
-          <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
+          {todo.taskType === 'LIFE_ADMIN' ? (
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+          ) : (
+            <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
+          )}
         </svg>
         {projectChips.map((project) => (
           <span
@@ -174,14 +174,7 @@ function TodoDragOverlayPreview({
             <span className="truncate">{project.name.trim().toUpperCase()}</span>
           </span>
         ))}
-        {actionMeta ? (
-          <span
-            className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${actionMeta.badgeClass} ${actionMeta.borderClass}`}
-            title={actionMeta.longLabel}
-          >
-            {actionMeta.shortLabel}
-          </span>
-        ) : null}
+        <ClassificationBadge todo={todo} />
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate text-sm text-gray-900" title={todo.title}>
             {todo.title}
@@ -194,15 +187,6 @@ function TodoDragOverlayPreview({
           )}
         </div>
       </div>
-      {todo.timeSensitive && todo.dueDate && (
-        <div className="px-3 pb-3 border-t border-gray-100">
-          <div className="pt-2 ml-16">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white bg-orange-500">
-              Vence em {new Date(todo.dueDate).toLocaleDateString('pt-BR')}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -260,10 +244,6 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
   })
   const [priorityPopKey, setPriorityPopKey] = useState(0)
   const completeBurstFiredRef = useRef(false)
-  const action = todo.eisenhowerConfigured
-    ? deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
-    : null
-  const actionMeta = action ? eisenhowerMeta[action] : null
 
   useEffect(() => {
     if (!microComplete.isCompleting) {
@@ -322,7 +302,18 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
             }`}
           />
 
-          {/* Indicador de prioridade */}
+          {/* Indicador de prioridade / life-admin */}
+          {todo.taskType === 'LIFE_ADMIN' ? (
+            <span
+              className="shrink-0 text-on-surface-variant"
+              title="Manutenção de vida"
+              aria-hidden
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+              </svg>
+            </span>
+          ) : (
           <div
             onClick={(e) => {
               burstPriorityStar((e.currentTarget as HTMLElement).getBoundingClientRect())
@@ -347,6 +338,7 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
               </svg>
             </span>
           </div>
+          )}
 
           {/* Projetos (só texto, cor do projeto) — antes do título, mesma linha */}
           {projectList.length > 0 && (
@@ -373,18 +365,7 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
             <span className="truncate text-sm text-gray-900" title={todo.title}>
               {todo.title}
             </span>
-            {actionMeta ? (
-              <span
-                className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${actionMeta.badgeClass} ${actionMeta.borderClass}`}
-                title={
-                  action === 'delegate' && todo.delegateTimeboxMinutes
-                    ? `${actionMeta.longLabel} · ${todo.delegateTimeboxMinutes} min`
-                    : actionMeta.longLabel
-                }
-              >
-                {actionMeta.shortLabel}
-              </span>
-            ) : null}
+            <ClassificationBadge todo={todo} />
             {todo.onHold && todo.onHoldReason && (
               <span
                 className="max-w-[40%] shrink cursor-help truncate text-sm text-yellow-600"
@@ -489,22 +470,6 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
         )}
       </div>
       </div>
-      
-      {/* Data de vencimento - aparece dentro do elemento quando timeSensitive é true */}
-      {todo.timeSensitive && todo.dueDate && (
-        <div className="px-3 pb-3 border-t border-gray-100">
-          <div className="pt-2 ml-16">
-            <span
-              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white bg-orange-500"
-            >
-              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-              Vence em {todo.dueDate ? new Date(todo.dueDate).toLocaleDateString('pt-BR') : ''}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -931,41 +896,66 @@ export default function PlanningPage() {
     )
   }
 
-  const [visibleActions, setVisibleActions] = useState<Record<EisenhowerAction, boolean>>({
-    now: true,
-    schedule: true,
-    delegate: true,
-    delete: true,
-  })
-  const isTodoVisibleByAction = useCallback(
-    (todo: Todo) => {
-      if (!todo.eisenhowerConfigured) return true
-      const action = deriveEisenhowerAction(todo.isImportant, todo.isUrgent)
-      return visibleActions[action]
-    },
-    [visibleActions]
-  )
+  const [boardView, setBoardView] = useState<'kanban' | 'life_admin' | 'archive'>('kanban')
 
   const weekTodos = useMemo(
     () =>
       todos
-        .filter((t) => t.status === 'current_week' && !t.completed && isTodoVisibleByAction(t))
+        .filter(
+          (t) =>
+            t.status === 'current_week' &&
+            !t.completed &&
+            t.taskType === 'STRATEGIC' &&
+            t.statusClassification === 'SIGNAL_SEMANA' &&
+            !t.needsReclassification
+        )
         .sort(sortTodosByPriorityAndPos),
-    [todos, isTodoVisibleByAction]
+    [todos]
   )
   const backlogTodos = useMemo(
     () =>
       todos
-        .filter((t) => t.status === 'backlog' && !t.completed && isTodoVisibleByAction(t))
-        .sort(sortTodosByPriorityAndPos),
-    [todos, isTodoVisibleByAction]
+        .filter(
+          (t) =>
+            t.status === 'backlog' &&
+            !t.completed &&
+            (t.needsReclassification ||
+              t.statusClassification === 'SIGNAL_BACKLOG' ||
+              t.statusClassification === 'ADIADA_30D')
+        )
+        .sort(sortBacklogTodosByClassification),
+    [todos]
   )
   const inProgressTodos = useMemo(
     () =>
       todos
-        .filter((t) => t.status === 'in_progress' && !t.completed && isTodoVisibleByAction(t))
+        .filter(
+          (t) =>
+            t.status === 'in_progress' &&
+            !t.completed &&
+            t.taskType === 'STRATEGIC' &&
+            !t.needsReclassification
+        )
         .sort(sortTodosByPriorityAndPos),
-    [todos, isTodoVisibleByAction]
+    [todos]
+  )
+  const lifeAdminTodos = useMemo(
+    () =>
+      todos.filter(
+        (t) => t.status === 'life_admin' && !t.completed && t.taskType === 'LIFE_ADMIN'
+      ),
+    [todos]
+  )
+  const archivedTodos = useMemo(
+    () =>
+      todos.filter(
+        (t) =>
+          t.status === 'archived' &&
+          !t.completed &&
+          t.taskType === 'STRATEGIC' &&
+          t.statusClassification === 'CORTADA'
+      ),
+    [todos]
   )
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -1017,6 +1007,9 @@ export default function PlanningPage() {
   const [on_hold_reason, setOnHoldReason] = useState('')
   const [todoToPutOnHold, setTodoToPutOnHold] = useState<Todo | null>(null)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
+  const [classificationDraft, setClassificationDraft] = useState<ClassificationDraft | null>(
+    null
+  )
   /** Confirmação in-app (window.confirm falha em vários ambientes / com eventos sintéticos). */
   const [todoDeleteConfirm, setTodoDeleteConfirm] = useState<{
     todo: Todo
@@ -1030,7 +1023,6 @@ export default function PlanningPage() {
     priority: 'medium' as 'low' | 'medium' | 'high',
     category: '',
     dueDate: null as Date | null,
-    timeSensitive: false,
     onHold: false,
     onHoldReason: undefined,
     tags: [] as { name: string; color: string }[],
@@ -1050,7 +1042,6 @@ export default function PlanningPage() {
     priority: 'medium' as 'low' | 'medium' | 'high',
     category: '',
     dueDate: null as Date | null,
-    timeSensitive: false,
     onHold: false,
     onHoldReason: undefined,
     tags: [] as { name: string; color: string }[],
@@ -1065,7 +1056,6 @@ export default function PlanningPage() {
     priority: 'medium' as 'low' | 'medium' | 'high',
     category: '',
     dueDate: null as Date | null,
-    timeSensitive: false,
     onHold: false,
     onHoldReason: undefined,
     tags: [] as { name: string; color: string }[],
@@ -1375,71 +1365,82 @@ export default function PlanningPage() {
   // Funções para to-dos
   const handleCreateTodo = async () => {
     if (newTodo.title.trim()) {
-      const eisenhowerDefaults = getNewTodoEisenhowerDefaults(newTodo.projectIds, projects)
       const newTodoData = await createTodo({
         title: newTodo.title.trim(),
         description: newTodo.description.trim(),
         priority: newTodo.priority,
         category: newTodo.category.trim(),
-        dueDate: newTodo.dueDate ? newTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
-        eisenhowerConfigured: false,
-        isImportant: eisenhowerDefaults.isImportant,
-        isUrgent: eisenhowerDefaults.isUrgent,
-        delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
-        timeSensitive: newTodo.timeSensitive,
+        ...defaultNewTodoFields(),
         onHold: false,
         onHoldReason: undefined,
-        status: 'current_week',
+        status: 'backlog',
         tags: [],
         projectIds: newTodo.projectIds,
       })
       if (newTodoData) {
-      setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
-      setShowInlineCreateForm(false)
-      setShowCreateTodoModal(false)
+        setNewTodo({
+          title: '',
+          description: '',
+          priority: 'medium',
+          category: '',
+          dueDate: null,
+          onHold: false,
+          onHoldReason: undefined,
+          tags: [],
+          projectIds: [],
+        })
+        setShowInlineCreateForm(false)
+        setShowCreateTodoModal(false)
+        handleEditTodo(newTodoData)
       }
     }
   }
 
   const handleCancelCreate = () => {
-    setNewTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
+    setNewTodo({
+      title: '',
+      description: '',
+      priority: 'medium',
+      category: '',
+      dueDate: null,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [],
+      projectIds: [],
+    })
     setShowInlineCreateForm(false)
   }
 
   const handleEditTodo = (todo: Todo) => {
     setEditingTodo(todo)
+    setClassificationDraft(classificationDraftFromTodo(todo))
     setShowEditTodoModal(true)
   }
 
   const handleUpdateTodo = async () => {
-    if (editingTodo && editingTodo.title.trim()) {
-      const updatedTodo = await updateTodo(editingTodo.id, {
-        eisenhowerConfigured: true,
-        // Timebox só é relevante para tarefas "Delegate".
-        delegateTimeboxMinutes:
-          deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent) === 'delegate'
-            ? editingTodo.delegateTimeboxMinutes
-            : 0,
-        title: editingTodo.title.trim(),
-        description: editingTodo.description?.trim() || '',
-        priority: editingTodo.priority,
-        category: editingTodo.category?.trim() || '',
-        dueDate: editingTodo.dueDate || undefined,
-        completed: editingTodo.completed,
-        isHighPriority: editingTodo.isHighPriority,
-        isImportant: editingTodo.isImportant,
-        isUrgent: editingTodo.isUrgent,
-        timeSensitive: editingTodo.timeSensitive,
-        onHold: editingTodo.onHold,
-        onHoldReason: editingTodo.onHoldReason,
-        projectIds: editingTodo.projectIds,
-      })
-      if (updatedTodo) {
+    if (!editingTodo || !editingTodo.title.trim() || !classificationDraft) return
+
+    const classPatch = classificationDraftToTodoPatch(classificationDraft)
+    if (!classPatch && !editingTodo.needsReclassification) return
+
+    const updatedTodo = await updateTodo(editingTodo.id, {
+      ...(classPatch ?? {}),
+      title: editingTodo.title.trim(),
+      description: editingTodo.description?.trim() || '',
+      priority: editingTodo.priority,
+      category: editingTodo.category?.trim() || '',
+      completed: editingTodo.completed,
+      isHighPriority: editingTodo.isHighPriority,
+      onHold: editingTodo.onHold,
+      onHoldReason: editingTodo.onHoldReason,
+      projectIds: editingTodo.projectIds,
+    })
+    if (updatedTodo) {
       setEditingTodo(null)
+      setClassificationDraft(null)
       setShowEditTodoModal(false)
-      }
     }
   }
 
@@ -1508,6 +1509,11 @@ export default function PlanningPage() {
 
     const columnTarget = columnStatusFromId(overId)
     if (columnTarget && activeTodo.status !== columnTarget) {
+      const moveCheck = canMoveTodoToStatus(activeTodo, columnTarget)
+      if (!moveCheck.ok) {
+        showError(moveCheck.reason)
+        return
+      }
       let newPos = 0
       applyOptimistic((prev) => {
         newPos = appendPosForStatus(prev, columnTarget, activeId)
@@ -1521,6 +1527,11 @@ export default function PlanningPage() {
     }
 
     if (overId.startsWith('group-')) {
+      const moveCheck = canMoveTodoToStatus(activeTodo, 'current_week')
+      if (!moveCheck.ok) {
+        showError(moveCheck.reason)
+        return
+      }
       let newPos = 0
       applyOptimistic((prev) => {
         newPos = appendPosForStatus(prev, 'current_week', activeId)
@@ -1555,6 +1566,11 @@ export default function PlanningPage() {
     }
 
     const newStatus = overTodo.status
+    const moveCheck = canMoveTodoToStatus(activeTodo, newStatus)
+    if (!moveCheck.ok) {
+      showError(moveCheck.reason)
+      return
+    }
     const targetCol = todos
       .filter((t) => t.status === newStatus && !t.completed && t.id !== activeId)
       .sort(sortTodosByPriorityAndPos)
@@ -1591,44 +1607,55 @@ export default function PlanningPage() {
   // Funções para itens em progresso
   const handleCreateInProgressTodo = async () => {
     if (newInProgressTodo.title.trim()) {
-      const eisenhowerDefaults = getNewTodoEisenhowerDefaults(newInProgressTodo.projectIds, projects)
-      const newTodoData = {
+      const createdTodo = await createTodo({
         title: newInProgressTodo.title.trim(),
         description: newInProgressTodo.description.trim(),
         priority: newInProgressTodo.priority,
         category: newInProgressTodo.category.trim(),
-        dueDate: newInProgressTodo.dueDate ? newInProgressTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
-        eisenhowerConfigured: false,
-        isImportant: eisenhowerDefaults.isImportant,
-        isUrgent: eisenhowerDefaults.isUrgent,
-        delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
-        timeSensitive: newInProgressTodo.timeSensitive,
+        ...defaultNewTodoFields(),
         onHold: false,
         onHoldReason: undefined,
-        status: 'in_progress' as const,
+        status: 'backlog',
         tags: [],
         projectIds: newInProgressTodo.projectIds,
-      }
-      
-      // Usar API para criar no banco
-      const createdTodo = await createTodo(newTodoData)
+      })
       if (createdTodo) {
-        setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
+        setNewInProgressTodo({
+          title: '',
+          description: '',
+          priority: 'medium',
+          category: '',
+          dueDate: null,
+          onHold: false,
+          onHoldReason: undefined,
+          tags: [],
+          projectIds: [],
+        })
         setShowInProgressCreateForm(false)
+        handleEditTodo(createdTodo)
       }
     }
   }
 
   const handleCancelInProgressCreate = () => {
-    setNewInProgressTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
+    setNewInProgressTodo({
+      title: '',
+      description: '',
+      priority: 'medium',
+      category: '',
+      dueDate: null,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [],
+      projectIds: [],
+    })
     setShowInProgressCreateForm(false)
   }
 
   const handleEditInProgressTodo = (todo: Todo) => {
-    setEditingTodo(todo)
-    setShowEditTodoModal(true)
+    handleEditTodo(todo)
   }
 
   const handleToggleInProgressTodoComplete = async (todoId: string) => {
@@ -1695,10 +1722,20 @@ export default function PlanningPage() {
 
   const handleMoveToProgress = async (todo: Todo) => {
     if (todo.status === 'in_progress') {
+      const moveCheck = canMoveTodoToStatus(todo, 'current_week')
+      if (!moveCheck.ok) {
+        showError(moveCheck.reason)
+        return
+      }
       const pos = appendPosForStatus(todos, 'current_week', todo.id)
       const result = await updateTodo(todo.id, { status: 'current_week', pos })
       if (!result) showError('Não foi possível mover a tarefa.')
     } else {
+      const moveCheck = canMoveTodoToStatus(todo, 'in_progress')
+      if (!moveCheck.ok) {
+        showError(moveCheck.reason)
+        return
+      }
       const pos = appendPosForStatus(todos, 'in_progress', todo.id)
       const result = await updateTodo(todo.id, { status: 'in_progress', pos })
       if (!result) showError('Não foi possível mover a tarefa.')
@@ -1725,44 +1762,55 @@ export default function PlanningPage() {
   // Funções para backlog
   const handleCreateBacklogTodo = async () => {
     if (newBacklogTodo.title.trim()) {
-      const eisenhowerDefaults = getNewTodoEisenhowerDefaults(newBacklogTodo.projectIds, projects)
-      const newTodoData = {
+      const createdTodo = await createTodo({
         title: newBacklogTodo.title.trim(),
         description: newBacklogTodo.description.trim(),
         priority: newBacklogTodo.priority,
         category: newBacklogTodo.category.trim(),
-        dueDate: newBacklogTodo.dueDate ? newBacklogTodo.dueDate.toISOString() : undefined,
         completed: false,
         isHighPriority: false,
-        eisenhowerConfigured: false,
-        isImportant: eisenhowerDefaults.isImportant,
-        isUrgent: eisenhowerDefaults.isUrgent,
-        delegateTimeboxMinutes: eisenhowerDefaults.delegateTimeboxMinutes,
-        timeSensitive: newBacklogTodo.timeSensitive,
+        ...defaultNewTodoFields(),
         onHold: false,
         onHoldReason: undefined,
-        status: 'backlog' as const,
+        status: 'backlog',
         tags: [],
         projectIds: newBacklogTodo.projectIds,
-      }
-      
-      // Usar API para criar no banco
-      const createdTodo = await createTodo(newTodoData)
+      })
       if (createdTodo) {
-        setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
+        setNewBacklogTodo({
+          title: '',
+          description: '',
+          priority: 'medium',
+          category: '',
+          dueDate: null,
+          onHold: false,
+          onHoldReason: undefined,
+          tags: [],
+          projectIds: [],
+        })
         setShowBacklogCreateForm(false)
+        handleEditTodo(createdTodo)
       }
     }
   }
 
   const handleCancelBacklogCreate = () => {
-    setNewBacklogTodo({ title: '', description: '', priority: 'medium', category: '', dueDate: null, timeSensitive: false, onHold: false, onHoldReason: undefined, tags: [], projectIds: [] })
+    setNewBacklogTodo({
+      title: '',
+      description: '',
+      priority: 'medium',
+      category: '',
+      dueDate: null,
+      onHold: false,
+      onHoldReason: undefined,
+      tags: [],
+      projectIds: [],
+    })
     setShowBacklogCreateForm(false)
   }
 
   const handleEditBacklogTodo = (todo: Todo) => {
-    setEditingTodo(todo)
-    setShowEditTodoModal(true)
+    handleEditTodo(todo)
   }
 
   const handleUpdateBacklogTodo = async () => {
@@ -1962,34 +2010,26 @@ export default function PlanningPage() {
 
       <section className="rounded-xl bg-surface-container-low p-3 ring-1 ring-outline-variant/15">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-            Filtro Eisenhower
-          </span>
-          {(Object.keys(eisenhowerMeta) as EisenhowerAction[]).map((actionKey) => {
-            const meta = eisenhowerMeta[actionKey]
-            const isOn = visibleActions[actionKey]
-            return (
-              <button
-                key={`filter-${actionKey}`}
-                type="button"
-                onClick={() =>
-                  setVisibleActions((prev) => ({
-                    ...prev,
-                    [actionKey]: !prev[actionKey],
-                  }))
-                }
-                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-colors ${
-                  isOn
-                    ? `${meta.badgeClass} ${meta.borderClass}`
-                    : 'border-outline-variant/35 bg-surface-container-lowest text-on-surface-variant'
-                }`}
-                title={meta.longLabel}
-                aria-pressed={isOn}
-              >
-                {meta.shortLabel}
-              </button>
-            )
-          })}
+          {(
+            [
+              ['kanban', 'Kanban'],
+              ['life_admin', 'Life-Admin'],
+              ['archive', 'Arquivo'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setBoardView(id)}
+              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+                boardView === id
+                  ? 'border-primary/40 bg-primary-fixed/25 text-on-surface'
+                  : 'border-outline-variant/35 bg-surface-container-lowest text-on-surface-variant'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </section>
 
@@ -2138,6 +2178,7 @@ export default function PlanningPage() {
         </div>
       </section>
 
+      {boardView === 'kanban' ? (
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetectionStrategy}
@@ -2645,6 +2686,15 @@ export default function PlanningPage() {
           ) : null}
         </DragOverlay>
       </DndContext>
+      ) : null}
+
+      {boardView === 'life_admin' ? (
+        <LifeAdminView todos={lifeAdminTodos} projects={projects} onEdit={handleEditTodo} />
+      ) : null}
+
+      {boardView === 'archive' ? (
+        <ArchiveView todos={archivedTodos} projects={projects} />
+      ) : null}
 
       {/* Modal de Projetos e Tags REMOVIDO - será reimplementado do zero */}
 
@@ -3084,194 +3134,86 @@ export default function PlanningPage() {
               </button>
             </div>
             
-            {editingTodo && (
+            {editingTodo && classificationDraft && (
               <div className="space-y-6">
-                {/* Prioridade - ícone de bandeira no topo */}
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => setEditingTodo({ ...editingTodo, isHighPriority: !editingTodo.isHighPriority })}
-                    className={`p-3 rounded-full transition-colors ${
-                      editingTodo.isHighPriority
-                        ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                    title={editingTodo.isHighPriority ? 'Remover prioridade' : 'Marcar como prioridade'}
-                  >
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z"/>
-                    </svg>
-                  </button>
-                </div>
+                {!editingTodo.needsReclassification ? (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingTodo({
+                          ...editingTodo,
+                          isHighPriority: !editingTodo.isHighPriority,
+                        })
+                      }
+                      disabled={editingTodo.taskType === 'LIFE_ADMIN'}
+                      className={`rounded-full p-3 transition-colors disabled:opacity-40 ${
+                        editingTodo.isHighPriority
+                          ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={
+                        editingTodo.isHighPriority
+                          ? 'Remover prioridade'
+                          : 'Marcar como prioridade'
+                      }
+                    >
+                      <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : null}
 
-                {/* Título */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Título *
                   </label>
                   <input
                     type="text"
                     value={editingTodo.title}
-                    onChange={(e) => setEditingTodo({ ...editingTodo, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={editingTodo.needsReclassification}
+                    onChange={(e) =>
+                      setEditingTodo({ ...editingTodo, title: e.target.value })
+                    }
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                     placeholder="Título da tarefa"
                   />
                 </div>
 
-                {/* Descrição */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Descrição
                   </label>
                   <textarea
                     value={editingTodo.description || ''}
-                    onChange={(e) => setEditingTodo({ ...editingTodo, description: e.target.value })}
+                    disabled={editingTodo.needsReclassification}
+                    onChange={(e) =>
+                      setEditingTodo({ ...editingTodo, description: e.target.value })
+                    }
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                     placeholder="Adicione uma descrição (opcional)"
                   />
                 </div>
 
-                {/* Classificação Eisenhower */}
-                <section className="rounded-xl border border-outline-variant/25 bg-surface-container-low p-4">
-                  <div className="mb-3">
-                    <h4 className="text-sm font-semibold text-on-surface">Classificação Eisenhower</h4>
-                    <p className="text-xs text-on-surface-variant">
-                      Defina se a tarefa é importante e urgente para derivar a ação recomendada.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditingTodo({
-                          ...editingTodo,
-                          eisenhowerConfigured: true,
-                          isImportant: !editingTodo.isImportant,
-                        })
-                      }
-                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-                        editingTodo.isImportant
-                          ? 'border-primary/35 bg-primary-fixed/30 text-on-surface'
-                          : 'border-outline-variant/35 bg-surface-container-lowest text-on-surface-variant'
-                      }`}
-                    >
-                      <span>Importante</span>
-                      <span>{editingTodo.isImportant ? 'Sim' : 'Não'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditingTodo({
-                          ...editingTodo,
-                          eisenhowerConfigured: true,
-                          isUrgent: !editingTodo.isUrgent,
-                        })
-                      }
-                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-                        editingTodo.isUrgent
-                          ? 'border-error/35 bg-error-container/70 text-on-surface'
-                          : 'border-outline-variant/35 bg-surface-container-lowest text-on-surface-variant'
-                      }`}
-                    >
-                      <span>Urgente</span>
-                      <span>{editingTodo.isUrgent ? 'Sim' : 'Não'}</span>
-                    </button>
-                  </div>
-                  {editingTodo.eisenhowerConfigured ? (
-                    (() => {
-                      const action = deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent)
-                      const meta = eisenhowerMeta[action]
-                      return (
-                        <div
-                          className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${meta.badgeClass} ${meta.borderClass}`}
-                        >
-                          {meta.longLabel}
-                        </div>
-                      )
-                    })()
-                  ) : (
-                    <p className="mt-3 text-xs font-medium text-on-surface-variant">
-                      Sem classificação ainda.
-                    </p>
-                  )}
-                  {editingTodo.eisenhowerConfigured &&
-                  deriveEisenhowerAction(editingTodo.isImportant, editingTodo.isUrgent) === 'delegate' ? (
-                    <div className="mt-3">
-                      <label className="mb-1 block text-sm font-medium text-on-surface-variant">
-                        Timebox (minutos)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={editingTodo.delegateTimeboxMinutes ?? ''}
-                        onChange={(e) => {
-                          const raw = Number(e.target.value)
-                          setEditingTodo({
-                            ...editingTodo,
-                            delegateTimeboxMinutes:
-                              Number.isFinite(raw) && raw > 0 ? Math.round(raw) : undefined,
-                          })
-                        }}
-                        placeholder="Ex.: 25"
-                        className="w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-                      />
-                    </div>
-                  ) : null}
-                </section>
+                <TaskClassificationBlock
+                  draft={classificationDraft}
+                  onChange={setClassificationDraft}
+                />
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Projetos
-                  </label>
-                  <ProjectIdsPicker
-                    projects={projects}
-                    value={editingTodo.projectIds ?? []}
-                    onChange={(ids) => setEditingTodo({ ...editingTodo, projectIds: ids })}
-                  />
-                </div>
-
-
-
-                {/* Time Sensitive */}
-                <div className="space-y-3">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="timeSensitive"
-                      checked={editingTodo.timeSensitive}
-                      onChange={(e) => setEditingTodo({ ...editingTodo, timeSensitive: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 border border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor="timeSensitive" className="ml-2 text-sm text-gray-700">
-                      Esta tarefa é time sensitive
+                {!editingTodo.needsReclassification ? (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Projetos
                     </label>
+                    <ProjectIdsPicker
+                      projects={projects}
+                      value={editingTodo.projectIds ?? []}
+                      onChange={(ids) => setEditingTodo({ ...editingTodo, projectIds: ids })}
+                    />
                   </div>
-                  
-                  {/* Date Picker - aparece apenas quando timeSensitive é marcado */}
-                  {editingTodo.timeSensitive && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Data de Vencimento *
-                      </label>
-                      <DatePicker
-                        selected={editingTodo.dueDate ? new Date(editingTodo.dueDate) : null}
-                        onChange={(date: Date | null) => setEditingTodo({ ...editingTodo, dueDate: date ? date.toISOString() : undefined })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholderText="Selecionar data"
-                        dateFormat="dd/MM/yyyy"
-                        isClearable
-                        showYearDropdown
-                        scrollableYearDropdown
-                        yearDropdownItemNumber={15}
-                        locale="pt-BR"
-                        minDate={new Date()}
-                      />
-                    </div>
-                  )}
-                </div>
-
-
+                ) : null}
 
                 {/* Botões de ação */}
                 <div className="flex justify-between gap-3 pt-4 border-t">
@@ -3294,7 +3236,11 @@ export default function PlanningPage() {
                     </button>
                     <button
                       onClick={handleUpdateTodoUnified}
-                      disabled={!editingTodo.title.trim()}
+                      disabled={
+                        !editingTodo.title.trim() ||
+                        !classificationDraft ||
+                        !isClassificationComplete(classificationDraft)
+                      }
                       className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Salvar Alterações

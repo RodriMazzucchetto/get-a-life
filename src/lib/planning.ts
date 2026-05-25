@@ -1,5 +1,10 @@
 import { createClient } from '@/lib/supabase'
 import { computeNextPosForColumnTasks } from '@/lib/todoBoardHelpers'
+import {
+  canMoveTodoToStatus,
+  validateTodoClassificationPayload,
+  type TodoBoardStatus,
+} from '@/lib/taskClassification'
 
 // Tipos para o banco de dados
 export interface DBProject {
@@ -39,19 +44,21 @@ export interface DBTodo {
   due_date?: string
   completed: boolean
   is_high_priority: boolean
-  time_sensitive: boolean
   on_hold: boolean
   on_hold_reason?: string | null
-  status: 'backlog' | 'in_progress' | 'current_week'
-  pos: number // Nova coluna para ordenação persistente
-  is_important?: boolean | null
-  is_urgent?: boolean | null
-  eisenhower_configured?: boolean | null
-  delegate_timebox_minutes?: number | null
-  effort_score?: number | null
-  importance_score?: number | null
-  urgency_score?: number | null
-  priority_score?: number | null
+  status: 'backlog' | 'in_progress' | 'current_week' | 'archived' | 'life_admin'
+  pos: number
+  task_type?: 'STRATEGIC' | 'LIFE_ADMIN' | null
+  status_classification?:
+    | 'SIGNAL_SEMANA'
+    | 'SIGNAL_BACKLOG'
+    | 'ADIADA_30D'
+    | 'CORTADA'
+    | null
+  revisao_em?: string | null
+  life_admin_subtype?: 'COM_DEADLINE' | 'SEM_DEADLINE' | null
+  life_admin_deadline?: string | null
+  needs_reclassification?: boolean
   // RELACIONAMENTOS OPCIONAIS (podem ser NULL)
   project_id?: string
   goal_id?: string
@@ -419,22 +426,6 @@ export type DBTodoWithLinks = DBTodo & {
   todo_projects?: { project_id: string }[]
 }
 
-export type EisenhowerAction = 'now' | 'schedule' | 'delegate' | 'delete'
-
-export function deriveEisenhowerAction(isImportant: boolean, isUrgent: boolean): EisenhowerAction {
-  if (isImportant && isUrgent) return 'now'
-  if (isImportant && !isUrgent) return 'schedule'
-  if (!isImportant && isUrgent) return 'delegate'
-  return 'delete'
-}
-
-export function normalizeDelegateTimeboxMinutes(value: number | null | undefined): number | undefined {
-  if (value == null) return undefined
-  const parsed = Math.round(Number(value))
-  if (!Number.isFinite(parsed) || parsed <= 0) return undefined
-  return parsed
-}
-
 // Serviço de Tarefas
 export const todosService = {
   async getTodos(userId: string): Promise<DBTodoWithLinks[]> {
@@ -561,7 +552,9 @@ export const todosService = {
 
     const { data: priorRow, error: priorErr } = await supabase
       .from('todos')
-      .select('user_id, status, completed')
+      .select(
+        'user_id, status, completed, task_type, status_classification, life_admin_subtype, life_admin_deadline, revisao_em, needs_reclassification'
+      )
       .eq('id', todoId)
       .single()
     if (priorErr || !priorRow) {
@@ -569,8 +562,82 @@ export const todosService = {
       throw priorErr ?? new Error('Tarefa não encontrada')
     }
 
+    const prior = priorRow as Pick<
+      DBTodo,
+      | 'user_id'
+      | 'status'
+      | 'completed'
+      | 'task_type'
+      | 'status_classification'
+      | 'life_admin_subtype'
+      | 'life_admin_deadline'
+      | 'revisao_em'
+      | 'needs_reclassification'
+    >
+
+    const merged = {
+      taskType:
+        updates.task_type !== undefined ? updates.task_type : (prior.task_type ?? null),
+      statusClassification:
+        updates.status_classification !== undefined
+          ? updates.status_classification
+          : (prior.status_classification ?? null),
+      lifeAdminSubtype:
+        updates.life_admin_subtype !== undefined
+          ? updates.life_admin_subtype
+          : (prior.life_admin_subtype ?? null),
+      lifeAdminDeadline:
+        updates.life_admin_deadline !== undefined
+          ? updates.life_admin_deadline
+          : (prior.life_admin_deadline ?? null),
+      revisaoEm:
+        updates.revisao_em !== undefined ? updates.revisao_em : (prior.revisao_em ?? null),
+      needsReclassification:
+        updates.needs_reclassification !== undefined
+          ? updates.needs_reclassification
+          : Boolean(prior.needs_reclassification),
+      status: updates.status !== undefined ? updates.status : prior.status,
+    }
+
+    const classificationTouched =
+      updates.task_type !== undefined ||
+      updates.status_classification !== undefined ||
+      updates.life_admin_subtype !== undefined ||
+      updates.life_admin_deadline !== undefined ||
+      updates.revisao_em !== undefined ||
+      updates.needs_reclassification !== undefined
+
+    if (classificationTouched && !merged.needsReclassification) {
+      const classCheck = validateTodoClassificationPayload({
+        taskType: merged.taskType,
+        statusClassification: merged.statusClassification,
+        lifeAdminSubtype: merged.lifeAdminSubtype,
+        lifeAdminDeadline: merged.lifeAdminDeadline,
+        revisaoEm: merged.revisaoEm,
+      })
+      if (!classCheck.ok) {
+        throw new Error(classCheck.reason)
+      }
+    }
+
+    if (updates.status !== undefined) {
+      const moveCheck = canMoveTodoToStatus(
+        {
+          taskType: merged.taskType,
+          statusClassification: merged.statusClassification,
+          lifeAdminSubtype: merged.lifeAdminSubtype,
+          needsReclassification: merged.needsReclassification,
+          status: prior.status as TodoBoardStatus,
+        },
+        updates.status as TodoBoardStatus
+      )
+      if (!moveCheck.ok) {
+        throw new Error(moveCheck.reason)
+      }
+    }
+
     const syncCycleIfNeeded = async (next: DBTodoWithLinks) => {
-      await cyclesService.syncCyclePlannedAfterTodoChange(priorRow.user_id, priorRow, {
+      await cyclesService.syncCyclePlannedAfterTodoChange(prior.user_id, prior, {
         status: next.status,
         completed: next.completed,
       })
@@ -1578,16 +1645,6 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
         ? [row.project_id]
         : []
 
-  const eisenhowerConfigured = Boolean(row.eisenhower_configured)
-  const isImportant =
-    typeof row.is_important === 'boolean'
-      ? row.is_important
-      : Number(row.importance_score ?? 0) >= 4
-  const isUrgent =
-    typeof row.is_urgent === 'boolean'
-      ? row.is_urgent
-      : Number(row.urgency_score ?? 0) >= 4
-
   const todo = {
     id: row.id,
     title: row.title,
@@ -1597,15 +1654,16 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
     dueDate: row.due_date,
     completed: row.completed,
     isHighPriority: row.is_high_priority,
-    timeSensitive: row.time_sensitive,
     onHold: row.on_hold,
     onHoldReason: row.on_hold_reason ?? undefined,
     status: row.status,
     pos: row.pos,
-    eisenhowerConfigured,
-    isImportant,
-    isUrgent,
-    delegateTimeboxMinutes: normalizeDelegateTimeboxMinutes(row.delegate_timebox_minutes),
+    taskType: row.task_type ?? null,
+    statusClassification: row.status_classification ?? null,
+    revisaoEm: row.revisao_em ?? null,
+    lifeAdminSubtype: row.life_admin_subtype ?? null,
+    lifeAdminDeadline: row.life_admin_deadline ?? null,
+    needsReclassification: Boolean(row.needs_reclassification),
     tags: [],
     projectId: projectIds[0],
     projectIds,
@@ -1629,18 +1687,22 @@ export function toDbUpdate(patch: Partial<Todo>): Partial<DBTodo> {
   // completed_at é preenchido no Postgres (migração + trigger) para não falhar se a coluna ainda não existir no projeto.
   if (patch.completed !== undefined) out.completed = patch.completed;
   if (patch.isHighPriority !== undefined) out.is_high_priority = patch.isHighPriority;
-  if (patch.timeSensitive !== undefined) out.time_sensitive = patch.timeSensitive;
   if (patch.onHold !== undefined) out.on_hold = patch.onHold;
   if (patch.onHoldReason !== undefined) out.on_hold_reason = patch.onHoldReason;
   if (patch.status !== undefined) out.status = patch.status;
-  if (patch.pos !== undefined) out.pos = patch.pos; // Coluna pos agora existe no banco
-  if (patch.eisenhowerConfigured !== undefined) out.eisenhower_configured = patch.eisenhowerConfigured;
-  if (patch.isImportant !== undefined) out.is_important = patch.isImportant;
-  if (patch.isUrgent !== undefined) out.is_urgent = patch.isUrgent;
-  if (patch.delegateTimeboxMinutes !== undefined) {
-    out.delegate_timebox_minutes = normalizeDelegateTimeboxMinutes(patch.delegateTimeboxMinutes) ?? null;
+  if (patch.pos !== undefined) out.pos = patch.pos;
+  if (patch.taskType !== undefined) out.task_type = patch.taskType;
+  if (patch.statusClassification !== undefined) {
+    out.status_classification = patch.statusClassification;
   }
-  // if (patch.created_at !== undefined) out.created_at = patch.created_at; // Não precisamos mais atualizar created_at
+  if (patch.revisaoEm !== undefined) out.revisao_em = patch.revisaoEm;
+  if (patch.lifeAdminSubtype !== undefined) out.life_admin_subtype = patch.lifeAdminSubtype;
+  if (patch.lifeAdminDeadline !== undefined) {
+    out.life_admin_deadline = patch.lifeAdminDeadline;
+  }
+  if (patch.needsReclassification !== undefined) {
+    out.needs_reclassification = patch.needsReclassification;
+  }
   
   // RELACIONAMENTOS OPCIONAIS (projectIds → todosService.setTodoProjects)
   if (patch.projectId !== undefined) out.project_id = patch.projectId;
@@ -1664,19 +1726,23 @@ export interface Todo {
   dueDate?: string;
   completed: boolean;
   isHighPriority: boolean;
-  timeSensitive: boolean;
   onHold: boolean;
   onHoldReason?: string;
-  status: 'backlog' | 'in_progress' | 'current_week';
-  pos: number; // Nova coluna para ordenação persistente
-  eisenhowerConfigured: boolean;
-  isImportant: boolean;
-  isUrgent: boolean;
-  delegateTimeboxMinutes?: number;
+  status: TodoBoardStatus;
+  pos: number;
+  taskType: 'STRATEGIC' | 'LIFE_ADMIN' | null;
+  statusClassification:
+    | 'SIGNAL_SEMANA'
+    | 'SIGNAL_BACKLOG'
+    | 'ADIADA_30D'
+    | 'CORTADA'
+    | null;
+  revisaoEm: string | null;
+  lifeAdminSubtype: 'COM_DEADLINE' | 'SEM_DEADLINE' | null;
+  lifeAdminDeadline: string | null;
+  needsReclassification: boolean;
   tags?: { name: string; color: string }[];
-  // RELACIONAMENTOS OPCIONAIS
   projectId?: string;
-  /** Todos os projetos (N:N). `projectId` = primeiro. */
   projectIds: string[];
   goalId?: string;
   initiativeId?: string;

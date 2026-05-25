@@ -1,29 +1,29 @@
 import type { Todo } from '@/lib/planning'
+import { compareBacklogTodos } from '@/lib/taskClassification'
 
 export const COL_IN_PROGRESS = 'col-in-progress'
 export const COL_CURRENT_WEEK = 'col-current-week'
 export const COL_BACKLOG = 'col-backlog'
 
-function eisenhowerRank(todo: Todo): number {
-  if (todo.isImportant && todo.isUrgent) return 0 // now
-  if (todo.isImportant && !todo.isUrgent) return 1 // schedule
-  if (!todo.isImportant && todo.isUrgent) return 2 // delegate
-  return 3 // delete
-}
-
 /**
  * Tarefas ativas (não em espera) primeiro — **todas** antes de qualquer pausada.
- * Depois prioridade alta e por fim pos (evita tarefa pausada “estrela” no topo).
+ * Depois prioridade alta e por fim pos.
  */
 export function sortTodosByPriorityAndPos(a: Todo, b: Todo): number {
   const holdA = Boolean(a.onHold)
   const holdB = Boolean(b.onHold)
   if (holdA !== holdB) return holdA ? 1 : -1
-  if (a.eisenhowerConfigured && b.eisenhowerConfigured) {
-    const actionA = eisenhowerRank(a)
-    const actionB = eisenhowerRank(b)
-    if (actionA !== actionB) return actionA - actionB
-  }
+  if (a.isHighPriority && !b.isHighPriority) return -1
+  if (!a.isHighPriority && b.isHighPriority) return 1
+  return a.pos - b.pos
+}
+
+export function sortBacklogTodosByClassification(a: Todo, b: Todo): number {
+  const holdA = Boolean(a.onHold)
+  const holdB = Boolean(b.onHold)
+  if (holdA !== holdB) return holdA ? 1 : -1
+  const byClass = compareBacklogTodos(a, b)
+  if (byClass !== 0) return byClass
   if (a.isHighPriority && !b.isHighPriority) return -1
   if (!a.isHighPriority && b.isHighPriority) return 1
   return a.pos - b.pos
@@ -100,8 +100,7 @@ export function computePosAtNewIndex(reordered: Todo[], activeId: string): numbe
 }
 
 /**
- * Calcula nova posição respeitando o "bucket visual" (onHold + prioridade).
- * Evita quebrar reordenação quando há blocos de prioridade acima/abaixo.
+ * Calcula nova posição respeitando o bucket visual (onHold + prioridade).
  */
 export function computePosAtNewIndexInVisualBucket(
   reordered: Todo[],
@@ -112,10 +111,8 @@ export function computePosAtNewIndexInVisualBucket(
   const movedIndex = reordered.indexOf(moved)
   const sameBucket = (t: Todo) =>
     Boolean(t.onHold) === Boolean(moved.onHold) &&
-    Boolean(t.eisenhowerConfigured) === Boolean(moved.eisenhowerConfigured) &&
-    Boolean(t.isImportant) === Boolean(moved.isImportant) &&
-    Boolean(t.isUrgent) === Boolean(moved.isUrgent) &&
-    Boolean(t.isHighPriority) === Boolean(moved.isHighPriority)
+    Boolean(t.isHighPriority) === Boolean(moved.isHighPriority) &&
+    Boolean(t.needsReclassification) === Boolean(moved.needsReclassification)
 
   let prev: Todo | undefined
   for (let i = movedIndex - 1; i >= 0; i -= 1) {
@@ -151,4 +148,19 @@ export function columnStatusFromId(
   if (id === COL_CURRENT_WEEK) return 'current_week'
   if (id === COL_IN_PROGRESS) return 'in_progress'
   return null
+}
+
+export function sortLifeAdminByDeadline(a: Todo, b: Todo): number {
+  if (a.lifeAdminSubtype === 'COM_DEADLINE' && b.lifeAdminSubtype === 'COM_DEADLINE') {
+    const da = a.lifeAdminDeadline ?? '9999-99-99'
+    const db = b.lifeAdminDeadline ?? '9999-99-99'
+    if (da !== db) return da.localeCompare(db)
+  }
+  if (a.lifeAdminSubtype === 'COM_DEADLINE' && b.lifeAdminSubtype !== 'COM_DEADLINE') {
+    return -1
+  }
+  if (a.lifeAdminSubtype !== 'COM_DEADLINE' && b.lifeAdminSubtype === 'COM_DEADLINE') {
+    return 1
+  }
+  return a.pos - b.pos
 }
