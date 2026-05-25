@@ -915,14 +915,17 @@ export default function PlanningPage() {
   const backlogTodos = useMemo(
     () =>
       todos
-        .filter(
-          (t) =>
+        .filter((t) => {
+          if (t.completed) return false
+          if (t.needsReclassification) {
+            return t.status === 'backlog' || t.status === 'current_week' || t.status === 'in_progress'
+          }
+          return (
             t.status === 'backlog' &&
-            !t.completed &&
-            (t.needsReclassification ||
-              t.statusClassification === 'SIGNAL_BACKLOG' ||
+            (t.statusClassification === 'SIGNAL_BACKLOG' ||
               t.statusClassification === 'ADIADA_30D')
-        )
+          )
+        })
         .sort(sortBacklogTodosByClassification),
     [todos]
   )
