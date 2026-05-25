@@ -518,6 +518,9 @@ export const todosService = {
         pos: nextPos,
         ...todoData,
         project_id: primary,
+        needs_reclassification:
+          todoData.needs_reclassification ??
+          (todoData.task_type == null ? true : false),
       })
       .select('id')
       .single()
@@ -1663,7 +1666,9 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
     revisaoEm: row.revisao_em ?? null,
     lifeAdminSubtype: row.life_admin_subtype ?? null,
     lifeAdminDeadline: row.life_admin_deadline ?? null,
-    needsReclassification: Boolean(row.needs_reclassification),
+    needsReclassification:
+      Boolean(row.needs_reclassification) ||
+      (row.task_type == null && row.status_classification == null),
     tags: [],
     projectId: projectIds[0],
     projectIds,

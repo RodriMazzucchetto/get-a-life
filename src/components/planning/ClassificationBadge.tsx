@@ -14,7 +14,7 @@ export function getClassificationBadgeMeta(todo: Todo): {
   borderClass: string
   pulse?: boolean
 } | null {
-  if (todo.needsReclassification) {
+  if (todo.needsReclassification || !todo.taskType) {
     return {
       shortLabel: '!',
       longLabel: 'RECLASSIFICAR',

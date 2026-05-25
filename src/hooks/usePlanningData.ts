@@ -247,7 +247,7 @@ export function usePlanningData() {
       return updatedTodo
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error)
-      return null
+      throw error
     }
   }, [])
 

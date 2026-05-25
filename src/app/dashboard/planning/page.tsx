@@ -917,8 +917,10 @@ export default function PlanningPage() {
       todos
         .filter((t) => {
           if (t.completed) return false
-          if (t.needsReclassification) {
-            return t.status === 'backlog' || t.status === 'current_week' || t.status === 'in_progress'
+          if (t.status === 'archived' || t.status === 'life_admin') return false
+          const sprintLike = ['backlog', 'current_week', 'in_progress'] as const
+          if (t.needsReclassification || !t.taskType) {
+            return sprintLike.includes(t.status as (typeof sprintLike)[number])
           }
           return (
             t.status === 'backlog' &&
@@ -1396,7 +1398,9 @@ export default function PlanningPage() {
         })
         setShowInlineCreateForm(false)
         setShowCreateTodoModal(false)
-        handleEditTodo(newTodoData)
+        setBoardView('kanban')
+      } else {
+        showError('Não foi possível criar a tarefa.')
       }
     }
   }
@@ -1426,24 +1430,37 @@ export default function PlanningPage() {
     if (!editingTodo || !editingTodo.title.trim() || !classificationDraft) return
 
     const classPatch = classificationDraftToTodoPatch(classificationDraft)
-    if (!classPatch && !editingTodo.needsReclassification) return
+    if (!classPatch) {
+      showError('Complete a classificação antes de salvar.')
+      return
+    }
 
-    const updatedTodo = await updateTodo(editingTodo.id, {
-      ...(classPatch ?? {}),
-      title: editingTodo.title.trim(),
-      description: editingTodo.description?.trim() || '',
-      priority: editingTodo.priority,
-      category: editingTodo.category?.trim() || '',
-      completed: editingTodo.completed,
-      isHighPriority: editingTodo.isHighPriority,
-      onHold: editingTodo.onHold,
-      onHoldReason: editingTodo.onHoldReason,
-      projectIds: editingTodo.projectIds,
-    })
-    if (updatedTodo) {
+    try {
+      const updatedTodo = await updateTodo(editingTodo.id, {
+        ...classPatch,
+        title: editingTodo.title.trim(),
+        description: editingTodo.description?.trim() || '',
+        priority: editingTodo.priority,
+        category: editingTodo.category?.trim() || '',
+        completed: editingTodo.completed,
+        isHighPriority: editingTodo.isHighPriority,
+        onHold: editingTodo.onHold,
+        onHoldReason: editingTodo.onHoldReason,
+        projectIds: editingTodo.projectIds,
+      })
+      if (!updatedTodo) {
+        showError('Não foi possível salvar a tarefa.')
+        return
+      }
+      if (updatedTodo.status === 'life_admin') setBoardView('life_admin')
+      else if (updatedTodo.status === 'archived') setBoardView('archive')
+      else setBoardView('kanban')
       setEditingTodo(null)
       setClassificationDraft(null)
       setShowEditTodoModal(false)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Não foi possível salvar a tarefa.'
+      showError(msg)
     }
   }
 
@@ -1637,7 +1654,9 @@ export default function PlanningPage() {
           projectIds: [],
         })
         setShowInProgressCreateForm(false)
-        handleEditTodo(createdTodo)
+        setBoardView('kanban')
+      } else {
+        showError('Não foi possível criar a tarefa.')
       }
     }
   }
@@ -1792,7 +1811,9 @@ export default function PlanningPage() {
           projectIds: [],
         })
         setShowBacklogCreateForm(false)
-        handleEditTodo(createdTodo)
+        setBoardView('kanban')
+      } else {
+        showError('Não foi possível criar a tarefa.')
       }
     }
   }
