@@ -50,28 +50,28 @@ describe('computeStrategicClassification — roteamento das 3 perguntas', () => 
   })
 })
 
-describe('canMoveTodoToStatus — bloqueio LIFE_ADMIN', () => {
+describe('canMoveTodoToStatus — LIFE_ADMIN no Kanban', () => {
   const lifeAdmin = {
     taskType: 'LIFE_ADMIN' as const,
     statusClassification: null,
     lifeAdminSubtype: 'SEM_DEADLINE' as const,
     needsReclassification: false,
-    status: 'life_admin' as const,
+    status: 'backlog' as const,
   }
 
-  it('bloqueia current_week', () => {
+  it('permite current_week', () => {
     const r = canMoveTodoToStatus(lifeAdmin, 'current_week')
-    assert.equal(r.ok, false)
-  })
-
-  it('bloqueia in_progress', () => {
-    const r = canMoveTodoToStatus(lifeAdmin, 'in_progress')
-    assert.equal(r.ok, false)
-  })
-
-  it('permite life_admin', () => {
-    const r = canMoveTodoToStatus(lifeAdmin, 'life_admin')
     assert.equal(r.ok, true)
+  })
+
+  it('permite in_progress', () => {
+    const r = canMoveTodoToStatus(lifeAdmin, 'in_progress')
+    assert.equal(r.ok, true)
+  })
+
+  it('bloqueia archived', () => {
+    const r = canMoveTodoToStatus(lifeAdmin, 'archived')
+    assert.equal(r.ok, false)
   })
 })
 
@@ -110,7 +110,7 @@ describe('computeLifeAdminClassification', () => {
   it('SEM_DEADLINE completa sem data', () => {
     const r = computeLifeAdminClassification({ hasDeadline: 'no', deadline: null })
     assert.equal(r?.lifeAdminSubtype, 'SEM_DEADLINE')
-    assert.equal(r?.status, 'life_admin')
+    assert.equal(r?.status, 'backlog')
   })
 })
 
@@ -170,6 +170,32 @@ describe('getKanbanColumnForTodo', () => {
         status: 'current_week',
       }),
       'current_week'
+    )
+  })
+
+  it('LIFE_ADMIN em backlog → backlog', () => {
+    assert.equal(
+      getKanbanColumnForTodo({
+        taskType: 'LIFE_ADMIN',
+        statusClassification: null,
+        lifeAdminSubtype: 'COM_DEADLINE',
+        needsReclassification: false,
+        status: 'backlog',
+      }),
+      'backlog'
+    )
+  })
+
+  it('LIFE_ADMIN legacy status life_admin → backlog', () => {
+    assert.equal(
+      getKanbanColumnForTodo({
+        taskType: 'LIFE_ADMIN',
+        statusClassification: null,
+        lifeAdminSubtype: 'SEM_DEADLINE',
+        needsReclassification: false,
+        status: 'life_admin',
+      }),
+      'backlog'
     )
   })
 })

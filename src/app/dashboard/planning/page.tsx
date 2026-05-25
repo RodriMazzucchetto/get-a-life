@@ -74,7 +74,6 @@ import {
 } from '@/components/planning/TaskClassificationBlock'
 import {
   ArchiveView,
-  LifeAdminView,
 } from '@/components/planning/PlanningSecondaryViews'
 import {
   classificationDraftFromTodo,
@@ -148,21 +147,13 @@ function TodoDragOverlayPreview({
         />
         <svg
           className={`w-4 h-4 shrink-0 ${
-            todo.taskType === 'LIFE_ADMIN'
-              ? 'text-on-surface-variant'
-              : todo.isHighPriority
-                ? 'text-red-500'
-                : 'text-gray-400'
+            todo.isHighPriority ? 'text-red-500' : 'text-gray-400'
           }`}
           fill="currentColor"
           viewBox="0 0 24 24"
           aria-hidden
         >
-          {todo.taskType === 'LIFE_ADMIN' ? (
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          ) : (
-            <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
-          )}
+          <path d="M14.4 6L14 4H5v17h2v-8h5.6l.4 2h7V6z" />
         </svg>
         {projectChips.map((project) => (
           <span
@@ -302,18 +293,7 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
             }`}
           />
 
-          {/* Indicador de prioridade / life-admin */}
-          {todo.taskType === 'LIFE_ADMIN' ? (
-            <span
-              className="shrink-0 text-on-surface-variant"
-              title="Manutenção de vida"
-              aria-hidden
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-              </svg>
-            </span>
-          ) : (
+          {/* Indicador de prioridade */}
           <div
             onClick={(e) => {
               burstPriorityStar((e.currentTarget as HTMLElement).getBoundingClientRect())
@@ -338,7 +318,6 @@ function SortableTodoItem({ todo, projects, onToggleComplete, onTogglePriority, 
               </svg>
             </span>
           </div>
-          )}
 
           {/* Projetos (só texto, cor do projeto) — antes do título, mesma linha */}
           {projectList.length > 0 && (
@@ -904,7 +883,7 @@ export default function PlanningPage() {
     )
   }
 
-  const [boardView, setBoardView] = useState<'kanban' | 'life_admin' | 'archive'>('kanban')
+  const [boardView, setBoardView] = useState<'kanban' | 'archive'>('kanban')
 
   const weekTodos = useMemo(
     () =>
@@ -927,16 +906,6 @@ export default function PlanningPage() {
         .sort(sortTodosByPriorityAndPos),
     [todos]
   )
-  const lifeAdminTodos = useMemo(
-    () =>
-      todos.filter(
-        (t) =>
-          t.status === 'life_admin' &&
-          !t.completed &&
-          (t.taskType === 'LIFE_ADMIN' || t.needsReclassification || !t.taskType)
-      ),
-    [todos]
-  )
   const archivedTodos = useMemo(
     () =>
       todos.filter(
@@ -953,10 +922,9 @@ export default function PlanningPage() {
   const boardTabCounts = useMemo(
     () => ({
       kanban: weekTodos.length + backlogTodos.length + inProgressTodos.length,
-      life_admin: lifeAdminTodos.length,
       archive: archivedTodos.length,
     }),
-    [weekTodos, backlogTodos, inProgressTodos, lifeAdminTodos, archivedTodos]
+    [weekTodos, backlogTodos, inProgressTodos, archivedTodos]
   )
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -1448,12 +1416,7 @@ export default function PlanningPage() {
         showError('Não foi possível salvar a tarefa.')
         return
       }
-      if (updatedTodo.status === 'life_admin') {
-        setBoardView('life_admin')
-        showInfo(
-          'Tarefa classificada como Life-Admin — aparece na tab Life-Admin, não no Backlog do Kanban.'
-        )
-      } else if (updatedTodo.status === 'archived') {
+      if (updatedTodo.status === 'archived') {
         setBoardView('archive')
         showInfo('Tarefa arquivada (Cortada) — vê na tab Arquivo.')
       } else if (
@@ -2056,7 +2019,6 @@ export default function PlanningPage() {
           {(
             [
               ['kanban', 'Kanban', boardTabCounts.kanban],
-              ['life_admin', 'Life-Admin', boardTabCounts.life_admin],
               ['archive', 'Arquivo', boardTabCounts.archive],
             ] as const
           ).map(([id, label, count]) => (
@@ -2742,10 +2704,6 @@ export default function PlanningPage() {
       </DndContext>
       ) : null}
 
-      {boardView === 'life_admin' ? (
-        <LifeAdminView todos={lifeAdminTodos} projects={projects} onEdit={handleEditTodo} />
-      ) : null}
-
       {boardView === 'archive' ? (
         <ArchiveView todos={archivedTodos} projects={projects} />
       ) : null}
@@ -3200,7 +3158,7 @@ export default function PlanningPage() {
                           isHighPriority: !editingTodo.isHighPriority,
                         })
                       }
-                      disabled={editingTodo.taskType === 'LIFE_ADMIN'}
+                      disabled={editingTodo.needsReclassification}
                       className={`rounded-full p-3 transition-colors disabled:opacity-40 ${
                         editingTodo.isHighPriority
                           ? 'bg-red-100 text-red-600 hover:bg-red-200'

@@ -149,7 +149,7 @@ export function computeLifeAdminClassification(
       lifeAdminSubtype: 'COM_DEADLINE',
       lifeAdminDeadline: answers.deadline,
       revisaoEm: null,
-      status: 'life_admin',
+      status: 'backlog',
     }
   }
 
@@ -159,7 +159,7 @@ export function computeLifeAdminClassification(
     lifeAdminSubtype: 'SEM_DEADLINE',
     lifeAdminDeadline: null,
     revisaoEm: null,
-    status: 'life_admin',
+    status: 'backlog',
   }
 }
 
@@ -281,20 +281,23 @@ export function canMoveTodoToStatus(
   }
 
   if (todo.taskType === 'LIFE_ADMIN') {
-    if (targetStatus === 'current_week' || targetStatus === 'in_progress') {
-      return {
-        ok: false,
-        reason: 'Tasks de Manutenção não podem ir para Semana Atual ou Em Progresso.',
-      }
+    if (targetStatus === 'archived') {
+      return { ok: false, reason: 'Tasks de Manutenção não vão para o Arquivo.' }
     }
     if (targetStatus === 'life_admin') return { ok: true }
-    if (targetStatus === 'backlog') return { ok: true }
+    if (
+      targetStatus === 'backlog' ||
+      targetStatus === 'current_week' ||
+      targetStatus === 'in_progress'
+    ) {
+      return { ok: true }
+    }
     return { ok: false, reason: 'Roteamento inválido para Manutenção.' }
   }
 
   if (todo.taskType === 'STRATEGIC') {
     if (targetStatus === 'life_admin') {
-      return { ok: false, reason: 'Tasks Estratégicas não podem ir para Life-Admin.' }
+      return { ok: false, reason: 'Use backlog, semana atual ou em progresso.' }
     }
     if (todo.statusClassification === 'CORTADA') {
       if (targetStatus === 'archived') return { ok: true }
@@ -344,23 +347,30 @@ export function getKanbanColumnForTodo(todo: TodoRoutingFields & {
   needsReclassification: boolean
 }): KanbanColumn | null {
   if (todo.completed) return null
-  if (todo.status === 'life_admin' || todo.status === 'archived') return null
+  if (todo.status === 'archived') return null
+
+  const boardStatus =
+    todo.status === 'life_admin' ? ('backlog' as TodoBoardStatus) : todo.status
 
   const incomplete = todo.needsReclassification || !todo.taskType
 
   if (incomplete) {
-    if (todo.status === 'in_progress') return 'in_progress'
-    if (todo.status === 'current_week') return 'current_week'
+    if (boardStatus === 'in_progress') return 'in_progress'
+    if (boardStatus === 'current_week') return 'current_week'
     return 'backlog'
   }
 
-  if (todo.taskType === 'LIFE_ADMIN') return null
+  if (todo.taskType === 'LIFE_ADMIN') {
+    if (boardStatus === 'in_progress') return 'in_progress'
+    if (boardStatus === 'current_week') return 'current_week'
+    return 'backlog'
+  }
 
   if (todo.taskType === 'STRATEGIC') {
     if (todo.statusClassification === 'CORTADA') return null
-    if (todo.status === 'in_progress') return 'in_progress'
+    if (boardStatus === 'in_progress') return 'in_progress'
     if (todo.statusClassification === 'SIGNAL_SEMANA') {
-      if (todo.status === 'current_week') return 'current_week'
+      if (boardStatus === 'current_week') return 'current_week'
       return 'backlog'
     }
     return 'backlog'
