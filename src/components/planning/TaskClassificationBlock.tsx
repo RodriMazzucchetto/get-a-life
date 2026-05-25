@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, type ReactNode } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import {
@@ -11,6 +12,75 @@ import {
   type YesNo,
 } from '@/lib/taskClassification'
 import { DraftClassificationBadge } from '@/components/planning/ClassificationBadge'
+
+function ConcreteHintTooltip() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <span
+      className="relative inline-flex shrink-0"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label="O que é concreto?"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-on-surface-variant ring-1 ring-outline-variant/40 hover:bg-surface-container-high hover:text-on-surface"
+      >
+        ⓘ
+      </button>
+      {open ? (
+        <div
+          role="tooltip"
+          className="absolute left-0 top-full z-50 mt-2 w-[min(400px,calc(100vw-3rem))] rounded-lg border border-outline-variant/15 bg-white p-4 text-left text-sm leading-relaxed text-gray-800 shadow-lg sm:left-full sm:top-0 sm:ml-2 sm:mt-0"
+        >
+          <p className="mb-3">
+            <strong>Concreto</strong> = você consegue nomear quem ou o quê vai dar errado, em uma
+            frase.
+          </p>
+          <p className="mb-1 font-semibold">Exemplos concretos (signal):</p>
+          <ul className="mb-3 list-disc space-y-1 pl-5">
+            <li>Faceit não renova contrato em junho</li>
+            <li>Klasik fica sem resposta há 2 semanas e esfria</li>
+            <li>Amanda fica magoada porque esqueci o aniversário</li>
+            <li>IPVA vence dia 15 e leva multa</li>
+            <li>Renaldo trava no deploy porque falta minha aprovação</li>
+          </ul>
+          <p className="mb-1 font-semibold">Exemplos vagos (noise disfarçado):</p>
+          <ul className="mb-3 list-disc space-y-1 pl-5">
+            <li>Vou perder momentum</li>
+            <li>Fica mais difícil escalar depois</li>
+            <li>Acumula débito técnico</li>
+            <li>Perco visibilidade do sistema</li>
+            <li>Vou ficar desorganizado</li>
+          </ul>
+          <p>
+            <strong>Regra de bolso:</strong> Termina a frase &quot;Se eu não fizer isso, _______.&quot;
+            Se o que vem depois tem nome próprio, número ou data → concreto. Se é sentimento ou
+            estado abstrato → vago.
+          </p>
+        </div>
+      ) : null}
+    </span>
+  )
+}
+
+function StrategicQuestionLabel({
+  children,
+  showConcreteHint = false,
+}: {
+  children: ReactNode
+  showConcreteHint?: boolean
+}) {
+  return (
+    <div className="mb-2 flex items-start gap-2">
+      <p className="flex-1 text-sm font-medium text-on-surface">{children}</p>
+      {showConcreteHint ? <ConcreteHintTooltip /> : null}
+    </div>
+  )
+}
 
 function YesNoButtons({
   value,
@@ -114,9 +184,9 @@ export function TaskClassificationBlock({
         {draft.taskType === 'STRATEGIC' ? (
           <div className="space-y-4 border-t border-outline-variant/20 pt-4">
             <div>
-              <p className="mb-2 text-sm font-medium text-on-surface">
-                Move métrica nomeada do trimestre?
-              </p>
+              <StrategicQuestionLabel>
+                Move uma métrica nomeada do trimestre?
+              </StrategicQuestionLabel>
               <YesNoButtons
                 value={strategic.q1MovesMetric}
                 onChange={(v) => setStrategic('q1', v)}
@@ -125,9 +195,9 @@ export function TaskClassificationBlock({
             </div>
             {showQ2 && !q1No ? (
               <div>
-                <p className="mb-2 text-sm font-medium text-on-surface">
-                  Pior cenário em 30 dias se não fizer é concreto?
-                </p>
+                <StrategicQuestionLabel showConcreteHint>
+                  Se eu não fizer, algo concreto dá errado em 30 dias?
+                </StrategicQuestionLabel>
                 <YesNoButtons
                   value={strategic.q2Consequence30d}
                   onChange={(v) => setStrategic('q2', v)}
@@ -137,9 +207,9 @@ export function TaskClassificationBlock({
             ) : null}
             {showQ3 ? (
               <div>
-                <p className="mb-2 text-sm font-medium text-on-surface">
-                  Pior cenário em 7 dias se não fizer é concreto?
-                </p>
+                <StrategicQuestionLabel showConcreteHint>
+                  Se eu não fizer, algo concreto dá errado em 7 dias?
+                </StrategicQuestionLabel>
                 <YesNoButtons
                   value={strategic.q3Consequence7d}
                   onChange={(v) => setStrategic('q3', v)}
