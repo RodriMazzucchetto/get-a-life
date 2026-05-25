@@ -5,6 +5,8 @@ import {
   canMoveTodoToStatus,
   computeStrategicClassification,
   computeLifeAdminClassification,
+  isTodoClassificationIncomplete,
+  getKanbanColumnForTodo,
 } from './taskClassification.ts'
 
 describe('computeStrategicClassification — roteamento das 3 perguntas', () => {
@@ -109,5 +111,65 @@ describe('computeLifeAdminClassification', () => {
     const r = computeLifeAdminClassification({ hasDeadline: 'no', deadline: null })
     assert.equal(r?.lifeAdminSubtype, 'SEM_DEADLINE')
     assert.equal(r?.status, 'life_admin')
+  })
+})
+
+describe('isTodoClassificationIncomplete', () => {
+  it('STRATEGIC sem status_classification → incompleta', () => {
+    assert.equal(
+      isTodoClassificationIncomplete({
+        task_type: 'STRATEGIC',
+        status_classification: null,
+      }),
+      true
+    )
+  })
+
+  it('STRATEGIC classificada → completa', () => {
+    assert.equal(
+      isTodoClassificationIncomplete({
+        task_type: 'STRATEGIC',
+        status_classification: 'SIGNAL_BACKLOG',
+      }),
+      false
+    )
+  })
+})
+
+describe('getKanbanColumnForTodo', () => {
+  it('STRATEGIC sem status_classification → backlog', () => {
+    assert.equal(
+      getKanbanColumnForTodo({
+        taskType: 'STRATEGIC',
+        statusClassification: null,
+        needsReclassification: false,
+        status: 'backlog',
+      }),
+      'backlog'
+    )
+  })
+
+  it('SIGNAL_SEMANA em status backlog (desalinhado) → backlog', () => {
+    assert.equal(
+      getKanbanColumnForTodo({
+        taskType: 'STRATEGIC',
+        statusClassification: 'SIGNAL_SEMANA',
+        needsReclassification: false,
+        status: 'backlog',
+      }),
+      'backlog'
+    )
+  })
+
+  it('SIGNAL_SEMANA em current_week → current_week', () => {
+    assert.equal(
+      getKanbanColumnForTodo({
+        taskType: 'STRATEGIC',
+        statusClassification: 'SIGNAL_SEMANA',
+        needsReclassification: false,
+        status: 'current_week',
+      }),
+      'current_week'
+    )
   })
 })

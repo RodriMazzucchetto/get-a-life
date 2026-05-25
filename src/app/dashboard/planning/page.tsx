@@ -66,7 +66,7 @@ import {
   type WeeklyPriorityDeliveryStatus,
   type WeeklyPriorityItem,
 } from '@/lib/planning'
-import { canMoveTodoToStatus } from '@/lib/taskClassification'
+import { canMoveTodoToStatus, getKanbanColumnForTodo } from '@/lib/taskClassification'
 import { ClassificationBadge } from '@/components/planning/ClassificationBadge'
 import {
   TaskClassificationBlock,
@@ -901,53 +901,31 @@ export default function PlanningPage() {
   const weekTodos = useMemo(
     () =>
       todos
-        .filter(
-          (t) =>
-            t.status === 'current_week' &&
-            !t.completed &&
-            t.taskType === 'STRATEGIC' &&
-            t.statusClassification === 'SIGNAL_SEMANA' &&
-            !t.needsReclassification
-        )
+        .filter((t) => getKanbanColumnForTodo(t) === 'current_week')
         .sort(sortTodosByPriorityAndPos),
     [todos]
   )
   const backlogTodos = useMemo(
     () =>
       todos
-        .filter((t) => {
-          if (t.completed) return false
-          if (t.status === 'archived' || t.status === 'life_admin') return false
-          const sprintLike = ['backlog', 'current_week', 'in_progress'] as const
-          if (t.needsReclassification || !t.taskType) {
-            return sprintLike.includes(t.status as (typeof sprintLike)[number])
-          }
-          return (
-            t.status === 'backlog' &&
-            (t.statusClassification === 'SIGNAL_BACKLOG' ||
-              t.statusClassification === 'ADIADA_30D')
-          )
-        })
+        .filter((t) => getKanbanColumnForTodo(t) === 'backlog')
         .sort(sortBacklogTodosByClassification),
     [todos]
   )
   const inProgressTodos = useMemo(
     () =>
       todos
-        .filter(
-          (t) =>
-            t.status === 'in_progress' &&
-            !t.completed &&
-            t.taskType === 'STRATEGIC' &&
-            !t.needsReclassification
-        )
+        .filter((t) => getKanbanColumnForTodo(t) === 'in_progress')
         .sort(sortTodosByPriorityAndPos),
     [todos]
   )
   const lifeAdminTodos = useMemo(
     () =>
       todos.filter(
-        (t) => t.status === 'life_admin' && !t.completed && t.taskType === 'LIFE_ADMIN'
+        (t) =>
+          t.status === 'life_admin' &&
+          !t.completed &&
+          (t.taskType === 'LIFE_ADMIN' || t.needsReclassification || !t.taskType)
       ),
     [todos]
   )
@@ -957,8 +935,9 @@ export default function PlanningPage() {
         (t) =>
           t.status === 'archived' &&
           !t.completed &&
-          t.taskType === 'STRATEGIC' &&
-          t.statusClassification === 'CORTADA'
+          (t.statusClassification === 'CORTADA' ||
+            t.needsReclassification ||
+            !t.taskType)
       ),
     [todos]
   )

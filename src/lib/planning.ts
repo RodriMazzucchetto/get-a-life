@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase'
 import { computeNextPosForColumnTasks } from '@/lib/todoBoardHelpers'
 import {
   canMoveTodoToStatus,
+  isTodoClassificationIncomplete,
   validateTodoClassificationPayload,
   type TodoBoardStatus,
 } from '@/lib/taskClassification'
@@ -1666,9 +1667,7 @@ export function fromDbTodo(row: DBTodoWithLinks): Todo {
     revisaoEm: row.revisao_em ?? null,
     lifeAdminSubtype: row.life_admin_subtype ?? null,
     lifeAdminDeadline: row.life_admin_deadline ?? null,
-    needsReclassification:
-      Boolean(row.needs_reclassification) ||
-      (row.task_type == null && row.status_classification == null),
+    needsReclassification: isTodoClassificationIncomplete(row),
     tags: [],
     projectId: projectIds[0],
     projectIds,

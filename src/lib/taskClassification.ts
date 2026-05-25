@@ -17,6 +17,22 @@ export type TodoBoardStatus =
 
 export type YesNo = 'yes' | 'no'
 
+/** Classificação incompleta ou inconsistente — task deve aparecer no backlog. */
+export function isTodoClassificationIncomplete(row: {
+  completed?: boolean
+  needs_reclassification?: boolean | null
+  task_type?: TaskType | null
+  status_classification?: StatusClassification | null
+  life_admin_subtype?: LifeAdminSubtype | null
+}): boolean {
+  if (row.completed) return false
+  if (row.needs_reclassification) return true
+  if (row.task_type == null) return true
+  if (row.task_type === 'STRATEGIC' && row.status_classification == null) return true
+  if (row.task_type === 'LIFE_ADMIN' && row.life_admin_subtype == null) return true
+  return false
+}
+
 export interface StrategicAnswers {
   q1MovesMetric: YesNo | null
   q2Consequence30d: YesNo | null
@@ -317,6 +333,40 @@ export function canMoveTodoToStatus(
   }
 
   return { ok: false, reason: 'Classificação incompleta.' }
+}
+
+export type KanbanColumn = 'in_progress' | 'current_week' | 'backlog'
+
+/** Coluna Kanban onde a task deve aparecer — evita tasks invisíveis por estado inconsistente. */
+export function getKanbanColumnForTodo(todo: TodoRoutingFields & {
+  completed?: boolean
+  status: TodoBoardStatus
+  needsReclassification: boolean
+}): KanbanColumn | null {
+  if (todo.completed) return null
+  if (todo.status === 'life_admin' || todo.status === 'archived') return null
+
+  const incomplete = todo.needsReclassification || !todo.taskType
+
+  if (incomplete) {
+    if (todo.status === 'in_progress') return 'in_progress'
+    if (todo.status === 'current_week') return 'current_week'
+    return 'backlog'
+  }
+
+  if (todo.taskType === 'LIFE_ADMIN') return null
+
+  if (todo.taskType === 'STRATEGIC') {
+    if (todo.statusClassification === 'CORTADA') return null
+    if (todo.status === 'in_progress') return 'in_progress'
+    if (todo.statusClassification === 'SIGNAL_SEMANA') {
+      if (todo.status === 'current_week') return 'current_week'
+      return 'backlog'
+    }
+    return 'backlog'
+  }
+
+  return 'backlog'
 }
 
 export function isRevisaoEmDue(revisaoEm: string | null | undefined): boolean {
