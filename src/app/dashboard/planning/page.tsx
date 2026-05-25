@@ -513,6 +513,7 @@ export default function PlanningPage() {
   } = usePlanningData()
 
   const [boardError, setBoardError] = useState<string | null>(null)
+  const [boardInfo, setBoardInfo] = useState<string | null>(null)
   const [activeCycle, setActiveCycle] = useState<TaskCycle | null>(null)
   const [cycleBusy, setCycleBusy] = useState(false)
   const [weeklyPriorityItems, setWeeklyPriorityItems] = useState<WeeklyPriorityItem[]>([])
@@ -532,8 +533,15 @@ export default function PlanningPage() {
   })
 
   const showError = useCallback((msg: string) => {
+    setBoardInfo(null)
     setBoardError(msg)
     setTimeout(() => setBoardError(null), 5000)
+  }, [])
+
+  const showInfo = useCallback((msg: string) => {
+    setBoardError(null)
+    setBoardInfo(msg)
+    setTimeout(() => setBoardInfo(null), 7000)
   }, [])
 
   useEffect(() => {
@@ -940,6 +948,15 @@ export default function PlanningPage() {
             !t.taskType)
       ),
     [todos]
+  )
+
+  const boardTabCounts = useMemo(
+    () => ({
+      kanban: weekTodos.length + backlogTodos.length + inProgressTodos.length,
+      life_admin: lifeAdminTodos.length,
+      archive: archivedTodos.length,
+    }),
+    [weekTodos, backlogTodos, inProgressTodos, lifeAdminTodos, archivedTodos]
   )
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -1431,9 +1448,23 @@ export default function PlanningPage() {
         showError('Não foi possível salvar a tarefa.')
         return
       }
-      if (updatedTodo.status === 'life_admin') setBoardView('life_admin')
-      else if (updatedTodo.status === 'archived') setBoardView('archive')
-      else setBoardView('kanban')
+      if (updatedTodo.status === 'life_admin') {
+        setBoardView('life_admin')
+        showInfo(
+          'Tarefa classificada como Life-Admin — aparece na tab Life-Admin, não no Backlog do Kanban.'
+        )
+      } else if (updatedTodo.status === 'archived') {
+        setBoardView('archive')
+        showInfo('Tarefa arquivada (Cortada) — vê na tab Arquivo.')
+      } else if (
+        updatedTodo.status === 'current_week' &&
+        updatedTodo.statusClassification === 'SIGNAL_SEMANA'
+      ) {
+        setBoardView('kanban')
+        showInfo('Tarefa na coluna Semana Atual (não fica no Backlog).')
+      } else {
+        setBoardView('kanban')
+      }
       setEditingTodo(null)
       setClassificationDraft(null)
       setShowEditTodoModal(false)
@@ -2011,26 +2042,46 @@ export default function PlanningPage() {
         </div>
       )}
 
+      {boardInfo && (
+        <div
+          className="rounded-lg bg-primary-fixed/30 px-4 py-3 text-sm text-on-surface ring-1 ring-primary/25"
+          role="status"
+        >
+          {boardInfo}
+        </div>
+      )}
+
       <section className="rounded-xl bg-surface-container-low p-3 ring-1 ring-outline-variant/15">
         <div className="flex flex-wrap items-center gap-2">
           {(
             [
-              ['kanban', 'Kanban'],
-              ['life_admin', 'Life-Admin'],
-              ['archive', 'Arquivo'],
+              ['kanban', 'Kanban', boardTabCounts.kanban],
+              ['life_admin', 'Life-Admin', boardTabCounts.life_admin],
+              ['archive', 'Arquivo', boardTabCounts.archive],
             ] as const
-          ).map(([id, label]) => (
+          ).map(([id, label, count]) => (
             <button
               key={id}
               type="button"
               onClick={() => setBoardView(id)}
-              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
                 boardView === id
                   ? 'border-primary/40 bg-primary-fixed/25 text-on-surface'
                   : 'border-outline-variant/35 bg-surface-container-lowest text-on-surface-variant'
               }`}
             >
               {label}
+              {count > 0 ? (
+                <span
+                  className={`min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[10px] ${
+                    boardView === id
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container-high text-on-surface-variant'
+                  }`}
+                >
+                  {count}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
