@@ -77,7 +77,6 @@ import {
 } from '@/components/planning/PlanningSecondaryViews'
 import {
   classificationDraftFromTodo,
-  isClassificationComplete,
   type ClassificationDraft,
 } from '@/lib/taskClassification'
 import { ProjectIdsPicker } from '@/components/ProjectIdsPicker'
@@ -1394,7 +1393,52 @@ export default function PlanningPage() {
     if (!editingTodo || !editingTodo.title.trim() || !classificationDraft) return
 
     const classPatch = classificationDraftToTodoPatch(classificationDraft)
+    const metaPatch = {
+      title: editingTodo.title.trim(),
+      description: editingTodo.description?.trim() || '',
+      priority: editingTodo.priority,
+      category: editingTodo.category?.trim() || '',
+      completed: editingTodo.completed,
+      isHighPriority: editingTodo.isHighPriority,
+      onHold: editingTodo.onHold,
+      onHoldReason: editingTodo.onHoldReason,
+      projectIds: editingTodo.projectIds,
+    }
+
+    if (!classPatch && editingTodo.needsReclassification) {
+      try {
+        const updatedTodo = await updateTodo(editingTodo.id, metaPatch)
+        if (!updatedTodo) {
+          showError('Não foi possível salvar a tarefa.')
+          return
+        }
+        setEditingTodo(null)
+        setClassificationDraft(null)
+        setShowEditTodoModal(false)
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Não foi possível salvar a tarefa.'
+        showError(msg)
+      }
+      return
+    }
+
     if (!classPatch) {
+      if (!editingTodo.needsReclassification) {
+        try {
+          const updatedTodo = await updateTodo(editingTodo.id, metaPatch)
+          if (!updatedTodo) {
+            showError('Não foi possível salvar a tarefa.')
+            return
+          }
+          setEditingTodo(null)
+          setClassificationDraft(null)
+          setShowEditTodoModal(false)
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Não foi possível salvar a tarefa.'
+          showError(msg)
+        }
+        return
+      }
       showError('Complete a classificação antes de salvar.')
       return
     }
@@ -1402,15 +1446,7 @@ export default function PlanningPage() {
     try {
       const updatedTodo = await updateTodo(editingTodo.id, {
         ...classPatch,
-        title: editingTodo.title.trim(),
-        description: editingTodo.description?.trim() || '',
-        priority: editingTodo.priority,
-        category: editingTodo.category?.trim() || '',
-        completed: editingTodo.completed,
-        isHighPriority: editingTodo.isHighPriority,
-        onHold: editingTodo.onHold,
-        onHoldReason: editingTodo.onHoldReason,
-        projectIds: editingTodo.projectIds,
+        ...metaPatch,
       })
       if (!updatedTodo) {
         showError('Não foi possível salvar a tarefa.')
@@ -3148,8 +3184,7 @@ export default function PlanningPage() {
             
             {editingTodo && classificationDraft && (
               <div className="space-y-6">
-                {!editingTodo.needsReclassification ? (
-                  <div className="flex justify-center">
+                <div className="flex justify-center">
                     <button
                       type="button"
                       onClick={() =>
@@ -3158,8 +3193,7 @@ export default function PlanningPage() {
                           isHighPriority: !editingTodo.isHighPriority,
                         })
                       }
-                      disabled={editingTodo.needsReclassification}
-                      className={`rounded-full p-3 transition-colors disabled:opacity-40 ${
+                      className={`rounded-full p-3 transition-colors ${
                         editingTodo.isHighPriority
                           ? 'bg-red-100 text-red-600 hover:bg-red-200'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -3175,7 +3209,6 @@ export default function PlanningPage() {
                       </svg>
                     </button>
                   </div>
-                ) : null}
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -3184,7 +3217,6 @@ export default function PlanningPage() {
                   <input
                     type="text"
                     value={editingTodo.title}
-                    disabled={editingTodo.needsReclassification}
                     onChange={(e) =>
                       setEditingTodo({ ...editingTodo, title: e.target.value })
                     }
@@ -3199,7 +3231,6 @@ export default function PlanningPage() {
                   </label>
                   <textarea
                     value={editingTodo.description || ''}
-                    disabled={editingTodo.needsReclassification}
                     onChange={(e) =>
                       setEditingTodo({ ...editingTodo, description: e.target.value })
                     }
@@ -3214,18 +3245,16 @@ export default function PlanningPage() {
                   onChange={setClassificationDraft}
                 />
 
-                {!editingTodo.needsReclassification ? (
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Projetos
-                    </label>
-                    <ProjectIdsPicker
-                      projects={projects}
-                      value={editingTodo.projectIds ?? []}
-                      onChange={(ids) => setEditingTodo({ ...editingTodo, projectIds: ids })}
-                    />
-                  </div>
-                ) : null}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Projetos
+                  </label>
+                  <ProjectIdsPicker
+                    projects={projects}
+                    value={editingTodo.projectIds ?? []}
+                    onChange={(ids) => setEditingTodo({ ...editingTodo, projectIds: ids })}
+                  />
+                </div>
 
                 {/* Botões de ação */}
                 <div className="flex justify-between gap-3 pt-4 border-t">
@@ -3248,11 +3277,7 @@ export default function PlanningPage() {
                     </button>
                     <button
                       onClick={handleUpdateTodoUnified}
-                      disabled={
-                        !editingTodo.title.trim() ||
-                        !classificationDraft ||
-                        !isClassificationComplete(classificationDraft)
-                      }
+                      disabled={!editingTodo.title.trim()}
                       className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Salvar Alterações
