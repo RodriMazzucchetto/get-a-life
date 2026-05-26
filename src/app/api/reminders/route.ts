@@ -10,7 +10,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 export const dynamic = 'force-dynamic'
 
 const PRIORITIES = ['low', 'medium', 'high'] as const
-const CATEGORIES = ['compras', 'followups', 'lembretes'] as const
+const CATEGORIES = ['compras', 'followups', 'lembretes', 'escrever'] as const
 
 function normalizeTabToCategory(tab: string | null): string | null {
   if (!tab) return null
@@ -18,6 +18,14 @@ function normalizeTabToCategory(tab: string | null): string | null {
   if (t === 'compras' || t === 'shopping') return 'compras'
   if (t === 'followups' || t === 'followup') return 'followups'
   if (t === 'lembretes' || t === 'reminders') return 'lembretes'
+  if (
+    t === 'escrever' ||
+    t === 'writing' ||
+    t === 'coisas para escrever sobre' ||
+    t === 'coisas_para_escrever'
+  ) {
+    return 'escrever'
+  }
   return null
 }
 
@@ -56,7 +64,7 @@ export async function GET(request: Request) {
   if (searchParams.get('tab') && !tabFilter) {
     return apiError(
       'BAD_REQUEST',
-      'Invalid tab. Allowed: compras|shopping, followups|followup, lembretes|reminders',
+      'Invalid tab. Allowed: compras|shopping, followups|followup, lembretes|reminders, escrever|writing',
       400,
       request
     )

@@ -80,6 +80,7 @@ import {
   type ClassificationDraft,
 } from '@/lib/taskClassification'
 import { ProjectIdsPicker } from '@/components/ProjectIdsPicker'
+import type { ReminderCategory } from '@/lib/reminderHelpers'
 
 function cloneTodoList(list: Todo[]): Todo[] {
   return list.map((t) => ({ ...t }))
@@ -1236,7 +1237,7 @@ export default function PlanningPage() {
   }
 
   // Estado para controlar a aba ativa dos lembretes
-  const [activeReminderTab, setActiveReminderTab] = useState<'compras' | 'followups' | 'lembretes'>('compras')
+  const [activeReminderTab, setActiveReminderTab] = useState<ReminderCategory>('compras')
 
   // Estado para adicionar novo lembrete
   const [showAddReminderForm, setShowAddReminderForm] = useState(false)
@@ -1255,7 +1256,7 @@ export default function PlanningPage() {
         description: '', // Descrição opcional
         due_date: undefined, // Data de vencimento opcional
         priority: 'medium', // Prioridade padrão
-        category: activeReminderTab as 'compras' | 'followups' | 'lembretes',
+        category: activeReminderTab,
         completed: false
       })
       if (newReminderData) {
@@ -1322,6 +1323,11 @@ export default function PlanningPage() {
     setShowEditReminderForm(false)
     setEditingReminder(null)
   }
+
+  const activeReminderCount = useMemo(
+    () => reminders.filter((r) => !r.completed).length,
+    [reminders]
+  )
 
   // Seedar lembretes padrão quando a modal for aberta
   useEffect(() => {
@@ -2024,10 +2030,24 @@ export default function PlanningPage() {
           <button
             type="button"
             onClick={() => setShowRemindersModal(true)}
-            className="inline-flex items-center gap-2 p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"
-            title="Lembretes"
+            className="relative inline-flex items-center gap-2 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high"
+            title={
+              activeReminderCount > 0
+                ? `${activeReminderCount} lembretes pendentes`
+                : 'Lembretes'
+            }
+            aria-label={
+              activeReminderCount > 0
+                ? `Lembretes, ${activeReminderCount} pendentes`
+                : 'Lembretes'
+            }
           >
             <span className="material-symbols-outlined text-[22px]">notifications</span>
+            {activeReminderCount > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-surface-container-lowest">
+                {activeReminderCount > 99 ? '99+' : activeReminderCount}
+              </span>
+            ) : null}
           </button>
         </div>
       </header>

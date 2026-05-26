@@ -110,7 +110,7 @@ export interface DBReminder {
   description?: string
   due_date?: string
   priority: 'low' | 'medium' | 'high'
-  category: 'compras' | 'followups' | 'lembretes'
+  category: 'compras' | 'followups' | 'lembretes' | 'escrever'
   completed: boolean
   completed_at?: string
   created_at: string

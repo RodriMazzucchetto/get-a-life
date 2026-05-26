@@ -4,7 +4,15 @@ import { burstTaskComplete } from '@/lib/microEffects'
 import ModalOverlay from './ModalOverlay'
 import { ModalPanel } from './ModalPanel'
 import { DBReminder } from '@/lib/planning'
-import { normalizeReminderCategory } from '@/lib/reminderHelpers'
+import {
+  REMINDER_ADD_LABELS,
+  REMINDER_CATEGORIES,
+  REMINDER_EMPTY_LABELS,
+  REMINDER_PLACEHOLDERS,
+  REMINDER_TAB_LABELS,
+  normalizeReminderCategory,
+  type ReminderCategory,
+} from '@/lib/reminderHelpers'
 
 type Reminder = DBReminder
 
@@ -126,8 +134,8 @@ interface RemindersModalProps {
   isOpen: boolean
   onClose: () => void
   reminders: Reminder[]
-  activeTab: 'compras' | 'followups' | 'lembretes'
-  onTabChange: (tab: 'compras' | 'followups' | 'lembretes') => void
+  activeTab: ReminderCategory
+  onTabChange: (tab: ReminderCategory) => void
   onToggleComplete: (reminderId: string) => void
   onEditReminder: (reminder: Reminder) => void
   onUpdateReminder: () => void
@@ -192,52 +200,33 @@ export function RemindersModal({
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 mb-6">
-          <button
-            onClick={() => onTabChange('compras')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'compras'
-                ? 'text-blue-600 bg-blue-100 border-2 border-blue-500'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            Compras
-          </button>
-          <button
-            onClick={() => onTabChange('followups')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'followups'
-                ? 'text-blue-600 bg-blue-100 border-2 border-blue-500'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            Follow Ups
-          </button>
-          <button
-            onClick={() => onTabChange('lembretes')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'lembretes'
-                ? 'text-blue-600 bg-blue-100 border-2 border-blue-500'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            Lembretes
-          </button>
+        <div className="mb-6 flex flex-wrap gap-1">
+          {REMINDER_CATEGORIES.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => onTabChange(tab)}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab
+                  ? 'border-2 border-blue-500 bg-blue-100 text-blue-600'
+                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+              }`}
+            >
+              {REMINDER_TAB_LABELS[tab]}
+            </button>
+          ))}
         </div>
 
         {/* Add Button / Form */}
         <div className="mb-6">
           {!showAddForm ? (
             <button
+              type="button"
               onClick={onShowAddForm}
               className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors"
             >
               <span className="text-lg text-gray-400">+</span>
-              <span>
-                {activeTab === 'compras' && 'Adicionar compra'}
-                {activeTab === 'followups' && 'Adicionar follow up'}
-                {activeTab === 'lembretes' && 'Adicionar lembrete'}
-              </span>
+              <span>{REMINDER_ADD_LABELS[activeTab]}</span>
             </button>
           ) : (
             <div className="flex gap-2">
@@ -245,12 +234,13 @@ export function RemindersModal({
                 type="text"
                 value={newReminder}
                 onChange={(e) => onNewReminderChange(e.target.value)}
-                placeholder={`Digite o ${activeTab === 'compras' ? 'item de compra' : activeTab === 'followups' ? 'follow up' : 'lembrete'}...`}
+                placeholder={`Digite o ${REMINDER_PLACEHOLDERS[activeTab]}...`}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 onKeyDown={(e) => e.key === 'Enter' && onSaveReminder()}
                 autoFocus
               />
               <button
+                type="button"
                 onClick={onSaveReminder}
                 disabled={!newReminder.trim()}
                 className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -258,6 +248,7 @@ export function RemindersModal({
                 Adicionar
               </button>
               <button
+                type="button"
                 onClick={onCancelAdd}
                 className="px-3 py-2 text-gray-600 hover:text-gray-800 text-sm"
               >
@@ -286,13 +277,7 @@ export function RemindersModal({
           {remindersInTab.length === 0 && (
             <div className="py-8 text-center text-gray-500">
               <p className="text-sm">
-                Nenhum{' '}
-                {activeTab === 'compras'
-                  ? 'item de compra'
-                  : activeTab === 'followups'
-                    ? 'follow up'
-                    : 'lembrete'}{' '}
-                nesta aba.
+                Nenhum {REMINDER_EMPTY_LABELS[activeTab]} nesta aba.
               </p>
             </div>
           )}
