@@ -14,10 +14,6 @@ export default function GoalsPage() {
     createGoal,
     updateGoal,
     deleteGoal,
-    createInitiative,
-    updateInitiative,
-    deleteInitiative,
-    reloadData,
   } = usePlanningData();
   const [orderedGoalIds, setOrderedGoalIds] = useState<string[]>([]);
 
@@ -95,41 +91,6 @@ export default function GoalsPage() {
     }
   };
 
-  const handleAddInitiative = async (goalId: string, title: string) => {
-    const created = await createInitiative(goalId, {
-      goalId,
-      title,
-      status: "active",
-      priority: "medium",
-    });
-    if (created) await reloadData();
-  };
-
-  const handleToggleInitiative = async (goalId: string, initiativeId: string) => {
-    const goal = goals.find((g) => g.id === goalId);
-    if (!goal) return;
-    const current = goal.initiatives.find((i) => i.id === initiativeId);
-    if (!current) return;
-    const updated = await updateInitiative(initiativeId, {
-      status: current.completed ? "active" : "completed",
-    });
-    if (updated) await reloadData();
-  };
-
-  const handleEditInitiative = async (
-    goalId: string,
-    initiativeId: string,
-    newTitle: string
-  ) => {
-    const updated = await updateInitiative(initiativeId, { title: newTitle });
-    if (updated) await reloadData();
-  };
-
-  const handleDeleteInitiative = async (goalId: string, initiativeId: string) => {
-    const ok = await deleteInitiative(initiativeId);
-    if (ok) await reloadData();
-  };
-
   const handleReorderGoals = (nextGoalIds: string[]) => {
     setOrderedGoalIds(nextGoalIds);
     if (typeof window !== "undefined") {
@@ -164,10 +125,6 @@ export default function GoalsPage() {
           onCreateGoal={handleCreateGoal}
           onUpdateGoal={handleUpdateGoal}
           onDeleteGoal={handleDeleteGoal}
-          onAddInitiative={handleAddInitiative}
-          onToggleInitiative={handleToggleInitiative}
-          onEditInitiative={handleEditInitiative}
-          onDeleteInitiative={handleDeleteInitiative}
           onReorderGoals={handleReorderGoals}
         />
       </section>
