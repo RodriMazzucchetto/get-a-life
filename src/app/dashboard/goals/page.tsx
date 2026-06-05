@@ -122,6 +122,7 @@ export default function GoalsPage() {
         <GoalDisplay
           goals={orderedGoals}
           projects={projects}
+          userId={user?.id}
           onCreateGoal={handleCreateGoal}
           onUpdateGoal={handleUpdateGoal}
           onDeleteGoal={handleDeleteGoal}

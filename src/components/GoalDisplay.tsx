@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -12,13 +12,30 @@ import { CSS } from '@dnd-kit/utilities'
 import { Goal, Project } from '@/lib/planning'
 import { GoalManagementModal } from '@/components/GoalManagementModal'
 
+type GoalGroup = {
+  sectionKey: string
+  project: Project | null
+  goals: Goal[]
+}
+
 interface GoalDisplayProps {
   goals: Goal[]
   projects: Project[]
+  userId?: string
   onCreateGoal: (goalData: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => Promise<Goal | null>
   onUpdateGoal: (id: string, updates: Partial<Goal>) => Promise<Goal | null>
   onDeleteGoal: (goalId: string) => Promise<boolean>
   onReorderGoals: (orderedGoalIds: string[]) => void
+}
+
+const ORPHAN_SECTION_KEY = 'sem-projeto'
+
+function sectionDndId(sectionKey: string) {
+  return `section:${sectionKey}`
+}
+
+function parseSectionDndId(id: string) {
+  return id.startsWith('section:') ? id.slice('section:'.length) : null
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -71,9 +88,45 @@ function rebuildOrder(
   })
 }
 
+function buildGoalGroups(
+  goals: Goal[],
+  projects: Project[],
+  projectById: Record<string, Project>
+): GoalGroup[] {
+  const byProject = new Map<string, Goal[]>()
+  const orphans: Goal[] = []
+
+  for (const goal of goals) {
+    const project = projectById[goal.projectId]
+    if (!project) {
+      orphans.push(goal)
+      continue
+    }
+    const list = byProject.get(project.id) ?? []
+    list.push(goal)
+    byProject.set(project.id, list)
+  }
+
+  const groups: GoalGroup[] = []
+
+  for (const project of projects) {
+    const projectGoals = byProject.get(project.id)
+    if (projectGoals?.length) {
+      groups.push({ sectionKey: project.id, project, goals: projectGoals })
+    }
+  }
+
+  if (orphans.length > 0) {
+    groups.push({ sectionKey: ORPHAN_SECTION_KEY, project: null, goals: orphans })
+  }
+
+  return groups
+}
+
 export function GoalDisplay({
   goals,
   projects,
+  userId,
   onCreateGoal,
   onUpdateGoal,
   onDeleteGoal,
@@ -81,7 +134,17 @@ export function GoalDisplay({
 }: GoalDisplayProps) {
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  const [createProjectId, setCreateProjectId] = useState<string | undefined>(undefined)
   const [progressOverrides, setProgressOverrides] = useState<Record<string, number>>({})
+  const [orderedSectionKeys, setOrderedSectionKeys] = useState<string[]>([])
+
+  const projectBlockStorageKey = useMemo(
+    () =>
+      userId
+        ? `taskarchitect-goal-project-order-${userId}`
+        : 'taskarchitect-goal-project-order-anon',
+    [userId]
+  )
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
@@ -90,52 +153,93 @@ export function GoalDisplay({
     [projects]
   )
 
+  const rawGoalGroups = useMemo(
+    () => buildGoalGroups(goals, projects, projectById),
+    [goals, projects, projectById]
+  )
+
+  const availableSectionKeys = useMemo(
+    () => rawGoalGroups.map((group) => group.sectionKey),
+    [rawGoalGroups]
+  )
+
+  useEffect(() => {
+    setOrderedSectionKeys((prev) => {
+      let base = prev
+      if (base.length === 0 && typeof window !== 'undefined') {
+        try {
+          const saved = localStorage.getItem(projectBlockStorageKey)
+          if (saved) {
+            const parsed = JSON.parse(saved)
+            if (Array.isArray(parsed)) {
+              base = parsed.filter((key): key is string => typeof key === 'string')
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao carregar ordem de blocos de projeto:', error)
+        }
+      }
+      const valid = base.filter((key) => availableSectionKeys.includes(key))
+      const missing = availableSectionKeys.filter((key) => !valid.includes(key))
+      return [...valid, ...missing]
+    })
+  }, [availableSectionKeys, projectBlockStorageKey])
+
   const goalGroups = useMemo(() => {
-    const byProject = new Map<string, Goal[]>()
-    const orphans: Goal[] = []
+    const groupsByKey = new Map(rawGoalGroups.map((group) => [group.sectionKey, group]))
+    const ordered = orderedSectionKeys
+      .map((key) => groupsByKey.get(key))
+      .filter((group): group is GoalGroup => Boolean(group))
+    const leftovers = rawGoalGroups.filter((group) => !orderedSectionKeys.includes(group.sectionKey))
+    return [...ordered, ...leftovers]
+  }, [rawGoalGroups, orderedSectionKeys])
 
-    for (const goal of goals) {
-      const project = projectById[goal.projectId]
-      if (!project) {
-        orphans.push(goal)
-        continue
-      }
-      const list = byProject.get(project.id) ?? []
-      list.push(goal)
-      byProject.set(project.id, list)
-    }
-
-    const groups: { project: Project | null; goals: Goal[] }[] = []
-
-    for (const project of projects) {
-      const projectGoals = byProject.get(project.id)
-      if (projectGoals?.length) {
-        groups.push({ project, goals: projectGoals })
-      }
-    }
-
-    if (orphans.length > 0) {
-      groups.push({ project: null, goals: orphans })
-    }
-
-    return groups
-  }, [goals, projects, projectById])
+  const sectionDndIds = useMemo(
+    () => goalGroups.map((group) => sectionDndId(group.sectionKey)),
+    [goalGroups]
+  )
 
   const allGoalIds = useMemo(() => goals.map((goal) => goal.id), [goals])
 
-  const openCreateModal = () => {
+  const openCreateModal = (projectId?: string) => {
     setEditingGoal(null)
+    setCreateProjectId(projectId)
     setShowGoalModal(true)
   }
 
   const openEditModal = (goal: Goal) => {
     setEditingGoal(goal)
+    setCreateProjectId(undefined)
     setShowGoalModal(true)
   }
 
   const closeModal = () => {
     setShowGoalModal(false)
     setEditingGoal(null)
+    setCreateProjectId(undefined)
+  }
+
+  const persistSectionOrder = (nextKeys: string[]) => {
+    setOrderedSectionKeys(nextKeys)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(projectBlockStorageKey, JSON.stringify(nextKeys))
+    }
+  }
+
+  const handleSectionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const activeKey = parseSectionDndId(String(active.id))
+    const overKey = parseSectionDndId(String(over.id))
+    if (!activeKey || !overKey) return
+
+    const keys = goalGroups.map((group) => group.sectionKey)
+    const oldIndex = keys.indexOf(activeKey)
+    const newIndex = keys.indexOf(overKey)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    persistSectionOrder(arrayMove(keys, oldIndex, newIndex))
   }
 
   const handleChangeProgress = async (goalId: string, progress: number) => {
@@ -148,11 +252,12 @@ export function GoalDisplay({
     })
   }
 
-  const handleProjectDragEnd =
+  const handleGoalDragEnd =
     (projectGoalIds: string[]) =>
     (event: DragEndEvent) => {
       const { active, over } = event
       if (!over || active.id === over.id) return
+      if (parseSectionDndId(String(active.id)) || parseSectionDndId(String(over.id))) return
 
       const ids = projectGoalIds
       const oldIndex = ids.indexOf(String(active.id))
@@ -170,7 +275,7 @@ export function GoalDisplay({
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={openCreateModal}
+          onClick={() => openCreateModal()}
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:opacity-95"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
@@ -186,79 +291,146 @@ export function GoalDisplay({
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
-          {goalGroups.map((group) => {
-            const project = group.project
-            const sectionKey = project?.id ?? 'sem-projeto'
-            const projectGoalIds = group.goals.map((goal) => goal.id)
-            const sectionStyle = project
-              ? {
-                  backgroundColor: hexToRgba(project.color, 0.1),
-                  borderColor: hexToRgba(project.color, 0.22),
-                }
-              : undefined
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
+          <SortableContext items={sectionDndIds} strategy={verticalListSortingStrategy}>
+            <div className="space-y-5">
+              {goalGroups.map((group) => {
+                const project = group.project
+                const projectGoalIds = group.goals.map((goal) => goal.id)
+                const sectionStyle = project
+                  ? {
+                      backgroundColor: hexToRgba(project.color, 0.1),
+                      borderColor: hexToRgba(project.color, 0.22),
+                    }
+                  : undefined
 
-            return (
-              <section
-                key={sectionKey}
-                className="rounded-2xl border border-outline-variant/15 p-4 ring-1 ring-outline-variant/10"
-                style={sectionStyle}
-              >
-                <header className="mb-3 flex items-center gap-2.5">
-                  {project ? (
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white/80"
-                      style={{ backgroundColor: project.color }}
-                      aria-hidden
-                    />
-                  ) : (
-                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                      folder_off
-                    </span>
-                  )}
-                  <h2 className="min-w-0 flex-1 truncate font-headline text-base font-bold text-on-surface">
-                    {project?.name ?? 'Sem projeto'}
-                  </h2>
-                  <span className="shrink-0 text-xs font-medium text-on-surface-variant">
-                    {group.goals.length} {group.goals.length === 1 ? 'meta' : 'metas'}
-                  </span>
-                </header>
-
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleProjectDragEnd(projectGoalIds)}
-                >
-                  <SortableContext items={projectGoalIds} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-2">
-                      {group.goals.map((goal) => (
-                        <SortableGoalRow
-                          key={goal.id}
-                          goal={goal}
-                          progress={getDisplayProgress(goal)}
-                          onEdit={() => openEditModal(goal)}
-                          onChangeProgress={handleChangeProgress}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              </section>
-            )
-          })}
-        </div>
+                return (
+                  <SortableProjectSection
+                    key={group.sectionKey}
+                    sectionDndId={sectionDndId(group.sectionKey)}
+                    sectionStyle={sectionStyle}
+                    project={project}
+                    goalCount={group.goals.length}
+                    onAddGoal={project ? () => openCreateModal(project.id) : undefined}
+                  >
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleGoalDragEnd(projectGoalIds)}
+                    >
+                      <SortableContext items={projectGoalIds} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-2">
+                          {group.goals.map((goal) => (
+                            <SortableGoalRow
+                              key={goal.id}
+                              goal={goal}
+                              progress={getDisplayProgress(goal)}
+                              onEdit={() => openEditModal(goal)}
+                              onChangeProgress={handleChangeProgress}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  </SortableProjectSection>
+                )
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       <GoalManagementModal
         isOpen={showGoalModal}
         onClose={closeModal}
         goal={editingGoal}
+        defaultProjectId={createProjectId}
         projects={projects}
         onCreateGoal={onCreateGoal}
         onUpdateGoal={onUpdateGoal}
         onDeleteGoal={onDeleteGoal}
       />
     </div>
+  )
+}
+
+function SortableProjectSection({
+  sectionDndId,
+  sectionStyle,
+  project,
+  goalCount,
+  onAddGoal,
+  children,
+}: {
+  sectionDndId: string
+  sectionStyle?: React.CSSProperties
+  project: Project | null
+  goalCount: number
+  onAddGoal?: () => void
+  children: React.ReactNode
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: sectionDndId,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.85 : 1,
+  }
+
+  return (
+    <section
+      ref={setNodeRef}
+      style={{ ...style, ...sectionStyle }}
+      className="group/section rounded-2xl border border-outline-variant/15 p-4 ring-1 ring-outline-variant/10"
+    >
+      <header className="mb-3 flex items-center gap-2">
+        <button
+          type="button"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-on-surface-variant opacity-0 transition-opacity hover:bg-surface-container-high group-hover/section:opacity-100 focus:opacity-100"
+          aria-label={`Reordenar bloco ${project?.name ?? 'Sem projeto'}`}
+          {...attributes}
+          {...listeners}
+        >
+          <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
+        </button>
+
+        {project ? (
+          <span
+            className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white/80"
+            style={{ backgroundColor: project.color }}
+            aria-hidden
+          />
+        ) : (
+          <span className="material-symbols-outlined shrink-0 text-[18px] text-on-surface-variant">
+            folder_off
+          </span>
+        )}
+
+        <h2 className="min-w-0 flex-1 truncate font-headline text-base font-bold text-on-surface">
+          {project?.name ?? 'Sem projeto'}
+        </h2>
+
+        <span className="shrink-0 text-xs font-medium text-on-surface-variant">
+          {goalCount} {goalCount === 1 ? 'meta' : 'metas'}
+        </span>
+
+        {onAddGoal ? (
+          <button
+            type="button"
+            onClick={onAddGoal}
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-primary transition-colors hover:bg-primary/10"
+            title={`Nova meta em ${project?.name}`}
+            aria-label={`Nova meta em ${project?.name}`}
+          >
+            <span className="material-symbols-outlined text-[20px]">add</span>
+          </button>
+        ) : null}
+      </header>
+
+      {children}
+    </section>
   )
 }
 

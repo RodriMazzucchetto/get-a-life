@@ -9,6 +9,7 @@ interface GoalManagementModalProps {
   isOpen: boolean
   onClose: () => void
   goal?: Goal | null
+  defaultProjectId?: string
   projects: Project[]
   onCreateGoal: (goalData: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => Promise<Goal | null>
   onUpdateGoal: (id: string, updates: Partial<Goal>) => Promise<Goal | null>
@@ -19,6 +20,7 @@ export function GoalManagementModal({
   isOpen,
   onClose,
   goal,
+  defaultProjectId,
   projects,
   onCreateGoal,
   onUpdateGoal,
@@ -57,7 +59,7 @@ export function GoalManagementModal({
         // Modo de criação
         setTitle('')
         setDescription('')
-        setProjectId('')
+        setProjectId(defaultProjectId ?? '')
         setProgress(0)
         setNextSteps('')
         setDueDate(null)
@@ -67,7 +69,7 @@ export function GoalManagementModal({
       setEditingInitiativeId(null)
       setEditingInitiativeTitle('')
     }
-  }, [isOpen, goal])
+  }, [isOpen, goal, defaultProjectId])
 
   // Função para salvar meta
   const handleSave = async () => {
