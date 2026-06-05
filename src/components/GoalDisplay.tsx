@@ -104,7 +104,8 @@ function rebuildOrder(
 function buildGoalGroups(
   goals: Goal[],
   projects: Project[],
-  projectById: Record<string, Project>
+  projectById: Record<string, Project>,
+  includeEmptyProjectIds: string[] = []
 ): GoalGroup[] {
   const byProject = new Map<string, Goal[]>()
   const orphans: Goal[] = []
@@ -121,10 +122,11 @@ function buildGoalGroups(
   }
 
   const groups: GoalGroup[] = []
+  const emptyProjectIdSet = new Set(includeEmptyProjectIds)
 
   for (const project of projects) {
-    const projectGoals = byProject.get(project.id)
-    if (projectGoals?.length) {
+    const projectGoals = byProject.get(project.id) ?? []
+    if (projectGoals.length > 0 || emptyProjectIdSet.has(project.id)) {
       groups.push({ sectionKey: project.id, project, goals: projectGoals })
     }
   }
@@ -134,6 +136,20 @@ function buildGoalGroups(
   }
 
   return groups
+}
+
+/** Projetos que devem aparecer na vista ativa mesmo sem metas em andamento. */
+function getActiveViewProjectIds(goals: Goal[], projects: Project[]): string[] {
+  const ids = new Set<string>()
+  for (const goal of goals) {
+    ids.add(goal.projectId)
+  }
+  for (const project of projects) {
+    if (project.annualObjective?.trim()) {
+      ids.add(project.id)
+    }
+  }
+  return [...ids]
 }
 
 export function GoalDisplay({
@@ -174,8 +190,18 @@ export function GoalDisplay({
     [projects]
   )
 
+  const activeViewProjectIds = useMemo(
+    () => (viewMode === 'active' ? getActiveViewProjectIds(goals, projects) : []),
+    [viewMode, goals, projects]
+  )
+
   const rawGoalGroups = useMemo(() => {
-    const groups = buildGoalGroups(displayedGoals, projects, projectById)
+    const groups = buildGoalGroups(
+      displayedGoals,
+      projects,
+      projectById,
+      viewMode === 'active' ? activeViewProjectIds : []
+    )
     if (viewMode !== 'history') return groups
     return groups.map((group) => ({
       ...group,
@@ -183,7 +209,7 @@ export function GoalDisplay({
         (b.closedAt ?? '').localeCompare(a.closedAt ?? '')
       ),
     }))
-  }, [displayedGoals, projects, projectById, viewMode])
+  }, [displayedGoals, projects, projectById, viewMode, activeViewProjectIds])
 
   const availableSectionKeys = useMemo(
     () => rawGoalGroups.map((group) => group.sectionKey),
@@ -376,7 +402,7 @@ export function GoalDisplay({
             Clique em <strong>Nova meta</strong> para começar.
           </p>
         </div>
-      ) : displayedGoals.length === 0 ? (
+      ) : goalGroups.length === 0 ? (
         <div className="rounded-xl border border-dashed border-outline-variant/40 bg-surface-container-low p-6 text-center">
           <p className="font-headline text-lg font-bold text-on-surface">
             {isHistoryView ? 'Nenhuma meta no histórico' : 'Nenhuma meta ativa'}
@@ -432,6 +458,15 @@ export function GoalDisplay({
                             onView={() => openEditModal(goal)}
                           />
                         ))}
+                      </div>
+                    ) : group.goals.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-outline-variant/30 bg-surface-container-lowest/60 px-3 py-5 text-center">
+                        <p className="text-sm text-on-surface-variant">
+                          Nenhuma meta ativa neste projeto.
+                        </p>
+                        <p className="mt-1 text-xs text-on-surface-variant/80">
+                          Use <strong>+</strong> para adicionar uma nova meta.
+                        </p>
                       </div>
                     ) : (
                       <DndContext
