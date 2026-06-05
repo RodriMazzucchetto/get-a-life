@@ -74,6 +74,8 @@ export interface DBTodo {
   completed_at?: string | null
 }
 
+export type GoalLifecycleStatus = 'active' | 'done' | 'partial' | 'not_done'
+
 export interface DBGoal {
   id: string
   user_id: string
@@ -83,6 +85,9 @@ export interface DBGoal {
   progress: number
   next_step?: string
   due_date?: string
+  lifecycle_status?: GoalLifecycleStatus
+  closed_at?: string | null
+  closure_note?: string | null
   created_at: string
   updated_at: string
 }
@@ -1774,6 +1779,9 @@ export interface Goal {
   progress: number;
   nextSteps?: string;
   dueDate?: string;
+  lifecycleStatus: GoalLifecycleStatus;
+  closedAt?: string | null;
+  closureNote?: string | null;
   initiatives: SimpleInitiative[];
   created_at: string;
   updated_at?: string;
@@ -1857,6 +1865,9 @@ export function fromDbGoal(row: DBGoal): Goal {
     progress: row.progress,
     nextSteps: row.next_step,
     dueDate: row.due_date,
+    lifecycleStatus: row.lifecycle_status ?? 'active',
+    closedAt: row.closed_at ?? null,
+    closureNote: row.closure_note ?? null,
     initiatives: [], // Será carregado separadamente
     created_at: row.created_at,
     updated_at: row.updated_at
@@ -1871,6 +1882,9 @@ export function toDbGoal(goal: Partial<Goal>): Partial<DBGoal> {
   if (goal.progress !== undefined) out.progress = goal.progress;
   if (goal.nextSteps !== undefined) out.next_step = goal.nextSteps;
   if (goal.dueDate !== undefined) out.due_date = goal.dueDate;
+  if (goal.lifecycleStatus !== undefined) out.lifecycle_status = goal.lifecycleStatus;
+  if (goal.closedAt !== undefined) out.closed_at = goal.closedAt;
+  if (goal.closureNote !== undefined) out.closure_note = goal.closureNote;
   return out;
 }
 

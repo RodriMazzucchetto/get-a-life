@@ -5,6 +5,7 @@ import { GoalDisplay } from "@/components/GoalDisplay";
 import { usePlanningData } from "@/hooks/usePlanningData";
 import { useAuthContext } from "@/contexts/AuthContext";
 import type { Goal } from "@/lib/planning";
+import { isGoalActive } from "@/lib/goalLifecycle";
 
 export default function GoalsPage() {
   const { user } = useAuthContext();
@@ -55,10 +56,14 @@ export default function GoalsPage() {
     return [...ordered, ...leftovers];
   }, [goals, orderedGoalIds]);
 
+  const activeGoals = useMemo(() => goals.filter(isGoalActive), [goals]);
+
   const averageProgress = useMemo(() => {
-    if (goals.length === 0) return 0;
-    return Math.round(goals.reduce((sum, goal) => sum + goal.progress, 0) / goals.length);
-  }, [goals]);
+    if (activeGoals.length === 0) return 0;
+    return Math.round(
+      activeGoals.reduce((sum, goal) => sum + goal.progress, 0) / activeGoals.length
+    );
+  }, [activeGoals]);
 
   const handleCreateGoal = async (
     goalData: Omit<Goal, "id" | "created_at" | "updated_at">

@@ -1044,6 +1044,7 @@ export default function PlanningPage() {
         dueDate: newGoal.dueDate ? newGoal.dueDate.toISOString() : undefined,
         progress: 0,
         nextSteps: newGoal.nextSteps || '',
+        lifecycleStatus: 'active',
         initiatives: []
       })
       if (newGoalData) {

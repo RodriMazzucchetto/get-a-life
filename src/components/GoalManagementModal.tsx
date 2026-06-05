@@ -4,16 +4,20 @@ import { ModalPanel } from './ModalPanel'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { Goal, Project, SimpleInitiative } from '@/lib/planning'
+import { formatGoalClosedAt, getGoalOutcomeMeta } from '@/lib/goalLifecycle'
 
 interface GoalManagementModalProps {
   isOpen: boolean
   onClose: () => void
   goal?: Goal | null
   defaultProjectId?: string
+  readOnly?: boolean
   projects: Project[]
   onCreateGoal: (goalData: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => Promise<Goal | null>
   onUpdateGoal: (id: string, updates: Partial<Goal>) => Promise<Goal | null>
   onDeleteGoal: (id: string) => Promise<boolean>
+  onRequestCloseGoal?: (goal: Goal) => void
+  onReopenGoal?: (goalId: string) => Promise<void>
 }
 
 export function GoalManagementModal({
@@ -21,12 +25,19 @@ export function GoalManagementModal({
   onClose,
   goal,
   defaultProjectId,
+  readOnly = false,
   projects,
   onCreateGoal,
   onUpdateGoal,
-  onDeleteGoal
+  onDeleteGoal,
+  onRequestCloseGoal,
+  onReopenGoal,
 }: GoalManagementModalProps) {
   const isEditing = !!goal
+  const isHistoryView = readOnly && !!goal && goal.lifecycleStatus !== 'active'
+  const outcomeMeta = goal && goal.lifecycleStatus !== 'active'
+    ? getGoalOutcomeMeta(goal.lifecycleStatus)
+    : null
 
   // Estados do formulário
   const [title, setTitle] = useState('')
@@ -84,6 +95,7 @@ export function GoalManagementModal({
         progress,
         nextSteps: nextSteps.trim() || undefined,
         dueDate: dueDate ? dueDate.toISOString() : undefined,
+        lifecycleStatus: 'active' as const,
         initiatives
       }
 
@@ -180,13 +192,28 @@ export function GoalManagementModal({
   }
 
   const selectedProject = projects.find(p => p.id === projectId)
+  const fieldsDisabled = readOnly
+
+  const handleReopen = async () => {
+    if (!goal || !onReopenGoal) return
+    await onReopenGoal(goal.id)
+    onClose()
+  }
 
   return (
-    <ModalOverlay isOpen={isOpen} onClose={onClose} onBackdropClick={handleSave}>
+    <ModalOverlay
+      isOpen={isOpen}
+      onClose={onClose}
+      onBackdropClick={readOnly ? onClose : handleSave}
+    >
       <ModalPanel maxWidthClass="max-w-4xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">
-            {isEditing ? 'Editar Meta' : 'Criar Nova Meta'}
+            {isHistoryView
+              ? 'Meta no histórico'
+              : isEditing
+                ? 'Editar Meta'
+                : 'Criar Nova Meta'}
           </h2>
           <button
             onClick={onClose}
@@ -199,6 +226,24 @@ export function GoalManagementModal({
         </div>
 
         <div className="space-y-6">
+          {isHistoryView && outcomeMeta ? (
+            <div className="rounded-lg border border-outline-variant/25 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
+                  <span className="material-symbols-outlined text-[18px]">{outcomeMeta.symbol}</span>
+                  {outcomeMeta.label}
+                </span>
+                <span className="text-gray-500">
+                  Encerrada em {formatGoalClosedAt(goal?.closedAt)}
+                </span>
+                <span className="text-gray-500">Progresso final: {goal?.progress}%</span>
+              </div>
+              {goal?.closureNote ? (
+                <p className="mt-2 whitespace-pre-wrap text-gray-600">{goal.closureNote}</p>
+              ) : null}
+            </div>
+          ) : null}
+
           {/* Título */}
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-2">
@@ -209,7 +254,8 @@ export function GoalManagementModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Digite o título da meta"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
+              disabled={fieldsDisabled}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500 disabled:bg-gray-50"
             />
           </div>
 
@@ -223,7 +269,8 @@ export function GoalManagementModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Descreva sua meta (opcional)"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
+              disabled={fieldsDisabled}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500 disabled:bg-gray-50"
             />
           </div>
 
@@ -235,7 +282,8 @@ export function GoalManagementModal({
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
+              disabled={fieldsDisabled}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 disabled:bg-gray-50"
             >
               <option value="">Selecione um projeto</option>
               {projects.map((project) => (
@@ -258,7 +306,8 @@ export function GoalManagementModal({
                 max="100"
                 value={progress}
                 onChange={(e) => setProgress(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                disabled={fieldsDisabled}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider disabled:opacity-60"
               />
               <div 
                 className="absolute top-0 left-0 h-2 bg-blue-500 rounded-lg pointer-events-none"
@@ -277,7 +326,8 @@ export function GoalManagementModal({
               onChange={(e) => setNextSteps(e.target.value)}
               placeholder="Descreva os próximos passos para alcançar esta meta (opcional)"
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
+              disabled={fieldsDisabled}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500 disabled:bg-gray-50"
             />
           </div>
 
@@ -289,10 +339,11 @@ export function GoalManagementModal({
             <DatePicker
               selected={dueDate}
               onChange={(date: Date | null) => setDueDate(date)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500"
+              disabled={fieldsDisabled}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 placeholder-gray-500 disabled:bg-gray-50"
               placeholderText="Selecionar data limite"
               dateFormat="dd/MM/yyyy"
-              isClearable
+              isClearable={!fieldsDisabled}
               showYearDropdown
               scrollableYearDropdown
               yearDropdownItemNumber={15}
@@ -319,7 +370,8 @@ export function GoalManagementModal({
                     type="checkbox"
                     checked={initiative.completed}
                     onChange={() => handleToggleInitiative(initiative.id)}
-                    className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500"
+                    disabled={fieldsDisabled}
+                    className="w-4 h-4 text-blue-600 border border-blue-300 rounded focus:ring-blue-500 disabled:opacity-60"
                   />
                   
                   {/* Título da iniciativa */}
@@ -361,24 +413,28 @@ export function GoalManagementModal({
                       <span className={`text-sm font-medium ${initiative.completed ? 'line-through text-gray-600' : 'text-gray-800'}`}>
                         {initiative.title}
                       </span>
-                      <button
-                        onClick={() => handleStartEditInitiative(initiative)}
-                        className="p-1 text-blue-600 hover:text-blue-700"
-                        title="Editar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteInitiative(initiative.id)}
-                        className="p-1 text-red-600 hover:text-red-700"
-                        title="Deletar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      {!fieldsDisabled ? (
+                        <>
+                          <button
+                            onClick={() => handleStartEditInitiative(initiative)}
+                            className="p-1 text-blue-600 hover:text-blue-700"
+                            title="Editar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteInitiative(initiative.id)}
+                            className="p-1 text-red-600 hover:text-red-700"
+                            title="Deletar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -386,6 +442,7 @@ export function GoalManagementModal({
             </div>
 
             {/* Adicionar nova iniciativa */}
+            {!fieldsDisabled ? (
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -407,19 +464,46 @@ export function GoalManagementModal({
                 Adicionar
               </button>
             </div>
+            ) : null}
           </div>
 
           {/* Botões de ação */}
           <div className="flex justify-between gap-3 pt-6 border-t">
-            {isEditing && (
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-              >
-                Excluir Meta
-              </button>
-            )}
+            {isHistoryView && onReopenGoal ? (
+              <>
+                <button
+                  onClick={() => void handleReopen()}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-800 bg-white hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Reabrir meta
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-800 bg-white hover:bg-gray-50 transition-colors font-medium ml-auto"
+                >
+                  Fechar
+                </button>
+              </>
+            ) : isEditing && !readOnly ? (
+              <div className="flex flex-wrap gap-2">
+                {onRequestCloseGoal && goal?.lifecycleStatus === 'active' ? (
+                  <button
+                    onClick={() => onRequestCloseGoal(goal)}
+                    className="px-4 py-2 border border-gray-400 rounded-md text-gray-800 bg-white hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Encerrar meta
+                  </button>
+                ) : null}
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Excluir Meta
+                </button>
+              </div>
+            ) : null}
             
+            {!isHistoryView ? (
             <div className="flex gap-3 ml-auto">
               <button
                 onClick={onClose}
@@ -427,6 +511,7 @@ export function GoalManagementModal({
               >
                 Cancelar
               </button>
+              {!readOnly ? (
               <button
                 onClick={handleSave}
                 disabled={!title.trim() || !projectId || isSubmitting}
@@ -434,7 +519,9 @@ export function GoalManagementModal({
               >
                 {isSubmitting ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Criar Meta')}
               </button>
+              ) : null}
             </div>
+            ) : null}
           </div>
         </div>
       </ModalPanel>
