@@ -1,5 +1,14 @@
+'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from 'react'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { 
   projectsService, 
@@ -8,6 +17,7 @@ import {
   goalsService, 
   remindersService,
   initiativesService,
+  mapGoalsWithInitiatives,
   type DBProject,
   type DBTag,
   type DBTodo,
@@ -28,8 +38,28 @@ import {
 } from '@/lib/planning'
 import { normalizeReminderCategory, normalizeReminderRow } from '@/lib/reminderHelpers'
 
+type PlanningDataContextValue = ReturnType<typeof usePlanningDataState>
+
+const PlanningDataContext = createContext<PlanningDataContextValue | null>(null)
+
+export function PlanningDataProvider({ children }: { children: ReactNode }) {
+  const value = usePlanningDataState()
+  return (
+    <PlanningDataContext.Provider value={value}>{children}</PlanningDataContext.Provider>
+  )
+}
+
 export function usePlanningData() {
+  const context = useContext(PlanningDataContext)
+  if (!context) {
+    throw new Error('usePlanningData deve ser usado dentro de PlanningDataProvider')
+  }
+  return context
+}
+
+function usePlanningDataState() {
   const { user } = useAuthContext()
+  const hydratedUserIdRef = useRef<string | null>(null)
   
   // Estado para projetos
   const [projects, setProjects] = useState<Project[]>([])
@@ -55,64 +85,67 @@ export function usePlanningData() {
   const [reminders, setReminders] = useState<DBReminder[]>([])
   const [loadingReminders, setLoadingReminders] = useState(true)
 
-  // Função para carregar todos os dados (pedidos independentes em paralelo; metas+iniciativas em seguida)
-  const loadAllData = useCallback(async () => {
-    if (!user) return
+  const setAllLoading = useCallback((loading: boolean) => {
+    setLoadingProjects(loading)
+    setLoadingTags(loading)
+    setLoadingTodos(loading)
+    setLoadingGoals(loading)
+    setLoadingInitiatives(loading)
+    setLoadingReminders(loading)
+  }, [])
 
-    try {
-      const [projectsData, tagsData, todosData, goalsData, remindersData] = await Promise.all([
-        projectsService.getProjects(user.id),
-        tagsService.getTags(user.id),
-        todosService.getTodos(user.id),
-        goalsService.getGoals(user.id),
-        remindersService.getReminders(user.id),
-      ])
+  const loadAllData = useCallback(
+    async (options?: { force?: boolean }) => {
+      if (!user) return
+      if (!options?.force && hydratedUserIdRef.current === user.id) return
 
-      setProjects(projectsData.map(fromDbProject))
-      setLoadingProjects(false)
+      const isColdStart = hydratedUserIdRef.current !== user.id
+      if (isColdStart) {
+        setAllLoading(true)
+      }
 
-      setTags(tagsData)
-      setLoadingTags(false)
-
-      setTodos(todosData.map(fromDbTodo))
-      setLoadingTodos(false)
-
-      const goalsWithInitiatives = await Promise.all(
-        goalsData.map(async (goal) => {
-          const initiatives = await initiativesService.getInitiativesByGoal(goal.id)
-          return {
-            ...fromDbGoal(goal),
-            initiatives: initiatives.map((i: DBInitiative) => ({
-              id: i.id,
-              title: i.title || '',
-              completed: i.status === 'completed',
-            })),
-          }
-        })
-      )
-      setGoals(goalsWithInitiatives)
-      setLoadingGoals(false)
-
-      setInitiatives([])
-      setLoadingInitiatives(false)
-
-      setReminders(remindersData.map(normalizeReminderRow))
-      setLoadingReminders(false)
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error)
-      // Em caso de erro, definir loading como false para não travar a interface
-      setLoadingProjects(false)
-      setLoadingTags(false)
-      setLoadingTodos(false)
-      setLoadingGoals(false)
-      setLoadingInitiatives(false)
-      setLoadingReminders(false)
-    }
-  }, [user])
+      try {
+        await Promise.all([
+          projectsService.getProjects(user.id).then((data) => {
+            setProjects(data.map(fromDbProject))
+            setLoadingProjects(false)
+          }),
+          tagsService.getTags(user.id).then((data) => {
+            setTags(data)
+            setLoadingTags(false)
+          }),
+          todosService.getTodos(user.id).then((data) => {
+            setTodos(data.map(fromDbTodo))
+            setLoadingTodos(false)
+          }),
+          remindersService.getReminders(user.id).then((data) => {
+            setReminders(data.map(normalizeReminderRow))
+            setLoadingReminders(false)
+          }),
+          Promise.all([
+            goalsService.getGoals(user.id),
+            initiativesService.getInitiativesByUser(user.id),
+          ]).then(([goalsData, initiativesData]) => {
+            setGoals(mapGoalsWithInitiatives(goalsData, initiativesData))
+            setLoadingGoals(false)
+            setLoadingInitiatives(false)
+          }),
+        ])
+        hydratedUserIdRef.current = user.id
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error)
+        setAllLoading(false)
+      }
+    },
+    [user, setAllLoading]
+  )
 
   useEffect(() => {
-    if (!user) return
-    loadAllData()
+    if (!user) {
+      hydratedUserIdRef.current = null
+      return
+    }
+    void loadAllData()
   }, [user, loadAllData])
 
   // Funções para projetos
@@ -655,6 +688,6 @@ export function usePlanningData() {
     seedDefaultReminders,
     
     // Recarregar dados
-    reloadData: loadAllData
+    reloadData: () => loadAllData({ force: true }),
   }
 }

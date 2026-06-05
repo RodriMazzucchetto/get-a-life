@@ -348,8 +348,45 @@ export const tagsService = {
 
 // Serviço de tags será reimplementado do zero
 
+export function mapGoalsWithInitiatives(
+  goalsData: DBGoal[],
+  initiatives: DBInitiative[]
+): Goal[] {
+  const byGoalId = new Map<string, SimpleInitiative[]>()
+  for (const row of initiatives) {
+    const list = byGoalId.get(row.goal_id) ?? []
+    list.push({
+      id: row.id,
+      title: row.title || '',
+      completed: row.status === 'completed',
+    })
+    byGoalId.set(row.goal_id, list)
+  }
+  return goalsData.map((goal) => ({
+    ...fromDbGoal(goal),
+    initiatives: byGoalId.get(goal.id) ?? [],
+  }))
+}
+
 // Serviço de Iniciativas
 export const initiativesService = {
+  /** Uma query para todas as iniciativas do utilizador (evita N+1 por meta). */
+  async getInitiativesByUser(userId: string): Promise<DBInitiative[]> {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('initiatives')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar iniciativas do utilizador:', error)
+      throw error
+    }
+
+    return data || []
+  },
+
   // Buscar todas as iniciativas de uma meta
   async getInitiativesByGoal(goalId: string): Promise<DBInitiative[]> {
     const supabase = createClient()
@@ -440,7 +477,6 @@ export type DBTodoWithLinks = DBTodo & {
 export const todosService = {
   async getTodos(userId: string): Promise<DBTodoWithLinks[]> {
     const supabase = createClient()
-    console.log('🔄 Serviço: Buscando todos para usuário:', userId)
 
     const { data, error } = await supabase
       .from('todos')
@@ -449,11 +485,10 @@ export const todosService = {
       .order('pos', { ascending: true })
 
     if (error) {
-      console.error('❌ Erro ao buscar tarefas:', error)
+      console.error('Erro ao buscar tarefas:', error)
       throw error
     }
 
-    console.log('✅ Todos carregados e ordenados por pos:', data?.length)
     return (data || []) as DBTodoWithLinks[]
   },
 

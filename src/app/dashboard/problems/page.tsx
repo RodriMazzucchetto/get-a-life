@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -25,11 +25,11 @@ import { TrashIcon } from "@heroicons/react/24/outline";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useProblemsData } from "@/contexts/ProblemsDataContext";
+import { usePlanningData } from "@/hooks/usePlanningData";
 import {
   problemsService,
-  projectsService,
   fromDbProblem,
-  fromDbProject,
   type Problem,
   type ProblemKind,
   type Project,
@@ -343,9 +343,8 @@ function SortableProblemRow({
 
 export default function ProblemsPage() {
   const { user } = useAuthContext();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [problems, setProblems] = useState<Problem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { projects } = usePlanningData();
+  const { problems, setProblems, loading } = useProblemsData();
   const [tab, setTab] = useState<TabKey>("active");
   const [kindTab, setKindTab] = useState<ProblemKind>("market");
   const [filterProjectId, setFilterProjectId] = useState<string>("all");
@@ -388,30 +387,6 @@ export default function ProblemsPage() {
     }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [p, pr] = await Promise.all([
-        projectsService.getProjects(user.id),
-        problemsService.getProblems(user.id),
-      ]);
-      setProjects(p.map(fromDbProject));
-      setProblems(pr.map(fromDbProblem));
-    } catch (e) {
-      console.error(e);
-      const raw = getSupabaseErrorMessage(e);
-      setError(friendlySchemaHint(raw) ?? `Não foi possível carregar os dados: ${raw}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const kindFiltered = useMemo(
     () => problems.filter((p) => p.kind === kindTab),

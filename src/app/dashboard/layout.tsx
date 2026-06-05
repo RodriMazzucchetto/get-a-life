@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { BRANDING } from "@/lib/branding";
+import { PlanningDataProvider } from "@/hooks/usePlanningData";
+import { ProblemsDataProvider } from "@/contexts/ProblemsDataContext";
 
 const mainNav: {
   name: string;
@@ -268,7 +270,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </button>
 
         <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-12 pt-4 lg:pt-6">
-          {children}
+          <PlanningDataProvider>
+            <ProblemsDataProvider>{children}</ProblemsDataProvider>
+          </PlanningDataProvider>
         </main>
       </div>
     </div>
