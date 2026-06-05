@@ -26,6 +26,10 @@ interface GoalDisplayProps {
   onUpdateGoal: (id: string, updates: Partial<Goal>) => Promise<Goal | null>
   onDeleteGoal: (goalId: string) => Promise<boolean>
   onReorderGoals: (orderedGoalIds: string[]) => void
+  onUpdateProjectAnnualObjective: (
+    projectId: string,
+    annualObjective: string
+  ) => Promise<void>
 }
 
 const ORPHAN_SECTION_KEY = 'sem-projeto'
@@ -131,6 +135,7 @@ export function GoalDisplay({
   onUpdateGoal,
   onDeleteGoal,
   onReorderGoals,
+  onUpdateProjectAnnualObjective,
 }: GoalDisplayProps) {
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
@@ -312,6 +317,11 @@ export function GoalDisplay({
                     project={project}
                     goalCount={group.goals.length}
                     onAddGoal={project ? () => openCreateModal(project.id) : undefined}
+                    onUpdateAnnualObjective={
+                      project
+                        ? (text) => onUpdateProjectAnnualObjective(project.id, text)
+                        : undefined
+                    }
                   >
                     <DndContext
                       sensors={sensors}
@@ -360,6 +370,7 @@ function SortableProjectSection({
   project,
   goalCount,
   onAddGoal,
+  onUpdateAnnualObjective,
   children,
 }: {
   sectionDndId: string
@@ -367,6 +378,7 @@ function SortableProjectSection({
   project: Project | null
   goalCount: number
   onAddGoal?: () => void
+  onUpdateAnnualObjective?: (text: string) => Promise<void>
   children: React.ReactNode
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -429,8 +441,127 @@ function SortableProjectSection({
         ) : null}
       </header>
 
+      {project && onUpdateAnnualObjective ? (
+        <ProjectAnnualObjective project={project} onSave={onUpdateAnnualObjective} />
+      ) : null}
+
       {children}
     </section>
+  )
+}
+
+function ProjectAnnualObjective({
+  project,
+  onSave,
+}: {
+  project: Project
+  onSave: (text: string) => Promise<void>
+}) {
+  const currentYear = new Date().getFullYear()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(project.annualObjective ?? '')
+  const [expanded, setExpanded] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const storedYear = project.annualObjectiveYear ?? currentYear
+  const objectiveText = project.annualObjective?.trim() ?? ''
+  const showStoredYear = storedYear !== currentYear && objectiveText.length > 0
+  const label = showStoredYear ? `Objetivo ${storedYear}` : `Objetivo ${currentYear}`
+  const isLong = objectiveText.length > 120
+
+  const startEditing = () => {
+    setDraft(project.annualObjective ?? '')
+    setExpanded(false)
+    setEditing(true)
+  }
+
+  const cancelEditing = () => {
+    setDraft(project.annualObjective ?? '')
+    setEditing(false)
+  }
+
+  const save = async () => {
+    const trimmed = draft.trim()
+    setSaving(true)
+    try {
+      await onSave(trimmed)
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="mb-3 border-b border-outline-variant/15 pb-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
+          {label}
+        </p>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={3}
+          autoFocus
+          placeholder="O que queremos alcançar neste projeto este ano?"
+          className="mt-1.5 w-full resize-y rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-2 focus:ring-primary/25"
+        />
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={saving}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary hover:opacity-95 disabled:opacity-60"
+          >
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+          <button
+            type="button"
+            onClick={cancelEditing}
+            disabled={saving}
+            className="rounded-lg border border-outline-variant/35 px-3 py-1.5 text-xs font-semibold text-on-surface hover:bg-surface-container-high disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mb-3 border-b border-outline-variant/15 pb-3">
+      <button
+        type="button"
+        onClick={startEditing}
+        className="w-full rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-surface-container-high/50"
+        title={objectiveText || 'Definir objetivo do ano'}
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
+          {label}
+        </p>
+        {objectiveText ? (
+          <p
+            className={`mt-1 text-sm leading-relaxed text-on-surface ${
+              expanded ? 'whitespace-pre-wrap' : 'line-clamp-2'
+            }`}
+          >
+            {objectiveText}
+          </p>
+        ) : (
+          <p className="mt-1 text-sm italic text-on-surface-variant">
+            Definir objetivo do ano
+          </p>
+        )}
+      </button>
+      {isLong ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 px-1 text-xs font-semibold text-on-surface-variant hover:text-on-surface"
+        >
+          {expanded ? 'Ver menos' : 'Ver mais'}
+        </button>
+      ) : null}
+    </div>
   )
 }
 

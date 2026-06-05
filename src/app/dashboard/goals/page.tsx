@@ -14,6 +14,7 @@ export default function GoalsPage() {
     createGoal,
     updateGoal,
     deleteGoal,
+    updateProject,
   } = usePlanningData();
   const [orderedGoalIds, setOrderedGoalIds] = useState<string[]>([]);
 
@@ -98,6 +99,17 @@ export default function GoalsPage() {
     }
   };
 
+  const handleUpdateProjectAnnualObjective = async (
+    projectId: string,
+    annualObjective: string
+  ) => {
+    const year = new Date().getFullYear();
+    await updateProject(projectId, {
+      annual_objective: annualObjective || null,
+      annual_objective_year: annualObjective ? year : null,
+    });
+  };
+
   return (
     <div className="space-y-8 pb-8">
       <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
@@ -127,6 +139,7 @@ export default function GoalsPage() {
           onUpdateGoal={handleUpdateGoal}
           onDeleteGoal={handleDeleteGoal}
           onReorderGoals={handleReorderGoals}
+          onUpdateProjectAnnualObjective={handleUpdateProjectAnnualObjective}
         />
       </section>
     </div>

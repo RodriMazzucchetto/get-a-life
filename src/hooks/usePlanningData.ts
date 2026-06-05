@@ -132,7 +132,9 @@ export function usePlanningData() {
   const updateProject = useCallback(async (projectId: string, updates: Partial<DBProject>) => {
     try {
       const updatedProject = await projectsService.updateProject(projectId, updates)
-      setProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p))
+      setProjects(prev =>
+        prev.map(p => (p.id === projectId ? fromDbProject(updatedProject) : p))
+      )
       return updatedProject
     } catch (error) {
       console.error('Erro ao atualizar projeto:', error)

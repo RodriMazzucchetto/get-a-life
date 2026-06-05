@@ -13,6 +13,8 @@ export interface DBProject {
   user_id: string
   name: string
   color: string
+  annual_objective?: string | null
+  annual_objective_year?: number | null
   created_at: string
   updated_at: string
 }
@@ -22,6 +24,8 @@ export interface Project {
   id: string
   name: string
   color: string
+  annualObjective?: string | null
+  annualObjectiveYear?: number | null
   created_at: string
   updated_at: string
 }
@@ -1876,6 +1880,8 @@ export function fromDbProject(row: DBProject): Project {
     id: row.id,
     name: row.name,
     color: row.color,
+    annualObjective: row.annual_objective ?? null,
+    annualObjectiveYear: row.annual_objective_year ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at
   };
