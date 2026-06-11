@@ -14,9 +14,33 @@ export const OS_SELECTED_PROJECT_KEY = 'os_selected_project_id'
 export const OS_BLOCK_TYPES: OsBlockType[] = ['finance', 'growth', 'ops']
 
 export const OS_BLOCK_LABELS: Record<OsBlockType, string> = {
-  finance: 'Finance',
-  growth: 'Growth',
-  ops: 'Ops',
+  finance: 'FINANCE',
+  growth: 'GROWTH',
+  ops: 'OPERATIONS',
+}
+
+export const OS_BLOCK_DOT_COLORS: Record<OsBlockType, string> = {
+  finance: '#FFD600',
+  growth: '#5BC0EB',
+  ops: '#FFD600',
+}
+
+export interface OsBetStats {
+  started: number
+  executed: number
+  failed: number
+  successRate: number
+  failureRate: number
+}
+
+export function computeOsBetStats(bets: OsBetRow[]): OsBetStats {
+  const started = bets.length
+  const executed = bets.filter((bet) => bet.status === 'executed').length
+  const failed = bets.filter((bet) => bet.status === 'failed').length
+  const successRate = started > 0 ? Math.round((executed / started) * 100) : 0
+  const failureRate = started > 0 ? Math.round((failed / started) * 100) : 0
+
+  return { started, executed, failed, successRate, failureRate }
 }
 
 export interface OsProjectOption {
