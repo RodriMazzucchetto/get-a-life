@@ -35,7 +35,13 @@ export const mainNav: AppNavItem[] = [
     name: "OS",
     href: "/os",
     icon: "hub",
-    active: (pathname) => pathname.startsWith("/os"),
+    active: (pathname) => pathname === "/os",
+  },
+  {
+    name: "Tasks OS",
+    href: "/os/tasks",
+    icon: "task_alt",
+    active: (pathname) => pathname === "/os/tasks",
   },
   {
     name: "Relatórios",

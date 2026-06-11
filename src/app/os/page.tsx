@@ -16,7 +16,7 @@ import {
   type OsProjectDashboardData,
 } from "@/lib/os-queries";
 import type { OsBlockType } from "@/lib/os-types";
-import { useOsLayout } from "./layout";
+import { OsProjectProvider, useOsLayout } from "@/contexts/OsLayoutContext";
 
 function formatCycleMonth(value: string): string {
   const date = new Date(`${value}T00:00:00`);
@@ -119,8 +119,17 @@ function BlockCard({
 }
 
 export default function OsPage() {
+  return (
+    <OsProjectProvider>
+      <OsPageContent />
+    </OsProjectProvider>
+  );
+}
+
+function OsPageContent() {
   const { user } = useAuthContext();
-  const { selectedProjectId, loadingProjects } = useOsLayout();
+  const { selectedProjectId, loadingProjects, setSelectedProjectId, projects, projectsError } =
+    useOsLayout();
   const [dashboard, setDashboard] = useState<OsProjectDashboardData | null>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -208,7 +217,51 @@ export default function OsPage() {
   ).filter((blockView): blockView is OsBlockView => Boolean(blockView));
 
   return (
-    <>
+    <div className="space-y-6 pb-8">
+      <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
+        <div>
+          <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface">
+            OS
+          </h1>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Sistema de execução por blocos, metas e apostas.
+          </p>
+        </div>
+
+        <div className="mt-4 max-w-md">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+            Projeto
+          </label>
+          {loadingProjects ? (
+            <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2.5 text-sm text-on-surface-variant">
+              Carregando projetos...
+            </div>
+          ) : projects.length === 0 ? (
+            <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2.5 text-sm text-on-surface-variant">
+              Nenhum projeto encontrado.
+            </div>
+          ) : (
+            <select
+              value={selectedProjectId ?? ""}
+              onChange={(event) => setSelectedProjectId(event.target.value)}
+              className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2.5 text-sm font-semibold text-on-surface outline-none focus:border-primary"
+            >
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {projectsError ? (
+          <div className="mt-4 rounded-lg border border-error/40 bg-error/10 px-4 py-2 text-sm text-error">
+            {projectsError}
+          </div>
+        ) : null}
+      </section>
+
       <section className="space-y-4">
         {dashboard?.activeCycle ? (
           <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-on-surface">
@@ -321,6 +374,6 @@ export default function OsPage() {
           </ModalPanel>
         </ModalOverlay>
       ) : null}
-    </>
+    </div>
   );
 }

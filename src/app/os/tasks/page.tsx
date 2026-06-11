@@ -86,13 +86,22 @@ export default function OsTasksPage() {
   }, [tasks, statusFilter, projectFilter, maintenanceFilter]);
 
   return (
-    <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6 pb-8">
+      <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
         <div>
-          <h2 className="font-headline text-2xl font-bold text-on-surface">Tasks OS</h2>
+          <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface">
+            Tasks OS
+          </h1>
           <p className="mt-1 text-sm text-on-surface-variant">
             Listagem consolidada de todas as tasks do sistema OS.
           </p>
+        </div>
+      </section>
+
+    <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-headline text-xl font-bold text-on-surface">Todas as tasks</h2>
         </div>
         <span className="inline-flex rounded-full bg-tertiary-fixed px-3 py-1 text-xs font-bold uppercase text-on-tertiary-fixed-variant">
           {filteredTasks.length} tasks
@@ -216,5 +225,6 @@ export default function OsTasksPage() {
         </ul>
       )}
     </section>
+    </div>
   );
 }
