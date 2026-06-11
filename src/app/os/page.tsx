@@ -11,7 +11,7 @@ import {
   OS_BLOCK_LABELS,
   OS_BLOCK_TYPES,
   computeOsBetStats,
-  createOsGoal,
+  saveOsGoal,
   fetchOsProjectDashboard,
   type OsBetStats,
   type OsBlockView,
@@ -198,7 +198,7 @@ function OsPageContent() {
     setGoalError(null);
 
     try {
-      await createOsGoal(
+      await saveOsGoal(
         user.id,
         goalDraft.blockId,
         goalDraft.title.trim(),

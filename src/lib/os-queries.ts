@@ -256,6 +256,48 @@ export async function createOsGoal(
   return data
 }
 
+export async function updateOsGoal(
+  goalId: string,
+  updates: { title?: string; description?: string | null }
+): Promise<OsGoalRow> {
+  const supabase = createClient()
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+
+  if (updates.title !== undefined) payload.title = updates.title
+  if (updates.description !== undefined) payload.description = updates.description
+
+  const { data, error } = await supabase
+    .from('os_goals')
+    .update(payload)
+    .eq('id', goalId)
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao atualizar meta OS:', error)
+    throw error
+  }
+
+  return data
+}
+
+/** Cria ou atualiza a meta ativa de um bloco. */
+export async function saveOsGoal(
+  userId: string,
+  blockId: string,
+  title: string,
+  description?: string
+): Promise<OsGoalRow> {
+  const existing = await fetchActiveOsGoal(blockId)
+  if (existing) {
+    return updateOsGoal(existing.id, {
+      title,
+      description: description?.trim() ? description.trim() : null,
+    })
+  }
+  return createOsGoal(userId, blockId, title, description)
+}
+
 export async function createOsCycle(userId: string, projectId: string): Promise<OsCycleRow> {
   const supabase = createClient()
   const { data, error } = await supabase
@@ -329,7 +371,6 @@ export async function fetchOsBetsForGoal(goalId: string): Promise<OsBetRow[]> {
     .from('os_bets')
     .select('*')
     .eq('goal_id', goalId)
-    .order('pos', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true })
 
   if (error) {
@@ -337,7 +378,16 @@ export async function fetchOsBetsForGoal(goalId: string): Promise<OsBetRow[]> {
     throw error
   }
 
-  return data ?? []
+  return sortOsBetsByPosition(data ?? [])
+}
+
+function sortOsBetsByPosition(bets: OsBetRow[]): OsBetRow[] {
+  return [...bets].sort((a, b) => {
+    const posA = a.pos ?? Number.MAX_SAFE_INTEGER
+    const posB = b.pos ?? Number.MAX_SAFE_INTEGER
+    if (posA !== posB) return posA - posB
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
 }
 
 export function computeNextPitchPos(bets: OsBetRow[]): number {
@@ -352,7 +402,16 @@ export async function fetchOsPitchBoard(userId: string, projectId: string): Prom
   const blockViews = await Promise.all(
     blocks.map(async (block) => {
       const goal = await fetchActiveOsGoal(block.id)
-      const bets = goal ? await fetchOsBetsForGoal(goal.id) : []
+      let bets: OsBetRow[] = []
+
+      if (goal) {
+        try {
+          bets = await fetchOsBetsForGoal(goal.id)
+        } catch (betError) {
+          console.error(`Erro ao buscar pitches do bloco ${block.type}:`, betError)
+        }
+      }
+
       return { block, goal, bets }
     })
   )

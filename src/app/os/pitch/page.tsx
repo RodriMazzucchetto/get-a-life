@@ -219,22 +219,27 @@ export default function OsPitchPage() {
     [board]
   );
 
-  const blockGoalTitles = useMemo(() => {
-    const titles: Record<OsBlockType, string | null> = {
+  const blockGoals = useMemo(() => {
+    const goals: Record<OsBlockType, { id: string; title: string } | null> = {
       finance: null,
       growth: null,
       ops: null,
     };
     for (const blockView of orderedBlocks) {
-      titles[blockView.block.type as OsBlockType] = blockView.goal?.title ?? null;
+      const blockType = blockView.block.type as OsBlockType;
+      if (blockView.goal) {
+        goals[blockType] = { id: blockView.goal.id, title: blockView.goal.title };
+      }
     }
-    return titles;
+    return goals;
   }, [orderedBlocks]);
 
   const openCreateModal = () => {
-    setEditingPitch(null);
-    setEditingBlockType("finance");
-    setModalOpen(true);
+    void loadBoard().finally(() => {
+      setEditingPitch(null);
+      setEditingBlockType("finance");
+      setModalOpen(true);
+    });
   };
 
   const openEditModal = (bet: OsBetRow, blockType: OsBlockType) => {
@@ -413,7 +418,7 @@ export default function OsPitchPage() {
         onClose={closeModal}
         pitch={editingPitch}
         initialBlockType={editingBlockType}
-        blockGoalTitles={blockGoalTitles}
+        blockGoals={blockGoals}
         onSave={handleSavePitch}
         onDelete={editingPitch ? (id) => handleDeletePitch(id) : undefined}
         saving={saving}

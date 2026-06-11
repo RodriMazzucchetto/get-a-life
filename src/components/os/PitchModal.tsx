@@ -5,6 +5,11 @@ import ModalOverlay from "@/components/ModalOverlay";
 import { OS_BLOCK_DOT_COLORS, OS_BLOCK_LABELS, OS_BLOCK_TYPES } from "@/lib/os-queries";
 import type { OsBetRow, OsBlockType } from "@/lib/os-types";
 
+export interface PitchBlockGoal {
+  id: string;
+  title: string;
+}
+
 export interface PitchFormData {
   blockType: OsBlockType;
   title: string;
@@ -18,7 +23,7 @@ interface PitchModalProps {
   onClose: () => void;
   pitch: OsBetRow | null;
   initialBlockType?: OsBlockType;
-  blockGoalTitles: Record<OsBlockType, string | null>;
+  blockGoals: Record<OsBlockType, PitchBlockGoal | null>;
   onSave: (data: PitchFormData) => Promise<void>;
   onDelete?: (pitchId: string) => Promise<void>;
   saving: boolean;
@@ -37,7 +42,7 @@ export function PitchModal({
   onClose,
   pitch,
   initialBlockType,
-  blockGoalTitles,
+  blockGoals,
   onSave,
   onDelete,
   saving,
@@ -72,8 +77,8 @@ export function PitchModal({
       return;
     }
 
-    const goalTitle = blockGoalTitles[form.blockType];
-    if (!goalTitle) {
+    const goal = blockGoals[form.blockType];
+    if (!goal) {
       setError("Defina uma meta ativa para este pilar na página OS antes de criar pitches.");
       return;
     }
@@ -135,7 +140,7 @@ export function PitchModal({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {OS_BLOCK_TYPES.map((blockType) => {
                 const selected = form.blockType === blockType;
-                const goalTitle = blockGoalTitles[blockType];
+                const goal = blockGoals[blockType];
                 return (
                   <div key={blockType} className="flex flex-col">
                     <button
@@ -161,7 +166,7 @@ export function PitchModal({
                       </span>
                     </button>
                     <p className="mt-1.5 px-1 text-xs font-bold normal-case text-black/70">
-                      {goalTitle ?? "Meta não definida"}
+                      {goal?.title ?? "Meta não definida"}
                     </p>
                   </div>
                 );
