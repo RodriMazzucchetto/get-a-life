@@ -42,6 +42,12 @@ const mainNav: {
     active: (pathname) => pathname === "/dashboard/problems",
   },
   {
+    name: "OS",
+    href: "/dashboard/os",
+    icon: "hub",
+    active: (pathname) => pathname.startsWith("/dashboard/os"),
+  },
+  {
     name: "Relatórios",
     href: "#",
     icon: "analytics",
