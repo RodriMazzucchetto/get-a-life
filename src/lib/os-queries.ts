@@ -322,3 +322,142 @@ export async function fetchAllOsTasks(userId: string): Promise<OsTaskRow[]> {
 
   return data ?? []
 }
+
+export async function fetchOsBetsForGoal(goalId: string): Promise<OsBetRow[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_bets')
+    .select('*')
+    .eq('goal_id', goalId)
+    .order('pos', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Erro ao buscar pitches OS:', error)
+    throw error
+  }
+
+  return data ?? []
+}
+
+export function computeNextPitchPos(bets: OsBetRow[]): number {
+  if (bets.length === 0) return 1000
+  const maxPos = Math.max(...bets.map((bet) => bet.pos ?? 0))
+  return maxPos + 1000
+}
+
+export async function fetchOsPitchBoard(userId: string, projectId: string): Promise<OsBlockView[]> {
+  const blocks = await ensureOsBlocksForProject(userId, projectId)
+
+  const blockViews = await Promise.all(
+    blocks.map(async (block) => {
+      const goal = await fetchActiveOsGoal(block.id)
+      const bets = goal ? await fetchOsBetsForGoal(goal.id) : []
+      return { block, goal, bets }
+    })
+  )
+
+  return blockViews
+}
+
+export async function createOsBet(
+  userId: string,
+  input: {
+    goalId: string
+    title: string
+    pitchOutcome?: string
+    pitchData?: string
+    executionOwner?: string
+    pos?: number
+    cycleId?: string | null
+  }
+): Promise<OsBetRow> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_bets')
+    .insert({
+      user_id: userId,
+      goal_id: input.goalId,
+      cycle_id: input.cycleId ?? null,
+      title: input.title,
+      pitch_outcome: input.pitchOutcome ?? null,
+      pitch_data: input.pitchData ?? null,
+      execution_owner: input.executionOwner ?? null,
+      pos: input.pos ?? null,
+      status: 'draft',
+    })
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao criar pitch OS:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function updateOsBet(
+  betId: string,
+  updates: {
+    title?: string
+    pitchOutcome?: string | null
+    pitchData?: string | null
+    executionOwner?: string | null
+    goalId?: string
+    pos?: number | null
+  }
+): Promise<OsBetRow> {
+  const supabase = createClient()
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+
+  if (updates.title !== undefined) payload.title = updates.title
+  if (updates.pitchOutcome !== undefined) payload.pitch_outcome = updates.pitchOutcome
+  if (updates.pitchData !== undefined) payload.pitch_data = updates.pitchData
+  if (updates.executionOwner !== undefined) payload.execution_owner = updates.executionOwner
+  if (updates.goalId !== undefined) payload.goal_id = updates.goalId
+  if (updates.pos !== undefined) payload.pos = updates.pos
+
+  const { data, error } = await supabase
+    .from('os_bets')
+    .update(payload)
+    .eq('id', betId)
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao atualizar pitch OS:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteOsBet(betId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase.from('os_bets').delete().eq('id', betId)
+
+  if (error) {
+    console.error('Erro ao excluir pitch OS:', error)
+    throw error
+  }
+}
+
+export async function reorderOsBetsInGoal(orderedIds: string[]): Promise<void> {
+  const supabase = createClient()
+
+  const updates = orderedIds.map((id, index) =>
+    supabase
+      .from('os_bets')
+      .update({ pos: (index + 1) * 1000, updated_at: new Date().toISOString() })
+      .eq('id', id)
+  )
+
+  const results = await Promise.all(updates)
+  const failed = results.find((result) => result.error)
+
+  if (failed?.error) {
+    console.error('Erro ao reordenar pitches OS:', failed.error)
+    throw failed.error
+  }
+}
