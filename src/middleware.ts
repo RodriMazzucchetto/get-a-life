@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
 
   // If there's no user and the user is trying to access a protected route,
   // redirect them to the login page
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  if (!user && (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/os'))) {
     const redirectUrl = new URL('/auth/login', request.url)
     return NextResponse.redirect(redirectUrl)
   }
