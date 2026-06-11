@@ -10,7 +10,6 @@ import {
   OS_BLOCK_LABELS,
   OS_BLOCK_TYPES,
   computeOsBetStats,
-  createOsCycle,
   createOsGoal,
   fetchOsProjectDashboard,
   type OsBetStats,
@@ -55,15 +54,11 @@ function OsProgressBar({
 
 function OsBlockColumn({
   blockView,
-  hasActiveCycle,
   onDefineGoal,
-  onStartCycle,
   actionLoading,
 }: {
   blockView: OsBlockView;
-  hasActiveCycle: boolean;
   onDefineGoal: (blockId: string, blockType: OsBlockType) => void;
-  onStartCycle: () => void;
   actionLoading: string | null;
 }) {
   const blockType = blockView.block.type as OsBlockType;
@@ -87,9 +82,6 @@ function OsBlockColumn({
           type="button"
           className="text-white/90 transition-opacity hover:opacity-70"
           aria-label={`Configurações ${blockLabel}`}
-          onClick={() => {
-            if (!hasActiveCycle) onStartCycle();
-          }}
           disabled={actionLoading !== null}
         >
           <span className="material-symbols-outlined text-[18px]">settings</span>
@@ -117,17 +109,6 @@ function OsBlockColumn({
           <p style={{ color: OS_RED }}>FAILED: {stats.failed}</p>
           <p style={{ color: OS_RED }}>FAILURE RATE: {stats.failureRate}%</p>
         </div>
-
-        {!hasActiveCycle ? (
-          <button
-            type="button"
-            onClick={onStartCycle}
-            disabled={actionLoading !== null}
-            className="mt-4 w-full border-2 border-black px-3 py-2 text-xs font-bold tracking-[0.14em] transition-colors hover:bg-black hover:text-white disabled:opacity-50"
-          >
-            INICIAR CICLO
-          </button>
-        ) : null}
       </div>
     </article>
   );
@@ -198,23 +179,6 @@ function OsPageContent() {
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
-
-  const handleStartCycle = async () => {
-    if (!user || !selectedProjectId) return;
-
-    setActionLoading("cycle");
-    setError(null);
-
-    try {
-      await createOsCycle(user.id, selectedProjectId);
-      await loadDashboard();
-    } catch (startError) {
-      console.error("Erro ao iniciar ciclo OS:", startError);
-      setError("Não foi possível iniciar o ciclo.");
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   const openGoalModal = (blockId: string, blockType: OsBlockType) => {
     const existingGoal = dashboard?.blocks.find((b) => b.block.id === blockId)?.goal;
@@ -356,9 +320,7 @@ function OsPageContent() {
               <OsBlockColumn
                 key={blockView.block.id}
                 blockView={blockView}
-                hasActiveCycle={Boolean(dashboard?.activeCycle)}
                 onDefineGoal={openGoalModal}
-                onStartCycle={() => void handleStartCycle()}
                 actionLoading={actionLoading}
               />
             ))}
