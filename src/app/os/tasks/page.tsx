@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import {
   fetchAllOsTasks,
+  fetchOsBetsByIds,
   fetchOsProjects,
   formatOsTaskStatusLabel,
   type OsProjectOption,
 } from "@/lib/os-queries";
-import type { OsTaskRow, OsTaskStatus } from "@/lib/os-types";
+import type { OsBetRow, OsTaskRow, OsTaskStatus } from "@/lib/os-types";
 
 type MaintenanceFilter = "all" | "maintenance" | "bet";
 
@@ -28,6 +29,7 @@ function getTaskStatusBadgeClass(status: OsTaskStatus): string {
 export default function OsTasksPage() {
   const { user } = useAuthContext();
   const [tasks, setTasks] = useState<OsTaskRow[]>([]);
+  const [betsById, setBetsById] = useState<Map<string, OsBetRow>>(new Map());
   const [projects, setProjects] = useState<OsProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,13 @@ export default function OsTasksPage() {
         if (cancelled) return;
         setTasks(taskRows);
         setProjects(projectRows);
+
+        const betIds = [
+          ...new Set(taskRows.map((task) => task.bet_id).filter((id): id is string => Boolean(id))),
+        ];
+        const bets = await fetchOsBetsByIds(betIds);
+        if (cancelled) return;
+        setBetsById(new Map(bets.map((bet) => [bet.id, bet])));
       } catch (loadError) {
         if (cancelled) return;
         console.error("Erro ao carregar tasks OS:", loadError);
@@ -177,6 +186,7 @@ export default function OsTasksPage() {
         <ul className="space-y-3">
           {filteredTasks.map((task) => {
             const project = task.project_id ? projectsById.get(task.project_id) : null;
+            const linkedBet = task.bet_id ? betsById.get(task.bet_id) : null;
 
             return (
               <li
@@ -208,6 +218,11 @@ export default function OsTasksPage() {
                         Sem projeto
                       </span>
                     )}
+                    {linkedBet ? (
+                      <span className="inline-flex rounded-full border border-[#FF0000]/30 bg-[#FF0000]/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#FF0000]">
+                        Pitch: {linkedBet.title}
+                      </span>
+                    ) : null}
                     {task.is_maintenance ? (
                       <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-800">
                         Manutenção

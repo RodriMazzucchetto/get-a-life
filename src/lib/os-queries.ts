@@ -53,6 +53,7 @@ export interface OsBlockView {
   block: OsBlockRow
   goal: OsGoalRow | null
   bets: OsBetRow[]
+  priorityBet: OsBetRow | null
 }
 
 export interface OsProjectDashboardData {
@@ -333,11 +334,13 @@ export async function fetchOsProjectDashboard(
         goal && activeCycle
           ? await fetchOsBetsForGoalAndCycle(goal.id, activeCycle.id)
           : []
+      const priorityBet = goal ? await fetchPriorityBetForGoal(goal.id) : null
 
       return {
         block,
         goal,
         bets,
+        priorityBet,
       }
     })
   )
@@ -383,11 +386,72 @@ export async function fetchOsBetsForGoal(goalId: string): Promise<OsBetRow[]> {
 
 function sortOsBetsByPosition(bets: OsBetRow[]): OsBetRow[] {
   return [...bets].sort((a, b) => {
+    if (a.is_priority !== b.is_priority) return a.is_priority ? -1 : 1
     const posA = a.pos ?? Number.MAX_SAFE_INTEGER
     const posB = b.pos ?? Number.MAX_SAFE_INTEGER
     if (posA !== posB) return posA - posB
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   })
+}
+
+export function partitionBetsByPriority(bets: OsBetRow[]): OsBetRow[] {
+  const priority = bets.filter((bet) => bet.is_priority)
+  const rest = bets.filter((bet) => !bet.is_priority)
+  return [...priority, ...rest]
+}
+
+export async function fetchPriorityBetForGoal(goalId: string): Promise<OsBetRow | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_bets')
+    .select('*')
+    .eq('goal_id', goalId)
+    .eq('is_priority', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Erro ao buscar pitch prioritário:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function setOsBetPriority(
+  betId: string,
+  goalId: string,
+  isPriority: boolean
+): Promise<OsBetRow> {
+  const supabase = createClient()
+
+  if (isPriority) {
+    const { error: clearError } = await supabase
+      .from('os_bets')
+      .update({ is_priority: false, updated_at: new Date().toISOString() })
+      .eq('goal_id', goalId)
+      .neq('id', betId)
+
+    if (clearError) {
+      console.error('Erro ao limpar prioridade de outros pitches:', clearError)
+      throw clearError
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('os_bets')
+    .update({ is_priority: isPriority, updated_at: new Date().toISOString() })
+    .eq('id', betId)
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao definir prioridade do pitch:', error)
+    throw error
+  }
+
+  return data
 }
 
 export function computeNextPitchPos(bets: OsBetRow[]): number {
@@ -412,7 +476,14 @@ export async function fetchOsPitchBoard(userId: string, projectId: string): Prom
         }
       }
 
-      return { block, goal, bets }
+      const priorityBet =
+        goal && bets.length > 0
+          ? (bets.find((bet) => bet.is_priority) ?? null)
+          : goal
+            ? await fetchPriorityBetForGoal(goal.id).catch(() => null)
+            : null
+
+      return { block, goal, bets, priorityBet }
     })
   )
 
@@ -465,6 +536,7 @@ export async function updateOsBet(
     executionOwner?: string | null
     goalId?: string
     pos?: number | null
+    isPriority?: boolean
   }
 ): Promise<OsBetRow> {
   const supabase = createClient()
@@ -476,6 +548,7 @@ export async function updateOsBet(
   if (updates.executionOwner !== undefined) payload.execution_owner = updates.executionOwner
   if (updates.goalId !== undefined) payload.goal_id = updates.goalId
   if (updates.pos !== undefined) payload.pos = updates.pos
+  if (updates.isPriority !== undefined) payload.is_priority = updates.isPriority
 
   const { data, error } = await supabase
     .from('os_bets')
@@ -519,4 +592,77 @@ export async function reorderOsBetsInGoal(orderedIds: string[]): Promise<void> {
     console.error('Erro ao reordenar pitches OS:', failed.error)
     throw failed.error
   }
+}
+
+export async function fetchOsTasksForBet(betId: string): Promise<OsTaskRow[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_tasks')
+    .select('*')
+    .eq('bet_id', betId)
+    .order('pos', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Erro ao buscar tasks do pitch:', error)
+    throw error
+  }
+
+  return data ?? []
+}
+
+export async function createOsTask(
+  userId: string,
+  input: {
+    projectId: string
+    betId: string
+    title: string
+    description?: string
+  }
+): Promise<OsTaskRow> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_tasks')
+    .insert({
+      user_id: userId,
+      project_id: input.projectId,
+      bet_id: input.betId,
+      title: input.title,
+      description: input.description ?? null,
+      is_maintenance: false,
+      status: 'todo',
+    })
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao criar task OS:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteOsTask(taskId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase.from('os_tasks').delete().eq('id', taskId)
+
+  if (error) {
+    console.error('Erro ao excluir task OS:', error)
+    throw error
+  }
+}
+
+export async function fetchOsBetsByIds(betIds: string[]): Promise<OsBetRow[]> {
+  if (betIds.length === 0) return []
+
+  const supabase = createClient()
+  const { data, error } = await supabase.from('os_bets').select('*').in('id', betIds)
+
+  if (error) {
+    console.error('Erro ao buscar pitches por IDs:', error)
+    throw error
+  }
+
+  return data ?? []
 }

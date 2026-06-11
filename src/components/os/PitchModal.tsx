@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
+import { PitchPriorityToggle } from "@/components/os/PitchPriorityToggle";
 import { OS_BLOCK_DOT_COLORS, OS_BLOCK_LABELS, OS_BLOCK_TYPES } from "@/lib/os-queries";
-import type { OsBetRow, OsBlockType } from "@/lib/os-types";
+import type { OsBetRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
 
 export interface PitchBlockGoal {
   id: string;
@@ -24,6 +25,13 @@ interface PitchModalProps {
   pitch: OsBetRow | null;
   initialBlockType?: OsBlockType;
   blockGoals: Record<OsBlockType, PitchBlockGoal | null>;
+  isPriority: boolean;
+  onTogglePriority: () => Promise<void>;
+  pitchTasks: OsTaskRow[];
+  tasksLoading: boolean;
+  onAddTask: (title: string) => Promise<void>;
+  onDeleteTask: (taskId: string) => Promise<void>;
+  priorityLoading: boolean;
   onSave: (data: PitchFormData) => Promise<void>;
   onDelete?: (pitchId: string) => Promise<void>;
   saving: boolean;
@@ -43,12 +51,21 @@ export function PitchModal({
   pitch,
   initialBlockType,
   blockGoals,
+  isPriority,
+  onTogglePriority,
+  pitchTasks,
+  tasksLoading,
+  onAddTask,
+  onDeleteTask,
+  priorityLoading,
   onSave,
   onDelete,
   saving,
 }: PitchModalProps) {
   const [form, setForm] = useState<PitchFormData>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
   const isEditing = pitch !== null;
 
   useEffect(() => {
@@ -68,6 +85,7 @@ export function PitchModal({
         blockType: initialBlockType ?? "finance",
       });
     }
+    setNewTaskTitle("");
     setError(null);
   }, [open, pitch, initialBlockType]);
 
@@ -93,6 +111,20 @@ export function PitchModal({
     await onDelete(pitch.id);
   };
 
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim()) return;
+    setAddingTask(true);
+    setError(null);
+    try {
+      await onAddTask(newTaskTitle.trim());
+      setNewTaskTitle("");
+    } catch {
+      setError("Não foi possível adicionar a task.");
+    } finally {
+      setAddingTask(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -106,17 +138,33 @@ export function PitchModal({
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="border-b-2 border-black px-6 py-5 text-center">
-          <h2 id="pitch-modal-title" className="text-xl font-bold uppercase tracking-[0.12em]">
-            {isEditing ? "EDIT PITCH" : "SUBMIT PITCH"}
-          </h2>
-          {!isEditing ? (
-            <p className="mt-3 text-left text-xs font-bold normal-case leading-relaxed">
-              <span className="uppercase">Non-negotiable rule:</span> The Decision Pitch Worksheet
-              must be completed in full. If you can&apos;t clearly articulate the idea, the execution
-              plan, and why it matters, the conversation stops here.
-            </p>
-          ) : null}
+        <div className="border-b-2 border-black px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1 text-center">
+              <h2 id="pitch-modal-title" className="text-xl font-bold uppercase tracking-[0.12em]">
+                {isEditing ? "EDIT PITCH" : "SUBMIT PITCH"}
+              </h2>
+              {!isEditing ? (
+                <p className="mt-3 text-left text-xs font-bold normal-case leading-relaxed">
+                  <span className="uppercase">Non-negotiable rule:</span> The Decision Pitch Worksheet
+                  must be completed in full. If you can&apos;t clearly articulate the idea, the
+                  execution plan, and why it matters, the conversation stops here.
+                </p>
+              ) : null}
+            </div>
+            {isEditing ? (
+              <div className="flex shrink-0 flex-col items-center gap-1">
+                <PitchPriorityToggle
+                  isPriority={isPriority}
+                  disabled={priorityLoading || saving}
+                  onToggle={() => void onTogglePriority()}
+                />
+                <span className="text-[10px] font-bold uppercase tracking-wide text-black/60">
+                  Prioridade
+                </span>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="space-y-8 px-6 py-6 normal-case">
@@ -129,7 +177,6 @@ export function PitchModal({
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
               className="w-full border-2 border-black bg-white px-3 py-2.5 text-sm outline-none focus:bg-black/[0.03]"
-              placeholder=""
             />
           </label>
 
@@ -150,10 +197,7 @@ export function PitchModal({
                         selected ? "bg-black text-white" : "bg-white text-black hover:bg-black/5"
                       }`}
                     >
-                      <span
-                        className="material-symbols-outlined text-[18px]"
-                        aria-hidden
-                      >
+                      <span className="material-symbols-outlined text-[18px]" aria-hidden>
                         {selected ? "check_box" : "check_box_outline_blank"}
                       </span>
                       <span className="flex items-center gap-1.5">
@@ -245,6 +289,64 @@ export function PitchModal({
               Upload em breve
             </div>
           </div>
+
+          {isEditing && isPriority ? (
+            <section className="border-t-2 border-black pt-6">
+              <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">Tasks do pitch</h3>
+              <p className="mb-4 text-xs text-black/70">
+                Adicione tasks de execução. Aparecem em Tasks OS com a tag do projeto e deste pitch.
+              </p>
+
+              {tasksLoading ? (
+                <p className="text-xs text-black/50">Carregando tasks...</p>
+              ) : pitchTasks.length > 0 ? (
+                <ul className="mb-4 space-y-2">
+                  {pitchTasks.map((task) => (
+                    <li
+                      key={task.id}
+                      className="flex items-center justify-between gap-2 border-2 border-black px-3 py-2"
+                    >
+                      <span className="text-sm font-bold">{task.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => void onDeleteTask(task.id)}
+                        className="text-[#FF0000] transition-opacity hover:opacity-70"
+                        aria-label="Excluir task"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mb-4 text-xs text-black/50">Nenhuma task ainda.</p>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTaskTitle}
+                  onChange={(event) => setNewTaskTitle(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleAddTask();
+                    }
+                  }}
+                  placeholder="Nova task..."
+                  className="min-w-0 flex-1 border-2 border-black bg-white px-3 py-2 text-sm outline-none focus:bg-black/[0.03]"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleAddTask()}
+                  disabled={addingTask || !newTaskTitle.trim()}
+                  className="shrink-0 border-2 border-black bg-black px-4 py-2 text-sm font-bold uppercase text-white hover:bg-black/85 disabled:opacity-50"
+                >
+                  Adicionar
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           {error ? <p className="text-sm font-bold text-[#FF0000]">{error}</p> : null}
 

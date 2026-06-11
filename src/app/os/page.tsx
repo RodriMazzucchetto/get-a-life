@@ -110,6 +110,22 @@ function OsBlockColumn({
           <p style={{ color: OS_RED }}>FAILED: {stats.failed}</p>
           <p style={{ color: OS_RED }}>FAILURE RATE: {stats.failureRate}%</p>
         </div>
+
+        {blockView.priorityBet ? (
+          <div className="mt-4 border-t-2 border-black pt-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF0000]">
+              Pitch prioritário
+            </p>
+            <div className="border-2 border-[#FF0000] bg-white px-3 py-2.5">
+              <p className="text-sm font-bold normal-case leading-snug">{blockView.priorityBet.title}</p>
+              {blockView.priorityBet.pitch_outcome ? (
+                <p className="mt-1 line-clamp-2 text-xs font-bold normal-case text-black/60">
+                  {blockView.priorityBet.pitch_outcome}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
     </article>
   );

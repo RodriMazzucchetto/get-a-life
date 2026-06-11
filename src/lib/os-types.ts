@@ -55,6 +55,7 @@ export interface OsBetRow {
   effort_score: number | null
   priority_score: number | null
   status: OsBetStatus
+  is_priority: boolean
   pos: number | null
   execution_owner: string | null
   created_at: string
@@ -127,6 +128,7 @@ export interface OsBetInsert {
   impact_score?: number | null
   effort_score?: number | null
   status?: OsBetStatus
+  is_priority?: boolean
   pos?: number | null
   execution_owner?: string | null
   created_at?: string

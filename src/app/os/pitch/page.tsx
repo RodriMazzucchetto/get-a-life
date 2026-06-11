@@ -22,6 +22,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
+import { PitchPriorityToggle } from "@/components/os/PitchPriorityToggle";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useOsLayout } from "@/contexts/OsLayoutContext";
 import {
@@ -30,24 +31,33 @@ import {
   OS_BLOCK_TYPES,
   computeNextPitchPos,
   createOsBet,
+  createOsTask,
   deleteOsBet,
+  deleteOsTask,
   fetchOsPitchBoard,
+  fetchOsTasksForBet,
+  partitionBetsByPriority,
   reorderOsBetsInGoal,
+  setOsBetPriority,
   updateOsBet,
   type OsBlockView,
 } from "@/lib/os-queries";
-import type { OsBetRow, OsBlockType } from "@/lib/os-types";
+import type { OsBetRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
 
 function SortablePitchCard({
   bet,
   onOpen,
   onDelete,
+  onTogglePriority,
   deleting,
+  priorityLoading,
 }: {
   bet: OsBetRow;
   onOpen: (bet: OsBetRow) => void;
   onDelete: (betId: string) => void;
+  onTogglePriority: (bet: OsBetRow) => void;
   deleting: boolean;
+  priorityLoading: boolean;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: bet.id });
@@ -62,7 +72,7 @@ function SortablePitchCard({
     <article
       ref={setNodeRef}
       style={style}
-      className="group border-2 border-black bg-white"
+      className={`group border-2 bg-white ${bet.is_priority ? "border-[#FF0000]" : "border-black"}`}
     >
       <div className="flex items-stretch">
         <button
@@ -75,12 +85,26 @@ function SortablePitchCard({
         >
           <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
         </button>
+        <div className="flex shrink-0 items-center border-r-2 border-black px-2">
+          <PitchPriorityToggle
+            isPriority={bet.is_priority}
+            disabled={priorityLoading}
+            onToggle={() => onTogglePriority(bet)}
+          />
+        </div>
         <button
           type="button"
           onClick={() => onOpen(bet)}
           className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5 text-left transition-colors hover:bg-black/[0.03]"
         >
-          <span className="truncate text-sm font-bold normal-case">{bet.title}</span>
+          <span className="flex items-center gap-2 truncate text-sm font-bold normal-case">
+            {bet.is_priority ? (
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#FF0000]">
+                Prioridade
+              </span>
+            ) : null}
+            <span className="truncate">{bet.title}</span>
+          </span>
           {bet.pitch_outcome ? (
             <span className="line-clamp-2 text-xs normal-case text-black/60">
               {bet.pitch_outcome}
@@ -108,12 +132,16 @@ function PitchColumn({
   blockView,
   onOpenPitch,
   onDeletePitch,
+  onTogglePriority,
   deletingId,
+  priorityLoadingId,
 }: {
   blockView: OsBlockView;
   onOpenPitch: (bet: OsBetRow, blockType: OsBlockType) => void;
   onDeletePitch: (betId: string) => void;
+  onTogglePriority: (bet: OsBetRow, blockType: OsBlockType) => void;
   deletingId: string | null;
+  priorityLoadingId: string | null;
 }) {
   const blockType = blockView.block.type as OsBlockType;
   const blockLabel = OS_BLOCK_LABELS[blockType];
@@ -152,7 +180,9 @@ function PitchColumn({
                   bet={bet}
                   onOpen={() => onOpenPitch(bet, blockType)}
                   onDelete={onDeletePitch}
+                  onTogglePriority={() => onTogglePriority(bet, blockType)}
                   deleting={deletingId === bet.id}
+                  priorityLoading={priorityLoadingId === bet.id}
                 />
               ))
             )}
@@ -178,7 +208,11 @@ export default function OsPitchPage() {
   const [editingBlockType, setEditingBlockType] = useState<OsBlockType>("finance");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [priorityLoadingId, setPriorityLoadingId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [pitchTasks, setPitchTasks] = useState<OsTaskRow[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [modalPriority, setModalPriority] = useState(false);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -234,10 +268,25 @@ export default function OsPitchPage() {
     return goals;
   }, [orderedBlocks]);
 
+  const loadPitchTasks = useCallback(async (betId: string) => {
+    setTasksLoading(true);
+    try {
+      const tasks = await fetchOsTasksForBet(betId);
+      setPitchTasks(tasks);
+    } catch (taskError) {
+      console.error("Erro ao carregar tasks do pitch:", taskError);
+      setPitchTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, []);
+
   const openCreateModal = () => {
     void loadBoard().finally(() => {
       setEditingPitch(null);
       setEditingBlockType("finance");
+      setModalPriority(false);
+      setPitchTasks([]);
       setModalOpen(true);
     });
   };
@@ -245,17 +294,65 @@ export default function OsPitchPage() {
   const openEditModal = (bet: OsBetRow, blockType: OsBlockType) => {
     setEditingPitch(bet);
     setEditingBlockType(blockType);
+    setModalPriority(bet.is_priority);
     setModalOpen(true);
+    void loadPitchTasks(bet.id);
   };
 
   const closeModal = () => {
     setModalOpen(false);
     setEditingPitch(null);
+    setPitchTasks([]);
+    setModalPriority(false);
   };
 
   const resolveGoalId = (blockType: OsBlockType): string | null => {
     const blockView = orderedBlocks.find((view) => view.block.type === blockType);
     return blockView?.goal?.id ?? null;
+  };
+
+  const handleTogglePriority = async (bet: OsBetRow, blockType: OsBlockType) => {
+    const goalId = resolveGoalId(blockType);
+    if (!goalId) return;
+
+    setPriorityLoadingId(bet.id);
+    setError(null);
+    try {
+      const updated = await setOsBetPriority(bet.id, goalId, !bet.is_priority);
+      if (editingPitch?.id === bet.id) {
+        setEditingPitch(updated);
+        setModalPriority(updated.is_priority);
+        if (updated.is_priority) void loadPitchTasks(bet.id);
+        else setPitchTasks([]);
+      }
+      await loadBoard();
+    } catch (priorityError) {
+      console.error("Erro ao alterar prioridade:", priorityError);
+      setError("Não foi possível alterar a prioridade do pitch.");
+    } finally {
+      setPriorityLoadingId(null);
+    }
+  };
+
+  const handleModalTogglePriority = async () => {
+    if (!editingPitch) return;
+    await handleTogglePriority(editingPitch, editingBlockType);
+  };
+
+  const handleAddTask = async (title: string) => {
+    if (!user || !editingPitch || !selectedProjectId) return;
+
+    await createOsTask(user.id, {
+      projectId: selectedProjectId,
+      betId: editingPitch.id,
+      title,
+    });
+    await loadPitchTasks(editingPitch.id);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    await deleteOsTask(taskId);
+    if (editingPitch) await loadPitchTasks(editingPitch.id);
   };
 
   const handleSavePitch = async (data: PitchFormData) => {
@@ -331,12 +428,14 @@ export default function OsPitchPage() {
     const newIndex = column.bets.findIndex((bet) => bet.id === overId);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const reordered = arrayMove(column.bets, oldIndex, newIndex);
+    const reordered = partitionBetsByPriority(arrayMove(column.bets, oldIndex, newIndex));
     const orderedIds = reordered.map((bet) => bet.id);
 
     setBoard((prev) =>
       prev.map((blockView) =>
-        blockView.block.id === column.block.id ? { ...blockView, bets: reordered } : blockView
+        blockView.block.id === column.block.id
+          ? { ...blockView, bets: reordered, priorityBet: reordered.find((bet) => bet.is_priority) ?? null }
+          : blockView
       )
     );
 
@@ -398,7 +497,9 @@ export default function OsPitchPage() {
                 blockView={blockView}
                 onOpenPitch={openEditModal}
                 onDeletePitch={(betId) => void handleDeletePitch(betId)}
+                onTogglePriority={(bet, blockType) => void handleTogglePriority(bet, blockType)}
                 deletingId={deletingId}
+                priorityLoadingId={priorityLoadingId}
               />
             ))}
           </div>
@@ -419,6 +520,13 @@ export default function OsPitchPage() {
         pitch={editingPitch}
         initialBlockType={editingBlockType}
         blockGoals={blockGoals}
+        isPriority={modalPriority}
+        onTogglePriority={handleModalTogglePriority}
+        pitchTasks={pitchTasks}
+        tasksLoading={tasksLoading}
+        onAddTask={handleAddTask}
+        onDeleteTask={handleDeleteTask}
+        priorityLoading={priorityLoadingId === editingPitch?.id}
         onSave={handleSavePitch}
         onDelete={editingPitch ? (id) => handleDeletePitch(id) : undefined}
         saving={saving}
