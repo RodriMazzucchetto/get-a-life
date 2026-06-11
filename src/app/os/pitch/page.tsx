@@ -62,7 +62,7 @@ function SortablePitchCard({
     <article
       ref={setNodeRef}
       style={style}
-      className="border-2 border-black bg-white"
+      className="group border-2 border-black bg-white"
     >
       <div className="flex items-stretch">
         <button
@@ -94,7 +94,7 @@ function SortablePitchCard({
             if (window.confirm("Excluir este pitch?")) onDelete(bet.id);
           }}
           disabled={deleting}
-          className="flex shrink-0 items-center border-l-2 border-black px-2 text-[#FF0000] transition-colors hover:bg-[#FF0000]/5 disabled:opacity-50"
+          className="flex max-w-0 shrink-0 items-center overflow-hidden border-l-0 px-0 text-[#FF0000] opacity-0 transition-all duration-150 hover:bg-[#FF0000]/5 focus:max-w-[2.5rem] focus:border-l-2 focus:border-black focus:px-2 focus:opacity-100 disabled:opacity-50 group-hover:max-w-[2.5rem] group-hover:border-l-2 group-hover:border-black group-hover:px-2 group-hover:opacity-100"
           aria-label="Excluir pitch"
         >
           <span className="material-symbols-outlined text-[18px]">delete</span>
