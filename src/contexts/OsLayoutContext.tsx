@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -76,12 +77,12 @@ export function useOsLayout() {
 export const useOsData = useOsLayout;
 
 export function OsProjectProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthContext();
+  const { user, loading: authLoading } = useAuthContext();
   const userId = user?.id ?? null;
 
   const [projects, setProjects] = useState<OsProjectOption[]>([]);
   const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
   const [board, setBoard] = useState<OsBlockView[]>([]);
@@ -348,7 +349,14 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
     [userId]
   );
 
+  useLayoutEffect(() => {
+    if (!userId || authLoading) return;
+    hydrateFromCache(userId);
+  }, [userId, authLoading, hydrateFromCache]);
+
   useEffect(() => {
+    if (authLoading) return;
+
     if (!userId) {
       setProjects([]);
       setSelectedProjectIdState(null);
@@ -363,15 +371,14 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    hydrateFromCache(userId);
     void loadCompanies();
     void refreshTasks({ background: true });
-  }, [userId, hydrateFromCache, loadCompanies, refreshTasks]);
+  }, [userId, authLoading, loadCompanies, refreshTasks]);
 
   useEffect(() => {
-    if (!userId || !selectedProjectId) return;
+    if (!userId || authLoading || !selectedProjectId) return;
     void refreshBoard({ background: true });
-  }, [userId, selectedProjectId, refreshBoard]);
+  }, [userId, authLoading, selectedProjectId, refreshBoard]);
 
   const contextValue = useMemo(
     () => ({

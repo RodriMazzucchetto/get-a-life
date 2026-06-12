@@ -31,7 +31,7 @@ import {
   type OsBlockView,
 } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
-import { osBtnGhost, osBtnPrimary, osCard, osDivider, osEmptyState, osErrorBanner, osInput, osLabelMuted, osPage } from "@/lib/os-ui";
+import { osBtnGhost, osBtnPrimary, osCard, osDivider, osEmptyState, osErrorBanner, osGoalText, osInput, osLabelMuted, osPage } from "@/lib/os-ui";
 
 function OsProgressBar({
   label,
@@ -85,14 +85,18 @@ function PillarSelectorBar({
   fillColor: string;
   hasActivePitch: boolean;
 }) {
+  const displayGoal = goalTitle || "Definir meta";
+
   return (
-    <div className="flex min-w-0 flex-col">
+    <div
+      className={`min-w-0 ${osCard} ${
+        selected ? "outline outline-2 outline-ta-cyan -outline-offset-2" : ""
+      }`}
+    >
       <button
         type="button"
         onClick={onSelect}
-        className={`flex overflow-hidden ${osCard} transition-opacity ${
-          selected ? "outline outline-2 outline-ta-cyan -outline-offset-2" : "opacity-90 hover:opacity-100"
-        }`}
+        className="flex w-full min-w-0 border-0 bg-transparent p-0 text-inherit transition-opacity hover:opacity-95"
         aria-pressed={selected}
       >
         <div
@@ -101,7 +105,7 @@ function PillarSelectorBar({
         >
           {label}
         </div>
-        <div className="relative flex min-h-[46px] flex-1 items-center bg-ta-paper">
+        <div className="relative flex min-h-[46px] min-w-0 flex-1 items-center bg-ta-paper">
           {pct > 0 ? (
             <div
               className="absolute inset-y-0 left-0 flex items-center justify-end px-3 text-sm font-bold text-white"
@@ -116,14 +120,23 @@ function PillarSelectorBar({
           </span>
         </div>
       </button>
-      <button
-        type="button"
-        onClick={onEditGoal}
-        className="mt-1.5 block w-full min-w-0 whitespace-normal break-words text-left text-xs font-bold normal-case leading-snug text-ta-muted hover:text-ta-ink"
-        title={goalTitle || "Definir meta"}
-      >
-        {goalTitle || "Definir meta"}
-      </button>
+      <div className={`border-t ${osDivider}`}>
+        <p
+          role="button"
+          tabIndex={0}
+          onClick={onEditGoal}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onEditGoal();
+            }
+          }}
+          className={osGoalText}
+          title={displayGoal}
+        >
+          {displayGoal}
+        </p>
+      </div>
     </div>
   );
 }
@@ -141,11 +154,12 @@ function OsPageContent() {
     board,
     latestUpdates,
     boardReady,
-    boardLoading,
+    boardRefreshing,
     boardError,
     refreshBoard,
     setLatestUpdates,
   } = useOsLayout();
+  const { loading: authLoading } = useAuthContext();
   const [error, setError] = useState<string | null>(null);
   const [selectedPillar, setSelectedPillar] = useState<OsBlockType>("finance");
   const [expandedBetId, setExpandedBetId] = useState<string | null>(null);
@@ -413,8 +427,11 @@ function OsPageContent() {
         <div className={osErrorBanner}>{error ?? boardError}</div>
       ) : null}
 
-      {(loadingProjects && projects.length === 0) ||
-      (!boardReady && boardLoading && board.length === 0) ? (
+      {boardRefreshing && board.length > 0 ? (
+        <p className={`mb-3 text-center ${osLabelMuted} normal-case`}>Atualizando…</p>
+      ) : null}
+
+      {authLoading || (loadingProjects && projects.length === 0 && !boardReady) ? (
         <div className={osEmptyState}>Carregando OS...</div>
       ) : !selectedProjectId ? (
         <div className={osEmptyState}>Selecione uma empresa para visualizar o OS.</div>

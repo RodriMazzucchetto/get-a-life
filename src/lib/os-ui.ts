@@ -46,5 +46,9 @@ export const osLabelMuted =
 export const osIconBtn =
   "flex items-center justify-center p-1.5 text-ta-muted transition-colors hover:bg-ta-paper-2 hover:text-ta-ink";
 
+export const osGoalText =
+  "os-goal-text block w-full min-w-0 cursor-pointer px-3 py-2.5 text-left text-xs font-bold normal-case leading-relaxed text-ta-muted transition-colors hover:bg-ta-paper-2 hover:text-ta-ink";
+
 export const osIconBtnDanger =
   "flex items-center justify-center p-1.5 text-ta-red/80 transition-colors hover:bg-red-50 hover:text-ta-red";
+

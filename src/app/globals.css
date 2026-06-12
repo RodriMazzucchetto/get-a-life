@@ -91,11 +91,14 @@
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+.os-goal-text {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
+
 
 .material-symbols-outlined {
   font-variation-settings:
