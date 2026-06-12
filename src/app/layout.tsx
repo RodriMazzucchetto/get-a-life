@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Manrope } from "next/font/google";
+import { Geist_Mono, IBM_Plex_Mono, IBM_Plex_Sans, Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { EnvCheck } from "@/components/EnvCheck";
@@ -7,6 +7,18 @@ import { EnvCheck } from "@/components/EnvCheck";
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ibm-plex-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 const manrope = Manrope({
@@ -22,7 +34,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TaskArchitect — Planejamento e tarefas",
+  title: "Task Architect — Planejamento e tarefas",
   description:
     "Organize projetos, metas e tarefas com precisão. Gestão de produtividade para quem arquiteta o próprio tempo.",
 };
@@ -41,7 +53,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${manrope.variable} ${inter.variable} ${geistMono.variable} font-body antialiased selection:bg-secondary-container selection:text-on-secondary-fixed`}
+        className={`${manrope.variable} ${inter.variable} ${geistMono.variable} ${ibmPlexMono.variable} ${ibmPlexSans.variable} font-body antialiased selection:bg-secondary-container selection:text-on-secondary-fixed`}
       >
         <EnvCheck>
           <AuthProvider>{children}</AuthProvider>

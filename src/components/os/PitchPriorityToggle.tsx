@@ -23,9 +23,9 @@ function PitchPriorityToggle({
       }}
       onPointerDown={(event) => event.stopPropagation()}
       disabled={disabled}
-      className={`flex ${boxSize} shrink-0 items-center justify-center border-2 border-black transition-colors focus:outline-none ${
-        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-black/[0.04]"
-      } ${isPriority ? "bg-black" : "bg-white"}`}
+      className={`flex ${boxSize} shrink-0 items-center justify-center border-[1.5px] border-ta-ink transition-colors focus:outline-none ${
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-ta-paper-2"
+      } ${isPriority ? "bg-ta-ink" : "bg-ta-paper"}`}
       title={
         isPriority
           ? "Pitch em execução — clique para remover"
@@ -35,9 +35,9 @@ function PitchPriorityToggle({
       aria-label={isPriority ? "Remover prioridade de execução" : "Marcar como em execução"}
     >
       {isPriority ? (
-        <span className={`block ${dotSize} bg-white`} aria-hidden />
+        <span className={`block ${dotSize} bg-ta-cyan`} aria-hidden />
       ) : (
-        <span className={`block ${dotSize} border border-black/20`} aria-hidden />
+        <span className={`block ${dotSize} border border-ta-ink/30`} aria-hidden />
       )}
     </button>
   );

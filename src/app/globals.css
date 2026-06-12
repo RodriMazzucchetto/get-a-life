@@ -3,6 +3,17 @@
 :root {
   --background: #f8f9fb;
   --foreground: #191c1e;
+
+  /* Task Architect v0.1 */
+  --ta-ink: #0a0a0a;
+  --ta-paper: #fafaf7;
+  --ta-paper-2: #f1ede1;
+  --ta-rule-2: #d8d4c8;
+  --ta-muted: #8a857a;
+  --ta-cyan: #1ec7eb;
+  --ta-red: #e7252b;
+  --ta-amber: #ffd400;
+  --ta-green: #18b46b;
 }
 
 @theme inline {
@@ -55,10 +66,22 @@
   --color-inverse-on-surface: #f0f1f3;
   --color-inverse-primary: #b8c4ff;
 
+  /* Task Architect v0.1 */
+  --color-ta-ink: #0a0a0a;
+  --color-ta-paper: #fafaf7;
+  --color-ta-paper-2: #f1ede1;
+  --color-ta-rule-2: #d8d4c8;
+  --color-ta-muted: #8a857a;
+  --color-ta-cyan: #1ec7eb;
+  --color-ta-red: #e7252b;
+  --color-ta-amber: #ffd400;
+  --color-ta-green: #18b46b;
+
   --font-headline: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-ibm-plex-mono), var(--font-geist-mono), ui-monospace, monospace;
+  --font-ta-sans: var(--font-ibm-plex-sans), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {

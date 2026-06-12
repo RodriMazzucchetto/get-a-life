@@ -25,11 +25,11 @@ export function OsPitchExecutionRow({
 
   return (
     <div className={`border-b last:border-b-0 ${osDivider}`}>
-      <div className="flex items-stretch bg-white">
+      <div className="flex items-stretch bg-ta-paper">
         <button
           type="button"
           onClick={onToggleExpand}
-          className={`flex w-10 shrink-0 items-center justify-center border-r hover:bg-black/[0.03] ${osDivider}`}
+          className={`flex w-10 shrink-0 items-center justify-center border-r hover:bg-ta-paper-2 ${osDivider}`}
           aria-expanded={expanded}
           aria-label={expanded ? "Recolher update" : "Expandir último update"}
         >
@@ -44,11 +44,11 @@ export function OsPitchExecutionRow({
         <button
           type="button"
           onClick={onOpenPitch}
-          className={`flex min-w-0 items-center gap-2 border-r px-4 py-3 text-left hover:bg-black/[0.03] ${osDivider}`}
+          className={`flex min-w-0 items-center gap-2 border-r px-4 py-3 text-left hover:bg-ta-paper-2 ${osDivider}`}
         >
           {bet.is_priority ? (
             <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center bg-black text-xs font-bold text-white"
+              className="flex h-5 w-5 shrink-0 items-center justify-center bg-ta-ink text-xs font-bold text-ta-paper"
               title="Pitch prioritário"
               aria-label="Pitch prioritário"
             >
@@ -71,7 +71,7 @@ export function OsPitchExecutionRow({
             e.stopPropagation();
             onAddWeeklyUpdate();
           }}
-          className={`flex w-12 shrink-0 items-center justify-center border-l hover:bg-black/[0.03] ${osDivider}`}
+          className={`flex w-12 shrink-0 items-center justify-center border-l hover:bg-ta-paper-2 ${osDivider}`}
           title="Adicionar weekly update"
           aria-label="Adicionar weekly update"
         >
@@ -80,21 +80,21 @@ export function OsPitchExecutionRow({
       </div>
 
       {expanded && latestUpdate ? (
-        <div className="border-t bg-black/[0.02] px-4 py-3 pl-14 normal-case border-black/[0.06]">
+        <div className={`border-t bg-ta-paper-2 px-4 py-3 pl-14 normal-case ${osDivider}`}>
           <p className={`mb-1 ${osLabelMuted}`}>Último update — semana {latestUpdate.week_start}</p>
           {latestUpdate.what_done ? (
-            <p className="text-sm text-black/80">{latestUpdate.what_done}</p>
+            <p className="text-sm text-ta-ink/80">{latestUpdate.what_done}</p>
           ) : (
             <p className={`text-sm ${osLabelMuted}`}>Sem descrição.</p>
           )}
           {latestUpdate.blockers ? (
-            <p className="mt-2 text-xs text-black/60">
+            <p className="mt-2 text-xs text-ta-muted">
               <span className="font-bold uppercase">Blockers:</span> {latestUpdate.blockers}
             </p>
           ) : null}
         </div>
       ) : expanded ? (
-        <div className="border-t bg-black/[0.02] px-4 py-3 pl-14 normal-case border-black/[0.06]">
+        <div className={`border-t bg-ta-paper-2 px-4 py-3 pl-14 normal-case ${osDivider}`}>
           <p className={`text-sm ${osLabelMuted}`}>Nenhum weekly update ainda.</p>
           <button
             type="button"

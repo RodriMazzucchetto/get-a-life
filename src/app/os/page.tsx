@@ -56,7 +56,7 @@ function OsProgressBar({
       >
         {label}: {value}
       </div>
-      <div className="relative flex min-h-[42px] flex-1 bg-white">
+      <div className="relative flex min-h-[42px] flex-1 bg-ta-paper">
         <div
           className="ml-auto flex items-center justify-center text-sm font-bold text-white"
           style={{ width: fillWidth, backgroundColor: fillColor, minWidth: "3.5rem" }}
@@ -93,17 +93,17 @@ function PillarSelectorBar({
         type="button"
         onClick={onSelect}
         className={`flex overflow-hidden ${osCard} transition-opacity ${
-          selected ? "ring-2 ring-black/20 ring-offset-2" : "opacity-90 hover:opacity-100"
+          selected ? "outline outline-2 outline-ta-cyan -outline-offset-2" : "opacity-90 hover:opacity-100"
         }`}
         aria-pressed={selected}
       >
         <div
-          className="flex shrink-0 items-center bg-black px-4 py-3 text-sm font-bold text-white"
+          className="flex shrink-0 items-center bg-ta-ink px-4 py-3 text-sm font-bold text-ta-paper"
           style={hasActivePitch ? { boxShadow: `inset 4px 0 0 0 ${fillColor}` } : undefined}
         >
           {label}
         </div>
-        <div className="relative flex min-h-[46px] flex-1 items-center bg-white">
+        <div className="relative flex min-h-[46px] flex-1 items-center bg-ta-paper">
           {pct > 0 ? (
             <div
               className="absolute inset-y-0 left-0 flex items-center justify-end px-3 text-sm font-bold text-white"
@@ -112,7 +112,7 @@ function PillarSelectorBar({
           ) : null}
           <span
             className="relative ml-auto px-3 text-sm font-bold"
-            style={{ color: hasActivePitch ? fillColor : "#000000" }}
+            style={{ color: hasActivePitch ? fillColor : "var(--color-ta-ink)" }}
           >
             {pct}%
           </span>
@@ -121,7 +121,7 @@ function PillarSelectorBar({
       <button
         type="button"
         onClick={onEditGoal}
-        className="mt-1.5 truncate text-left text-xs font-bold normal-case text-black/60 hover:text-black"
+        className="mt-1.5 truncate text-left text-xs font-bold normal-case text-ta-muted hover:text-ta-ink"
         title="Editar meta"
       >
         {goalTitle || "Definir meta"}
@@ -447,7 +447,7 @@ function OsPageContent() {
             >
               Company execution momentum
             </div>
-            <div className="relative flex min-h-[46px] flex-1 bg-white">
+            <div className="relative flex min-h-[46px] flex-1 bg-ta-paper">
               <div
                 className="ml-auto flex items-center justify-center text-sm font-bold text-white"
                 style={{
@@ -561,7 +561,7 @@ function OsPageContent() {
         <ModalOverlay isOpen={goalModalOpen} onClose={() => setGoalModalOpen(false)}>
           <ModalPanel maxWidthClass="max-w-md">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-mono text-lg font-bold uppercase tracking-wide text-black">
+              <h2 className="font-mono text-lg font-bold uppercase tracking-wide text-ta-ink">
                 {goalDraft.title ? "Editar meta" : "Definir meta"}
               </h2>
               <button type="button" onClick={() => setGoalModalOpen(false)} aria-label="Fechar">
@@ -569,14 +569,14 @@ function OsPageContent() {
               </button>
             </div>
             <div className="space-y-4 font-mono normal-case">
-              <p className="text-sm text-black/70">
+              <p className="text-sm text-ta-muted">
                 Pilar:{" "}
-                <span className="font-bold uppercase text-black">
+                <span className="font-bold uppercase text-ta-ink">
                   {goalDraft.blockType ? OS_BLOCK_LABELS[goalDraft.blockType] : ""}
                 </span>
               </p>
               <label className="block">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-black/70">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-ta-muted">
                   Meta
                 </span>
                 <input

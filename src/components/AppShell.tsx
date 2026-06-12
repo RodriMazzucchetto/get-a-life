@@ -3,9 +3,24 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { BRANDING } from "@/lib/branding";
 import { mainNav } from "@/lib/app-navigation";
+
+const NAV_LINK_BASE =
+  "flex items-center gap-3 px-3 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.16em] transition-colors border-[1.5px]";
+
+const NAV_LINK_ACTIVE =
+  "border-ta-ink bg-ta-ink text-ta-paper";
+
+const NAV_LINK_IDLE =
+  "border-transparent text-ta-ink hover:border-ta-ink hover:bg-ta-paper-2";
+
+const FUTURE_ITEM =
+  "flex items-center gap-3 px-3 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-ta-muted/40 cursor-not-allowed select-none";
+
+const FOOTER_LINK =
+  "flex items-center gap-3 px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.14em] text-ta-muted transition-colors hover:bg-ta-paper-2 hover:text-ta-ink w-full text-left";
 
 export function AppShell({
   children,
@@ -18,6 +33,7 @@ export function AppShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, signOut } = useAuthContext();
   const router = useRouter();
+  const isOsRoute = pathname === "/os" || pathname.startsWith("/os/");
 
   const handleSignOut = async () => {
     await signOut();
@@ -40,25 +56,18 @@ export function AppShell({
     <Link
       href={href}
       onClick={onNavigate}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-        isActive
-          ? "bg-surface-container-lowest text-primary shadow-sm ring-1 ring-outline-variant/15"
-          : "text-on-surface-variant hover:bg-surface-container-high/80"
-      }`}
+      className={`${NAV_LINK_BASE} ${isActive ? NAV_LINK_ACTIVE : NAV_LINK_IDLE}`}
     >
-      <span className="material-symbols-outlined text-xl">{icon}</span>
+      <span className="material-symbols-outlined text-[18px]">{icon}</span>
       {label}
     </Link>
   );
 
-  const futureItemClass =
-    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-on-surface-variant/32 bg-surface-container-high/20 cursor-not-allowed select-none border border-transparent";
-
   const renderNav = (onNavigate?: () => void) =>
     mainNav.map((item) =>
       item.future ? (
-        <span key={item.name} title="Em breve" aria-disabled className={futureItemClass}>
-          <span className="material-symbols-outlined text-xl opacity-70">{item.icon}</span>
+        <span key={item.name} title="Em breve" aria-disabled className={FUTURE_ITEM}>
+          <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
           {item.name}
         </span>
       ) : (
@@ -74,92 +83,73 @@ export function AppShell({
     );
 
   const renderFooter = (onNavigate?: () => void) => (
-    <div className="mt-auto flex flex-col gap-2 border-t border-outline-variant/15 pt-4">
-      <a
-        href="#"
-        className="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/80 rounded-lg text-sm transition-colors"
-      >
-        <span className="material-symbols-outlined text-xl">help</span>
+    <div className="mt-auto flex flex-col gap-1 border-t-[1.5px] border-ta-ink pt-4">
+      <a href="#" className={FOOTER_LINK}>
+        <span className="material-symbols-outlined text-[18px]">help</span>
         Suporte
       </a>
       <Link
         href="/dashboard/settings"
         onClick={onNavigate}
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+        className={`${FOOTER_LINK} ${
           pathname === "/dashboard/settings"
-            ? "bg-surface-container-lowest text-primary shadow-sm ring-1 ring-outline-variant/15 font-medium"
-            : "text-on-surface-variant hover:bg-surface-container-high/80"
+            ? "border-[1.5px] border-ta-ink bg-ta-ink text-ta-paper hover:bg-ta-ink hover:text-ta-paper"
+            : ""
         }`}
       >
-        <span className="material-symbols-outlined text-xl">settings</span>
+        <span className="material-symbols-outlined text-[18px]">settings</span>
         Configurações
       </Link>
       {user?.email && (
-        <p className="text-[11px] text-on-surface-variant truncate px-2" title={user.email}>
+        <p className="truncate px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ta-muted" title={user.email}>
           {user.email}
         </p>
       )}
-      <button
-        type="button"
-        onClick={() => {
-          void handleSignOut();
-          onNavigate?.();
-        }}
-        className="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/80 rounded-lg text-sm font-medium transition-colors w-full text-left"
-      >
-        <span className="material-symbols-outlined text-xl">logout</span>
+      <button type="button" onClick={() => { void handleSignOut(); onNavigate?.(); }} className={FOOTER_LINK}>
+        <span className="material-symbols-outlined text-[18px]">logout</span>
         Sair
       </button>
     </div>
   );
 
+  const sidebarClass =
+    "flex flex-col fixed left-0 top-0 bottom-0 w-64 z-40 bg-ta-paper border-r-[1.5px] border-ta-ink pt-6 px-4 pb-6";
+
   return (
-    <div className="min-h-screen bg-background text-on-surface font-body">
+    <div className={`min-h-screen font-body ${isOsRoute ? "bg-ta-paper text-ta-ink" : "bg-background text-on-surface"}`}>
       {sidebarOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-inverse-surface/30 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-ta-ink/25 backdrop-blur-sm lg:hidden"
           aria-label="Fechar menu"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-64 z-40 bg-surface-container-low border-r border-outline-variant/15 pt-6 px-4 pb-6">
-        <div className="flex items-center mb-8 px-0 pt-1 pb-1">
-          <img
-            alt={BRANDING.name}
-            src={BRANDING.horizontal}
-            className="h-[7.5rem] w-full max-w-none object-contain object-left shrink-0 sm:h-[8.25rem]"
-            width={320}
-            height={132}
-          />
-        </div>
+      <aside className={`hidden lg:flex ${sidebarClass}`}>
+        <Link href="/dashboard" className="mb-8 px-1 pt-1 pb-1">
+          <BrandLogo variant="sidebar" />
+        </Link>
         <nav className="flex flex-col gap-1 flex-1">{renderNav()}</nav>
         {renderFooter()}
       </aside>
 
       <aside
-        className={`fixed left-0 top-0 bottom-0 w-64 z-50 flex flex-col bg-surface-container-low border-r border-outline-variant/15 p-4 pt-20 transition-transform duration-200 lg:hidden ${
+        className={`${sidebarClass} z-50 p-4 pt-20 transition-transform duration-200 lg:hidden ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <button
           type="button"
-          className="absolute top-4 right-4 p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high"
+          className="absolute top-4 right-4 p-2 text-ta-muted hover:bg-ta-paper-2 hover:text-ta-ink"
           onClick={() => setSidebarOpen(false)}
           aria-label="Fechar"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
-        <div className="flex items-center mb-8 px-0 pt-1 pb-1">
-          <img
-            alt={BRANDING.name}
-            src={BRANDING.horizontal}
-            className="h-[7.5rem] w-full max-w-none object-contain object-left shrink-0 sm:h-[8.25rem]"
-            width={320}
-            height={132}
-          />
-        </div>
+        <Link href="/dashboard" className="mb-8 px-1 pt-1 pb-1" onClick={() => setSidebarOpen(false)}>
+          <BrandLogo variant="sidebar" />
+        </Link>
         <nav className="flex flex-col gap-1 flex-1">{renderNav(() => setSidebarOpen(false))}</nav>
         {renderFooter(() => setSidebarOpen(false))}
       </aside>
@@ -167,7 +157,7 @@ export function AppShell({
       <div className="lg:pl-64 min-h-screen">
         <button
           type="button"
-          className="lg:hidden fixed top-4 left-4 z-30 p-2 rounded-lg bg-surface-container-lowest shadow-md ring-1 ring-outline-variant/15 text-on-surface"
+          className="lg:hidden fixed top-4 left-4 z-30 p-2 border-[1.5px] border-ta-ink bg-ta-paper text-ta-ink"
           onClick={() => setSidebarOpen(true)}
           aria-label="Abrir menu"
         >

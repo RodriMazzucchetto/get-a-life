@@ -1,48 +1,50 @@
-/** Tokens visuais OS — monospace, denso, bordas subtis (estilo terminal refinado). */
+/** Tokens visuais OS — Task Architect v0.1 (ink + paper, cantos retos, IBM Plex Mono). */
 
-export const osPage = "font-mono uppercase tracking-wide text-black";
+export const osPage = "font-mono uppercase tracking-wide text-ta-ink";
 
-export const osCard = "bg-white ring-1 ring-black/[0.09]";
+export const osCard = "bg-ta-paper border-[1.5px] border-ta-ink";
 
-export const osCardHeader = "border-b border-black/[0.08] px-4 py-3 md:py-3.5";
+export const osCardHeader = "border-b border-ta-ink px-4 py-3 md:py-3.5";
 
-export const osDivider = "border-black/[0.08]";
+export const osDivider = "border-ta-ink";
 
 export const osInput =
-  "border border-black/15 bg-white outline-none transition-colors focus:border-black/35 focus:bg-black/[0.02]";
+  "border-[1.5px] border-ta-ink bg-ta-paper outline-none transition-shadow focus:shadow-[inset_0_0_0_1px_var(--color-ta-cyan)]";
 
-export const osInputRow = "flex overflow-hidden rounded-sm border border-black/15 bg-white";
+export const osInputRow =
+  "flex overflow-hidden border-[1.5px] border-ta-ink bg-ta-paper";
 
 export const osBtnPrimary =
-  "bg-black px-4 py-2 text-sm font-bold uppercase text-white transition-colors hover:bg-black/85 disabled:opacity-50";
+  "border-[1.5px] border-ta-ink bg-ta-ink px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-ta-paper transition-colors hover:bg-ta-ink/90 disabled:opacity-50";
 
 export const osBtnGhost =
-  "px-4 py-2 text-sm font-bold uppercase transition-colors hover:bg-black/[0.04] disabled:opacity-50";
+  "border-[1.5px] border-ta-ink bg-ta-paper px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-ta-ink transition-colors hover:bg-ta-paper-2 disabled:opacity-50";
 
 export const osTaskRow =
-  "group relative bg-white ring-1 ring-inset ring-black/[0.07] transition-shadow hover:ring-black/15";
+  "group relative border border-ta-ink bg-ta-paper transition-colors hover:bg-ta-paper-2";
 
-export const osTaskRowOnHold = "bg-amber-50/60 ring-amber-200/50";
+export const osTaskRowOnHold = "border-ta-amber bg-[#fffbeb]";
 
 export const osErrorBanner =
-  "mb-4 rounded-sm bg-red-50 px-4 py-2 text-sm font-bold normal-case text-red-700 ring-1 ring-red-200/80";
+  "mb-4 border-[1.5px] border-ta-red bg-red-50 px-4 py-2 text-sm font-semibold normal-case text-ta-red";
 
 export const osEmptyState =
-  "rounded-sm bg-white px-4 py-12 text-center text-sm font-bold normal-case text-black/45 ring-1 ring-black/[0.06]";
+  "border-[1.5px] border-ta-ink bg-ta-paper px-4 py-12 text-center text-sm font-semibold normal-case text-ta-muted";
 
-export const osDropHighlight = "ring-2 ring-black/20 ring-offset-2 bg-black/[0.02]";
+export const osDropHighlight = "bg-ta-paper-2 outline outline-2 outline-ta-cyan -outline-offset-2";
 
 export const osNav =
-  "mb-6 flex overflow-hidden rounded-sm bg-white ring-1 ring-black/[0.09] font-mono text-sm font-bold uppercase tracking-wide";
+  "mb-6 flex overflow-hidden border-[1.5px] border-ta-ink bg-ta-paper font-mono text-xs font-semibold uppercase tracking-[0.16em]";
 
-export const osNavLinkActive = "bg-black text-white";
+export const osNavLinkActive = "bg-ta-ink text-ta-paper";
 
-export const osNavLinkIdle = "text-black transition-colors hover:bg-black/[0.04]";
+export const osNavLinkIdle = "text-ta-ink transition-colors hover:bg-ta-paper-2";
 
-export const osLabelMuted = "text-[10px] font-bold uppercase tracking-wide text-black/45";
+export const osLabelMuted =
+  "text-[11px] font-semibold uppercase tracking-[0.22em] text-ta-muted";
 
 export const osIconBtn =
-  "flex items-center justify-center rounded-sm p-1.5 text-black/55 transition-colors hover:bg-black/[0.06] hover:text-black";
+  "flex items-center justify-center p-1.5 text-ta-muted transition-colors hover:bg-ta-paper-2 hover:text-ta-ink";
 
 export const osIconBtnDanger =
-  "flex items-center justify-center rounded-sm p-1.5 text-red-600/80 transition-colors hover:bg-red-50 hover:text-red-700";
+  "flex items-center justify-center p-1.5 text-ta-red/80 transition-colors hover:bg-red-50 hover:text-ta-red";

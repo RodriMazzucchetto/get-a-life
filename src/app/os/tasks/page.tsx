@@ -140,7 +140,7 @@ function OsTaskColumn({
             type="button"
             onClick={() => void submitCreate()}
             disabled={creating || !draft.trim()}
-            className="shrink-0 border-l border-black/10 px-3 py-2 text-sm font-bold text-black/70 transition-colors hover:bg-black/[0.04] hover:text-black disabled:opacity-40"
+            className="shrink-0 border-l border-ta-ink px-3 py-2 text-sm font-bold text-ta-muted transition-colors hover:bg-ta-paper-2 hover:text-ta-ink disabled:opacity-40"
           >
             +
           </button>
@@ -432,7 +432,7 @@ export default function OsTasksPage() {
 
   return (
     <div className={`pb-10 ${osPage}`}>
-      <header className="mb-5 border-b border-black/[0.08] pb-4 text-center">
+      <header className="mb-5 border-b-[1.5px] border-ta-ink pb-4 text-center">
         <h1 className="text-2xl font-bold tracking-[0.14em]">Tasks OS</h1>
         <p className={`mt-1 ${osLabelMuted} normal-case`}>
           Foco Agora · Semana Atual · Backlog
@@ -513,7 +513,7 @@ export default function OsTasksPage() {
 
           <DragOverlay>
             {activeDragTask ? (
-              <div className={`${osCard} px-4 py-3 text-sm font-bold normal-case shadow-md shadow-black/10`}>
+              <div className={`${osCard} px-4 py-3 text-sm font-bold normal-case shadow-[6px_6px_0_var(--color-ta-ink)]`}>
                 {activeDragTask.title}
               </div>
             ) : null}

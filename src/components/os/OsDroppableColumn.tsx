@@ -15,7 +15,7 @@ export function OsDroppableColumn({ id, children, className = "" }: OsDroppableC
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[4rem] rounded-sm transition-colors ${isOver ? osDropHighlight : ""} ${className}`}
+      className={`min-h-[4rem] transition-colors ${isOver ? osDropHighlight : ""} ${className}`}
     >
       {children}
     </div>

@@ -59,7 +59,7 @@ export function OsTaskItem({
       <div className="flex items-stretch gap-0">
         <button
           type="button"
-          className="flex w-7 shrink-0 cursor-grab items-center justify-center text-black/30 active:cursor-grabbing hover:bg-black/[0.04] hover:text-black/50"
+          className="flex w-7 shrink-0 cursor-grab items-center justify-center text-ta-muted active:cursor-grabbing hover:bg-ta-paper-2 hover:text-ta-ink"
           aria-label="Arrastar task"
           {...attributes}
           {...listeners}
@@ -83,7 +83,7 @@ export function OsTaskItem({
             type="checkbox"
             checked={false}
             onChange={() => onToggleComplete(task)}
-            className="h-3.5 w-3.5 shrink-0 rounded-sm border border-black/25 accent-black"
+            className="h-3.5 w-3.5 shrink-0 border border-ta-ink accent-ta-ink"
             aria-label="Marcar como concluída"
           />
 
@@ -94,7 +94,7 @@ export function OsTaskItem({
           >
             <span className="block truncate text-sm font-bold normal-case">{task.title}</span>
             {task.on_hold && task.on_hold_reason ? (
-              <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-wide text-amber-700/90">
+              <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-wide text-ta-amber">
                 Em espera: {task.on_hold_reason}
               </span>
             ) : null}
@@ -120,7 +120,7 @@ export function OsTaskItem({
           ) : null}
         </div>
 
-        <div className="pointer-events-none absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-sm bg-white/95 px-0.5 py-0.5 opacity-0 shadow-sm shadow-black/5 ring-1 ring-black/[0.06] backdrop-blur-sm transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="pointer-events-none absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 border border-ta-ink bg-ta-paper px-0.5 py-0.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
           {showBacklogButton ? (
             <button
               type="button"
@@ -150,7 +150,7 @@ export function OsTaskItem({
           <button
             type="button"
             onClick={() => onPutOnHold(task)}
-            className={`${osIconBtn} ${task.on_hold ? "bg-amber-100/80 text-amber-800" : ""}`}
+            className={`${osIconBtn} ${task.on_hold ? "bg-ta-amber/20 text-ta-ink" : ""}`}
             title={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
             aria-label={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
           >

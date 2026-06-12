@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
+import { BrandLogo } from "@/components/BrandLogo";
 import { BRANDING } from "@/lib/branding";
 
 const HERO_IMG =
@@ -28,13 +29,7 @@ export function HomeLanding({ user }: HomeLandingProps) {
     <>
       <nav className="bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-md flex justify-between items-center w-full px-6 md:px-8 py-4 max-w-full mx-auto fixed top-0 z-50">
         <Link href="/" className="inline-flex items-center shrink-0 min-w-0">
-          <img
-            src={BRANDING.horizontal}
-            alt={BRANDING.name}
-            className="h-14 sm:h-16 md:h-[4.5rem] w-auto max-w-[min(92vw,440px)] object-contain object-left"
-            width={420}
-            height={90}
-          />
+          <BrandLogo variant="horizontal" className="scale-110 sm:scale-125 origin-left" />
         </Link>
         <div className="hidden md:flex gap-8 items-center font-headline font-semibold text-sm tracking-tight">
           <Link
