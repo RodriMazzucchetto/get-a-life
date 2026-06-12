@@ -43,6 +43,13 @@ import {
 } from "@/lib/os-queries";
 import type { OsBetRow, OsTaskBoardStatus, OsTaskRow } from "@/lib/os-types";
 
+function osTaskListClassName(taskCount: number): string {
+  const base = "space-y-2";
+  if (taskCount === 0) return base;
+  if (taskCount <= 4) return base;
+  return `${base} max-h-[min(42vh,22rem)] overflow-y-auto [scrollbar-gutter:stable] md:max-h-[min(48vh,26rem)]`;
+}
+
 function OsTaskColumn({
   id,
   title,
@@ -94,7 +101,11 @@ function OsTaskColumn({
 
   return (
     <section className={`flex min-h-0 flex-col border-2 border-black bg-white ${className ?? ""}`}>
-      <header className="shrink-0 border-b-2 border-black px-4 py-3 md:px-5 md:py-4">
+      <header
+        className={`shrink-0 border-b-2 border-black px-4 ${
+          tasks.length === 0 ? "py-2" : "py-3 md:py-4"
+        }`}
+      >
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold tracking-[0.12em]">{title}</h2>
           <span className="text-xs font-bold text-black/50">{tasks.length}</span>
@@ -102,8 +113,8 @@ function OsTaskColumn({
         <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-black/50">{subtitle}</p>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col p-3 md:p-4 xl:p-5">
-        <div className="mb-3 flex border-2 border-black">
+      <div className="flex flex-col p-3 md:p-4">
+        <div className="mb-2 flex border-2 border-black">
           <input
             ref={inputRef}
             type="text"
@@ -125,12 +136,9 @@ function OsTaskColumn({
           </button>
         </div>
 
-        <DroppableColumn
-          id={id}
-          className="min-h-[10rem] flex-1 space-y-2 overflow-y-auto md:min-h-[14rem] xl:min-h-[18rem] [scrollbar-gutter:stable]"
-        >
+        <DroppableColumn id={id} className={osTaskListClassName(tasks.length)}>
           {tasks.length === 0 ? (
-            <p className="py-6 text-center text-xs font-bold normal-case text-black/40">
+            <p className="py-2 text-center text-xs font-bold normal-case text-black/40">
               Arraste tasks para cá ou crie uma nova.
             </p>
           ) : (
@@ -368,7 +376,7 @@ export default function OsTasksPage() {
 
   return (
     <div className="pb-10 font-mono uppercase tracking-wide text-black">
-      <header className="mb-6 border-2 border-black bg-white px-4 py-4 text-center">
+      <header className="mb-4 border-2 border-black bg-white px-4 py-3 text-center md:py-4">
         <h1 className="text-2xl font-bold tracking-[0.14em]">Tasks OS</h1>
         <p className="mt-1 text-[10px] font-bold normal-case text-black/50">
           Foco Agora · Semana Atual · Backlog
@@ -396,7 +404,7 @@ export default function OsTasksPage() {
             void handleDragEnd(e);
           }}
         >
-          <div className="flex w-full flex-col gap-6 xl:gap-8">
+          <div className="flex w-full flex-col gap-4 lg:gap-6">
             <OsTaskColumn
               id={OS_COL_IN_PROGRESS}
               title="Foco Agora"
@@ -414,7 +422,7 @@ export default function OsTasksPage() {
               createPlaceholder="Nova task em foco..."
             />
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-stretch md:gap-8 xl:gap-10">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:gap-8">
               <OsTaskColumn
                 id={OS_COL_BACKLOG}
                 title="Backlog"
@@ -430,7 +438,7 @@ export default function OsTasksPage() {
                 onDelete={handleDelete}
                 onCreate={(title) => handleCreateInColumn("backlog", title)}
                 createPlaceholder="Nova task no backlog..."
-                className="order-2 h-full md:order-1"
+                className="order-2 md:order-1"
               />
 
               <OsTaskColumn
@@ -448,7 +456,7 @@ export default function OsTasksPage() {
                 onDelete={handleDelete}
                 onCreate={(title) => handleCreateInColumn("current_week", title)}
                 createPlaceholder="Nova task da semana..."
-                className="order-1 h-full md:order-2"
+                className="order-1 md:order-2"
               />
             </div>
           </div>

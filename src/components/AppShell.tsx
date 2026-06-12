@@ -7,7 +7,13 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { BRANDING } from "@/lib/branding";
 import { mainNav } from "@/lib/app-navigation";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  fullWidth = false,
+}: {
+  children: React.ReactNode;
+  fullWidth?: boolean;
+}) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, signOut } = useAuthContext();
@@ -168,7 +174,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="material-symbols-outlined">menu</span>
         </button>
 
-        <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-12 pt-4 lg:pt-6">
+        <main
+          className={`w-full px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6 ${
+            fullWidth ? "max-w-none" : "mx-auto max-w-7xl"
+          }`}
+        >
           {children}
         </main>
       </div>
