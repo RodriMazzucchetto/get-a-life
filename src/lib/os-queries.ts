@@ -766,21 +766,31 @@ export async function updateOsBet(
 export async function deleteOsBet(betId: string): Promise<void> {
   const supabase = createClient()
 
-  // Apagar updates primeiro (cascade via DB, mas RLS do browser client precisa de permissão explícita)
-  await supabase.from('os_bet_updates').delete().eq('bet_id', betId)
+  // Apagar updates primeiro (o cascade do DB funciona, mas fazemos explícito para garantir com RLS)
+  const { error: updatesError } = await supabase
+    .from('os_bet_updates')
+    .delete()
+    .eq('bet_id', betId)
+  if (updatesError) {
+    console.error('[deleteOsBet] Erro ao apagar updates:', updatesError)
+    throw new Error(`Erro ao apagar updates do pitch: ${updatesError.message}`)
+  }
 
-  // Desvincular tasks (FK é on delete set null, mas fazemos manualmente para garantir)
-  await supabase
+  // Desvincular tasks
+  const { error: tasksError } = await supabase
     .from('os_tasks')
     .update({ bet_id: null, updated_at: new Date().toISOString() })
     .eq('bet_id', betId)
+  if (tasksError) {
+    console.error('[deleteOsBet] Erro ao desvincular tasks:', tasksError)
+    throw new Error(`Erro ao desvincular tasks: ${tasksError.message}`)
+  }
 
   // Apagar o pitch
   const { error } = await supabase.from('os_bets').delete().eq('id', betId)
-
   if (error) {
-    console.error('Erro ao excluir pitch OS:', error)
-    throw error
+    console.error('[deleteOsBet] Erro ao apagar pitch:', error)
+    throw new Error(`Erro ao apagar pitch: ${error.message}`)
   }
 }
 

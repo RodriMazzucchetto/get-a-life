@@ -61,6 +61,7 @@ function SortablePitchCard({
   deleting: boolean;
   priorityLoading: boolean;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: bet.id });
 
@@ -69,6 +70,35 @@ function SortablePitchCard({
     transition,
     opacity: isDragging ? 0.4 : 1,
   };
+
+  if (confirmDelete) {
+    return (
+      <article
+        ref={setNodeRef}
+        style={style}
+        className="border-2 border-[#FF0000] bg-white"
+      >
+        <div className="flex items-center gap-3 px-3 py-2.5">
+          <span className="flex-1 text-sm font-bold normal-case text-[#FF0000]">Excluir &ldquo;{bet.title}&rdquo;?</span>
+          <button
+            type="button"
+            onClick={() => { setConfirmDelete(false); onDelete(bet.id); }}
+            disabled={deleting}
+            className="border-2 border-[#FF0000] bg-[#FF0000] px-3 py-1 text-xs font-bold uppercase text-white hover:bg-[#CC0000] disabled:opacity-50"
+          >
+            {deleting ? "..." : "Sim"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(false)}
+            className="border-2 border-black px-3 py-1 text-xs font-bold uppercase hover:bg-black/5"
+          >
+            Não
+          </button>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article
@@ -112,12 +142,9 @@ function SortablePitchCard({
         </button>
         <button
           type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            if (window.confirm("Excluir este pitch?")) onDelete(bet.id);
-          }}
+          onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
           disabled={deleting}
-          className="flex max-w-0 shrink-0 items-center overflow-hidden border-l-0 px-0 text-[#FF0000] opacity-0 transition-all duration-150 hover:bg-[#FF0000]/5 focus:max-w-[2.5rem] focus:border-l-2 focus:border-black focus:px-2 focus:opacity-100 disabled:opacity-50 group-hover:max-w-[2.5rem] group-hover:border-l-2 group-hover:border-black group-hover:px-2 group-hover:opacity-100"
+          className="flex max-w-0 shrink-0 items-center overflow-hidden border-l-0 px-0 text-[#FF0000] opacity-0 transition-all duration-150 hover:bg-[#FF0000]/5 disabled:opacity-50 group-hover:max-w-[2.5rem] group-hover:border-l-2 group-hover:border-black group-hover:px-2 group-hover:opacity-100"
           aria-label="Excluir pitch"
         >
           <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -423,8 +450,9 @@ export default function OsPitchPage() {
       await refreshBoard({ background: true, force: true });
       await refreshTasks({ background: true, force: true });
     } catch (deleteError) {
-      console.error("Erro ao excluir pitch:", deleteError);
-      setError("Não foi possível excluir o pitch.");
+      const msg = deleteError instanceof Error ? deleteError.message : String(deleteError);
+      console.error("Erro ao excluir pitch:", msg);
+      setError(`Erro ao excluir: ${msg}`);
       await refreshBoard({ background: true, force: true });
     } finally {
       setDeletingId(null);
