@@ -39,12 +39,36 @@ export interface PillarStatusDisplay {
   label: string
 }
 
+export function getBetEffectiveTrackStatus(
+  bet: OsBetRow,
+  latestUpdate: OsBetUpdateRow | null | undefined
+): string {
+  if (latestUpdate) return latestUpdate.status
+  return bet.status
+}
+
+/** Momentum = (on_course + executed) / total apostas do pilar × 100 */
+export function computePillarMomentum(
+  bets: OsBetRow[],
+  latestUpdatesByBetId: Map<string, OsBetUpdateRow> = new Map()
+): number {
+  if (bets.length === 0) return 0
+
+  const onTrack = bets.filter((bet) => {
+    const status = getBetEffectiveTrackStatus(bet, latestUpdatesByBetId.get(bet.id))
+    return status === 'on_course' || status === 'executed'
+  }).length
+
+  return Math.round((onTrack / bets.length) * 100)
+}
+
 export function getPillarStatusDisplay(
   priorityBet: OsBetRow | null,
   latestUpdate: OsBetUpdateRow | null,
-  pillarBets: OsBetRow[] = []
+  pillarBets: OsBetRow[] = [],
+  latestUpdatesByBetId: Map<string, OsBetUpdateRow> = new Map()
 ): PillarStatusDisplay {
-  const { successRate } = computeOsBetStats(pillarBets)
+  const pct = computePillarMomentum(pillarBets, latestUpdatesByBetId)
 
   if (!priorityBet) {
     return { pct: 0, color: '#E5E5E5', status: null, label: '—' }
@@ -58,11 +82,11 @@ export function getPillarStatusDisplay(
       : null)
 
   if (!rawStatus) {
-    return { pct: successRate, color: '#E5E5E5', status: null, label: 'SEM STATUS' }
+    return { pct, color: '#E5E5E5', status: null, label: 'SEM STATUS' }
   }
 
   return {
-    pct: successRate,
+    pct,
     color: getBetUpdateStatusColor(rawStatus),
     status: rawStatus,
     label: formatBetUpdateStatusLabel(rawStatus),
@@ -85,11 +109,12 @@ export function getBetUpdateStatusColor(status: string): string {
 }
 
 export function computeCompanyMomentum(
-  orderedBlocks: { block: { type: OsBlockType }; bets: OsBetRow[] }[]
+  orderedBlocks: { block: { type: OsBlockType }; bets: OsBetRow[] }[],
+  latestUpdatesByBetId: Map<string, OsBetUpdateRow> = new Map()
 ): number {
   const rates = OS_BLOCK_TYPES.map((type) => {
     const view = orderedBlocks.find((v) => v.block.type === type)
-    return computeOsBetStats(view?.bets ?? []).successRate
+    return computePillarMomentum(view?.bets ?? [], latestUpdatesByBetId)
   })
   return Math.round(rates.reduce((sum, rate) => sum + rate, 0) / OS_BLOCK_TYPES.length)
 }

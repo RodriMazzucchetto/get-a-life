@@ -179,10 +179,8 @@ function OsPageContent() {
       const data = await fetchOsPitchBoard(user.id, selectedProjectId);
       setBoard(data);
 
-      const priorityBetIds = data.flatMap((view) =>
-        view.bets.filter((bet) => bet.is_priority).map((bet) => bet.id)
-      );
-      const updates = await fetchLatestOsBetUpdatesForBets(priorityBetIds);
+      const allBetIds = data.flatMap((view) => view.bets.map((bet) => bet.id));
+      const updates = await fetchLatestOsBetUpdatesForBets(allBetIds);
       setLatestUpdates(updates);
     } catch (loadError) {
       console.error("Erro ao carregar OS:", loadError);
@@ -232,14 +230,19 @@ function OsPageContent() {
       const type = view.block.type as OsBlockType;
       const priorityBet = view.bets.find((bet) => bet.is_priority) ?? view.priorityBet;
       const update = priorityBet ? (latestUpdates.get(priorityBet.id) ?? null) : null;
-      displays[type] = getPillarStatusDisplay(priorityBet, update, view.bets);
+      displays[type] = getPillarStatusDisplay(
+        priorityBet,
+        update,
+        view.bets,
+        latestUpdates
+      );
     }
     return displays;
   }, [orderedBlocks, latestUpdates]);
 
   const companyMomentum = useMemo(
-    () => computeCompanyMomentum(orderedBlocks),
-    [orderedBlocks]
+    () => computeCompanyMomentum(orderedBlocks, latestUpdates),
+    [orderedBlocks, latestUpdates]
   );
 
   const companyMomentumColor = useMemo(() => {
