@@ -1,10 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import {
-  formatExecutionOwnerInitials,
-  getBetDisplayStatus,
-} from "@/lib/os-queries";
+import { getBetDisplayStatus } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow } from "@/lib/os-types";
 
 interface OsPitchExecutionRowProps {
@@ -25,7 +21,6 @@ export function OsPitchExecutionRow({
   onAddWeeklyUpdate,
 }: OsPitchExecutionRowProps) {
   const displayStatus = getBetDisplayStatus(bet, latestUpdate);
-  const owner = formatExecutionOwnerInitials(bet.execution_owner);
 
   return (
     <div className="border-b-2 border-black last:border-b-0">
@@ -48,27 +43,25 @@ export function OsPitchExecutionRow({
         <button
           type="button"
           onClick={onOpenPitch}
-          className="flex min-w-0 flex-[2] items-center border-r-2 border-black px-4 py-3 text-left hover:bg-black/[0.03]"
+          className="flex min-w-0 flex-[2] items-center gap-2 border-r-2 border-black px-4 py-3 text-left hover:bg-black/[0.03]"
         >
-          <span className="truncate text-sm font-bold normal-case">{bet.title}</span>
           {bet.is_priority ? (
-            <span className="ml-2 shrink-0 border border-black bg-black px-1.5 py-0.5 text-[9px] font-bold text-white">
-              ATIVO
+            <span
+              className="flex h-5 w-5 shrink-0 items-center justify-center border-2 border-black bg-black text-xs font-bold text-white"
+              title="Pitch prioritário"
+              aria-label="Pitch prioritário"
+            >
+              !
             </span>
           ) : null}
+          <span className="truncate text-sm font-bold normal-case">{bet.title}</span>
         </button>
 
         <div
-          className="flex flex-1 items-center justify-center border-r-2 border-black px-3 py-3 text-xs font-bold tracking-wide"
+          className="flex flex-1 items-center justify-center px-3 py-3 text-xs font-bold tracking-wide"
           style={{ color: displayStatus.color }}
         >
           {displayStatus.label}
-        </div>
-
-        <div className="flex w-16 shrink-0 items-center justify-center border-r-2 border-black py-3">
-          <span className="flex h-8 w-8 items-center justify-center bg-black text-xs font-bold text-white">
-            {owner}
-          </span>
         </div>
 
         <button
@@ -77,7 +70,7 @@ export function OsPitchExecutionRow({
             e.stopPropagation();
             onAddWeeklyUpdate();
           }}
-          className="flex w-12 shrink-0 items-center justify-center hover:bg-black/[0.03]"
+          className="flex w-12 shrink-0 items-center justify-center border-l-2 border-black hover:bg-black/[0.03]"
           title="Adicionar weekly update"
           aria-label="Adicionar weekly update"
         >

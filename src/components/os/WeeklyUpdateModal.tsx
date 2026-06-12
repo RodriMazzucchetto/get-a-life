@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
-import { OS_CYAN, OS_RED, OS_YELLOW, currentWeekStartDate } from "@/lib/os-queries";
+import { OS_CYAN, OS_GREEN, OS_RED, OS_YELLOW, currentWeekStartDate } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateStatus } from "@/lib/os-types";
 
 const UPDATE_STATUS_OPTIONS: { value: OsBetUpdateStatus; label: string; color: string }[] = [
-  { value: "on_course", label: "ON COURSE", color: OS_CYAN },
+  { value: "on_course", label: "ON COURSE", color: OS_GREEN },
   { value: "deviating", label: "DEVIATING", color: OS_YELLOW },
   { value: "executed", label: "EXECUTED", color: OS_CYAN },
   { value: "failed", label: "FAILED", color: OS_RED },

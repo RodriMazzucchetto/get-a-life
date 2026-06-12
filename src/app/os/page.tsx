@@ -13,8 +13,10 @@ import {
   OS_BLOCK_LABELS,
   OS_BLOCK_TYPES,
   OS_CYAN,
+  OS_GREEN,
+  OS_RED,
   OS_YELLOW,
-  computePillarExecutionPct,
+  computeOsBetStats,
   createOsBetUpdate,
   createOsTask,
   deleteOsTask,
@@ -22,6 +24,7 @@ import {
   fetchOsBetUpdatesForBet,
   fetchOsPitchBoard,
   fetchOsTasksForBet,
+  getPillarStatusDisplay,
   saveOsGoal,
   setOsBetPriority,
   updateOsBet,
@@ -29,8 +32,38 @@ import {
 } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
 
+function OsProgressBar({
+  label,
+  value,
+  pct,
+  tone,
+}: {
+  label: string;
+  value: number;
+  pct: number;
+  tone: "executed" | "failed";
+}) {
+  const fillColor = tone === "executed" ? OS_CYAN : OS_RED;
+  const fillWidth = pct > 0 ? `${pct}%` : "3.5rem";
+
+  return (
+    <div className="flex border-2 border-black bg-white">
+      <div className="flex shrink-0 items-center border-r-2 border-black px-4 py-2.5 text-sm font-bold tracking-wide">
+        {label}: {value}
+      </div>
+      <div className="relative flex min-h-[42px] flex-1 bg-white">
+        <div
+          className="ml-auto flex items-center justify-center text-sm font-bold text-white"
+          style={{ width: fillWidth, backgroundColor: fillColor, minWidth: "3.5rem" }}
+        >
+          {pct}%
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PillarSelectorBar({
-  blockType,
   label,
   pct,
   goalTitle,
@@ -39,7 +72,6 @@ function PillarSelectorBar({
   onEditGoal,
   fillColor,
 }: {
-  blockType: OsBlockType;
   label: string;
   pct: number;
   goalTitle: string;
@@ -174,20 +206,58 @@ function OsPageContent() {
     return goals;
   }, [orderedBlocks]);
 
-  const pillarPcts = useMemo(() => {
-    const pcts: Record<OsBlockType, number> = { finance: 0, growth: 0, ops: 0 };
+  const pillarDisplays = useMemo(() => {
+    const displays: Record<
+      OsBlockType,
+      ReturnType<typeof getPillarStatusDisplay>
+    > = {
+      finance: getPillarStatusDisplay(null, null),
+      growth: getPillarStatusDisplay(null, null),
+      ops: getPillarStatusDisplay(null, null),
+    };
+
     for (const view of orderedBlocks) {
-      pcts[view.block.type as OsBlockType] = computePillarExecutionPct(view.bets);
+      const type = view.block.type as OsBlockType;
+      const priorityBet = view.bets.find((bet) => bet.is_priority) ?? view.priorityBet;
+      const update = priorityBet ? (latestUpdates.get(priorityBet.id) ?? null) : null;
+      displays[type] = getPillarStatusDisplay(priorityBet, update);
     }
-    return pcts;
-  }, [orderedBlocks]);
+    return displays;
+  }, [orderedBlocks, latestUpdates]);
 
   const companyMomentum = useMemo(() => {
-    const values = OS_BLOCK_TYPES.map((type) => pillarPcts[type]);
-    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-  }, [pillarPcts]);
+    const activePillars = OS_BLOCK_TYPES.map((type) => pillarDisplays[type]).filter(
+      (d) => d.status !== null
+    );
+    if (activePillars.length === 0) return 0;
+    return Math.round(
+      activePillars.reduce((sum, d) => sum + d.pct, 0) / activePillars.length
+    );
+  }, [pillarDisplays]);
+
+  const companyMomentumColor = useMemo(() => {
+    const active = OS_BLOCK_TYPES.map((type) => pillarDisplays[type]).filter(
+      (d) => d.status !== null
+    );
+    if (active.length === 0) return OS_YELLOW;
+    const avgPct =
+      active.reduce((sum, d) => sum + d.pct, 0) / active.length;
+    if (avgPct >= 100) return OS_CYAN;
+    if (avgPct >= 80) return OS_GREEN;
+    if (avgPct >= 50) return OS_YELLOW;
+    return OS_RED;
+  }, [pillarDisplays]);
 
   const selectedBlockView = orderedBlocks.find((view) => view.block.type === selectedPillar);
+  const selectedPillarStats = useMemo(
+    () => computeOsBetStats(selectedBlockView?.bets ?? []),
+    [selectedBlockView]
+  );
+
+  const companyStats = useMemo(() => {
+    const allBets = orderedBlocks.flatMap((view) => view.bets);
+    return computeOsBetStats(allBets);
+  }, [orderedBlocks]);
   const executionPitches = useMemo(
     () => (selectedBlockView?.bets.filter((bet) => bet.is_priority) ?? []),
     [selectedBlockView]
@@ -350,12 +420,6 @@ function OsPageContent() {
     }
   };
 
-  const pillarFillColors: Record<OsBlockType, string> = {
-    finance: OS_YELLOW,
-    growth: OS_CYAN,
-    ops: OS_YELLOW,
-  };
-
   return (
     <div className="pb-8 font-mono uppercase tracking-wide text-black">
       <OsCompanySelector />
@@ -386,7 +450,7 @@ function OsPageContent() {
                 className="ml-auto flex items-center justify-center text-sm font-bold text-black"
                 style={{
                   width: `${Math.max(companyMomentum, 8)}%`,
-                  backgroundColor: OS_YELLOW,
+                  backgroundColor: companyMomentumColor,
                   minWidth: "3.5rem",
                 }}
               >
@@ -395,24 +459,57 @@ function OsPageContent() {
             </div>
           </div>
 
+          {/* Aggregate executed / failed */}
+          <div className="mb-6 space-y-3">
+            <h2 className="text-center text-xl font-bold tracking-[0.08em] sm:text-2xl">
+              PRIORITIES STARTED: {companyStats.started}
+            </h2>
+            <OsProgressBar
+              label="EXECUTED"
+              value={companyStats.executed}
+              pct={companyStats.successRate}
+              tone="executed"
+            />
+            <OsProgressBar
+              label="FAILED"
+              value={companyStats.failed}
+              pct={companyStats.failureRate}
+              tone="failed"
+            />
+          </div>
+
           {/* Pillar selectors */}
           <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
             {orderedBlocks.map((view) => {
               const blockType = view.block.type as OsBlockType;
+              const display = pillarDisplays[blockType];
               return (
                 <PillarSelectorBar
                   key={view.block.id}
-                  blockType={blockType}
                   label={OS_BLOCK_LABELS[blockType]}
-                  pct={pillarPcts[blockType]}
+                  pct={display.pct}
                   goalTitle={view.goal?.title ?? "Definir meta"}
                   selected={selectedPillar === blockType}
                   onSelect={() => setSelectedPillar(blockType)}
                   onEditGoal={() => openGoalModal(view.block.id, blockType)}
-                  fillColor={pillarFillColors[blockType]}
+                  fillColor={display.color}
                 />
               );
             })}
+          </div>
+
+          {/* Selected pillar stats */}
+          <div className="mb-6 border-2 border-black bg-white px-4 py-4">
+            <p className="mb-3 text-center text-sm font-bold tracking-wide">
+              {OS_BLOCK_LABELS[selectedPillar]} — RESUMO
+            </p>
+            <div className="space-y-1 text-sm font-bold tracking-wide">
+              <p>STARTED: {selectedPillarStats.started}</p>
+              <p style={{ color: OS_CYAN }}>EXECUTED: {selectedPillarStats.executed}</p>
+              <p style={{ color: OS_CYAN }}>SUCCESS RATE: {selectedPillarStats.successRate}%</p>
+              <p style={{ color: OS_RED }}>FAILED: {selectedPillarStats.failed}</p>
+              <p style={{ color: OS_RED }}>FAILURE RATE: {selectedPillarStats.failureRate}%</p>
+            </div>
           </div>
 
           {/* Selected pillar detail */}
@@ -424,13 +521,8 @@ function OsPageContent() {
             <div className="flex border-b-2 border-black text-[10px] font-bold tracking-[0.14em] text-black/50">
               <div className="w-10 shrink-0 border-r-2 border-black" />
               <div className="flex-[2] border-r-2 border-black px-4 py-2">Priority</div>
-              <div className="flex flex-1 items-center justify-center border-r-2 border-black py-2">
-                Status
-              </div>
-              <div className="flex w-16 shrink-0 items-center justify-center border-r-2 border-black py-2">
-                Owner
-              </div>
-              <div className="w-12 shrink-0 py-2 text-center">+</div>
+              <div className="flex flex-1 items-center justify-center py-2">Status</div>
+              <div className="w-12 shrink-0 border-l-2 border-black py-2 text-center">+</div>
             </div>
 
             {executionPitches.length === 0 ? (

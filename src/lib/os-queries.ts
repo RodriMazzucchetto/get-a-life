@@ -29,7 +29,80 @@ export const OS_BLOCK_DOT_COLORS: Record<OsBlockType, string> = {
 
 export const OS_YELLOW = '#FFD600'
 export const OS_CYAN = '#5BC0EB'
+export const OS_GREEN = '#34D399'
 export const OS_RED = '#FF0000'
+
+/** Percentual de preenchimento da barra do pilar conforme status do pitch ativo. */
+export const PILLAR_STATUS_PCT: Record<
+  'deviating' | 'on_course' | 'executed' | 'failed',
+  number
+> = {
+  deviating: 67,
+  on_course: 80,
+  executed: 100,
+  failed: 25,
+}
+
+export interface PillarStatusDisplay {
+  pct: number
+  color: string
+  status: 'deviating' | 'on_course' | 'executed' | 'failed' | null
+  label: string
+}
+
+export function getBetUpdateStatusColor(status: string): string {
+  switch (status) {
+    case 'deviating':
+      return OS_YELLOW
+    case 'on_course':
+      return OS_GREEN
+    case 'executed':
+      return OS_CYAN
+    case 'failed':
+      return OS_RED
+    default:
+      return '#CCCCCC'
+  }
+}
+
+export function getPillarStatusDisplay(
+  priorityBet: OsBetRow | null,
+  latestUpdate: OsBetUpdateRow | null
+): PillarStatusDisplay {
+  if (!priorityBet) {
+    return { pct: 0, color: '#E5E5E5', status: null, label: '—' }
+  }
+
+  const trackable = ['on_course', 'deviating', 'executed', 'failed'] as const
+  const rawStatus =
+    latestUpdate?.status ??
+    (trackable.includes(priorityBet.status as (typeof trackable)[number])
+      ? (priorityBet.status as (typeof trackable)[number])
+      : null)
+
+  if (!rawStatus) {
+    return { pct: 0, color: '#E5E5E5', status: null, label: 'SEM STATUS' }
+  }
+
+  return {
+    pct: PILLAR_STATUS_PCT[rawStatus],
+    color: getBetUpdateStatusColor(rawStatus),
+    status: rawStatus,
+    label: formatBetUpdateStatusLabel(rawStatus),
+  }
+}
+
+export function currentWeekStartDate(): string {
+  const now = new Date()
+  const day = now.getDay()
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1)
+  const monday = new Date(now.getFullYear(), now.getMonth(), diff)
+  return monday.toISOString().slice(0, 10)
+}
+
+export function formatBetUpdateStatusLabel(status: string): string {
+  return status.replace('_', ' ').toUpperCase()
+}
 
 export function formatExecutionOwnerInitials(owner: string | null): string {
   if (!owner) return '--'
@@ -43,39 +116,6 @@ export function formatExecutionOwnerInitials(owner: string | null): string {
     default:
       return owner.slice(0, 2).toUpperCase()
   }
-}
-
-export function formatBetUpdateStatusLabel(status: string): string {
-  return status.replace('_', ' ').toUpperCase()
-}
-
-export function getBetUpdateStatusColor(status: string): string {
-  switch (status) {
-    case 'deviating':
-      return OS_YELLOW
-    case 'on_course':
-    case 'executed':
-      return OS_CYAN
-    case 'failed':
-      return OS_RED
-    default:
-      return '#000000'
-  }
-}
-
-export function currentWeekStartDate(): string {
-  const now = new Date()
-  const day = now.getDay()
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-  const monday = new Date(now.getFullYear(), now.getMonth(), diff)
-  return monday.toISOString().slice(0, 10)
-}
-
-export function computePillarExecutionPct(bets: OsBetRow[]): number {
-  const active = bets.filter((bet) => bet.status !== 'draft' && bet.status !== 'rejected')
-  if (active.length === 0) return 0
-  const executed = active.filter((bet) => bet.status === 'executed').length
-  return Math.round((executed / active.length) * 100)
 }
 
 export interface OsBetStats {
