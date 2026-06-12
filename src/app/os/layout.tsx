@@ -8,7 +8,7 @@ export default function OsLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppShell fullWidth>
       <OsProjectProvider>
-        <div className="w-full pt-2">
+        <div className="w-full pt-2 pb-1">
           <OsSectionNav />
           {children}
         </div>

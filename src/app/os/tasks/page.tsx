@@ -19,10 +19,20 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { DroppableColumn } from "@/components/planning/DroppableColumn";
+import { OsDroppableColumn } from "@/components/os/OsDroppableColumn";
 import { OsTaskEditModal, OsTaskOnHoldModal } from "@/components/os/OsTaskEditModal";
 import { OsTaskItem, resolveOsTaskCompany } from "@/components/os/OsTaskItem";
 import { useAuthContext } from "@/contexts/AuthContext";
+import {
+  osCard,
+  osCardHeader,
+  osEmptyState,
+  osErrorBanner,
+  osInput,
+  osInputRow,
+  osLabelMuted,
+  osPage,
+} from "@/lib/os-ui";
 import {
   OS_COL_BACKLOG,
   OS_COL_CURRENT_WEEK,
@@ -102,21 +112,19 @@ function OsTaskColumn({
   }
 
   return (
-    <section className={`flex min-h-0 flex-col border-2 border-black bg-white ${className ?? ""}`}>
+    <section className={`flex min-h-0 flex-col ${osCard} ${className ?? ""}`}>
       <header
-        className={`shrink-0 border-b-2 border-black px-4 ${
-          tasks.length === 0 ? "py-2" : "py-3 md:py-4"
-        }`}
+        className={`${osCardHeader} ${tasks.length === 0 ? "py-2.5" : ""}`}
       >
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold tracking-[0.12em]">{title}</h2>
-          <span className="text-xs font-bold text-black/50">{tasks.length}</span>
+          <span className={`${osLabelMuted} normal-case`}>{tasks.length}</span>
         </div>
-        <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-black/50">{subtitle}</p>
+        <p className={`mt-1 ${osLabelMuted}`}>{subtitle}</p>
       </header>
 
       <div className="flex flex-col p-3 md:p-4">
-        <div className="mb-2 flex border-2 border-black">
+        <div className={`mb-2.5 ${osInputRow}`}>
           <input
             ref={inputRef}
             type="text"
@@ -126,21 +134,21 @@ function OsTaskColumn({
               if (e.key === "Enter") void submitCreate();
             }}
             placeholder={createPlaceholder}
-            className="min-w-0 flex-1 bg-white px-3 py-2 text-sm font-bold normal-case outline-none"
+            className={`min-w-0 flex-1 px-3 py-2 text-sm font-bold normal-case ${osInput} border-0 focus:border-0`}
           />
           <button
             type="button"
             onClick={() => void submitCreate()}
             disabled={creating || !draft.trim()}
-            className="border-l-2 border-black px-3 py-2 text-sm font-bold disabled:opacity-40"
+            className="shrink-0 border-l border-black/10 px-3 py-2 text-sm font-bold text-black/70 transition-colors hover:bg-black/[0.04] hover:text-black disabled:opacity-40"
           >
             +
           </button>
         </div>
 
-        <DroppableColumn id={id} className={osTaskListClassName(tasks.length)}>
+        <OsDroppableColumn id={id} className={osTaskListClassName(tasks.length)}>
           {tasks.length === 0 ? (
-            <p className="py-2 text-center text-xs font-bold normal-case text-black/40">
+            <p className={`py-3 text-center ${osLabelMuted} normal-case`}>
               Arraste tasks para cá ou crie uma nova.
             </p>
           ) : (
@@ -161,7 +169,7 @@ function OsTaskColumn({
               ))}
             </SortableContext>
           )}
-        </DroppableColumn>
+        </OsDroppableColumn>
       </div>
     </section>
   );
@@ -423,24 +431,20 @@ export default function OsTasksPage() {
   }
 
   return (
-    <div className="pb-10 font-mono uppercase tracking-wide text-black">
-      <header className="mb-4 border-2 border-black bg-white px-4 py-3 text-center md:py-4">
+    <div className={`pb-10 ${osPage}`}>
+      <header className="mb-5 border-b border-black/[0.08] pb-4 text-center">
         <h1 className="text-2xl font-bold tracking-[0.14em]">Tasks OS</h1>
-        <p className="mt-1 text-[10px] font-bold normal-case text-black/50">
+        <p className={`mt-1 ${osLabelMuted} normal-case`}>
           Foco Agora · Semana Atual · Backlog
         </p>
       </header>
 
       {error ? (
-        <div className="mb-4 border-2 border-black bg-white px-4 py-2 text-sm font-bold normal-case text-[#FF0000]">
-          {error}
-        </div>
+        <div className={osErrorBanner}>{error}</div>
       ) : null}
 
       {loading ? (
-        <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
-          Carregando tasks...
-        </div>
+        <div className={osEmptyState}>Carregando tasks...</div>
       ) : (
         <DndContext
           sensors={sensors}
@@ -509,7 +513,7 @@ export default function OsTasksPage() {
 
           <DragOverlay>
             {activeDragTask ? (
-              <div className="border-2 border-black bg-white px-4 py-3 text-sm font-bold normal-case shadow-lg">
+              <div className={`${osCard} px-4 py-3 text-sm font-bold normal-case shadow-md shadow-black/10`}>
                 {activeDragTask.title}
               </div>
             ) : null}

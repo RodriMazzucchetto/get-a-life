@@ -4,6 +4,12 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { PlayIcon } from "@heroicons/react/24/outline";
 import type { OsProjectOption } from "@/lib/os-queries";
+import {
+  osIconBtn,
+  osIconBtnDanger,
+  osTaskRow,
+  osTaskRowOnHold,
+} from "@/lib/os-ui";
 import type { OsBetRow, OsTaskRow } from "@/lib/os-types";
 import { isQuickWinProject } from "@/lib/project-filters";
 
@@ -37,7 +43,7 @@ export function OsTaskItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.45 : 1,
   };
 
   const showBacklogButton = task.status !== "backlog";
@@ -48,36 +54,36 @@ export function OsTaskItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative border-2 border-black bg-white ${task.on_hold ? "bg-[#FFF9E6]" : ""}`}
+      className={`${osTaskRow} ${task.on_hold ? osTaskRowOnHold : ""}`}
     >
-      <div className="flex items-stretch">
+      <div className="flex items-stretch gap-0">
         <button
           type="button"
-          className="flex w-8 shrink-0 cursor-grab items-center justify-center border-r-2 border-black active:cursor-grabbing hover:bg-black/[0.03]"
+          className="flex w-7 shrink-0 cursor-grab items-center justify-center text-black/30 active:cursor-grabbing hover:bg-black/[0.04] hover:text-black/50"
           aria-label="Arrastar task"
           {...attributes}
           {...listeners}
         >
           <span className="flex gap-0.5">
             <span className="flex flex-col gap-0.5">
-              <span className="h-0.5 w-0.5 rounded-full bg-black/50" />
-              <span className="h-0.5 w-0.5 rounded-full bg-black/50" />
-              <span className="h-0.5 w-0.5 rounded-full bg-black/50" />
+              <span className="h-0.5 w-0.5 rounded-full bg-current" />
+              <span className="h-0.5 w-0.5 rounded-full bg-current" />
+              <span className="h-0.5 w-0.5 rounded-full bg-current" />
             </span>
             <span className="flex flex-col gap-0.5">
-              <span className="h-0.5 w-0.5 rounded-full bg-black/50" />
-              <span className="h-0.5 w-0.5 rounded-full bg-black/50" />
-              <span className="h-0.5 w-0.5 rounded-full bg-black/50" />
+              <span className="h-0.5 w-0.5 rounded-full bg-current" />
+              <span className="h-0.5 w-0.5 rounded-full bg-current" />
+              <span className="h-0.5 w-0.5 rounded-full bg-current" />
             </span>
           </span>
         </button>
 
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 pr-2 group-hover:pr-28 md:group-hover:pr-32">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-0.5 pr-2 group-hover:pr-24 md:group-hover:pr-28">
           <input
             type="checkbox"
             checked={false}
             onChange={() => onToggleComplete(task)}
-            className="h-4 w-4 shrink-0 border-2 border-black accent-black"
+            className="h-3.5 w-3.5 shrink-0 rounded-sm border border-black/25 accent-black"
             aria-label="Marcar como concluída"
           />
 
@@ -88,7 +94,7 @@ export function OsTaskItem({
           >
             <span className="block truncate text-sm font-bold normal-case">{task.title}</span>
             {task.on_hold && task.on_hold_reason ? (
-              <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-wide text-[#B8860B]">
+              <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-wide text-amber-700/90">
                 Em espera: {task.on_hold_reason}
               </span>
             ) : null}
@@ -114,28 +120,28 @@ export function OsTaskItem({
           ) : null}
         </div>
 
-        <div className="pointer-events-none absolute right-0 top-0 flex h-full shrink-0 items-stretch border-l-2 border-black bg-white opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="pointer-events-none absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-sm bg-white/95 px-0.5 py-0.5 opacity-0 shadow-sm shadow-black/5 ring-1 ring-black/[0.06] backdrop-blur-sm transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
           {showBacklogButton ? (
             <button
               type="button"
               onClick={() => onMoveToBacklog(task)}
-              className="flex items-center px-2 hover:bg-black/[0.03]"
+              className={osIconBtn}
               title="Mover para backlog"
               aria-label="Mover para backlog"
             >
-              <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+              <span className="material-symbols-outlined text-[17px]">inventory_2</span>
             </button>
           ) : null}
 
           <button
             type="button"
             onClick={() => onMoveToFocus(task)}
-            className="flex items-center border-l-2 border-black px-2 hover:bg-black/[0.03]"
+            className={osIconBtn}
             title={isInFocus ? "Voltar para Semana Atual" : "Enviar para Foco Agora"}
             aria-label={isInFocus ? "Voltar para Semana Atual" : "Enviar para Foco Agora"}
           >
             {isInFocus ? (
-              <span className="material-symbols-outlined text-[18px]">undo</span>
+              <span className="material-symbols-outlined text-[17px]">undo</span>
             ) : (
               <PlayIcon className="h-4 w-4" aria-hidden />
             )}
@@ -144,37 +150,35 @@ export function OsTaskItem({
           <button
             type="button"
             onClick={() => onPutOnHold(task)}
-            className={`flex items-center border-l-2 border-black px-2 hover:bg-black/[0.03] ${
-              task.on_hold ? "bg-[#FFD600]/20" : ""
-            }`}
+            className={`${osIconBtn} ${task.on_hold ? "bg-amber-100/80 text-amber-800" : ""}`}
             title={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
             aria-label={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
           >
             {task.on_hold ? (
-              <span className="material-symbols-outlined text-[18px]">play_arrow</span>
+              <span className="material-symbols-outlined text-[17px]">play_arrow</span>
             ) : (
-              <span className="material-symbols-outlined text-[18px]">pause</span>
+              <span className="material-symbols-outlined text-[17px]">pause</span>
             )}
           </button>
 
           <button
             type="button"
             onClick={() => onEdit(task)}
-            className="flex items-center border-l-2 border-black px-2 hover:bg-black/[0.03]"
+            className={osIconBtn}
             title="Editar"
             aria-label="Editar task"
           >
-            <span className="material-symbols-outlined text-[18px]">edit</span>
+            <span className="material-symbols-outlined text-[17px]">edit</span>
           </button>
 
           <button
             type="button"
             onClick={() => onDelete(task)}
-            className="flex items-center border-l-2 border-black px-2 text-[#FF0000] hover:bg-black/[0.03]"
+            className={osIconBtnDanger}
             title="Excluir"
             aria-label="Excluir task"
           >
-            <span className="material-symbols-outlined text-[18px]">close</span>
+            <span className="material-symbols-outlined text-[17px]">close</span>
           </button>
         </div>
       </div>

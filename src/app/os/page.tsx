@@ -33,6 +33,7 @@ import {
   type OsBlockView,
 } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
+import { osBtnGhost, osBtnPrimary, osCard, osDivider, osEmptyState, osErrorBanner, osInput, osLabelMuted, osPage } from "@/lib/os-ui";
 
 function OsProgressBar({
   label,
@@ -49,8 +50,10 @@ function OsProgressBar({
   const fillWidth = pct > 0 ? `${pct}%` : "3.5rem";
 
   return (
-    <div className="flex border-2 border-black bg-white">
-      <div className="flex shrink-0 items-center border-r-2 border-black px-4 py-2.5 text-sm font-bold tracking-wide">
+    <div className={`flex overflow-hidden ${osCard}`}>
+      <div
+        className={`flex shrink-0 items-center border-r px-4 py-2.5 text-sm font-bold tracking-wide ${osDivider}`}
+      >
         {label}: {value}
       </div>
       <div className="relative flex min-h-[42px] flex-1 bg-white">
@@ -89,7 +92,9 @@ function PillarSelectorBar({
       <button
         type="button"
         onClick={onSelect}
-        className={`flex border-2 border-black transition-opacity ${selected ? "ring-2 ring-black ring-offset-2" : "opacity-80 hover:opacity-100"}`}
+        className={`flex overflow-hidden ${osCard} transition-opacity ${
+          selected ? "ring-2 ring-black/20 ring-offset-2" : "opacity-90 hover:opacity-100"
+        }`}
         aria-pressed={selected}
       >
         <div
@@ -424,28 +429,22 @@ function OsPageContent() {
   };
 
   return (
-    <div className="pb-8 font-mono uppercase tracking-wide text-black">
+    <div className={`pb-8 ${osPage}`}>
       <OsCompanySelector />
 
-      {error ? (
-        <div className="mb-4 border-2 border-black bg-white px-4 py-2 text-sm font-bold normal-case text-[#FF0000]">
-          {error}
-        </div>
-      ) : null}
+      {error ? <div className={osErrorBanner}>{error}</div> : null}
 
       {loadingProjects || loadingBoard ? (
-        <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
-          Carregando OS...
-        </div>
+        <div className={osEmptyState}>Carregando OS...</div>
       ) : !selectedProjectId ? (
-        <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
-          Selecione uma empresa para visualizar o OS.
-        </div>
+        <div className={osEmptyState}>Selecione uma empresa para visualizar o OS.</div>
       ) : (
         <>
           {/* Company momentum */}
-          <div className="mb-6 flex border-2 border-black">
-            <div className="flex shrink-0 items-center border-r-2 border-black px-4 py-3 text-sm font-bold">
+          <div className={`mb-6 flex overflow-hidden ${osCard}`}>
+            <div
+              className={`flex shrink-0 items-center border-r px-4 py-3 text-sm font-bold ${osDivider}`}
+            >
               Company execution momentum
             </div>
             <div className="relative flex min-h-[46px] flex-1 bg-white">
@@ -503,7 +502,7 @@ function OsPageContent() {
           </div>
 
           {/* Selected pillar stats */}
-          <div className="mb-6 border-2 border-black bg-white px-4 py-4">
+          <div className={`mb-6 ${osCard} px-4 py-4`}>
             <p className="mb-3 text-center text-sm font-bold tracking-wide">
               {OS_BLOCK_LABELS[selectedPillar]} — RESUMO
             </p>
@@ -517,22 +516,24 @@ function OsPageContent() {
           </div>
 
           {/* Selected pillar detail */}
-          <div className="border-2 border-black bg-white">
-            <h2 className="border-b-2 border-black py-4 text-center text-2xl font-bold tracking-[0.12em]">
+          <div className={osCard}>
+            <h2
+              className={`border-b py-4 text-center text-2xl font-bold tracking-[0.12em] ${osDivider}`}
+            >
               {OS_BLOCK_LABELS[selectedPillar]}
             </h2>
 
             <div
-              className={`${OS_EXECUTION_TABLE_GRID} border-b-2 border-black text-[10px] font-bold tracking-[0.14em] text-black/50`}
+              className={`${OS_EXECUTION_TABLE_GRID} border-b ${osDivider} ${osLabelMuted}`}
             >
-              <div className="border-r-2 border-black" />
-              <div className="border-r-2 border-black px-4 py-2">Priority</div>
+              <div className={`border-r ${osDivider}`} />
+              <div className={`border-r px-4 py-2 ${osDivider}`}>Priority</div>
               <div className="flex items-center justify-center py-2">Status</div>
-              <div className="border-l-2 border-black py-2 text-center">+</div>
+              <div className={`border-l py-2 text-center ${osDivider}`}>+</div>
             </div>
 
             {executionPitches.length === 0 ? (
-              <div className="px-4 py-10 text-center text-sm font-bold normal-case text-black/50">
+              <div className={`px-4 py-10 text-center text-sm font-bold normal-case ${osLabelMuted}`}>
                 Nenhum pitch em execução neste pilar. Marque um pitch como ativo em{" "}
                 <span className="font-bold uppercase">Pitch</span>.
               </div>
@@ -582,23 +583,19 @@ function OsPageContent() {
                   type="text"
                   value={goalDraft.title}
                   onChange={(e) => setGoalDraft((p) => ({ ...p, title: e.target.value }))}
-                  className="w-full border-2 border-black bg-white px-3 py-2 text-sm font-bold outline-none focus:bg-black/5"
+                  className={`w-full px-3 py-2 text-sm font-bold ${osInput}`}
                 />
               </label>
               {goalError ? <p className="text-sm font-bold text-[#FF0000]">{goalError}</p> : null}
               <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setGoalModalOpen(false)}
-                  className="border-2 border-black px-3 py-2 text-sm font-bold"
-                >
+                <button type="button" onClick={() => setGoalModalOpen(false)} className={osBtnGhost}>
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleSaveGoal()}
                   disabled={actionLoading !== null}
-                  className="border-2 border-black bg-black px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                  className={osBtnPrimary}
                 >
                   Salvar
                 </button>

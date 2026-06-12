@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
 import type { OsTaskRow } from "@/lib/os-types";
+import { osBtnGhost, osBtnPrimary, osInput, osLabelMuted } from "@/lib/os-ui";
 
 interface OsTaskEditModalProps {
   open: boolean;
@@ -48,42 +49,38 @@ export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModal
 
         <div className="space-y-4 font-mono normal-case">
           <label className="block">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-black/70">
+            <span className={`mb-1 block ${osLabelMuted}`}>
               Título
             </span>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full border-2 border-black bg-white px-3 py-2 text-sm font-bold outline-none focus:bg-black/5"
+              className={`w-full px-3 py-2 text-sm font-bold ${osInput}`}
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-black/70">
+            <span className={`mb-1 block ${osLabelMuted}`}>
               Descrição
             </span>
             <textarea
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full border-2 border-black bg-white px-3 py-2 text-sm outline-none focus:bg-black/5"
+              className={`w-full px-3 py-2 text-sm ${osInput}`}
             />
           </label>
 
           <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="border-2 border-black px-4 py-2 text-sm font-bold uppercase hover:bg-black/5"
-            >
+            <button type="button" onClick={onClose} className={osBtnGhost}>
               Cancelar
             </button>
             <button
               type="button"
               onClick={() => void handleSave()}
               disabled={saving || !title.trim()}
-              className="border-2 border-black bg-black px-4 py-2 text-sm font-bold uppercase text-white disabled:opacity-50"
+              className={osBtnPrimary}
             >
               {saving ? "Salvando..." : "Salvar"}
             </button>
@@ -132,31 +129,27 @@ export function OsTaskOnHoldModal({ open, onClose, onConfirm }: OsTaskOnHoldModa
         </div>
 
         <label className="block font-mono normal-case">
-          <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-black/70">
+          <span className={`mb-1 block ${osLabelMuted}`}>
             Motivo
           </span>
           <textarea
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full border-2 border-black bg-white px-3 py-2 text-sm outline-none focus:bg-black/5"
+            className={`w-full px-3 py-2 text-sm ${osInput}`}
             placeholder="Por que esta task está em pausa?"
           />
         </label>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="border-2 border-black px-4 py-2 text-sm font-bold uppercase hover:bg-black/5"
-          >
+          <button type="button" onClick={onClose} className={osBtnGhost}>
             Cancelar
           </button>
           <button
             type="button"
             onClick={() => void handleConfirm()}
             disabled={saving || !reason.trim()}
-            className="border-2 border-black bg-black px-4 py-2 text-sm font-bold uppercase text-white disabled:opacity-50"
+            className={osBtnPrimary}
           >
             {saving ? "Salvando..." : "Confirmar"}
           </button>
