@@ -2,6 +2,8 @@
 
 import type { OsBetRow, OsBetUpdateRow, OsTaskRow } from "@/lib/os-types";
 import type { OsBlockView, OsProjectOption } from "@/lib/os-queries";
+import { OS_SELECTED_PROJECT_KEY } from "@/lib/os-queries";
+import { readStoredAuthUserId } from "@/lib/auth-session";
 
 type CacheEntry<T> = {
   data: T;
@@ -135,4 +137,76 @@ export function invalidateOsCache(keyPrefix: string): void {
 
 export function invalidateAllOsCacheForUser(userId: string): void {
   invalidateOsCache(`${userId}:`);
+}
+
+export type OsBootstrapSnapshot = {
+  userId: string | null;
+  projects: OsProjectOption[];
+  selectedProjectId: string | null;
+  board: OsBlockView[];
+  latestUpdates: Map<string, OsBetUpdateRow>;
+  boardReady: boolean;
+  tasks: OsTaskRow[];
+  taskProjects: OsProjectOption[];
+  betsById: Map<string, OsBetRow>;
+  tasksReady: boolean;
+};
+
+/** Hidratação síncrona no primeiro render — evita "Carregando OS..." com cache válido. */
+export function readOsBootstrapSnapshot(): OsBootstrapSnapshot {
+  const empty: OsBootstrapSnapshot = {
+    userId: null,
+    projects: [],
+    selectedProjectId: null,
+    board: [],
+    latestUpdates: new Map(),
+    boardReady: false,
+    tasks: [],
+    taskProjects: [],
+    betsById: new Map(),
+    tasksReady: false,
+  };
+
+  const userId = readStoredAuthUserId();
+  if (!userId) return empty;
+
+  const projects = getOsCache<OsProjectOption[]>(osCacheKey(userId, "companies")) ?? [];
+  let selectedProjectId: string | null = null;
+
+  if (projects.length > 0) {
+    const stored =
+      typeof window !== "undefined" ? localStorage.getItem(OS_SELECTED_PROJECT_KEY) : null;
+    const storedValid = stored && projects.some((p) => p.id === stored);
+    selectedProjectId = storedValid ? stored : (projects[0]?.id ?? null);
+  }
+
+  let board: OsBlockView[] = [];
+  let latestUpdates = new Map<string, OsBetUpdateRow>();
+  let boardReady = false;
+
+  if (selectedProjectId) {
+    const boardPacked = getOsCache<OsBoardCache>(osCacheKey(userId, "board", selectedProjectId));
+    if (boardPacked) {
+      const unpacked = unpackBoardCache(boardPacked);
+      board = unpacked.board;
+      latestUpdates = unpacked.latestUpdates;
+      boardReady = board.length > 0;
+    }
+  }
+
+  const tasksPacked = getOsCache<OsTasksCache>(osCacheKey(userId, "tasks-board"));
+  const tasksUnpacked = tasksPacked ? unpackTasksCache(tasksPacked) : null;
+
+  return {
+    userId,
+    projects,
+    selectedProjectId,
+    board,
+    latestUpdates,
+    boardReady,
+    tasks: tasksUnpacked?.tasks ?? [],
+    taskProjects: tasksUnpacked?.projects ?? [],
+    betsById: tasksUnpacked?.betsById ?? new Map(),
+    tasksReady: Boolean(tasksUnpacked),
+  };
 }

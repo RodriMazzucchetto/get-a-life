@@ -18,6 +18,7 @@ import {
   osCacheKey,
   packBoardCache,
   packTasksCache,
+  readOsBootstrapSnapshot,
   setOsCache,
   unpackBoardCache,
   unpackTasksCache,
@@ -80,22 +81,31 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuthContext();
   const userId = user?.id ?? null;
 
-  const [projects, setProjects] = useState<OsProjectOption[]>([]);
-  const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
-  const [loadingProjects, setLoadingProjects] = useState(false);
+  const bootstrapRef = useRef(readOsBootstrapSnapshot());
+  const bootstrap = bootstrapRef.current;
+
+  const [projects, setProjects] = useState<OsProjectOption[]>(() => bootstrap.projects);
+  const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(
+    () => bootstrap.selectedProjectId
+  );
+  const [loadingProjects, setLoadingProjects] = useState(
+    () => bootstrap.projects.length === 0 && bootstrap.userId !== null
+  );
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
-  const [board, setBoard] = useState<OsBlockView[]>([]);
-  const [latestUpdates, setLatestUpdates] = useState<Map<string, OsBetUpdateRow>>(new Map());
-  const [boardReady, setBoardReady] = useState(false);
+  const [board, setBoard] = useState<OsBlockView[]>(() => bootstrap.board);
+  const [latestUpdates, setLatestUpdates] = useState<Map<string, OsBetUpdateRow>>(
+    () => bootstrap.latestUpdates
+  );
+  const [boardReady, setBoardReady] = useState(() => bootstrap.boardReady);
   const [boardLoading, setBoardLoading] = useState(false);
   const [boardRefreshing, setBoardRefreshing] = useState(false);
   const [boardError, setBoardError] = useState<string | null>(null);
 
-  const [tasks, setTasksState] = useState<OsTaskRow[]>([]);
-  const [taskProjects, setTaskProjects] = useState<OsProjectOption[]>([]);
-  const [betsById, setBetsById] = useState<Map<string, OsBetRow>>(new Map());
-  const [tasksReady, setTasksReady] = useState(false);
+  const [tasks, setTasksState] = useState<OsTaskRow[]>(() => bootstrap.tasks);
+  const [taskProjects, setTaskProjects] = useState<OsProjectOption[]>(() => bootstrap.taskProjects);
+  const [betsById, setBetsById] = useState<Map<string, OsBetRow>>(() => bootstrap.betsById);
+  const [tasksReady, setTasksReady] = useState(() => bootstrap.tasksReady);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tasksRefreshing, setTasksRefreshing] = useState(false);
   const [tasksError, setTasksError] = useState<string | null>(null);

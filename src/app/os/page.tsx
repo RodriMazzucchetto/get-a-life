@@ -132,6 +132,7 @@ function PillarSelectorBar({
             }
           }}
           className={osGoalText}
+          style={{ whiteSpace: "normal", overflow: "visible", textOverflow: "clip" }}
           title={displayGoal}
         >
           {displayGoal}
@@ -153,13 +154,11 @@ function OsPageContent() {
     projects,
     board,
     latestUpdates,
-    boardReady,
     boardRefreshing,
     boardError,
     refreshBoard,
     setLatestUpdates,
   } = useOsLayout();
-  const { loading: authLoading } = useAuthContext();
   const [error, setError] = useState<string | null>(null);
   const [selectedPillar, setSelectedPillar] = useState<OsBlockType>("finance");
   const [expandedBetId, setExpandedBetId] = useState<string | null>(null);
@@ -431,7 +430,7 @@ function OsPageContent() {
         <p className={`mb-3 text-center ${osLabelMuted} normal-case`}>Atualizando…</p>
       ) : null}
 
-      {authLoading || (loadingProjects && projects.length === 0 && !boardReady) ? (
+      {!selectedProjectId && loadingProjects && projects.length === 0 ? (
         <div className={osEmptyState}>Carregando OS...</div>
       ) : !selectedProjectId ? (
         <div className={osEmptyState}>Selecione uma empresa para visualizar o OS.</div>
@@ -478,7 +477,7 @@ function OsPageContent() {
           </div>
 
           {/* Pillar selectors */}
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mb-8 grid grid-cols-1 gap-4 normal-case sm:grid-cols-3">
             {orderedBlocks.map((view) => {
               const blockType = view.block.type as OsBlockType;
               const display = pillarDisplays[blockType];
