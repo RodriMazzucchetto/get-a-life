@@ -14,6 +14,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import {
   getOsCache,
   invalidateOsCache,
+  invalidateOsCacheEntry,
   isOsCacheFresh,
   osCacheKey,
   packBoardCache,
@@ -48,7 +49,7 @@ interface OsLayoutContextValue {
   boardLoading: boolean;
   boardRefreshing: boolean;
   boardError: string | null;
-  refreshBoard: (options?: { background?: boolean }) => Promise<void>;
+  refreshBoard: (options?: { background?: boolean; force?: boolean }) => Promise<void>;
   setBoard: React.Dispatch<React.SetStateAction<OsBlockView[]>>;
   setLatestUpdates: React.Dispatch<React.SetStateAction<Map<string, OsBetUpdateRow>>>;
 
@@ -60,7 +61,7 @@ interface OsLayoutContextValue {
   tasksLoading: boolean;
   tasksRefreshing: boolean;
   tasksError: string | null;
-  refreshTasks: (options?: { background?: boolean }) => Promise<void>;
+  refreshTasks: (options?: { background?: boolean; force?: boolean }) => Promise<void>;
   invalidateOsData: () => void;
 }
 
@@ -247,7 +248,7 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
   }, [userId, hydrateFromCache]);
 
   const refreshBoard = useCallback(
-    async (options?: { background?: boolean }) => {
+    async (options?: { background?: boolean; force?: boolean }) => {
       if (!userId || !selectedProjectId) {
         setBoard([]);
         setLatestUpdates(new Map());
@@ -256,7 +257,8 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
       }
 
       const cacheKey = osCacheKey(userId, "board", selectedProjectId);
-      const cachedPacked = getOsCache<OsBoardCache>(cacheKey);
+      const force = options?.force ?? false;
+      const cachedPacked = force ? null : getOsCache<OsBoardCache>(cacheKey);
       const cached = cachedPacked ? unpackBoardCache(cachedPacked) : null;
 
       const background = options?.background ?? Boolean(cached);
@@ -268,7 +270,9 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
         setBoardError(null);
       }
 
-      if (cached && isOsCacheFresh(cacheKey) && background) return;
+      if (force) invalidateOsCacheEntry(cacheKey);
+
+      if (cached && isOsCacheFresh(cacheKey) && background && !force) return;
 
       const requestId = ++boardRequestRef.current;
       if (background) {
@@ -306,11 +310,12 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refreshTasks = useCallback(
-    async (options?: { background?: boolean }) => {
+    async (options?: { background?: boolean; force?: boolean }) => {
       if (!userId) return;
 
       const cacheKey = osCacheKey(userId, "tasks-board");
-      const cachedPacked = getOsCache<OsTasksCache>(cacheKey);
+      const force = options?.force ?? false;
+      const cachedPacked = force ? null : getOsCache<OsTasksCache>(cacheKey);
       const cached = cachedPacked ? unpackTasksCache(cachedPacked) : null;
 
       const background = options?.background ?? Boolean(cached);
@@ -323,7 +328,9 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
         setTasksError(null);
       }
 
-      if (cached && isOsCacheFresh(cacheKey) && background) return;
+      if (force) invalidateOsCacheEntry(cacheKey);
+
+      if (cached && isOsCacheFresh(cacheKey) && background && !force) return;
 
       const requestId = ++tasksRequestRef.current;
       if (background) {

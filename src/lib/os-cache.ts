@@ -139,6 +139,13 @@ export function invalidateAllOsCacheForUser(userId: string): void {
   invalidateOsCache(`${userId}:`);
 }
 
+export function invalidateOsCacheEntry(key: string): void {
+  store.delete(key);
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(SESSION_PREFIX + key);
+  }
+}
+
 export type OsBootstrapSnapshot = {
   userId: string | null;
   projects: OsProjectOption[];

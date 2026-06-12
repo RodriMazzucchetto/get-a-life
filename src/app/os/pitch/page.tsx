@@ -322,7 +322,7 @@ export default function OsPitchPage() {
           setPitchTasks([]);
         }
       }
-      await refreshBoard({ background: true });
+      await refreshBoard({ background: true, force: true });
     } catch (priorityError) {
       console.error("Erro ao alterar prioridade:", priorityError);
       setError("Não foi possível alterar a prioridade do pitch.");
@@ -386,7 +386,7 @@ export default function OsPitchPage() {
         });
       }
       closeModal();
-      await refreshBoard({ background: true });
+      await refreshBoard({ background: true, force: true });
     } catch (saveError) {
       console.error("Erro ao salvar pitch:", saveError);
       setError("Não foi possível salvar o pitch.");
@@ -400,7 +400,7 @@ export default function OsPitchPage() {
     try {
       await deleteOsBet(betId);
       if (editingPitch?.id === betId) closeModal();
-      await refreshBoard({ background: true });
+      await refreshBoard({ background: true, force: true });
     } catch (deleteError) {
       console.error("Erro ao excluir pitch:", deleteError);
       setError("Não foi possível excluir o pitch.");
@@ -441,7 +441,7 @@ export default function OsPitchPage() {
     } catch (reorderError) {
       console.error("Erro ao reordenar pitches:", reorderError);
       setError("Não foi possível reordenar os pitches.");
-      await refreshBoard({ background: true });
+      await refreshBoard({ background: true, force: true });
     }
   };
 

@@ -157,6 +157,7 @@ function OsPageContent() {
     boardRefreshing,
     boardError,
     refreshBoard,
+    setBoard,
     setLatestUpdates,
   } = useOsLayout();
   const [error, setError] = useState<string | null>(null);
@@ -280,9 +281,19 @@ function OsPageContent() {
     }
     setActionLoading(`goal-${goalDraft.blockId}`);
     try {
-      await saveOsGoal(user.id, goalDraft.blockId, goalDraft.title.trim(), goalDraft.description.trim() || undefined);
+      const savedGoal = await saveOsGoal(
+        user.id,
+        goalDraft.blockId,
+        goalDraft.title.trim(),
+        goalDraft.description.trim() || undefined
+      );
       setGoalModalOpen(false);
-      await refreshBoard({ background: true });
+      setBoard((prev) =>
+        prev.map((view) =>
+          view.block.id === goalDraft.blockId ? { ...view, goal: savedGoal } : view
+        )
+      );
+      await refreshBoard({ background: true, force: true });
     } catch {
       setGoalError("Não foi possível salvar a meta.");
     } finally {
@@ -345,7 +356,7 @@ function OsPageContent() {
         executionOwner: data.executionOwner || null,
       });
       closePitchModal();
-      await refreshBoard({ background: true });
+      await refreshBoard({ background: true, force: true });
     } catch {
       setError("Não foi possível salvar o pitch.");
     } finally {
@@ -370,7 +381,7 @@ function OsPageContent() {
         setWeeklyUpdates([]);
         setPitchTasks([]);
       }
-      await refreshBoard({ background: true });
+      await refreshBoard({ background: true, force: true });
     } catch {
       setError("Não foi possível alterar prioridade.");
     } finally {
@@ -412,7 +423,7 @@ function OsPageContent() {
       if (editingPitch?.id === weeklyModalBet.id) {
         await loadAllWeeklyUpdates(weeklyModalBet.id);
       }
-      await refreshBoard({ background: true });
+      await refreshBoard({ background: true, force: true });
     } finally {
       setWeeklySaving(false);
     }
