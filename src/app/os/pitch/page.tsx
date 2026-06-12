@@ -80,7 +80,11 @@ function SortablePitchCard({
           ref={setActivatorNodeRef}
           {...attributes}
           {...listeners}
-          className="flex shrink-0 cursor-grab items-center border-r-2 border-black px-2 text-black/50 hover:bg-black/[0.03] active:cursor-grabbing"
+          className={`flex shrink-0 cursor-grab items-center overflow-hidden text-black/50 transition-all duration-150 hover:bg-black/[0.03] active:cursor-grabbing ${
+            isDragging
+              ? "max-w-[2.5rem] border-r-2 border-black px-2 opacity-100"
+              : "max-w-0 border-r-0 px-0 opacity-0 group-hover:max-w-[2.5rem] group-hover:border-r-2 group-hover:border-black group-hover:px-2 group-hover:opacity-100"
+          }`}
           aria-label="Arrastar pitch"
         >
           <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
