@@ -62,34 +62,46 @@ export function computePillarMomentum(
   return Math.round((onTrack / bets.length) * 100)
 }
 
+/**
+ * Cor da barra conforme momentum:
+ * > 50% verde · = 50% amarelo (deviating) · < 50% vermelho
+ */
+export function getPillarMomentumColor(pct: number, hasBets = true): string {
+  if (!hasBets) return '#E5E5E5'
+  if (pct > 50) return OS_GREEN
+  if (pct === 50) return OS_YELLOW
+  return OS_RED
+}
+
 export function getPillarStatusDisplay(
   priorityBet: OsBetRow | null,
   latestUpdate: OsBetUpdateRow | null,
   pillarBets: OsBetRow[] = [],
   latestUpdatesByBetId: Map<string, OsBetUpdateRow> = new Map()
 ): PillarStatusDisplay {
+  const hasBets = pillarBets.length > 0
   const pct = computePillarMomentum(pillarBets, latestUpdatesByBetId)
+  const color = getPillarMomentumColor(pct, hasBets)
 
-  if (!priorityBet) {
+  if (!hasBets) {
     return { pct: 0, color: '#E5E5E5', status: null, label: '—' }
   }
 
   const trackable = ['on_course', 'deviating', 'executed', 'failed'] as const
+  const statusBet = priorityBet ?? pillarBets.find((bet) => bet.is_priority) ?? null
+  const statusUpdate = statusBet ? latestUpdatesByBetId.get(statusBet.id) ?? null : null
   const rawStatus =
-    latestUpdate?.status ??
-    (trackable.includes(priorityBet.status as (typeof trackable)[number])
-      ? (priorityBet.status as (typeof trackable)[number])
+    statusUpdate?.status ??
+    (statusBet &&
+    trackable.includes(statusBet.status as (typeof trackable)[number])
+      ? (statusBet.status as (typeof trackable)[number])
       : null)
-
-  if (!rawStatus) {
-    return { pct, color: '#E5E5E5', status: null, label: 'SEM STATUS' }
-  }
 
   return {
     pct,
-    color: getBetUpdateStatusColor(rawStatus),
+    color,
     status: rawStatus,
-    label: formatBetUpdateStatusLabel(rawStatus),
+    label: rawStatus ? formatBetUpdateStatusLabel(rawStatus) : `${pct}% MOMENTUM`,
   }
 }
 

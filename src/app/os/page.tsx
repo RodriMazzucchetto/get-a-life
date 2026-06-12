@@ -18,6 +18,7 @@ import {
   OS_YELLOW,
   computeCompanyMomentum,
   computeOsBetStats,
+  getPillarMomentumColor,
   createOsBetUpdate,
   createOsTask,
   deleteOsTask,
@@ -246,12 +247,9 @@ function OsPageContent() {
   );
 
   const companyMomentumColor = useMemo(() => {
-    if (companyMomentum >= 100) return OS_CYAN;
-    if (companyMomentum >= 67) return OS_GREEN;
-    if (companyMomentum >= 34) return OS_YELLOW;
-    if (companyMomentum > 0) return OS_YELLOW;
-    return "#E5E5E5";
-  }, [companyMomentum]);
+    const allBets = orderedBlocks.flatMap((view) => view.bets);
+    return getPillarMomentumColor(companyMomentum, allBets.length > 0);
+  }, [companyMomentum, orderedBlocks]);
 
   const selectedBlockView = orderedBlocks.find((view) => view.block.type === selectedPillar);
   const selectedPillarStats = useMemo(
@@ -452,7 +450,7 @@ function OsPageContent() {
             </div>
             <div className="relative flex min-h-[46px] flex-1 bg-white">
               <div
-                className="ml-auto flex items-center justify-center text-sm font-bold text-black"
+                className="ml-auto flex items-center justify-center text-sm font-bold text-white"
                 style={{
                   width: `${Math.max(companyMomentum, 8)}%`,
                   backgroundColor: companyMomentumColor,
@@ -498,7 +496,7 @@ function OsPageContent() {
                   onSelect={() => setSelectedPillar(blockType)}
                   onEditGoal={() => openGoalModal(view.block.id, blockType)}
                   fillColor={display.color}
-                  hasActivePitch={display.status !== null}
+                  hasActivePitch={view.bets.length > 0}
                 />
               );
             })}
