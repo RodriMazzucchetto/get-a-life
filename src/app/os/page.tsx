@@ -367,7 +367,7 @@ function OsPageContent() {
 
     setPriorityLoadingId(editingPitch.id);
     try {
-      const updated = await setOsBetPriority(editingPitch.id, goalId, !editingPitch.is_priority);
+      const updated = await setOsBetPriority(editingPitch.id, !editingPitch.is_priority);
       setEditingPitch(updated);
       setModalPriority(updated.is_priority);
       if (updated.is_priority) {

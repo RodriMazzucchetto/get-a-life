@@ -541,23 +541,9 @@ export async function fetchPriorityBetForGoal(goalId: string): Promise<OsBetRow 
 
 export async function setOsBetPriority(
   betId: string,
-  goalId: string,
   isPriority: boolean
 ): Promise<OsBetRow> {
   const supabase = createClient()
-
-  if (isPriority) {
-    const { error: clearError } = await supabase
-      .from('os_bets')
-      .update({ is_priority: false, updated_at: new Date().toISOString() })
-      .eq('goal_id', goalId)
-      .neq('id', betId)
-
-    if (clearError) {
-      console.error('Erro ao limpar prioridade de outros pitches:', clearError)
-      throw clearError
-    }
-  }
 
   const { data, error } = await supabase
     .from('os_bets')

@@ -330,7 +330,7 @@ export default function OsPitchPage() {
     setPriorityLoadingId(bet.id);
     setError(null);
     try {
-      const updated = await setOsBetPriority(bet.id, goalId, !bet.is_priority);
+      const updated = await setOsBetPriority(bet.id, !bet.is_priority);
       if (editingPitch?.id === bet.id) {
         setEditingPitch(updated);
         setModalPriority(updated.is_priority);
