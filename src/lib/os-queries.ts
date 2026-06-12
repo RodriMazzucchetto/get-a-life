@@ -540,6 +540,17 @@ export function partitionBetsByPriority(bets: OsBetRow[]): OsBetRow[] {
   return [...priority, ...rest]
 }
 
+export function removeBetFromBoardViews(board: OsBlockView[], betId: string): OsBlockView[] {
+  return board.map((view) => {
+    const bets = view.bets.filter((bet) => bet.id !== betId)
+    return {
+      ...view,
+      bets,
+      priorityBet: bets.find((bet) => bet.is_priority) ?? null,
+    }
+  })
+}
+
 export async function fetchPriorityBetForGoal(goalId: string): Promise<OsBetRow | null> {
   const supabase = createClient()
   const { data, error } = await supabase
@@ -754,11 +765,15 @@ export async function updateOsBet(
 
 export async function deleteOsBet(betId: string): Promise<void> {
   const supabase = createClient()
-  const { error } = await supabase.from('os_bets').delete().eq('id', betId)
+  const { data, error } = await supabase.from('os_bets').delete().eq('id', betId).select('id')
 
   if (error) {
     console.error('Erro ao excluir pitch OS:', error)
     throw error
+  }
+
+  if (!data?.length) {
+    throw new Error('Pitch não encontrado ou sem permissão para excluir.')
   }
 }
 

@@ -112,7 +112,12 @@ export function PitchModal({
   const handleDelete = async () => {
     if (!pitch || !onDelete) return;
     if (!window.confirm("Excluir este pitch permanentemente?")) return;
-    await onDelete(pitch.id);
+    setError(null);
+    try {
+      await onDelete(pitch.id);
+    } catch {
+      setError("Não foi possível excluir o pitch.");
+    }
   };
 
   const handleAddTask = async () => {

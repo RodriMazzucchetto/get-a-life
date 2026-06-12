@@ -37,6 +37,7 @@ import {
   fetchOsBetUpdatesForBet,
   fetchOsTasksForBet,
   partitionBetsByPriority,
+  removeBetFromBoardViews,
   reorderOsBetsInGoal,
   setOsBetPriority,
   updateOsBet,
@@ -115,7 +116,11 @@ function SortablePitchCard({
             if (window.confirm("Excluir este pitch?")) onDelete(bet.id);
           }}
           disabled={deleting}
-          className="flex max-w-0 shrink-0 items-center overflow-hidden border-l-0 px-0 text-[#FF0000] opacity-0 transition-all duration-150 hover:bg-[#FF0000]/5 focus:max-w-[2.5rem] focus:border-l-2 focus:border-black focus:px-2 focus:opacity-100 disabled:opacity-50 group-hover:max-w-[2.5rem] group-hover:border-l-2 group-hover:border-black group-hover:px-2 group-hover:opacity-100"
+          className={`flex shrink-0 items-center overflow-hidden border-l-2 border-black px-2 text-[#FF0000] transition-all duration-150 hover:bg-[#FF0000]/5 disabled:opacity-50 ${
+            bet.is_priority
+              ? "max-w-[2.5rem] opacity-100"
+              : "max-w-0 opacity-0 group-hover:max-w-[2.5rem] group-hover:opacity-100 focus:max-w-[2.5rem] focus:opacity-100"
+          }`}
           aria-label="Excluir pitch"
         >
           <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -205,7 +210,9 @@ export default function OsPitchPage() {
     boardLoading,
     boardError,
     refreshBoard,
+    refreshTasks,
     setBoard,
+    setLatestUpdates,
   } = useOsLayout();
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -397,13 +404,22 @@ export default function OsPitchPage() {
 
   const handleDeletePitch = async (betId: string) => {
     setDeletingId(betId);
+    setError(null);
     try {
       await deleteOsBet(betId);
+      setBoard((prev) => removeBetFromBoardViews(prev, betId));
+      setLatestUpdates((prev) => {
+        const next = new Map(prev);
+        next.delete(betId);
+        return next;
+      });
       if (editingPitch?.id === betId) closeModal();
       await refreshBoard({ background: true, force: true });
+      await refreshTasks({ background: true, force: true });
     } catch (deleteError) {
       console.error("Erro ao excluir pitch:", deleteError);
       setError("Não foi possível excluir o pitch.");
+      await refreshBoard({ background: true, force: true });
     } finally {
       setDeletingId(null);
     }
@@ -528,7 +544,7 @@ export default function OsPitchPage() {
         weeklyUpdates={weeklyUpdates}
         weeklyUpdatesLoading={weeklyUpdatesLoading}
         onSave={handleSavePitch}
-        onDelete={editingPitch ? (id) => handleDeletePitch(id) : undefined}
+        onDelete={editingPitch ? handleDeletePitch : undefined}
         saving={saving}
       />
     </div>

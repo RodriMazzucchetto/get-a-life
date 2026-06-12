@@ -21,10 +21,12 @@ import {
   getPillarMomentumColor,
   createOsBetUpdate,
   createOsTask,
+  deleteOsBet,
   deleteOsTask,
   fetchOsBetUpdatesForBet,
   fetchOsTasksForBet,
   getPillarStatusDisplay,
+  removeBetFromBoardViews,
   saveOsGoal,
   setOsBetPriority,
   updateOsBet,
@@ -157,6 +159,7 @@ function OsPageContent() {
     boardRefreshing,
     boardError,
     refreshBoard,
+    refreshTasks,
     setBoard,
     setLatestUpdates,
   } = useOsLayout();
@@ -183,6 +186,7 @@ function OsPageContent() {
   const [pitchTasks, setPitchTasks] = useState<OsTaskRow[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [pitchSaving, setPitchSaving] = useState(false);
+  const [pitchDeleting, setPitchDeleting] = useState(false);
   const [priorityLoadingId, setPriorityLoadingId] = useState<string | null>(null);
   const [weeklyUpdates, setWeeklyUpdates] = useState<OsBetUpdateRow[]>([]);
   const [weeklyUpdatesLoading, setWeeklyUpdatesLoading] = useState(false);
@@ -361,6 +365,28 @@ function OsPageContent() {
       setError("Não foi possível salvar o pitch.");
     } finally {
       setPitchSaving(false);
+    }
+  };
+
+  const handleDeletePitch = async (betId: string) => {
+    setPitchDeleting(true);
+    setError(null);
+    try {
+      await deleteOsBet(betId);
+      setBoard((prev) => removeBetFromBoardViews(prev, betId));
+      setLatestUpdates((prev) => {
+        const next = new Map(prev);
+        next.delete(betId);
+        return next;
+      });
+      if (editingPitch?.id === betId) closePitchModal();
+      await refreshBoard({ background: true, force: true });
+      await refreshTasks({ background: true, force: true });
+    } catch {
+      setError("Não foi possível excluir o pitch.");
+      await refreshBoard({ background: true, force: true });
+    } finally {
+      setPitchDeleting(false);
     }
   };
 
@@ -629,7 +655,8 @@ function OsPageContent() {
         weeklyUpdates={weeklyUpdates}
         weeklyUpdatesLoading={weeklyUpdatesLoading}
         onSave={handleSavePitch}
-        saving={pitchSaving}
+        onDelete={editingPitch ? handleDeletePitch : undefined}
+        saving={pitchSaving || pitchDeleting}
       />
 
       {weeklyModalBet ? (
