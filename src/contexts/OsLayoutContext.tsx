@@ -15,7 +15,13 @@ import {
   invalidateOsCache,
   isOsCacheFresh,
   osCacheKey,
+  packBoardCache,
+  packTasksCache,
   setOsCache,
+  unpackBoardCache,
+  unpackTasksCache,
+  type OsBoardCache,
+  type OsTasksCache,
 } from "@/lib/os-cache";
 import {
   OS_SELECTED_PROJECT_KEY,
@@ -99,13 +105,16 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
     (nextTasks: OsTaskRow[]) => {
       if (!userId) return;
       const cacheKey = osCacheKey(userId, "tasks-board");
-      const cached = getOsCache<{
-        tasks: OsTaskRow[];
-        projects: OsProjectOption[];
-        betsById: Map<string, OsBetRow>;
-      }>(cacheKey);
+      const cached = getOsCache<OsTasksCache>(cacheKey);
       if (cached) {
-        setOsCache(cacheKey, { ...cached, tasks: nextTasks });
+        setOsCache(
+          cacheKey,
+          packTasksCache({
+            tasks: nextTasks,
+            projects: cached.projects,
+            betsById: new Map(cached.betsByIdEntries),
+          })
+        );
       }
     },
     [userId]
@@ -138,37 +147,57 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
     setTasksReady(false);
   }, [userId]);
 
+  const hydrateFromCache = useCallback(
+    (uid: string) => {
+      const companies = getOsCache<OsProjectOption[]>(osCacheKey(uid, "companies"));
+      if (companies?.length) {
+        setProjects(companies);
+        setLoadingProjects(false);
+
+        const stored =
+          typeof window !== "undefined"
+            ? localStorage.getItem(OS_SELECTED_PROJECT_KEY)
+            : null;
+        const storedValid = stored && companies.some((p) => p.id === stored);
+        const projectId = storedValid ? stored : (companies[0]?.id ?? null);
+
+        if (projectId) {
+          setSelectedProjectIdState((prev) =>
+            prev && companies.some((p) => p.id === prev) ? prev : projectId
+          );
+
+          const boardPacked = getOsCache<OsBoardCache>(osCacheKey(uid, "board", projectId));
+          if (boardPacked) {
+            const { board: cachedBoard, latestUpdates: cachedUpdates } =
+              unpackBoardCache(boardPacked);
+            setBoard(cachedBoard);
+            setLatestUpdates(cachedUpdates);
+            setBoardReady(true);
+            setBoardLoading(false);
+          }
+        }
+      }
+
+      const tasksPacked = getOsCache<OsTasksCache>(osCacheKey(uid, "tasks-board"));
+      if (tasksPacked) {
+        const unpacked = unpackTasksCache(tasksPacked);
+        setTasks(unpacked.tasks);
+        setTaskProjects(unpacked.projects);
+        setBetsById(unpacked.betsById);
+        setTasksReady(true);
+        setTasksLoading(false);
+      }
+    },
+    [setTasks]
+  );
+
   const loadCompanies = useCallback(async () => {
     if (!userId) return;
 
     const cacheKey = osCacheKey(userId, "companies");
     const cached = getOsCache<OsProjectOption[]>(cacheKey);
     if (cached) {
-      setProjects(cached);
-      setLoadingProjects(false);
-
-      const stored =
-        typeof window !== "undefined" ? localStorage.getItem(OS_SELECTED_PROJECT_KEY) : null;
-      const storedValid = stored && cached.some((project) => project.id === stored);
-      const resolvedProjectId = storedValid ? stored : (cached[0]?.id ?? null);
-
-      setSelectedProjectIdState((prev) => {
-        if (prev && cached.some((p) => p.id === prev)) return prev;
-        return resolvedProjectId;
-      });
-
-      if (resolvedProjectId) {
-        const boardCached = getOsCache<{
-          board: OsBlockView[];
-          latestUpdates: Map<string, OsBetUpdateRow>;
-        }>(osCacheKey(userId, "board", resolvedProjectId));
-        if (boardCached) {
-          setBoard(boardCached.board);
-          setLatestUpdates(boardCached.latestUpdates);
-          setBoardReady(true);
-          setBoardLoading(false);
-        }
-      }
+      hydrateFromCache(userId);
     }
 
     if (cached && isOsCacheFresh(cacheKey)) return;
@@ -204,7 +233,7 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (companiesRequestRef.current === requestId) setLoadingProjects(false);
     }
-  }, [userId]);
+  }, [userId, hydrateFromCache]);
 
   const refreshBoard = useCallback(
     async (options?: { background?: boolean }) => {
@@ -216,9 +245,8 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
       }
 
       const cacheKey = osCacheKey(userId, "board", selectedProjectId);
-      const cached = getOsCache<{ board: OsBlockView[]; latestUpdates: Map<string, OsBetUpdateRow> }>(
-        cacheKey
-      );
+      const cachedPacked = getOsCache<OsBoardCache>(cacheKey);
+      const cached = cachedPacked ? unpackBoardCache(cachedPacked) : null;
 
       const background = options?.background ?? Boolean(cached);
 
@@ -243,7 +271,7 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
         const data = await fetchOsPitchBoardWithUpdates(userId, selectedProjectId);
         if (boardRequestRef.current !== requestId) return;
 
-        setOsCache(cacheKey, data);
+        setOsCache(cacheKey, packBoardCache(data));
         setBoard(data.board);
         setLatestUpdates(data.latestUpdates);
         setBoardReady(true);
@@ -271,11 +299,8 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
       if (!userId) return;
 
       const cacheKey = osCacheKey(userId, "tasks-board");
-      const cached = getOsCache<{
-        tasks: OsTaskRow[];
-        projects: OsProjectOption[];
-        betsById: Map<string, OsBetRow>;
-      }>(cacheKey);
+      const cachedPacked = getOsCache<OsTasksCache>(cacheKey);
+      const cached = cachedPacked ? unpackTasksCache(cachedPacked) : null;
 
       const background = options?.background ?? Boolean(cached);
 
@@ -301,7 +326,7 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
         const data = await fetchOsTasksBoard(userId);
         if (tasksRequestRef.current !== requestId) return;
 
-        setOsCache(cacheKey, data);
+        setOsCache(cacheKey, packTasksCache(data));
         setTasks(data.tasks);
         setTaskProjects(data.projects);
         setBetsById(data.betsById);
@@ -338,22 +363,10 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const tasksCached = getOsCache<{
-      tasks: OsTaskRow[];
-      projects: OsProjectOption[];
-      betsById: Map<string, OsBetRow>;
-    }>(osCacheKey(userId, "tasks-board"));
-    if (tasksCached) {
-      setTasks(tasksCached.tasks);
-      setTaskProjects(tasksCached.projects);
-      setBetsById(tasksCached.betsById);
-      setTasksReady(true);
-      setTasksLoading(false);
-    }
-
+    hydrateFromCache(userId);
     void loadCompanies();
     void refreshTasks({ background: true });
-  }, [userId, loadCompanies, refreshTasks]);
+  }, [userId, hydrateFromCache, loadCompanies, refreshTasks]);
 
   useEffect(() => {
     if (!userId || !selectedProjectId) return;

@@ -419,7 +419,7 @@ export default function OsTasksPage() {
         <div className={osErrorBanner}>{error ?? tasksError}</div>
       ) : null}
 
-      {!tasksReady && tasksLoading ? (
+      {!tasksReady && tasksLoading && tasks.length === 0 ? (
         <div className={osEmptyState}>Carregando tasks...</div>
       ) : (
         <DndContext

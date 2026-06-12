@@ -1,4 +1,7 @@
-/** Cache em memória (sessão) para dados OS — evita refetch completo ao navegar. */
+/** Cache OS — memória + sessionStorage (sobrevive navegação entre /dashboard e /os). */
+
+import type { OsBetRow, OsBetUpdateRow, OsTaskRow } from "@/lib/os-types";
+import type { OsBlockView, OsProjectOption } from "@/lib/os-queries";
 
 type CacheEntry<T> = {
   data: T;
@@ -6,31 +9,127 @@ type CacheEntry<T> = {
 };
 
 const store = new Map<string, CacheEntry<unknown>>();
+const SESSION_PREFIX = "ta-os:";
 
-export const OS_CACHE_TTL_MS = 60_000;
+export const OS_CACHE_TTL_MS = 5 * 60_000;
 
 export function osCacheKey(...parts: (string | number | null | undefined)[]): string {
   return parts.filter((p) => p != null && p !== "").join(":");
 }
 
+export type OsBoardCache = {
+  board: OsBlockView[];
+  latestUpdatesEntries: [string, OsBetUpdateRow][];
+};
+
+export type OsTasksCache = {
+  tasks: OsTaskRow[];
+  projects: OsProjectOption[];
+  betsByIdEntries: [string, OsBetRow][];
+};
+
+export function packBoardCache(data: {
+  board: OsBlockView[];
+  latestUpdates: Map<string, OsBetUpdateRow>;
+}): OsBoardCache {
+  return {
+    board: data.board,
+    latestUpdatesEntries: [...data.latestUpdates.entries()],
+  };
+}
+
+export function unpackBoardCache(packed: OsBoardCache): {
+  board: OsBlockView[];
+  latestUpdates: Map<string, OsBetUpdateRow>;
+} {
+  return {
+    board: packed.board,
+    latestUpdates: new Map(packed.latestUpdatesEntries),
+  };
+}
+
+export function packTasksCache(data: {
+  tasks: OsTaskRow[];
+  projects: OsProjectOption[];
+  betsById: Map<string, OsBetRow>;
+}): OsTasksCache {
+  return {
+    tasks: data.tasks,
+    projects: data.projects,
+    betsByIdEntries: [...data.betsById.entries()],
+  };
+}
+
+export function unpackTasksCache(packed: OsTasksCache): {
+  tasks: OsTaskRow[];
+  projects: OsProjectOption[];
+  betsById: Map<string, OsBetRow>;
+} {
+  return {
+    tasks: packed.tasks,
+    projects: packed.projects,
+    betsById: new Map(packed.betsByIdEntries),
+  };
+}
+
+function readSessionEntry<T>(key: string): CacheEntry<T> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(SESSION_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CacheEntry<T>;
+    if (!parsed?.data) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionEntry<T>(key: string, entry: CacheEntry<T>): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(SESSION_PREFIX + key, JSON.stringify(entry));
+  } catch {
+    /* quota — memória ainda funciona */
+  }
+}
+
 export function getOsCache<T>(key: string): T | null {
-  const entry = store.get(key) as CacheEntry<T> | undefined;
-  return entry?.data ?? null;
+  const mem = store.get(key) as CacheEntry<T> | undefined;
+  if (mem) return mem.data;
+
+  const session = readSessionEntry<T>(key);
+  if (session) {
+    store.set(key, session);
+    return session.data;
+  }
+  return null;
 }
 
 export function setOsCache<T>(key: string, data: T): void {
-  store.set(key, { data, fetchedAt: Date.now() });
+  const entry: CacheEntry<T> = { data, fetchedAt: Date.now() };
+  store.set(key, entry);
+  writeSessionEntry(key, entry);
 }
 
 export function isOsCacheFresh(key: string, ttlMs = OS_CACHE_TTL_MS): boolean {
-  const entry = store.get(key);
+  const entry = store.get(key) ?? readSessionEntry(key);
   if (!entry) return false;
+  if (!store.has(key)) store.set(key, entry);
   return Date.now() - entry.fetchedAt < ttlMs;
 }
 
 export function invalidateOsCache(keyPrefix: string): void {
-  for (const key of store.keys()) {
+  for (const key of [...store.keys()]) {
     if (key.startsWith(keyPrefix)) store.delete(key);
+  }
+  if (typeof window !== "undefined") {
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const k = sessionStorage.key(i);
+      if (k?.startsWith(SESSION_PREFIX + keyPrefix)) {
+        sessionStorage.removeItem(k);
+      }
+    }
   }
 }
 

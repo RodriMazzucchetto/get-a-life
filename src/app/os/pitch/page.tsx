@@ -471,7 +471,8 @@ export default function OsPitchPage() {
         </button>
       </div>
 
-      {(loadingProjects && projects.length === 0) || (!boardReady && boardLoading) ? (
+      {(loadingProjects && projects.length === 0) ||
+      (!boardReady && boardLoading && board.length === 0) ? (
         <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
           Carregando pitches...
         </div>

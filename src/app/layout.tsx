@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, IBM_Plex_Mono, IBM_Plex_Sans, Inter, Manrope } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AppProviders } from "@/components/AppProviders";
 import { EnvCheck } from "@/components/EnvCheck";
 
 const geistMono = Geist_Mono({
@@ -56,7 +56,7 @@ export default function RootLayout({
         className={`${manrope.variable} ${inter.variable} ${geistMono.variable} ${ibmPlexMono.variable} ${ibmPlexSans.variable} font-body antialiased selection:bg-secondary-container selection:text-on-secondary-fixed`}
       >
         <EnvCheck>
-          <AuthProvider>{children}</AuthProvider>
+          <AppProviders>{children}</AppProviders>
         </EnvCheck>
       </body>
     </html>

@@ -86,7 +86,7 @@ function PillarSelectorBar({
   hasActivePitch: boolean;
 }) {
   return (
-    <div className="flex flex-col">
+    <div className="flex min-w-0 flex-col">
       <button
         type="button"
         onClick={onSelect}
@@ -119,8 +119,8 @@ function PillarSelectorBar({
       <button
         type="button"
         onClick={onEditGoal}
-        className="mt-1.5 truncate text-left text-xs font-bold normal-case text-ta-muted hover:text-ta-ink"
-        title="Editar meta"
+        className="mt-1.5 block w-full min-w-0 whitespace-normal break-words text-left text-xs font-bold normal-case leading-snug text-ta-muted hover:text-ta-ink"
+        title={goalTitle || "Definir meta"}
       >
         {goalTitle || "Definir meta"}
       </button>
@@ -413,7 +413,8 @@ function OsPageContent() {
         <div className={osErrorBanner}>{error ?? boardError}</div>
       ) : null}
 
-      {(loadingProjects && projects.length === 0) || (!boardReady && boardLoading) ? (
+      {(loadingProjects && projects.length === 0) ||
+      (!boardReady && boardLoading && board.length === 0) ? (
         <div className={osEmptyState}>Carregando OS...</div>
       ) : !selectedProjectId ? (
         <div className={osEmptyState}>Selecione uma empresa para visualizar o OS.</div>
@@ -465,8 +466,8 @@ function OsPageContent() {
               const blockType = view.block.type as OsBlockType;
               const display = pillarDisplays[blockType];
               return (
+                <div key={view.block.id} className="min-w-0">
                 <PillarSelectorBar
-                  key={view.block.id}
                   label={OS_BLOCK_LABELS[blockType]}
                   pct={display.pct}
                   goalTitle={view.goal?.title ?? "Definir meta"}
@@ -476,6 +477,7 @@ function OsPageContent() {
                   fillColor={display.color}
                   hasActivePitch={view.bets.length > 0}
                 />
+                </div>
               );
             })}
           </div>

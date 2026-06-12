@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { OsSectionNav } from "@/components/os/OsSectionNav";
-import { OsProjectProvider } from "@/contexts/OsLayoutContext";
 
 /** Largura contida para OS / Pitch (tasks usa largura total). */
 const OS_PAGE_CONTAINER =
@@ -15,12 +14,10 @@ export default function OsLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <AppShell fullWidth={isTasksRoute}>
-      <OsProjectProvider>
-        <div className={isTasksRoute ? "w-full pt-2 pb-1" : OS_PAGE_CONTAINER}>
-          <OsSectionNav />
-          {children}
-        </div>
-      </OsProjectProvider>
+      <div className={isTasksRoute ? "w-full pt-2 pb-1" : OS_PAGE_CONTAINER}>
+        <OsSectionNav />
+        {children}
+      </div>
     </AppShell>
   );
 }
