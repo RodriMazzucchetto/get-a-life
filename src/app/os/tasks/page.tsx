@@ -1,31 +1,155 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { DroppableColumn } from "@/components/planning/DroppableColumn";
+import { OsTaskEditModal, OsTaskOnHoldModal } from "@/components/os/OsTaskEditModal";
+import { OsTaskItem, resolveOsTaskCompany } from "@/components/os/OsTaskItem";
 import { useAuthContext } from "@/contexts/AuthContext";
 import {
+  OS_COL_BACKLOG,
+  OS_COL_CURRENT_WEEK,
+  OS_COL_IN_PROGRESS,
+  appendOsTaskPosForStatus,
+  appendOsTaskPosOnHoldAtBottom,
+  computeOsTaskPosAtIndex,
+  osColumnStatusFromId,
+  osTasksForColumn,
+  sortOsTasksByPos,
+} from "@/lib/osBoardHelpers";
+import {
+  createOsTask,
+  deleteOsTask,
   fetchAllOsTasks,
   fetchOsBetsByIds,
   fetchOsProjects,
-  formatOsTaskStatusLabel,
+  updateOsTask,
   type OsProjectOption,
 } from "@/lib/os-queries";
-import { filterOsCompanies, findQuickWinProject, isQuickWinProject } from "@/lib/project-filters";
-import type { OsBetRow, OsTaskRow, OsTaskStatus } from "@/lib/os-types";
+import type { OsBetRow, OsTaskBoardStatus, OsTaskRow } from "@/lib/os-types";
 
-type MaintenanceFilter = "all" | "maintenance" | "bet";
-type TagFilter = "all" | "quick_win";
+function OsTaskColumn({
+  id,
+  title,
+  subtitle,
+  tasks,
+  betsById,
+  projectsById,
+  onToggleComplete,
+  onEdit,
+  onPutOnHold,
+  onMoveToFocus,
+  onMoveToBacklog,
+  onDelete,
+  onCreate,
+  createPlaceholder,
+}: {
+  id: string;
+  title: string;
+  subtitle: string;
+  tasks: OsTaskRow[];
+  betsById: Map<string, OsBetRow>;
+  projectsById: Map<string, OsProjectOption>;
+  onToggleComplete: (task: OsTaskRow) => void;
+  onEdit: (task: OsTaskRow) => void;
+  onPutOnHold: (task: OsTaskRow) => void;
+  onMoveToFocus: (task: OsTaskRow) => void;
+  onMoveToBacklog: (task: OsTaskRow) => void;
+  onDelete: (task: OsTaskRow) => void;
+  onCreate: (title: string) => Promise<void>;
+  createPlaceholder: string;
+}) {
+  const [draft, setDraft] = useState("");
+  const [creating, setCreating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-function getTaskStatusBadgeClass(status: OsTaskStatus): string {
-  switch (status) {
-    case "todo":
-      return "bg-surface-container-high text-on-surface-variant";
-    case "doing":
-      return "bg-blue-100 text-blue-800";
-    case "done":
-      return "bg-emerald-100 text-emerald-800";
-    default:
-      return "bg-surface-container-high text-on-surface-variant";
+  async function submitCreate() {
+    const title = draft.trim();
+    if (!title || creating) return;
+    setCreating(true);
+    try {
+      await onCreate(title);
+      setDraft("");
+    } finally {
+      setCreating(false);
+    }
   }
+
+  return (
+    <section className="flex flex-col border-2 border-black bg-white">
+      <header className="border-b-2 border-black px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-bold tracking-[0.12em]">{title}</h2>
+          <span className="text-xs font-bold text-black/50">{tasks.length}</span>
+        </div>
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-black/50">{subtitle}</p>
+      </header>
+
+      <div className="p-3">
+        <div className="mb-3 flex border-2 border-black">
+          <input
+            ref={inputRef}
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void submitCreate();
+            }}
+            placeholder={createPlaceholder}
+            className="min-w-0 flex-1 bg-white px-3 py-2 text-sm font-bold normal-case outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => void submitCreate()}
+            disabled={creating || !draft.trim()}
+            className="border-l-2 border-black px-3 py-2 text-sm font-bold disabled:opacity-40"
+          >
+            +
+          </button>
+        </div>
+
+        <DroppableColumn id={id} className="space-y-2 min-h-[8rem]">
+          {tasks.length === 0 ? (
+            <p className="py-6 text-center text-xs font-bold normal-case text-black/40">
+              Arraste tasks para cá ou crie uma nova.
+            </p>
+          ) : (
+            <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              {tasks.map((task) => (
+                <OsTaskItem
+                  key={task.id}
+                  task={task}
+                  company={resolveOsTaskCompany(task, projectsById)}
+                  linkedBet={task.bet_id ? (betsById.get(task.bet_id) ?? null) : null}
+                  onToggleComplete={onToggleComplete}
+                  onEdit={onEdit}
+                  onPutOnHold={onPutOnHold}
+                  onMoveToFocus={onMoveToFocus}
+                  onMoveToBacklog={onMoveToBacklog}
+                  onDelete={onDelete}
+                />
+              ))}
+            </SortableContext>
+          )}
+        </DroppableColumn>
+      </div>
+    </section>
+  );
 }
 
 export default function OsTasksPage() {
@@ -35,247 +159,313 @@ export default function OsTasksPage() {
   const [projects, setProjects] = useState<OsProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | OsTaskStatus>("all");
-  const [projectFilter, setProjectFilter] = useState<string>("all");
-  const [tagFilter, setTagFilter] = useState<TagFilter>("all");
-  const [maintenanceFilter, setMaintenanceFilter] = useState<MaintenanceFilter>("all");
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<OsTaskRow | null>(null);
+  const [onHoldTask, setOnHoldTask] = useState<OsTaskRow | null>(null);
+  const dragRollbackRef = useRef<OsTaskRow[] | null>(null);
 
-  useEffect(() => {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const loadBoard = useCallback(async () => {
     if (!user) return;
-
-    const userId = user.id;
-    let cancelled = false;
-
-    async function loadTasks() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const [taskRows, projectRows] = await Promise.all([
-          fetchAllOsTasks(userId),
-          fetchOsProjects(userId),
-        ]);
-
-        if (cancelled) return;
-        setTasks(taskRows);
-        setProjects(projectRows);
-
-        const betIds = [
-          ...new Set(taskRows.map((task) => task.bet_id).filter((id): id is string => Boolean(id))),
-        ];
-        const bets = await fetchOsBetsByIds(betIds);
-        if (cancelled) return;
-        setBetsById(new Map(bets.map((bet) => [bet.id, bet])));
-      } catch (loadError) {
-        if (cancelled) return;
-        console.error("Erro ao carregar tasks OS:", loadError);
-        setError("Não foi possível carregar as tasks OS.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    setLoading(true);
+    setError(null);
+    try {
+      const [taskRows, projectRows] = await Promise.all([
+        fetchAllOsTasks(user.id),
+        fetchOsProjects(user.id),
+      ]);
+      setTasks(taskRows);
+      setProjects(projectRows);
+      const betIds = [
+        ...new Set(taskRows.map((t) => t.bet_id).filter((id): id is string => Boolean(id))),
+      ];
+      const bets = await fetchOsBetsByIds(betIds);
+      setBetsById(new Map(bets.map((bet) => [bet.id, bet])));
+    } catch (loadError) {
+      console.error("Erro ao carregar tasks OS:", loadError);
+      setError("Não foi possível carregar as tasks.");
+    } finally {
+      setLoading(false);
     }
-
-    void loadTasks();
-
-    return () => {
-      cancelled = true;
-    };
   }, [user]);
 
-  const companies = useMemo(() => filterOsCompanies(projects), [projects]);
-  const quickWinProject = useMemo(() => findQuickWinProject(projects), [projects]);
+  useEffect(() => {
+    void loadBoard();
+  }, [loadBoard]);
 
   const projectsById = useMemo(
     () => new Map(projects.map((project) => [project.id, project])),
     [projects]
   );
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      if (statusFilter !== "all" && task.status !== statusFilter) return false;
-      if (projectFilter !== "all" && task.project_id !== projectFilter) return false;
-      if (tagFilter === "quick_win") {
-        if (!quickWinProject || task.project_id !== quickWinProject.id) return false;
-      }
-      if (maintenanceFilter === "maintenance" && !task.is_maintenance) return false;
-      if (maintenanceFilter === "bet" && task.is_maintenance) return false;
-      return true;
+  const focusTasks = useMemo(() => osTasksForColumn(tasks, "in_progress"), [tasks]);
+  const weekTasks = useMemo(() => osTasksForColumn(tasks, "current_week"), [tasks]);
+  const backlogTasks = useMemo(() => osTasksForColumn(tasks, "backlog"), [tasks]);
+
+  const activeDragTask = activeDragId ? tasks.find((t) => t.id === activeDragId) : null;
+
+  function replaceTask(updated: OsTaskRow) {
+    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  }
+
+  async function handleCreateInColumn(status: OsTaskBoardStatus, title: string) {
+    if (!user) return;
+    const created = await createOsTask(
+      user.id,
+      { title, status },
+      tasks.filter((t) => t.completed_at == null)
+    );
+    setTasks((prev) => [...prev, created]);
+  }
+
+  async function handleToggleComplete(task: OsTaskRow) {
+    const completed_at = new Date().toISOString();
+    const updated = await updateOsTask(task.id, { completed_at });
+    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  }
+
+  async function handleSaveEdit(taskId: string, data: { title: string; description: string }) {
+    const updated = await updateOsTask(taskId, {
+      title: data.title,
+      description: data.description || null,
     });
-  }, [tasks, statusFilter, projectFilter, tagFilter, quickWinProject, maintenanceFilter]);
+    replaceTask(updated);
+  }
+
+  async function handleDelete(task: OsTaskRow) {
+    if (!confirm(`Excluir task "${task.title}"?`)) return;
+    await deleteOsTask(task.id);
+    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+  }
+
+  async function handlePutOnHold(task: OsTaskRow) {
+    if (task.on_hold) {
+      const pos = appendOsTaskPosForStatus(tasks, task.status, task.id);
+      const updated = await updateOsTask(task.id, {
+        on_hold: false,
+        on_hold_reason: null,
+        pos,
+      });
+      replaceTask(updated);
+      return;
+    }
+    setOnHoldTask(task);
+  }
+
+  async function confirmOnHold(reason: string) {
+    if (!onHoldTask) return;
+    const pos = appendOsTaskPosOnHoldAtBottom(tasks, onHoldTask.status, onHoldTask.id);
+    const updated = await updateOsTask(onHoldTask.id, {
+      on_hold: true,
+      on_hold_reason: reason,
+      pos,
+    });
+    replaceTask(updated);
+    setOnHoldTask(null);
+  }
+
+  async function moveTask(task: OsTaskRow, status: OsTaskBoardStatus) {
+    if (task.status === status) return;
+    const pos = appendOsTaskPosForStatus(tasks, status, task.id);
+    const updated = await updateOsTask(task.id, {
+      status,
+      pos,
+      on_hold: false,
+      on_hold_reason: null,
+    });
+    replaceTask(updated);
+  }
+
+  async function handleMoveToFocus(task: OsTaskRow) {
+    if (task.status === "in_progress") {
+      await moveTask(task, "current_week");
+    } else {
+      await moveTask(task, "in_progress");
+    }
+  }
+
+  async function handleMoveToBacklog(task: OsTaskRow) {
+    await moveTask(task, "backlog");
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const activeTask = tasks.find((t) => t.id === activeId);
+    if (!activeTask || activeTask.completed_at) return;
+
+    const rollback = () => {
+      if (dragRollbackRef.current) {
+        setTasks(dragRollbackRef.current);
+        dragRollbackRef.current = null;
+      }
+    };
+
+    const columnTarget = osColumnStatusFromId(overId);
+    if (columnTarget && activeTask.status !== columnTarget) {
+      dragRollbackRef.current = [...tasks];
+      const pos = appendOsTaskPosForStatus(tasks, columnTarget, activeId);
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === activeId
+            ? { ...t, status: columnTarget, pos, on_hold: false, on_hold_reason: null }
+            : t
+        )
+      );
+      try {
+        const updated = await updateOsTask(activeId, {
+          status: columnTarget,
+          pos,
+          on_hold: false,
+          on_hold_reason: null,
+        });
+        replaceTask(updated);
+        dragRollbackRef.current = null;
+      } catch {
+        rollback();
+        setError("Não foi possível mover a task.");
+      }
+      return;
+    }
+
+    const overTask = tasks.find((t) => t.id === overId);
+    if (!overTask || activeTask.status !== overTask.status) return;
+
+    const col = tasks
+      .filter((t) => t.status === activeTask.status && t.completed_at == null)
+      .sort(sortOsTasksByPos);
+    const oldIdx = col.findIndex((t) => t.id === activeId);
+    const newIdx = col.findIndex((t) => t.id === overId);
+    if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return;
+
+    const reordered = arrayMove(col, oldIdx, newIdx);
+    const newPos = computeOsTaskPosAtIndex(reordered, newIdx);
+
+    dragRollbackRef.current = [...tasks];
+    setTasks((prev) => prev.map((t) => (t.id === activeId ? { ...t, pos: newPos } : t)));
+
+    try {
+      const updated = await updateOsTask(activeId, { pos: newPos });
+      replaceTask(updated);
+      dragRollbackRef.current = null;
+    } catch {
+      rollback();
+      setError("Não foi possível reordenar a task.");
+    }
+  }
 
   return (
-    <div className="space-y-6 pb-8">
-      <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
-        <div>
-          <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface">
-            Tasks OS
-          </h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Listagem consolidada de todas as tasks do sistema OS.
-          </p>
-        </div>
-      </section>
-
-    <section className="rounded-2xl bg-surface-container-lowest p-6 ring-1 ring-outline-variant/15">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="font-headline text-xl font-bold text-on-surface">Todas as tasks</h2>
-        </div>
-        <span className="inline-flex rounded-full bg-tertiary-fixed px-3 py-1 text-xs font-bold uppercase text-on-tertiary-fixed-variant">
-          {filteredTasks.length} tasks
-        </span>
-      </div>
-
-      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <label>
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-            Status
-          </span>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as "all" | OsTaskStatus)}
-            className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-          >
-            <option value="all">Todos</option>
-            <option value="todo">A fazer</option>
-            <option value="doing">Em progresso</option>
-            <option value="done">Concluída</option>
-          </select>
-        </label>
-
-        <label>
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-            Empresa
-          </span>
-          <select
-            value={projectFilter}
-            onChange={(event) => setProjectFilter(event.target.value)}
-            className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-          >
-            <option value="all">Todas</option>
-            {companies.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {quickWinProject ? (
-          <label>
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-              Tag
-            </span>
-            <select
-              value={tagFilter}
-              onChange={(event) => setTagFilter(event.target.value as TagFilter)}
-              className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-            >
-              <option value="all">Todas</option>
-              <option value="quick_win">{quickWinProject.name}</option>
-            </select>
-          </label>
-        ) : null}
-
-        <label>
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-            Tipo
-          </span>
-          <select
-            value={maintenanceFilter}
-            onChange={(event) => setMaintenanceFilter(event.target.value as MaintenanceFilter)}
-            className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
-          >
-            <option value="all">Todos</option>
-            <option value="maintenance">Manutenção</option>
-            <option value="bet">Aposta</option>
-          </select>
-        </label>
-      </div>
+    <div className="pb-10 font-mono uppercase tracking-wide text-black">
+      <header className="mb-6 border-2 border-black bg-white px-4 py-4 text-center">
+        <h1 className="text-2xl font-bold tracking-[0.14em]">Tasks OS</h1>
+        <p className="mt-1 text-[10px] font-bold normal-case text-black/50">
+          Backlog · Semana Atual · Foco Agora
+        </p>
+      </header>
 
       {error ? (
-        <div className="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-2 text-sm text-error">
+        <div className="mb-4 border-2 border-black bg-white px-4 py-2 text-sm font-bold normal-case text-[#FF0000]">
           {error}
         </div>
       ) : null}
 
       {loading ? (
-        <div className="rounded-xl bg-surface-container-low px-4 py-8 text-center text-sm text-on-surface-variant">
+        <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
           Carregando tasks...
         </div>
-      ) : filteredTasks.length === 0 ? (
-        <div className="rounded-xl bg-surface-container-low px-4 py-8 text-center text-sm text-on-surface-variant">
-          Nenhuma task encontrada com os filtros atuais.
-        </div>
       ) : (
-        <ul className="space-y-3">
-          {filteredTasks.map((task) => {
-            const project = task.project_id ? projectsById.get(task.project_id) : null;
-            const linkedBet = task.bet_id ? betsById.get(task.bet_id) : null;
-            const isQuickWinTag = project ? isQuickWinProject(project) : false;
-            const company = project && !isQuickWinTag ? project : null;
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={(e) => setActiveDragId(String(e.active.id))}
+          onDragCancel={() => setActiveDragId(null)}
+          onDragEnd={(e) => {
+            setActiveDragId(null);
+            void handleDragEnd(e);
+          }}
+        >
+          <div className="space-y-6">
+            <OsTaskColumn
+              id={OS_COL_IN_PROGRESS}
+              title="Foco Agora"
+              subtitle="Em execução — play envia para cá"
+              tasks={focusTasks}
+              betsById={betsById}
+              projectsById={projectsById}
+              onToggleComplete={handleToggleComplete}
+              onEdit={setEditingTask}
+              onPutOnHold={handlePutOnHold}
+              onMoveToFocus={handleMoveToFocus}
+              onMoveToBacklog={handleMoveToBacklog}
+              onDelete={handleDelete}
+              onCreate={(title) => handleCreateInColumn("in_progress", title)}
+              createPlaceholder="Nova task em foco..."
+            />
 
-            return (
-              <li
-                key={task.id}
-                className="rounded-xl border border-outline-variant/20 bg-surface-container-low px-4 py-3"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-on-surface">{task.title}</p>
-                    {task.description ? (
-                      <p className="mt-1 text-xs text-on-surface-variant">{task.description}</p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${getTaskStatusBadgeClass(task.status)}`}
-                    >
-                      {formatOsTaskStatusLabel(task.status)}
-                    </span>
-                    {company ? (
-                      <span
-                        className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-primary"
-                        style={{ backgroundColor: company.color }}
-                      >
-                        {company.name}
-                      </span>
-                    ) : null}
-                    {isQuickWinTag && project ? (
-                      <span
-                        className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-primary"
-                        style={{ backgroundColor: project.color }}
-                      >
-                        Tag: {project.name}
-                      </span>
-                    ) : null}
-                    {!company && !isQuickWinTag ? (
-                      <span className="inline-flex rounded-full bg-surface-container-highest px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
-                        Sem empresa
-                      </span>
-                    ) : null}
-                    {linkedBet ? (
-                      <span className="inline-flex rounded-full border border-[#FF0000]/30 bg-[#FF0000]/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#FF0000]">
-                        Pitch: {linkedBet.title}
-                      </span>
-                    ) : null}
-                    {task.is_maintenance ? (
-                      <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-800">
-                        Manutenção
-                      </span>
-                    ) : (
-                      <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-800">
-                        Aposta
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+            <OsTaskColumn
+              id={OS_COL_CURRENT_WEEK}
+              title="Semana Atual"
+              subtitle="Planejadas para esta semana"
+              tasks={weekTasks}
+              betsById={betsById}
+              projectsById={projectsById}
+              onToggleComplete={handleToggleComplete}
+              onEdit={setEditingTask}
+              onPutOnHold={handlePutOnHold}
+              onMoveToFocus={handleMoveToFocus}
+              onMoveToBacklog={handleMoveToBacklog}
+              onDelete={handleDelete}
+              onCreate={(title) => handleCreateInColumn("current_week", title)}
+              createPlaceholder="Nova task da semana..."
+            />
+
+            <OsTaskColumn
+              id={OS_COL_BACKLOG}
+              title="Backlog"
+              subtitle="Tasks de pitch entram aqui"
+              tasks={backlogTasks}
+              betsById={betsById}
+              projectsById={projectsById}
+              onToggleComplete={handleToggleComplete}
+              onEdit={setEditingTask}
+              onPutOnHold={handlePutOnHold}
+              onMoveToFocus={handleMoveToFocus}
+              onMoveToBacklog={handleMoveToBacklog}
+              onDelete={handleDelete}
+              onCreate={(title) => handleCreateInColumn("backlog", title)}
+              createPlaceholder="Nova task no backlog..."
+            />
+          </div>
+
+          <DragOverlay>
+            {activeDragTask ? (
+              <div className="border-2 border-black bg-white px-4 py-3 text-sm font-bold normal-case shadow-lg">
+                {activeDragTask.title}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
-    </section>
+
+      <OsTaskEditModal
+        open={editingTask !== null}
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        onSave={handleSaveEdit}
+      />
+
+      <OsTaskOnHoldModal
+        open={onHoldTask !== null}
+        onClose={() => setOnHoldTask(null)}
+        onConfirm={confirmOnHold}
+      />
     </div>
   );
 }

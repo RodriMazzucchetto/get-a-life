@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase'
+import { appendOsTaskPosForStatus } from '@/lib/osBoardHelpers'
 import { filterOsCompanies } from '@/lib/project-filters'
 import type {
   OsBetRow,
@@ -221,12 +222,12 @@ export function formatBetStatusLabel(status: OsBetStatus): string {
 
 export function formatOsTaskStatusLabel(status: OsTaskRow['status']): string {
   switch (status) {
-    case 'todo':
-      return 'A fazer'
-    case 'doing':
-      return 'Em progresso'
-    case 'done':
-      return 'Concluída'
+    case 'backlog':
+      return 'Backlog'
+    case 'current_week':
+      return 'Semana Atual'
+    case 'in_progress':
+      return 'Foco Agora'
     default:
       return status
   }
@@ -739,29 +740,77 @@ export async function fetchOsTasksForBet(betId: string): Promise<OsTaskRow[]> {
 export async function createOsTask(
   userId: string,
   input: {
-    projectId: string
-    betId: string
+    projectId?: string | null
+    betId?: string | null
     title: string
     description?: string
-  }
+    status?: OsTaskRow['status']
+  },
+  existingTasks: OsTaskRow[] = []
 ): Promise<OsTaskRow> {
   const supabase = createClient()
+  const status = input.status ?? 'backlog'
+  const pos = appendOsTaskPosForStatus(existingTasks, status)
+
   const { data, error } = await supabase
     .from('os_tasks')
     .insert({
       user_id: userId,
-      project_id: input.projectId,
-      bet_id: input.betId,
+      project_id: input.projectId ?? null,
+      bet_id: input.betId ?? null,
       title: input.title,
       description: input.description ?? null,
       is_maintenance: false,
-      status: 'todo',
+      status,
+      on_hold: false,
+      on_hold_reason: null,
+      pos,
     })
     .select('*')
     .single()
 
   if (error) {
     console.error('Erro ao criar task OS:', error)
+    throw error
+  }
+
+  return data
+}
+
+export async function updateOsTask(
+  taskId: string,
+  updates: {
+    title?: string
+    description?: string | null
+    status?: OsTaskRow['status']
+    pos?: number
+    on_hold?: boolean
+    on_hold_reason?: string | null
+    completed_at?: string | null
+  }
+): Promise<OsTaskRow> {
+  const supabase = createClient()
+  const payload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (updates.title !== undefined) payload.title = updates.title
+  if (updates.description !== undefined) payload.description = updates.description
+  if (updates.status !== undefined) payload.status = updates.status
+  if (updates.pos !== undefined) payload.pos = updates.pos
+  if (updates.on_hold !== undefined) payload.on_hold = updates.on_hold
+  if (updates.on_hold_reason !== undefined) payload.on_hold_reason = updates.on_hold_reason
+  if (updates.completed_at !== undefined) payload.completed_at = updates.completed_at
+
+  const { data, error } = await supabase
+    .from('os_tasks')
+    .update(payload)
+    .eq('id', taskId)
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao atualizar task OS:', error)
     throw error
   }
 

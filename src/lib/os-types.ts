@@ -10,7 +10,9 @@ export type OsBetStatus =
   | 'executed'
   | 'failed'
 export type OsBetUpdateStatus = 'on_course' | 'deviating' | 'executed' | 'failed'
-export type OsTaskStatus = 'todo' | 'doing' | 'done'
+export type OsTaskBoardStatus = 'backlog' | 'current_week' | 'in_progress'
+/** @deprecated Use OsTaskBoardStatus — kept as alias during transition */
+export type OsTaskStatus = OsTaskBoardStatus
 
 export interface OsBlockRow {
   id: string
@@ -81,7 +83,9 @@ export interface OsTaskRow {
   title: string
   description: string | null
   is_maintenance: boolean
-  status: OsTaskStatus
+  status: OsTaskBoardStatus
+  on_hold: boolean
+  on_hold_reason: string | null
   priority: string | null
   due_date: string | null
   completed_at: string | null
@@ -152,7 +156,9 @@ export interface OsTaskInsert {
   title: string
   description?: string | null
   is_maintenance?: boolean
-  status?: OsTaskStatus
+  status?: OsTaskBoardStatus
+  on_hold?: boolean
+  on_hold_reason?: string | null
   priority?: string | null
   due_date?: string | null
   completed_at?: string | null
