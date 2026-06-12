@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
@@ -22,9 +22,7 @@ import {
   createOsBetUpdate,
   createOsTask,
   deleteOsTask,
-  fetchLatestOsBetUpdatesForBets,
   fetchOsBetUpdatesForBet,
-  fetchOsPitchBoard,
   fetchOsTasksForBet,
   getPillarStatusDisplay,
   saveOsGoal,
@@ -136,12 +134,20 @@ export default function OsPage() {
 
 function OsPageContent() {
   const { user } = useAuthContext();
-  const { selectedProjectId, loadingProjects } = useOsLayout();
-  const [board, setBoard] = useState<OsBlockView[]>([]);
-  const [loadingBoard, setLoadingBoard] = useState(false);
+  const {
+    selectedProjectId,
+    loadingProjects,
+    projects,
+    board,
+    latestUpdates,
+    boardReady,
+    boardLoading,
+    boardError,
+    refreshBoard,
+    setLatestUpdates,
+  } = useOsLayout();
   const [error, setError] = useState<string | null>(null);
   const [selectedPillar, setSelectedPillar] = useState<OsBlockType>("finance");
-  const [latestUpdates, setLatestUpdates] = useState<Map<string, OsBetUpdateRow>>(new Map());
   const [expandedBetId, setExpandedBetId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -171,35 +177,6 @@ function OsPageContent() {
   const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
   const [weeklyModalBet, setWeeklyModalBet] = useState<OsBetRow | null>(null);
   const [weeklySaving, setWeeklySaving] = useState(false);
-
-  const loadBoard = useCallback(async () => {
-    if (!user || !selectedProjectId) {
-      setBoard([]);
-      return;
-    }
-
-    setLoadingBoard(true);
-    setError(null);
-
-    try {
-      const data = await fetchOsPitchBoard(user.id, selectedProjectId);
-      setBoard(data);
-
-      const allBetIds = data.flatMap((view) => view.bets.map((bet) => bet.id));
-      const updates = await fetchLatestOsBetUpdatesForBets(allBetIds);
-      setLatestUpdates(updates);
-    } catch (loadError) {
-      console.error("Erro ao carregar OS:", loadError);
-      setError("Não foi possível carregar o OS.");
-      setBoard([]);
-    } finally {
-      setLoadingBoard(false);
-    }
-  }, [user, selectedProjectId]);
-
-  useEffect(() => {
-    void loadBoard();
-  }, [loadBoard]);
 
   const orderedBlocks = useMemo(
     () =>
@@ -292,7 +269,7 @@ function OsPageContent() {
     try {
       await saveOsGoal(user.id, goalDraft.blockId, goalDraft.title.trim(), goalDraft.description.trim() || undefined);
       setGoalModalOpen(false);
-      await loadBoard();
+      await refreshBoard({ background: true });
     } catch {
       setGoalError("Não foi possível salvar a meta.");
     } finally {
@@ -355,7 +332,7 @@ function OsPageContent() {
         executionOwner: data.executionOwner || null,
       });
       closePitchModal();
-      await loadBoard();
+      await refreshBoard({ background: true });
     } catch {
       setError("Não foi possível salvar o pitch.");
     } finally {
@@ -380,7 +357,7 @@ function OsPageContent() {
         setWeeklyUpdates([]);
         setPitchTasks([]);
       }
-      await loadBoard();
+      await refreshBoard({ background: true });
     } catch {
       setError("Não foi possível alterar prioridade.");
     } finally {
@@ -422,7 +399,7 @@ function OsPageContent() {
       if (editingPitch?.id === weeklyModalBet.id) {
         await loadAllWeeklyUpdates(weeklyModalBet.id);
       }
-      await loadBoard();
+      await refreshBoard({ background: true });
     } finally {
       setWeeklySaving(false);
     }
@@ -432,9 +409,11 @@ function OsPageContent() {
     <div className={`pb-8 ${osPage}`}>
       <OsCompanySelector />
 
-      {error ? <div className={osErrorBanner}>{error}</div> : null}
+      {error || boardError ? (
+        <div className={osErrorBanner}>{error ?? boardError}</div>
+      ) : null}
 
-      {loadingProjects || loadingBoard ? (
+      {(loadingProjects && projects.length === 0) || (!boardReady && boardLoading) ? (
         <div className={osEmptyState}>Carregando OS...</div>
       ) : !selectedProjectId ? (
         <div className={osEmptyState}>Selecione uma empresa para visualizar o OS.</div>

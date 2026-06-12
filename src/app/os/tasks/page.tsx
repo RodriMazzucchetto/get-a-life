@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -23,6 +23,7 @@ import { OsDroppableColumn } from "@/components/os/OsDroppableColumn";
 import { OsTaskEditModal, OsTaskOnHoldModal } from "@/components/os/OsTaskEditModal";
 import { OsTaskItem, resolveOsTaskCompany } from "@/components/os/OsTaskItem";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useOsLayout } from "@/contexts/OsLayoutContext";
 import {
   osCard,
   osCardHeader,
@@ -47,9 +48,6 @@ import {
 import {
   createOsTask,
   deleteOsTask,
-  fetchAllOsTasks,
-  fetchOsBetsByIds,
-  fetchOsProjects,
   updateOsTask,
   type OsProjectOption,
 } from "@/lib/os-queries";
@@ -177,10 +175,16 @@ function OsTaskColumn({
 
 export default function OsTasksPage() {
   const { user } = useAuthContext();
-  const [tasks, setTasks] = useState<OsTaskRow[]>([]);
-  const [betsById, setBetsById] = useState<Map<string, OsBetRow>>(new Map());
-  const [projects, setProjects] = useState<OsProjectOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    tasks,
+    setTasks,
+    taskProjects: projects,
+    betsById,
+    tasksReady,
+    tasksLoading,
+    tasksError,
+    refreshTasks,
+  } = useOsLayout();
   const [error, setError] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<OsTaskRow | null>(null);
@@ -197,34 +201,6 @@ export default function OsTasksPage() {
     if (withPointer.length > 0) return withPointer;
     return closestCenter(args);
   }, []);
-
-  const loadBoard = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [taskRows, projectRows] = await Promise.all([
-        fetchAllOsTasks(user.id),
-        fetchOsProjects(user.id),
-      ]);
-      setTasks(taskRows);
-      setProjects(projectRows);
-      const betIds = [
-        ...new Set(taskRows.map((t) => t.bet_id).filter((id): id is string => Boolean(id))),
-      ];
-      const bets = await fetchOsBetsByIds(betIds);
-      setBetsById(new Map(bets.map((bet) => [bet.id, bet])));
-    } catch (loadError) {
-      console.error("Erro ao carregar tasks OS:", loadError);
-      setError("Não foi possível carregar as tasks.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    void loadBoard();
-  }, [loadBoard]);
 
   const projectsById = useMemo(
     () => new Map(projects.map((project) => [project.id, project])),
@@ -439,11 +415,11 @@ export default function OsTasksPage() {
         </p>
       </header>
 
-      {error ? (
-        <div className={osErrorBanner}>{error}</div>
+      {error || tasksError ? (
+        <div className={osErrorBanner}>{error ?? tasksError}</div>
       ) : null}
 
-      {loading ? (
+      {!tasksReady && tasksLoading ? (
         <div className={osEmptyState}>Carregando tasks...</div>
       ) : (
         <DndContext

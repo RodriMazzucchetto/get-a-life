@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -35,7 +35,6 @@ import {
   deleteOsBet,
   deleteOsTask,
   fetchOsBetUpdatesForBet,
-  fetchOsPitchBoard,
   fetchOsTasksForBet,
   partitionBetsByPriority,
   reorderOsBetsInGoal,
@@ -197,9 +196,17 @@ function findBlockForBet(blocks: OsBlockView[], betId: string): OsBlockView | un
 
 export default function OsPitchPage() {
   const { user } = useAuthContext();
-  const { selectedProjectId, loadingProjects } = useOsLayout();
-  const [board, setBoard] = useState<OsBlockView[]>([]);
-  const [loadingBoard, setLoadingBoard] = useState(false);
+  const {
+    selectedProjectId,
+    loadingProjects,
+    projects,
+    board,
+    boardReady,
+    boardLoading,
+    boardError,
+    refreshBoard,
+    setBoard,
+  } = useOsLayout();
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPitch, setEditingPitch] = useState<OsBetRow | null>(null);
@@ -219,31 +226,6 @@ export default function OsPitchPage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
-  const loadBoard = useCallback(async () => {
-    if (!user || !selectedProjectId) {
-      setBoard([]);
-      return;
-    }
-
-    setLoadingBoard(true);
-    setError(null);
-
-    try {
-      const data = await fetchOsPitchBoard(user.id, selectedProjectId);
-      setBoard(data);
-    } catch (loadError) {
-      console.error("Erro ao carregar pitch board:", loadError);
-      setError("Não foi possível carregar os pitches.");
-      setBoard([]);
-    } finally {
-      setLoadingBoard(false);
-    }
-  }, [user, selectedProjectId]);
-
-  useEffect(() => {
-    void loadBoard();
-  }, [loadBoard]);
 
   const orderedBlocks = useMemo(
     () =>
@@ -293,13 +275,11 @@ export default function OsPitchPage() {
   }, []);
 
   const openCreateModal = () => {
-    void loadBoard().finally(() => {
-      setEditingPitch(null);
-      setEditingBlockType("finance");
-      setModalPriority(false);
-      setPitchTasks([]);
-      setModalOpen(true);
-    });
+    setEditingPitch(null);
+    setEditingBlockType("finance");
+    setModalPriority(false);
+    setPitchTasks([]);
+    setModalOpen(true);
   };
 
   const openEditModal = (bet: OsBetRow, blockType: OsBlockType) => {
@@ -342,7 +322,7 @@ export default function OsPitchPage() {
           setPitchTasks([]);
         }
       }
-      await loadBoard();
+      await refreshBoard({ background: true });
     } catch (priorityError) {
       console.error("Erro ao alterar prioridade:", priorityError);
       setError("Não foi possível alterar a prioridade do pitch.");
@@ -406,7 +386,7 @@ export default function OsPitchPage() {
         });
       }
       closeModal();
-      await loadBoard();
+      await refreshBoard({ background: true });
     } catch (saveError) {
       console.error("Erro ao salvar pitch:", saveError);
       setError("Não foi possível salvar o pitch.");
@@ -420,7 +400,7 @@ export default function OsPitchPage() {
     try {
       await deleteOsBet(betId);
       if (editingPitch?.id === betId) closeModal();
-      await loadBoard();
+      await refreshBoard({ background: true });
     } catch (deleteError) {
       console.error("Erro ao excluir pitch:", deleteError);
       setError("Não foi possível excluir o pitch.");
@@ -461,7 +441,7 @@ export default function OsPitchPage() {
     } catch (reorderError) {
       console.error("Erro ao reordenar pitches:", reorderError);
       setError("Não foi possível reordenar os pitches.");
-      await loadBoard();
+      await refreshBoard({ background: true });
     }
   };
 
@@ -473,9 +453,9 @@ export default function OsPitchPage() {
     <div className="pb-8 font-mono uppercase tracking-wide text-black">
       <OsCompanySelector />
 
-      {error ? (
+      {error || boardError ? (
         <div className="mb-4 border-2 border-black bg-white px-4 py-2 text-sm font-bold normal-case text-[#FF0000]">
-          {error}
+          {error ?? boardError}
         </div>
       ) : null}
 
@@ -484,14 +464,14 @@ export default function OsPitchPage() {
         <button
           type="button"
           onClick={openCreateModal}
-          disabled={!selectedProjectId || loadingBoard}
+          disabled={!selectedProjectId || (!boardReady && boardLoading)}
           className="border-2 border-black bg-black px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-black/85 disabled:opacity-50"
         >
           + Adicionar pitch
         </button>
       </div>
 
-      {loadingProjects || loadingBoard ? (
+      {(loadingProjects && projects.length === 0) || (!boardReady && boardLoading) ? (
         <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
           Carregando pitches...
         </div>

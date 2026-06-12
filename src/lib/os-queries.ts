@@ -588,32 +588,93 @@ export function computeNextPitchPos(bets: OsBetRow[]): number {
 
 export async function fetchOsPitchBoard(userId: string, projectId: string): Promise<OsBlockView[]> {
   const blocks = await ensureOsBlocksForProject(userId, projectId)
+  if (blocks.length === 0) return []
 
-  const blockViews = await Promise.all(
-    blocks.map(async (block) => {
-      const goal = await fetchActiveOsGoal(block.id)
-      let bets: OsBetRow[] = []
+  const supabase = createClient()
+  const blockIds = blocks.map((block) => block.id)
 
-      if (goal) {
-        try {
-          bets = await fetchOsBetsForGoal(goal.id)
-        } catch (betError) {
-          console.error(`Erro ao buscar pitches do bloco ${block.type}:`, betError)
-        }
-      }
+  const { data: goalsData, error: goalsError } = await supabase
+    .from('os_goals')
+    .select('*')
+    .in('block_id', blockIds)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
 
-      const priorityBet =
-        goal && bets.length > 0
-          ? (bets.find((bet) => bet.is_priority) ?? null)
-          : goal
-            ? await fetchPriorityBetForGoal(goal.id).catch(() => null)
-            : null
+  if (goalsError) {
+    console.error('Erro ao buscar metas OS:', goalsError)
+    throw goalsError
+  }
 
-      return { block, goal, bets, priorityBet }
-    })
-  )
+  const goalByBlockId = new Map<string, OsGoalRow>()
+  for (const goal of goalsData ?? []) {
+    if (!goalByBlockId.has(goal.block_id)) {
+      goalByBlockId.set(goal.block_id, goal)
+    }
+  }
 
-  return blockViews
+  const goalIds = [...goalByBlockId.values()].map((goal) => goal.id)
+  let allBets: OsBetRow[] = []
+
+  if (goalIds.length > 0) {
+    const { data: betsData, error: betsError } = await supabase
+      .from('os_bets')
+      .select('*')
+      .in('goal_id', goalIds)
+      .order('created_at', { ascending: true })
+
+    if (betsError) {
+      console.error('Erro ao buscar pitches OS:', betsError)
+      throw betsError
+    }
+
+    allBets = sortOsBetsByPosition(betsData ?? [])
+  }
+
+  const betsByGoalId = new Map<string, OsBetRow[]>()
+  for (const bet of allBets) {
+    const list = betsByGoalId.get(bet.goal_id) ?? []
+    list.push(bet)
+    betsByGoalId.set(bet.goal_id, list)
+  }
+
+  return blocks.map((block) => {
+    const goal = goalByBlockId.get(block.id) ?? null
+    const bets = goal ? (betsByGoalId.get(goal.id) ?? []) : []
+    const priorityBet = bets.find((bet) => bet.is_priority) ?? null
+    return { block, goal, bets, priorityBet }
+  })
+}
+
+export async function fetchOsPitchBoardWithUpdates(
+  userId: string,
+  projectId: string
+): Promise<{ board: OsBlockView[]; latestUpdates: Map<string, OsBetUpdateRow> }> {
+  const board = await fetchOsPitchBoard(userId, projectId)
+  const betIds = board.flatMap((view) => view.bets.map((bet) => bet.id))
+  const latestUpdates = await fetchLatestOsBetUpdatesForBets(betIds)
+  return { board, latestUpdates }
+}
+
+export async function fetchOsTasksBoard(userId: string): Promise<{
+  tasks: OsTaskRow[]
+  projects: OsProjectOption[]
+  betsById: Map<string, OsBetRow>
+}> {
+  const [tasks, projects] = await Promise.all([
+    fetchAllOsTasks(userId),
+    fetchOsProjects(userId),
+  ])
+
+  const betIds = [
+    ...new Set(tasks.map((t) => t.bet_id).filter((id): id is string => Boolean(id))),
+  ]
+  const bets = betIds.length > 0 ? await fetchOsBetsByIds(betIds) : []
+
+  return {
+    tasks,
+    projects,
+    betsById: new Map(bets.map((bet) => [bet.id, bet])),
+  }
 }
 
 export async function createOsBet(
