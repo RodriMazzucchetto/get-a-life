@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase'
+import { filterOsCompanies } from '@/lib/project-filters'
 import type {
   OsBetRow,
   OsBetStatus,
@@ -252,6 +253,12 @@ export async function fetchOsProjects(userId: string): Promise<OsProjectOption[]
   }
 
   return data ?? []
+}
+
+/** Empresas do OS — exclui Quick Win (QW), que é tag de tasks. */
+export async function fetchOsCompanies(userId: string): Promise<OsProjectOption[]> {
+  const projects = await fetchOsProjects(userId)
+  return filterOsCompanies(projects)
 }
 
 export async function ensureOsBlocksForProject(

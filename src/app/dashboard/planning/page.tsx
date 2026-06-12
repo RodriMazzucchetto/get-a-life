@@ -12,6 +12,7 @@ import InteractiveProgressBar from '@/components/InteractiveProgressBar'
 import { usePlanningData } from '@/hooks/usePlanningData'
 import { useMicroCompleteToggle } from '@/hooks/useMicroCompleteToggle'
 import { useAuthContext } from '@/contexts/AuthContext'
+import { filterOsCompanies } from '@/lib/project-filters'
 import {
   burstOnHold,
   burstPriorityStar,
@@ -696,15 +697,7 @@ export default function PlanningPage() {
   }
 
   const weeklyPriorityProjects = useMemo(
-    () =>
-      projects.filter((project) => {
-        const normalized = project.name.trim().toLowerCase()
-        return !(
-          normalized === 'qw' ||
-          normalized.includes('quick win') ||
-          normalized.includes('quickwin')
-        )
-      }),
+    () => filterOsCompanies(projects),
     [projects]
   )
 

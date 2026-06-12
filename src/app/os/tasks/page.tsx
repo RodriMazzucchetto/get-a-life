@@ -9,9 +9,11 @@ import {
   formatOsTaskStatusLabel,
   type OsProjectOption,
 } from "@/lib/os-queries";
+import { filterOsCompanies, findQuickWinProject, isQuickWinProject } from "@/lib/project-filters";
 import type { OsBetRow, OsTaskRow, OsTaskStatus } from "@/lib/os-types";
 
 type MaintenanceFilter = "all" | "maintenance" | "bet";
+type TagFilter = "all" | "quick_win";
 
 function getTaskStatusBadgeClass(status: OsTaskStatus): string {
   switch (status) {
@@ -35,6 +37,7 @@ export default function OsTasksPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | OsTaskStatus>("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<TagFilter>("all");
   const [maintenanceFilter, setMaintenanceFilter] = useState<MaintenanceFilter>("all");
 
   useEffect(() => {
@@ -79,6 +82,9 @@ export default function OsTasksPage() {
     };
   }, [user]);
 
+  const companies = useMemo(() => filterOsCompanies(projects), [projects]);
+  const quickWinProject = useMemo(() => findQuickWinProject(projects), [projects]);
+
   const projectsById = useMemo(
     () => new Map(projects.map((project) => [project.id, project])),
     [projects]
@@ -88,11 +94,14 @@ export default function OsTasksPage() {
     return tasks.filter((task) => {
       if (statusFilter !== "all" && task.status !== statusFilter) return false;
       if (projectFilter !== "all" && task.project_id !== projectFilter) return false;
+      if (tagFilter === "quick_win") {
+        if (!quickWinProject || task.project_id !== quickWinProject.id) return false;
+      }
       if (maintenanceFilter === "maintenance" && !task.is_maintenance) return false;
       if (maintenanceFilter === "bet" && task.is_maintenance) return false;
       return true;
     });
-  }, [tasks, statusFilter, projectFilter, maintenanceFilter]);
+  }, [tasks, statusFilter, projectFilter, tagFilter, quickWinProject, maintenanceFilter]);
 
   return (
     <div className="space-y-6 pb-8">
@@ -117,7 +126,7 @@ export default function OsTasksPage() {
         </span>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <label>
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
             Status
@@ -136,21 +145,37 @@ export default function OsTasksPage() {
 
         <label>
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-            Projeto
+            Empresa
           </span>
           <select
             value={projectFilter}
             onChange={(event) => setProjectFilter(event.target.value)}
             className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
           >
-            <option value="all">Todos</option>
-            {projects.map((project) => (
+            <option value="all">Todas</option>
+            {companies.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}
               </option>
             ))}
           </select>
         </label>
+
+        {quickWinProject ? (
+          <label>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              Tag
+            </span>
+            <select
+              value={tagFilter}
+              onChange={(event) => setTagFilter(event.target.value as TagFilter)}
+              className="w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
+            >
+              <option value="all">Todas</option>
+              <option value="quick_win">{quickWinProject.name}</option>
+            </select>
+          </label>
+        ) : null}
 
         <label>
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
@@ -187,6 +212,8 @@ export default function OsTasksPage() {
           {filteredTasks.map((task) => {
             const project = task.project_id ? projectsById.get(task.project_id) : null;
             const linkedBet = task.bet_id ? betsById.get(task.bet_id) : null;
+            const isQuickWinTag = project ? isQuickWinProject(project) : false;
+            const company = project && !isQuickWinTag ? project : null;
 
             return (
               <li
@@ -206,18 +233,27 @@ export default function OsTasksPage() {
                     >
                       {formatOsTaskStatusLabel(task.status)}
                     </span>
-                    {project ? (
+                    {company ? (
+                      <span
+                        className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-primary"
+                        style={{ backgroundColor: company.color }}
+                      >
+                        {company.name}
+                      </span>
+                    ) : null}
+                    {isQuickWinTag && project ? (
                       <span
                         className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-primary"
                         style={{ backgroundColor: project.color }}
                       >
-                        {project.name}
+                        Tag: {project.name}
                       </span>
-                    ) : (
+                    ) : null}
+                    {!company && !isQuickWinTag ? (
                       <span className="inline-flex rounded-full bg-surface-container-highest px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
-                        Sem projeto
+                        Sem empresa
                       </span>
-                    )}
+                    ) : null}
                     {linkedBet ? (
                       <span className="inline-flex rounded-full border border-[#FF0000]/30 bg-[#FF0000]/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#FF0000]">
                         Pitch: {linkedBet.title}

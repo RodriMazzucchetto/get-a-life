@@ -11,7 +11,7 @@ import {
 import { useAuthContext } from "@/contexts/AuthContext";
 import {
   OS_SELECTED_PROJECT_KEY,
-  fetchOsProjects,
+  fetchOsCompanies,
   type OsProjectOption,
 } from "@/lib/os-queries";
 
@@ -58,7 +58,7 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
       setProjectsError(null);
 
       try {
-        const data = await fetchOsProjects(userId);
+        const data = await fetchOsCompanies(userId);
         if (cancelled) return;
 
         setProjects(data);

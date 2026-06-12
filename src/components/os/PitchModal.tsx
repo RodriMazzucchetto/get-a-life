@@ -342,7 +342,7 @@ export function PitchModal({
             <section className="border-t-2 border-black pt-6">
               <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">Tasks do pitch</h3>
               <p className="mb-4 text-xs text-black/70">
-                Adicione tasks de execução. Aparecem em Tasks OS com a tag do projeto e deste pitch.
+                Adicione tasks de execução. Aparecem em Tasks OS com a tag da empresa e deste pitch.
               </p>
 
               {tasksLoading ? (
