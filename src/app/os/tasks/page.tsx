@@ -58,6 +58,7 @@ function OsTaskColumn({
   onDelete,
   onCreate,
   createPlaceholder,
+  className,
 }: {
   id: string;
   title: string;
@@ -73,6 +74,7 @@ function OsTaskColumn({
   onDelete: (task: OsTaskRow) => void;
   onCreate: (title: string) => Promise<void>;
   createPlaceholder: string;
+  className?: string;
 }) {
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
@@ -91,8 +93,8 @@ function OsTaskColumn({
   }
 
   return (
-    <section className="flex flex-col border-2 border-black bg-white">
-      <header className="border-b-2 border-black px-4 py-3">
+    <section className={`flex min-h-0 flex-col border-2 border-black bg-white ${className ?? ""}`}>
+      <header className="shrink-0 border-b-2 border-black px-4 py-3 md:px-5 md:py-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold tracking-[0.12em]">{title}</h2>
           <span className="text-xs font-bold text-black/50">{tasks.length}</span>
@@ -100,7 +102,7 @@ function OsTaskColumn({
         <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-black/50">{subtitle}</p>
       </header>
 
-      <div className="p-3">
+      <div className="flex min-h-0 flex-1 flex-col p-3 md:p-4 xl:p-5">
         <div className="mb-3 flex border-2 border-black">
           <input
             ref={inputRef}
@@ -123,7 +125,10 @@ function OsTaskColumn({
           </button>
         </div>
 
-        <DroppableColumn id={id} className="space-y-2 min-h-[8rem]">
+        <DroppableColumn
+          id={id}
+          className="min-h-[10rem] flex-1 space-y-2 overflow-y-auto md:min-h-[14rem] xl:min-h-[18rem] [scrollbar-gutter:stable]"
+        >
           {tasks.length === 0 ? (
             <p className="py-6 text-center text-xs font-bold normal-case text-black/40">
               Arraste tasks para cá ou crie uma nova.
@@ -366,7 +371,7 @@ export default function OsTasksPage() {
       <header className="mb-6 border-2 border-black bg-white px-4 py-4 text-center">
         <h1 className="text-2xl font-bold tracking-[0.14em]">Tasks OS</h1>
         <p className="mt-1 text-[10px] font-bold normal-case text-black/50">
-          Backlog · Semana Atual · Foco Agora
+          Foco Agora · Semana Atual · Backlog
         </p>
       </header>
 
@@ -391,7 +396,7 @@ export default function OsTasksPage() {
             void handleDragEnd(e);
           }}
         >
-          <div className="space-y-6">
+          <div className="flex w-full flex-col gap-6 xl:gap-8">
             <OsTaskColumn
               id={OS_COL_IN_PROGRESS}
               title="Foco Agora"
@@ -409,39 +414,43 @@ export default function OsTasksPage() {
               createPlaceholder="Nova task em foco..."
             />
 
-            <OsTaskColumn
-              id={OS_COL_CURRENT_WEEK}
-              title="Semana Atual"
-              subtitle="Planejadas para esta semana"
-              tasks={weekTasks}
-              betsById={betsById}
-              projectsById={projectsById}
-              onToggleComplete={handleToggleComplete}
-              onEdit={setEditingTask}
-              onPutOnHold={handlePutOnHold}
-              onMoveToFocus={handleMoveToFocus}
-              onMoveToBacklog={handleMoveToBacklog}
-              onDelete={handleDelete}
-              onCreate={(title) => handleCreateInColumn("current_week", title)}
-              createPlaceholder="Nova task da semana..."
-            />
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-stretch md:gap-8 xl:gap-10">
+              <OsTaskColumn
+                id={OS_COL_BACKLOG}
+                title="Backlog"
+                subtitle="Tasks de pitch entram aqui"
+                tasks={backlogTasks}
+                betsById={betsById}
+                projectsById={projectsById}
+                onToggleComplete={handleToggleComplete}
+                onEdit={setEditingTask}
+                onPutOnHold={handlePutOnHold}
+                onMoveToFocus={handleMoveToFocus}
+                onMoveToBacklog={handleMoveToBacklog}
+                onDelete={handleDelete}
+                onCreate={(title) => handleCreateInColumn("backlog", title)}
+                createPlaceholder="Nova task no backlog..."
+                className="order-2 h-full md:order-1"
+              />
 
-            <OsTaskColumn
-              id={OS_COL_BACKLOG}
-              title="Backlog"
-              subtitle="Tasks de pitch entram aqui"
-              tasks={backlogTasks}
-              betsById={betsById}
-              projectsById={projectsById}
-              onToggleComplete={handleToggleComplete}
-              onEdit={setEditingTask}
-              onPutOnHold={handlePutOnHold}
-              onMoveToFocus={handleMoveToFocus}
-              onMoveToBacklog={handleMoveToBacklog}
-              onDelete={handleDelete}
-              onCreate={(title) => handleCreateInColumn("backlog", title)}
-              createPlaceholder="Nova task no backlog..."
-            />
+              <OsTaskColumn
+                id={OS_COL_CURRENT_WEEK}
+                title="Semana Atual"
+                subtitle="Planejadas para esta semana"
+                tasks={weekTasks}
+                betsById={betsById}
+                projectsById={projectsById}
+                onToggleComplete={handleToggleComplete}
+                onEdit={setEditingTask}
+                onPutOnHold={handlePutOnHold}
+                onMoveToFocus={handleMoveToFocus}
+                onMoveToBacklog={handleMoveToBacklog}
+                onDelete={handleDelete}
+                onCreate={(title) => handleCreateInColumn("current_week", title)}
+                createPlaceholder="Nova task da semana..."
+                className="order-1 h-full md:order-2"
+              />
+            </div>
           </div>
 
           <DragOverlay>
