@@ -44,6 +44,7 @@ import {
   type OsBlockView,
 } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
+import { osCacheKey, packBoardCache, setOsCache } from "@/lib/os-cache";
 
 function SortablePitchCard({
   bet,
@@ -116,11 +117,7 @@ function SortablePitchCard({
             if (window.confirm("Excluir este pitch?")) onDelete(bet.id);
           }}
           disabled={deleting}
-          className={`flex shrink-0 items-center overflow-hidden border-l-2 border-black px-2 text-[#FF0000] transition-all duration-150 hover:bg-[#FF0000]/5 disabled:opacity-50 ${
-            bet.is_priority
-              ? "max-w-[2.5rem] opacity-100"
-              : "max-w-0 opacity-0 group-hover:max-w-[2.5rem] group-hover:opacity-100 focus:max-w-[2.5rem] focus:opacity-100"
-          }`}
+          className="flex max-w-0 shrink-0 items-center overflow-hidden border-l-0 px-0 text-[#FF0000] opacity-0 transition-all duration-150 hover:bg-[#FF0000]/5 focus:max-w-[2.5rem] focus:border-l-2 focus:border-black focus:px-2 focus:opacity-100 disabled:opacity-50 group-hover:max-w-[2.5rem] group-hover:border-l-2 group-hover:border-black group-hover:px-2 group-hover:opacity-100"
           aria-label="Excluir pitch"
         >
           <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -206,6 +203,7 @@ export default function OsPitchPage() {
     loadingProjects,
     projects,
     board,
+    latestUpdates,
     boardReady,
     boardLoading,
     boardError,
@@ -407,12 +405,20 @@ export default function OsPitchPage() {
     setError(null);
     try {
       await deleteOsBet(betId);
-      setBoard((prev) => removeBetFromBoardViews(prev, betId));
-      setLatestUpdates((prev) => {
-        const next = new Map(prev);
-        next.delete(betId);
-        return next;
-      });
+
+      const nextBoard = removeBetFromBoardViews(board, betId);
+      const nextUpdates = new Map(latestUpdates);
+      nextUpdates.delete(betId);
+      setBoard(nextBoard);
+      setLatestUpdates(nextUpdates);
+
+      if (user?.id && selectedProjectId) {
+        setOsCache(
+          osCacheKey(user.id, "board", selectedProjectId),
+          packBoardCache({ board: nextBoard, latestUpdates: nextUpdates })
+        );
+      }
+
       if (editingPitch?.id === betId) closeModal();
       await refreshBoard({ background: true, force: true });
       await refreshTasks({ background: true, force: true });

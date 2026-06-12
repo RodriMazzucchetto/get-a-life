@@ -33,6 +33,7 @@ import {
   type OsBlockView,
 } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
+import { osCacheKey, packBoardCache, setOsCache } from "@/lib/os-cache";
 import { osBtnGhost, osBtnPrimary, osCard, osDivider, osEmptyState, osErrorBanner, osGoalText, osInput, osLabelMuted, osPage } from "@/lib/os-ui";
 
 function OsProgressBar({
@@ -373,12 +374,20 @@ function OsPageContent() {
     setError(null);
     try {
       await deleteOsBet(betId);
-      setBoard((prev) => removeBetFromBoardViews(prev, betId));
-      setLatestUpdates((prev) => {
-        const next = new Map(prev);
-        next.delete(betId);
-        return next;
-      });
+
+      const nextBoard = removeBetFromBoardViews(board, betId);
+      const nextUpdates = new Map(latestUpdates);
+      nextUpdates.delete(betId);
+      setBoard(nextBoard);
+      setLatestUpdates(nextUpdates);
+
+      if (user?.id && selectedProjectId) {
+        setOsCache(
+          osCacheKey(user.id, "board", selectedProjectId),
+          packBoardCache({ board: nextBoard, latestUpdates: nextUpdates })
+        );
+      }
+
       if (editingPitch?.id === betId) closePitchModal();
       await refreshBoard({ background: true, force: true });
       await refreshTasks({ background: true, force: true });
