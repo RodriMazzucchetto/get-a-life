@@ -19,7 +19,7 @@ export function OsCompanySelector() {
             EMPRESA
           </div>
           <div className="flex flex-1 items-center px-4 py-2">
-            {loadingProjects ? (
+            {loadingProjects && projects.length === 0 ? (
               <span className="text-sm font-bold normal-case">Carregando...</span>
             ) : projects.length === 0 ? (
               <span className="text-sm font-bold normal-case">Nenhuma empresa encontrada</span>
