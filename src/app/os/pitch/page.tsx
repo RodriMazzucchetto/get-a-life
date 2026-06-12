@@ -34,6 +34,7 @@ import {
   createOsTask,
   deleteOsBet,
   deleteOsTask,
+  fetchOsBetUpdatesForBet,
   fetchOsPitchBoard,
   fetchOsTasksForBet,
   partitionBetsByPriority,
@@ -42,7 +43,7 @@ import {
   updateOsBet,
   type OsBlockView,
 } from "@/lib/os-queries";
-import type { OsBetRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
+import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
 
 function SortablePitchCard({
   bet,
@@ -72,7 +73,7 @@ function SortablePitchCard({
     <article
       ref={setNodeRef}
       style={style}
-      className={`group border-2 bg-white ${bet.is_priority ? "border-[#FF0000]" : "border-black"}`}
+      className={`group border-2 border-black bg-white ${bet.is_priority ? "bg-black/[0.02]" : ""}`}
     >
       <div className="flex items-stretch">
         <button
@@ -101,14 +102,7 @@ function SortablePitchCard({
           onClick={() => onOpen(bet)}
           className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5 text-left transition-colors hover:bg-black/[0.03]"
         >
-          <span className="flex items-center gap-2 truncate text-sm font-bold normal-case">
-            {bet.is_priority ? (
-              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#FF0000]">
-                Prioridade
-              </span>
-            ) : null}
-            <span className="truncate">{bet.title}</span>
-          </span>
+          <span className="truncate text-sm font-bold normal-case">{bet.title}</span>
           {bet.pitch_outcome ? (
             <span className="line-clamp-2 text-xs normal-case text-black/60">
               {bet.pitch_outcome}
@@ -216,6 +210,8 @@ export default function OsPitchPage() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [pitchTasks, setPitchTasks] = useState<OsTaskRow[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
+  const [weeklyUpdates, setWeeklyUpdates] = useState<OsBetUpdateRow[]>([]);
+  const [weeklyUpdatesLoading, setWeeklyUpdatesLoading] = useState(false);
   const [modalPriority, setModalPriority] = useState(false);
 
   const sensors = useSensors(
@@ -285,6 +281,17 @@ export default function OsPitchPage() {
     }
   }, []);
 
+  const loadAllWeeklyUpdates = useCallback(async (betId: string) => {
+    setWeeklyUpdatesLoading(true);
+    try {
+      setWeeklyUpdates(await fetchOsBetUpdatesForBet(betId));
+    } catch {
+      setWeeklyUpdates([]);
+    } finally {
+      setWeeklyUpdatesLoading(false);
+    }
+  }, []);
+
   const openCreateModal = () => {
     void loadBoard().finally(() => {
       setEditingPitch(null);
@@ -301,6 +308,7 @@ export default function OsPitchPage() {
     setModalPriority(bet.is_priority);
     setModalOpen(true);
     void loadPitchTasks(bet.id);
+    if (bet.is_priority) void loadAllWeeklyUpdates(bet.id);
   };
 
   const closeModal = () => {
@@ -326,8 +334,13 @@ export default function OsPitchPage() {
       if (editingPitch?.id === bet.id) {
         setEditingPitch(updated);
         setModalPriority(updated.is_priority);
-        if (updated.is_priority) void loadPitchTasks(bet.id);
-        else setPitchTasks([]);
+        if (updated.is_priority) {
+          void loadAllWeeklyUpdates(bet.id);
+          void loadPitchTasks(bet.id);
+        } else {
+          setWeeklyUpdates([]);
+          setPitchTasks([]);
+        }
       }
       await loadBoard();
     } catch (priorityError) {
@@ -531,6 +544,8 @@ export default function OsPitchPage() {
         onAddTask={handleAddTask}
         onDeleteTask={handleDeleteTask}
         priorityLoading={priorityLoadingId === editingPitch?.id}
+        weeklyUpdates={weeklyUpdates}
+        weeklyUpdatesLoading={weeklyUpdatesLoading}
         onSave={handleSavePitch}
         onDelete={editingPitch ? (id) => handleDeletePitch(id) : undefined}
         saving={saving}

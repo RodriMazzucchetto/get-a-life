@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { PitchPriorityToggle } from "@/components/os/PitchPriorityToggle";
-import { OS_BLOCK_DOT_COLORS, OS_BLOCK_LABELS, OS_BLOCK_TYPES } from "@/lib/os-queries";
-import type { OsBetRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
+import { OS_BLOCK_DOT_COLORS, OS_BLOCK_LABELS, OS_BLOCK_TYPES, getBetUpdateStatusColor, formatBetUpdateStatusLabel } from "@/lib/os-queries";
+import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
 
 export interface PitchBlockGoal {
   id: string;
@@ -32,6 +32,8 @@ interface PitchModalProps {
   onAddTask: (title: string) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   priorityLoading: boolean;
+  weeklyUpdates?: OsBetUpdateRow[];
+  weeklyUpdatesLoading?: boolean;
   onSave: (data: PitchFormData) => Promise<void>;
   onDelete?: (pitchId: string) => Promise<void>;
   saving: boolean;
@@ -58,6 +60,8 @@ export function PitchModal({
   onAddTask,
   onDeleteTask,
   priorityLoading,
+  weeklyUpdates = [],
+  weeklyUpdatesLoading = false,
   onSave,
   onDelete,
   saving,
@@ -158,9 +162,10 @@ export function PitchModal({
                   isPriority={isPriority}
                   disabled={priorityLoading || saving}
                   onToggle={() => void onTogglePriority()}
+                  size="md"
                 />
                 <span className="text-[10px] font-bold uppercase tracking-wide text-black/60">
-                  Prioridade
+                  Ativo
                 </span>
               </div>
             ) : null}
@@ -289,6 +294,49 @@ export function PitchModal({
               Upload em breve
             </div>
           </div>
+
+          {isEditing && isPriority ? (
+            <section className="border-t-2 border-black pt-6">
+              <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">Weekly updates</h3>
+              <p className="mb-4 text-xs text-black/70">
+                Histórico de updates semanais — mais recente no topo.
+              </p>
+
+              {weeklyUpdatesLoading ? (
+                <p className="mb-4 text-xs text-black/50">Carregando updates...</p>
+              ) : weeklyUpdates.length > 0 ? (
+                <ul className="mb-4 space-y-3">
+                  {weeklyUpdates.map((update) => (
+                    <li key={update.id} className="border-2 border-black px-3 py-2.5">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-black/50">
+                          Semana {update.week_start}
+                        </span>
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-wide"
+                          style={{ color: getBetUpdateStatusColor(update.status) }}
+                        >
+                          {formatBetUpdateStatusLabel(update.status)}
+                        </span>
+                      </div>
+                      {update.what_done ? (
+                        <p className="text-sm normal-case text-black/80">{update.what_done}</p>
+                      ) : null}
+                      {update.blockers ? (
+                        <p className="mt-1 text-xs normal-case text-black/60">
+                          <span className="font-bold uppercase">Blockers:</span> {update.blockers}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mb-4 text-xs text-black/50">
+                  Nenhum weekly update ainda. Adicione pelo OS.
+                </p>
+              )}
+            </section>
+          ) : null}
 
           {isEditing && isPriority ? (
             <section className="border-t-2 border-black pt-6">

@@ -4,146 +4,79 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
+import { OsPitchExecutionRow } from "@/components/os/OsPitchExecutionRow";
+import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
+import { WeeklyUpdateModal } from "@/components/os/WeeklyUpdateModal";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useOsLayout } from "@/contexts/OsLayoutContext";
 import {
-  OS_BLOCK_DOT_COLORS,
   OS_BLOCK_LABELS,
   OS_BLOCK_TYPES,
-  computeOsBetStats,
+  OS_CYAN,
+  OS_YELLOW,
+  computePillarExecutionPct,
+  createOsBetUpdate,
+  createOsTask,
+  deleteOsTask,
+  fetchLatestOsBetUpdatesForBets,
+  fetchOsBetUpdatesForBet,
+  fetchOsPitchBoard,
+  fetchOsTasksForBet,
   saveOsGoal,
-  fetchOsProjectDashboard,
-  type OsBetStats,
+  setOsBetPriority,
+  updateOsBet,
   type OsBlockView,
-  type OsProjectDashboardData,
 } from "@/lib/os-queries";
-import type { OsBlockType } from "@/lib/os-types";
+import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
 
-const OS_CYAN = "#5BC0EB";
-const OS_RED = "#FF0000";
-
-function OsProgressBar({
+function PillarSelectorBar({
+  blockType,
   label,
-  value,
   pct,
-  tone,
+  goalTitle,
+  selected,
+  onSelect,
+  onEditGoal,
+  fillColor,
 }: {
+  blockType: OsBlockType;
   label: string;
-  value: number;
   pct: number;
-  tone: "executed" | "failed";
+  goalTitle: string;
+  selected: boolean;
+  onSelect: () => void;
+  onEditGoal: () => void;
+  fillColor: string;
 }) {
-  const fillColor = tone === "executed" ? OS_CYAN : OS_RED;
-  const fillWidth = pct > 0 ? `${pct}%` : "3.5rem";
-
   return (
-    <div className="flex border-2 border-black bg-white">
-      <div className="flex shrink-0 items-center border-r-2 border-black px-4 py-2.5 text-sm font-bold tracking-wide">
-        {label}: {value}
-      </div>
-      <div className="relative flex min-h-[42px] flex-1 bg-white">
-        <div
-          className="ml-auto flex items-center justify-center text-sm font-bold text-white"
-          style={{ width: fillWidth, backgroundColor: fillColor, minWidth: "3.5rem" }}
-        >
-          {pct}%
+    <div className="flex flex-col">
+      <button
+        type="button"
+        onClick={onSelect}
+        className={`flex border-2 border-black transition-opacity ${selected ? "ring-2 ring-black ring-offset-2" : "opacity-80 hover:opacity-100"}`}
+        aria-pressed={selected}
+      >
+        <div className="flex shrink-0 items-center bg-black px-4 py-3 text-sm font-bold text-white">
+          {label}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function OsBlockColumn({
-  blockView,
-  onDefineGoal,
-  actionLoading,
-}: {
-  blockView: OsBlockView;
-  onDefineGoal: (blockId: string, blockType: OsBlockType) => void;
-  actionLoading: string | null;
-}) {
-  const blockType = blockView.block.type as OsBlockType;
-  const blockLabel = OS_BLOCK_LABELS[blockType];
-  const dotColor = OS_BLOCK_DOT_COLORS[blockType];
-  const stats = computeOsBetStats(blockView.bets);
-  const goalTitle = blockView.goal?.title ?? "Definir meta";
-
-  return (
-    <article className="flex flex-col bg-white">
-      <header className="flex items-center justify-between bg-black px-3 py-2.5 text-white">
-        <div className="flex items-center gap-2">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: dotColor }}
-            aria-hidden
-          />
-          <h2 className="text-sm font-bold tracking-[0.12em]">{blockLabel}</h2>
-        </div>
-        <button
-          type="button"
-          className="text-white/90 transition-opacity hover:opacity-70"
-          aria-label={`Configurações ${blockLabel}`}
-          disabled={actionLoading !== null}
-        >
-          <span className="material-symbols-outlined text-[18px]">settings</span>
-        </button>
-      </header>
-
-      <div className="border-x-2 border-b-2 border-black px-3 py-3">
-        <div className="mb-4 flex items-start justify-between gap-2">
-          <p className="text-sm font-bold leading-snug tracking-wide">{goalTitle}</p>
-          <button
-            type="button"
-            onClick={() => onDefineGoal(blockView.block.id, blockType)}
-            disabled={actionLoading !== null}
-            className="shrink-0 text-black/70 transition-opacity hover:opacity-60"
-            aria-label={`Editar meta ${blockLabel}`}
+        <div className="relative flex min-h-[46px] flex-1 bg-white">
+          <div
+            className="flex items-center justify-end px-3 text-sm font-bold text-black"
+            style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: fillColor, minWidth: "3rem" }}
           >
-            <span className="material-symbols-outlined text-[18px]">edit</span>
-          </button>
-        </div>
-
-        <div className="space-y-1 text-sm font-bold tracking-wide">
-          <p>STARTED: {stats.started}</p>
-          <p style={{ color: OS_CYAN }}>EXECUTED: {stats.executed}</p>
-          <p style={{ color: OS_CYAN }}>SUCCESS RATE: {stats.successRate}%</p>
-          <p style={{ color: OS_RED }}>FAILED: {stats.failed}</p>
-          <p style={{ color: OS_RED }}>FAILURE RATE: {stats.failureRate}%</p>
-        </div>
-
-        {blockView.priorityBet ? (
-          <div className="mt-4 border-t-2 border-black pt-4">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF0000]">
-              Pitch prioritário
-            </p>
-            <div className="border-2 border-[#FF0000] bg-white px-3 py-2.5">
-              <p className="text-sm font-bold normal-case leading-snug">{blockView.priorityBet.title}</p>
-              {blockView.priorityBet.pitch_outcome ? (
-                <p className="mt-1 line-clamp-2 text-xs font-bold normal-case text-black/60">
-                  {blockView.priorityBet.pitch_outcome}
-                </p>
-              ) : null}
-            </div>
+            {pct}%
           </div>
-        ) : null}
-      </div>
-    </article>
-  );
-}
-
-function aggregateStats(blocks: OsBlockView[]): OsBetStats {
-  return blocks.reduce<OsBetStats>(
-    (acc, blockView) => {
-      const blockStats = computeOsBetStats(blockView.bets);
-      return {
-        started: acc.started + blockStats.started,
-        executed: acc.executed + blockStats.executed,
-        failed: acc.failed + blockStats.failed,
-        successRate: 0,
-        failureRate: 0,
-      };
-    },
-    { started: 0, executed: 0, failed: 0, successRate: 0, failureRate: 0 }
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={onEditGoal}
+        className="mt-1.5 truncate text-left text-xs font-bold normal-case text-black/60 hover:text-black"
+        title="Editar meta"
+      >
+        {goalTitle || "Definir meta"}
+      </button>
+    </div>
   );
 }
 
@@ -154,10 +87,15 @@ export default function OsPage() {
 function OsPageContent() {
   const { user } = useAuthContext();
   const { selectedProjectId, loadingProjects } = useOsLayout();
-  const [dashboard, setDashboard] = useState<OsProjectDashboardData | null>(null);
-  const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [board, setBoard] = useState<OsBlockView[]>([]);
+  const [loadingBoard, setLoadingBoard] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPillar, setSelectedPillar] = useState<OsBlockType>("finance");
+  const [latestUpdates, setLatestUpdates] = useState<Map<string, OsBetUpdateRow>>(new Map());
+  const [expandedBetId, setExpandedBetId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Goal modal
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [goalDraft, setGoalDraft] = useState({
     blockId: "",
@@ -167,33 +105,96 @@ function OsPageContent() {
   });
   const [goalError, setGoalError] = useState<string | null>(null);
 
-  const loadDashboard = useCallback(async () => {
+  // Pitch modal
+  const [pitchModalOpen, setPitchModalOpen] = useState(false);
+  const [editingPitch, setEditingPitch] = useState<OsBetRow | null>(null);
+  const [editingBlockType, setEditingBlockType] = useState<OsBlockType>("finance");
+  const [modalPriority, setModalPriority] = useState(false);
+  const [pitchTasks, setPitchTasks] = useState<OsTaskRow[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [pitchSaving, setPitchSaving] = useState(false);
+  const [priorityLoadingId, setPriorityLoadingId] = useState<string | null>(null);
+  const [weeklyUpdates, setWeeklyUpdates] = useState<OsBetUpdateRow[]>([]);
+  const [weeklyUpdatesLoading, setWeeklyUpdatesLoading] = useState(false);
+
+  // Weekly update modal
+  const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
+  const [weeklyModalBet, setWeeklyModalBet] = useState<OsBetRow | null>(null);
+  const [weeklySaving, setWeeklySaving] = useState(false);
+
+  const loadBoard = useCallback(async () => {
     if (!user || !selectedProjectId) {
-      setDashboard(null);
+      setBoard([]);
       return;
     }
 
-    setLoadingDashboard(true);
+    setLoadingBoard(true);
     setError(null);
 
     try {
-      const data = await fetchOsProjectDashboard(user.id, selectedProjectId);
-      setDashboard(data);
+      const data = await fetchOsPitchBoard(user.id, selectedProjectId);
+      setBoard(data);
+
+      const priorityBetIds = data.flatMap((view) =>
+        view.bets.filter((bet) => bet.is_priority).map((bet) => bet.id)
+      );
+      const updates = await fetchLatestOsBetUpdatesForBets(priorityBetIds);
+      setLatestUpdates(updates);
     } catch (loadError) {
-      console.error("Erro ao carregar dashboard OS:", loadError);
-      setError("Não foi possível carregar os blocos OS.");
-      setDashboard(null);
+      console.error("Erro ao carregar OS:", loadError);
+      setError("Não foi possível carregar o OS.");
+      setBoard([]);
     } finally {
-      setLoadingDashboard(false);
+      setLoadingBoard(false);
     }
   }, [user, selectedProjectId]);
 
   useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+    void loadBoard();
+  }, [loadBoard]);
+
+  const orderedBlocks = useMemo(
+    () =>
+      OS_BLOCK_TYPES.map((type) => board.find((view) => view.block.type === type)).filter(
+        (view): view is OsBlockView => Boolean(view)
+      ),
+    [board]
+  );
+
+  const blockGoals = useMemo(() => {
+    const goals: Record<OsBlockType, { id: string; title: string } | null> = {
+      finance: null,
+      growth: null,
+      ops: null,
+    };
+    for (const view of orderedBlocks) {
+      const type = view.block.type as OsBlockType;
+      if (view.goal) goals[type] = { id: view.goal.id, title: view.goal.title };
+    }
+    return goals;
+  }, [orderedBlocks]);
+
+  const pillarPcts = useMemo(() => {
+    const pcts: Record<OsBlockType, number> = { finance: 0, growth: 0, ops: 0 };
+    for (const view of orderedBlocks) {
+      pcts[view.block.type as OsBlockType] = computePillarExecutionPct(view.bets);
+    }
+    return pcts;
+  }, [orderedBlocks]);
+
+  const companyMomentum = useMemo(() => {
+    const values = OS_BLOCK_TYPES.map((type) => pillarPcts[type]);
+    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  }, [pillarPcts]);
+
+  const selectedBlockView = orderedBlocks.find((view) => view.block.type === selectedPillar);
+  const executionPitches = useMemo(
+    () => (selectedBlockView?.bets.filter((bet) => bet.is_priority) ?? []),
+    [selectedBlockView]
+  );
 
   const openGoalModal = (blockId: string, blockType: OsBlockType) => {
-    const existingGoal = dashboard?.blocks.find((b) => b.block.id === blockId)?.goal;
+    const existingGoal = orderedBlocks.find((v) => v.block.id === blockId)?.goal;
     setGoalDraft({
       blockId,
       blockType,
@@ -204,44 +205,156 @@ function OsPageContent() {
     setGoalModalOpen(true);
   };
 
-  const handleCreateGoal = async () => {
+  const handleSaveGoal = async () => {
     if (!user || !goalDraft.blockId || !goalDraft.title.trim()) {
       setGoalError("Informe um título para a meta.");
       return;
     }
-
     setActionLoading(`goal-${goalDraft.blockId}`);
-    setGoalError(null);
-
     try {
-      await saveOsGoal(
-        user.id,
-        goalDraft.blockId,
-        goalDraft.title.trim(),
-        goalDraft.description.trim() || undefined
-      );
+      await saveOsGoal(user.id, goalDraft.blockId, goalDraft.title.trim(), goalDraft.description.trim() || undefined);
       setGoalModalOpen(false);
-      await loadDashboard();
-    } catch (createError) {
-      console.error("Erro ao criar meta OS:", createError);
-      setGoalError("Não foi possível criar a meta.");
+      await loadBoard();
+    } catch {
+      setGoalError("Não foi possível salvar a meta.");
     } finally {
       setActionLoading(null);
     }
   };
 
-  const orderedBlocks = OS_BLOCK_TYPES.map((type) =>
-    dashboard?.blocks.find((blockView) => blockView.block.type === type)
-  ).filter((blockView): blockView is OsBlockView => Boolean(blockView));
+  const loadPitchTasks = async (betId: string) => {
+    setTasksLoading(true);
+    try {
+      setPitchTasks(await fetchOsTasksForBet(betId));
+    } catch {
+      setPitchTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  };
 
-  const totals = useMemo(() => {
-    const base = aggregateStats(orderedBlocks);
-    return {
-      ...base,
-      successRate: base.started > 0 ? Math.round((base.executed / base.started) * 100) : 0,
-      failureRate: base.started > 0 ? Math.round((base.failed / base.started) * 100) : 0,
-    };
-  }, [orderedBlocks]);
+  const loadAllWeeklyUpdates = async (betId: string) => {
+    setWeeklyUpdatesLoading(true);
+    try {
+      setWeeklyUpdates(await fetchOsBetUpdatesForBet(betId));
+    } catch {
+      setWeeklyUpdates([]);
+    } finally {
+      setWeeklyUpdatesLoading(false);
+    }
+  };
+
+  const openPitchModal = (bet: OsBetRow, blockType: OsBlockType) => {
+    setEditingPitch(bet);
+    setEditingBlockType(blockType);
+    setModalPriority(bet.is_priority);
+    setPitchModalOpen(true);
+    void loadPitchTasks(bet.id);
+    void loadAllWeeklyUpdates(bet.id);
+  };
+
+  const closePitchModal = () => {
+    setPitchModalOpen(false);
+    setEditingPitch(null);
+    setPitchTasks([]);
+    setWeeklyUpdates([]);
+  };
+
+  const resolveGoalId = (blockType: OsBlockType) =>
+    orderedBlocks.find((v) => v.block.type === blockType)?.goal?.id ?? null;
+
+  const handleSavePitch = async (data: PitchFormData) => {
+    if (!user || !editingPitch) return;
+    const goalId = resolveGoalId(data.blockType);
+    if (!goalId) return;
+
+    setPitchSaving(true);
+    try {
+      await updateOsBet(editingPitch.id, {
+        title: data.title.trim(),
+        pitchOutcome: data.pitchOutcome.trim() || null,
+        pitchData: data.pitchData.trim() || null,
+        executionOwner: data.executionOwner || null,
+      });
+      closePitchModal();
+      await loadBoard();
+    } catch {
+      setError("Não foi possível salvar o pitch.");
+    } finally {
+      setPitchSaving(false);
+    }
+  };
+
+  const handleTogglePriority = async () => {
+    if (!editingPitch) return;
+    const goalId = resolveGoalId(editingBlockType);
+    if (!goalId) return;
+
+    setPriorityLoadingId(editingPitch.id);
+    try {
+      const updated = await setOsBetPriority(editingPitch.id, goalId, !editingPitch.is_priority);
+      setEditingPitch(updated);
+      setModalPriority(updated.is_priority);
+      if (updated.is_priority) {
+        void loadAllWeeklyUpdates(editingPitch.id);
+        void loadPitchTasks(editingPitch.id);
+      } else {
+        setWeeklyUpdates([]);
+        setPitchTasks([]);
+      }
+      await loadBoard();
+    } catch {
+      setError("Não foi possível alterar prioridade.");
+    } finally {
+      setPriorityLoadingId(null);
+    }
+  };
+
+  const handleAddTask = async (title: string) => {
+    if (!user || !editingPitch || !selectedProjectId) return;
+    await createOsTask(user.id, { projectId: selectedProjectId, betId: editingPitch.id, title });
+    await loadPitchTasks(editingPitch.id);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    await deleteOsTask(taskId);
+    if (editingPitch) await loadPitchTasks(editingPitch.id);
+  };
+
+  const openWeeklyModal = (bet: OsBetRow) => {
+    setWeeklyModalBet(bet);
+    setWeeklyModalOpen(true);
+  };
+
+  const handleWeeklySubmit = async (data: {
+    status: import("@/lib/os-types").OsBetUpdateStatus;
+    whatDone: string;
+    blockers: string;
+  }) => {
+    if (!user || !weeklyModalBet) return;
+    setWeeklySaving(true);
+    try {
+      const update = await createOsBetUpdate(user.id, {
+        betId: weeklyModalBet.id,
+        status: data.status,
+        whatDone: data.whatDone,
+        blockers: data.blockers,
+      });
+      setLatestUpdates((prev) => new Map(prev).set(weeklyModalBet.id, update));
+      if (editingPitch?.id === weeklyModalBet.id) {
+        await loadAllWeeklyUpdates(weeklyModalBet.id);
+      }
+      await loadBoard();
+    } finally {
+      setWeeklySaving(false);
+    }
+  };
+
+  const pillarFillColors: Record<OsBlockType, string> = {
+    finance: OS_YELLOW,
+    growth: OS_CYAN,
+    ops: OS_YELLOW,
+  };
 
   return (
     <div className="pb-8 font-mono uppercase tracking-wide text-black">
@@ -253,7 +366,7 @@ function OsPageContent() {
         </div>
       ) : null}
 
-      {loadingProjects || loadingDashboard ? (
+      {loadingProjects || loadingBoard ? (
         <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
           Carregando OS...
         </div>
@@ -263,38 +376,88 @@ function OsPageContent() {
         </div>
       ) : (
         <>
-          <h1 className="mb-4 text-center text-2xl font-bold tracking-[0.08em] sm:text-3xl">
-            PRIORITIES STARTED: {totals.started}
-          </h1>
-
-          <div className="mb-8 space-y-3">
-            <OsProgressBar
-              label="EXECUTED"
-              value={totals.executed}
-              pct={totals.successRate}
-              tone="executed"
-            />
-            <OsProgressBar
-              label="FAILED"
-              value={totals.failed}
-              pct={totals.failureRate}
-              tone="failed"
-            />
+          {/* Company momentum */}
+          <div className="mb-6 flex border-2 border-black">
+            <div className="flex shrink-0 items-center border-r-2 border-black px-4 py-3 text-sm font-bold">
+              Company execution momentum
+            </div>
+            <div className="relative flex min-h-[46px] flex-1 bg-white">
+              <div
+                className="ml-auto flex items-center justify-center text-sm font-bold text-black"
+                style={{
+                  width: `${Math.max(companyMomentum, 8)}%`,
+                  backgroundColor: OS_YELLOW,
+                  minWidth: "3.5rem",
+                }}
+              >
+                {companyMomentum}%
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-4">
-            {orderedBlocks.map((blockView) => (
-              <OsBlockColumn
-                key={blockView.block.id}
-                blockView={blockView}
-                onDefineGoal={openGoalModal}
-                actionLoading={actionLoading}
-              />
-            ))}
+          {/* Pillar selectors */}
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {orderedBlocks.map((view) => {
+              const blockType = view.block.type as OsBlockType;
+              return (
+                <PillarSelectorBar
+                  key={view.block.id}
+                  blockType={blockType}
+                  label={OS_BLOCK_LABELS[blockType]}
+                  pct={pillarPcts[blockType]}
+                  goalTitle={view.goal?.title ?? "Definir meta"}
+                  selected={selectedPillar === blockType}
+                  onSelect={() => setSelectedPillar(blockType)}
+                  onEditGoal={() => openGoalModal(view.block.id, blockType)}
+                  fillColor={pillarFillColors[blockType]}
+                />
+              );
+            })}
+          </div>
+
+          {/* Selected pillar detail */}
+          <div className="border-2 border-black bg-white">
+            <h2 className="border-b-2 border-black py-4 text-center text-2xl font-bold tracking-[0.12em]">
+              {OS_BLOCK_LABELS[selectedPillar]}
+            </h2>
+
+            <div className="flex border-b-2 border-black text-[10px] font-bold tracking-[0.14em] text-black/50">
+              <div className="w-10 shrink-0 border-r-2 border-black" />
+              <div className="flex-[2] border-r-2 border-black px-4 py-2">Priority</div>
+              <div className="flex flex-1 items-center justify-center border-r-2 border-black py-2">
+                Status
+              </div>
+              <div className="flex w-16 shrink-0 items-center justify-center border-r-2 border-black py-2">
+                Owner
+              </div>
+              <div className="w-12 shrink-0 py-2 text-center">+</div>
+            </div>
+
+            {executionPitches.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm font-bold normal-case text-black/50">
+                Nenhum pitch em execução neste pilar. Marque um pitch como ativo em{" "}
+                <span className="font-bold uppercase">Pitch</span>.
+              </div>
+            ) : (
+              executionPitches.map((bet) => (
+                <OsPitchExecutionRow
+                  key={bet.id}
+                  bet={bet}
+                  latestUpdate={latestUpdates.get(bet.id) ?? null}
+                  expanded={expandedBetId === bet.id}
+                  onToggleExpand={() =>
+                    setExpandedBetId((prev) => (prev === bet.id ? null : bet.id))
+                  }
+                  onOpenPitch={() => openPitchModal(bet, selectedPillar)}
+                  onAddWeeklyUpdate={() => openWeeklyModal(bet)}
+                />
+              ))
+            )}
           </div>
         </>
       )}
 
+      {/* Goal modal */}
       {goalModalOpen ? (
         <ModalOverlay isOpen={goalModalOpen} onClose={() => setGoalModalOpen(false)}>
           <ModalPanel maxWidthClass="max-w-md">
@@ -302,18 +465,13 @@ function OsPageContent() {
               <h2 className="font-mono text-lg font-bold uppercase tracking-wide text-black">
                 {goalDraft.title ? "Editar meta" : "Definir meta"}
               </h2>
-              <button
-                type="button"
-                onClick={() => setGoalModalOpen(false)}
-                className="text-black/60 transition-colors hover:text-black"
-                aria-label="Fechar"
-              >
+              <button type="button" onClick={() => setGoalModalOpen(false)} aria-label="Fechar">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="space-y-4 font-mono normal-case">
               <p className="text-sm text-black/70">
-                Bloco:{" "}
+                Pilar:{" "}
                 <span className="font-bold uppercase text-black">
                   {goalDraft.blockType ? OS_BLOCK_LABELS[goalDraft.blockType] : ""}
                 </span>
@@ -325,24 +483,8 @@ function OsPageContent() {
                 <input
                   type="text"
                   value={goalDraft.title}
-                  onChange={(event) =>
-                    setGoalDraft((prev) => ({ ...prev, title: event.target.value }))
-                  }
+                  onChange={(e) => setGoalDraft((p) => ({ ...p, title: e.target.value }))}
                   className="w-full border-2 border-black bg-white px-3 py-2 text-sm font-bold outline-none focus:bg-black/5"
-                  placeholder="Ex.: 33% Net Profit Margin"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-black/70">
-                  Descrição (opcional)
-                </span>
-                <textarea
-                  rows={3}
-                  value={goalDraft.description}
-                  onChange={(event) =>
-                    setGoalDraft((prev) => ({ ...prev, description: event.target.value }))
-                  }
-                  className="w-full border-2 border-black bg-white px-3 py-2 text-sm outline-none focus:bg-black/5"
                 />
               </label>
               {goalError ? <p className="text-sm font-bold text-[#FF0000]">{goalError}</p> : null}
@@ -350,15 +492,15 @@ function OsPageContent() {
                 <button
                   type="button"
                   onClick={() => setGoalModalOpen(false)}
-                  className="border-2 border-black px-3 py-2 text-sm font-bold hover:bg-black/5"
+                  className="border-2 border-black px-3 py-2 text-sm font-bold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleCreateGoal()}
+                  onClick={() => void handleSaveGoal()}
                   disabled={actionLoading !== null}
-                  className="border-2 border-black bg-black px-3 py-2 text-sm font-bold text-white hover:bg-black/85 disabled:opacity-50"
+                  className="border-2 border-black bg-black px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
                 >
                   Salvar
                 </button>
@@ -366,6 +508,38 @@ function OsPageContent() {
             </div>
           </ModalPanel>
         </ModalOverlay>
+      ) : null}
+
+      <PitchModal
+        open={pitchModalOpen}
+        onClose={closePitchModal}
+        pitch={editingPitch}
+        initialBlockType={editingBlockType}
+        blockGoals={blockGoals}
+        isPriority={modalPriority}
+        onTogglePriority={handleTogglePriority}
+        pitchTasks={pitchTasks}
+        tasksLoading={tasksLoading}
+        onAddTask={handleAddTask}
+        onDeleteTask={handleDeleteTask}
+        priorityLoading={priorityLoadingId === editingPitch?.id}
+        weeklyUpdates={weeklyUpdates}
+        weeklyUpdatesLoading={weeklyUpdatesLoading}
+        onSave={handleSavePitch}
+        saving={pitchSaving}
+      />
+
+      {weeklyModalBet ? (
+        <WeeklyUpdateModal
+          open={weeklyModalOpen}
+          onClose={() => {
+            setWeeklyModalOpen(false);
+            setWeeklyModalBet(null);
+          }}
+          pitch={weeklyModalBet}
+          onSubmit={handleWeeklySubmit}
+          saving={weeklySaving}
+        />
       ) : null}
     </div>
   );

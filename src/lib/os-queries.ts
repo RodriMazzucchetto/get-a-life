@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase'
 import type {
   OsBetRow,
   OsBetStatus,
+  OsBetUpdateRow,
+  OsBetUpdateStatus,
   OsBlockRow,
   OsBlockType,
   OsCycleRow,
@@ -23,6 +25,57 @@ export const OS_BLOCK_DOT_COLORS: Record<OsBlockType, string> = {
   finance: '#FFD600',
   growth: '#5BC0EB',
   ops: '#FFD600',
+}
+
+export const OS_YELLOW = '#FFD600'
+export const OS_CYAN = '#5BC0EB'
+export const OS_RED = '#FF0000'
+
+export function formatExecutionOwnerInitials(owner: string | null): string {
+  if (!owner) return '--'
+  switch (owner) {
+    case 'self':
+      return 'EU'
+    case 'team':
+      return 'EQ'
+    case 'external':
+      return 'EX'
+    default:
+      return owner.slice(0, 2).toUpperCase()
+  }
+}
+
+export function formatBetUpdateStatusLabel(status: string): string {
+  return status.replace('_', ' ').toUpperCase()
+}
+
+export function getBetUpdateStatusColor(status: string): string {
+  switch (status) {
+    case 'deviating':
+      return OS_YELLOW
+    case 'on_course':
+    case 'executed':
+      return OS_CYAN
+    case 'failed':
+      return OS_RED
+    default:
+      return '#000000'
+  }
+}
+
+export function currentWeekStartDate(): string {
+  const now = new Date()
+  const day = now.getDay()
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1)
+  const monday = new Date(now.getFullYear(), now.getMonth(), diff)
+  return monday.toISOString().slice(0, 10)
+}
+
+export function computePillarExecutionPct(bets: OsBetRow[]): number {
+  const active = bets.filter((bet) => bet.status !== 'draft' && bet.status !== 'rejected')
+  if (active.length === 0) return 0
+  const executed = active.filter((bet) => bet.status === 'executed').length
+  return Math.round((executed / active.length) * 100)
 }
 
 export interface OsBetStats {
@@ -665,4 +718,104 @@ export async function fetchOsBetsByIds(betIds: string[]): Promise<OsBetRow[]> {
   }
 
   return data ?? []
+}
+
+export async function fetchOsBetUpdatesForBet(betId: string): Promise<OsBetUpdateRow[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_bet_updates')
+    .select('*')
+    .eq('bet_id', betId)
+    .order('week_start', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Erro ao buscar weekly updates:', error)
+    throw error
+  }
+
+  return data ?? []
+}
+
+export async function fetchLatestOsBetUpdatesForBets(
+  betIds: string[]
+): Promise<Map<string, OsBetUpdateRow>> {
+  if (betIds.length === 0) return new Map()
+
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_bet_updates')
+    .select('*')
+    .in('bet_id', betIds)
+    .order('week_start', { ascending: false })
+
+  if (error) {
+    console.error('Erro ao buscar latest weekly updates:', error)
+    throw error
+  }
+
+  const map = new Map<string, OsBetUpdateRow>()
+  for (const row of data ?? []) {
+    if (!map.has(row.bet_id)) map.set(row.bet_id, row)
+  }
+  return map
+}
+
+export async function createOsBetUpdate(
+  userId: string,
+  input: {
+    betId: string
+    weekStart?: string
+    status: OsBetUpdateStatus
+    whatDone?: string
+    blockers?: string
+  }
+): Promise<OsBetUpdateRow> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_bet_updates')
+    .insert({
+      user_id: userId,
+      bet_id: input.betId,
+      week_start: input.weekStart ?? currentWeekStartDate(),
+      status: input.status,
+      what_done: input.whatDone?.trim() || null,
+      blockers: input.blockers?.trim() || null,
+    })
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao criar weekly update:', error)
+    throw error
+  }
+
+  await supabase
+    .from('os_bets')
+    .update({ status: input.status, updated_at: new Date().toISOString() })
+    .eq('id', input.betId)
+
+  return data
+}
+
+export function getBetDisplayStatus(
+  bet: OsBetRow,
+  latestUpdate: OsBetUpdateRow | null | undefined
+): { label: string; color: string; source: 'update' | 'bet' } {
+  if (latestUpdate) {
+    return {
+      label: formatBetUpdateStatusLabel(latestUpdate.status),
+      color: getBetUpdateStatusColor(latestUpdate.status),
+      source: 'update',
+    }
+  }
+  const mappable = ['on_course', 'deviating', 'executed', 'failed'].includes(bet.status)
+  if (mappable) {
+    return {
+      label: formatBetUpdateStatusLabel(bet.status),
+      color: getBetUpdateStatusColor(bet.status),
+      source: 'bet',
+    }
+  }
+  return { label: bet.status.toUpperCase(), color: '#888888', source: 'bet' }
 }
