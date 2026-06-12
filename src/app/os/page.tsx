@@ -16,6 +16,7 @@ import {
   OS_GREEN,
   OS_RED,
   OS_YELLOW,
+  computeCompanyMomentum,
   computeOsBetStats,
   createOsBetUpdate,
   createOsTask,
@@ -71,6 +72,7 @@ function PillarSelectorBar({
   onSelect,
   onEditGoal,
   fillColor,
+  hasActivePitch,
 }: {
   label: string;
   pct: number;
@@ -79,6 +81,7 @@ function PillarSelectorBar({
   onSelect: () => void;
   onEditGoal: () => void;
   fillColor: string;
+  hasActivePitch: boolean;
 }) {
   return (
     <div className="flex flex-col">
@@ -88,16 +91,25 @@ function PillarSelectorBar({
         className={`flex border-2 border-black transition-opacity ${selected ? "ring-2 ring-black ring-offset-2" : "opacity-80 hover:opacity-100"}`}
         aria-pressed={selected}
       >
-        <div className="flex shrink-0 items-center bg-black px-4 py-3 text-sm font-bold text-white">
+        <div
+          className="flex shrink-0 items-center bg-black px-4 py-3 text-sm font-bold text-white"
+          style={hasActivePitch ? { boxShadow: `inset 4px 0 0 0 ${fillColor}` } : undefined}
+        >
           {label}
         </div>
-        <div className="relative flex min-h-[46px] flex-1 bg-white">
-          <div
-            className="flex items-center justify-end px-3 text-sm font-bold text-black"
-            style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: fillColor, minWidth: "3rem" }}
+        <div className="relative flex min-h-[46px] flex-1 items-center bg-white">
+          {pct > 0 ? (
+            <div
+              className="absolute inset-y-0 left-0 flex items-center justify-end px-3 text-sm font-bold text-white"
+              style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: fillColor }}
+            />
+          ) : null}
+          <span
+            className="relative ml-auto px-3 text-sm font-bold"
+            style={{ color: hasActivePitch ? fillColor : "#000000" }}
           >
             {pct}%
-          </div>
+          </span>
         </div>
       </button>
       <button
@@ -220,33 +232,23 @@ function OsPageContent() {
       const type = view.block.type as OsBlockType;
       const priorityBet = view.bets.find((bet) => bet.is_priority) ?? view.priorityBet;
       const update = priorityBet ? (latestUpdates.get(priorityBet.id) ?? null) : null;
-      displays[type] = getPillarStatusDisplay(priorityBet, update);
+      displays[type] = getPillarStatusDisplay(priorityBet, update, view.bets);
     }
     return displays;
   }, [orderedBlocks, latestUpdates]);
 
-  const companyMomentum = useMemo(() => {
-    const activePillars = OS_BLOCK_TYPES.map((type) => pillarDisplays[type]).filter(
-      (d) => d.status !== null
-    );
-    if (activePillars.length === 0) return 0;
-    return Math.round(
-      activePillars.reduce((sum, d) => sum + d.pct, 0) / activePillars.length
-    );
-  }, [pillarDisplays]);
+  const companyMomentum = useMemo(
+    () => computeCompanyMomentum(orderedBlocks),
+    [orderedBlocks]
+  );
 
   const companyMomentumColor = useMemo(() => {
-    const active = OS_BLOCK_TYPES.map((type) => pillarDisplays[type]).filter(
-      (d) => d.status !== null
-    );
-    if (active.length === 0) return OS_YELLOW;
-    const avgPct =
-      active.reduce((sum, d) => sum + d.pct, 0) / active.length;
-    if (avgPct >= 100) return OS_CYAN;
-    if (avgPct >= 80) return OS_GREEN;
-    if (avgPct >= 50) return OS_YELLOW;
-    return OS_RED;
-  }, [pillarDisplays]);
+    if (companyMomentum >= 100) return OS_CYAN;
+    if (companyMomentum >= 67) return OS_GREEN;
+    if (companyMomentum >= 34) return OS_YELLOW;
+    if (companyMomentum > 0) return OS_YELLOW;
+    return "#E5E5E5";
+  }, [companyMomentum]);
 
   const selectedBlockView = orderedBlocks.find((view) => view.block.type === selectedPillar);
   const selectedPillarStats = useMemo(
@@ -493,6 +495,7 @@ function OsPageContent() {
                   onSelect={() => setSelectedPillar(blockType)}
                   onEditGoal={() => openGoalModal(view.block.id, blockType)}
                   fillColor={display.color}
+                  hasActivePitch={display.status !== null}
                 />
               );
             })}

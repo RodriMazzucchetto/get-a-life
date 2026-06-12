@@ -32,22 +32,41 @@ export const OS_CYAN = '#5BC0EB'
 export const OS_GREEN = '#34D399'
 export const OS_RED = '#FF0000'
 
-/** Percentual de preenchimento da barra do pilar conforme status do pitch ativo. */
-export const PILLAR_STATUS_PCT: Record<
-  'deviating' | 'on_course' | 'executed' | 'failed',
-  number
-> = {
-  deviating: 67,
-  on_course: 80,
-  executed: 100,
-  failed: 25,
-}
-
 export interface PillarStatusDisplay {
   pct: number
   color: string
   status: 'deviating' | 'on_course' | 'executed' | 'failed' | null
   label: string
+}
+
+export function getPillarStatusDisplay(
+  priorityBet: OsBetRow | null,
+  latestUpdate: OsBetUpdateRow | null,
+  pillarBets: OsBetRow[] = []
+): PillarStatusDisplay {
+  const { successRate } = computeOsBetStats(pillarBets)
+
+  if (!priorityBet) {
+    return { pct: 0, color: '#E5E5E5', status: null, label: '—' }
+  }
+
+  const trackable = ['on_course', 'deviating', 'executed', 'failed'] as const
+  const rawStatus =
+    latestUpdate?.status ??
+    (trackable.includes(priorityBet.status as (typeof trackable)[number])
+      ? (priorityBet.status as (typeof trackable)[number])
+      : null)
+
+  if (!rawStatus) {
+    return { pct: successRate, color: '#E5E5E5', status: null, label: 'SEM STATUS' }
+  }
+
+  return {
+    pct: successRate,
+    color: getBetUpdateStatusColor(rawStatus),
+    status: rawStatus,
+    label: formatBetUpdateStatusLabel(rawStatus),
+  }
 }
 
 export function getBetUpdateStatusColor(status: string): string {
@@ -65,31 +84,14 @@ export function getBetUpdateStatusColor(status: string): string {
   }
 }
 
-export function getPillarStatusDisplay(
-  priorityBet: OsBetRow | null,
-  latestUpdate: OsBetUpdateRow | null
-): PillarStatusDisplay {
-  if (!priorityBet) {
-    return { pct: 0, color: '#E5E5E5', status: null, label: '—' }
-  }
-
-  const trackable = ['on_course', 'deviating', 'executed', 'failed'] as const
-  const rawStatus =
-    latestUpdate?.status ??
-    (trackable.includes(priorityBet.status as (typeof trackable)[number])
-      ? (priorityBet.status as (typeof trackable)[number])
-      : null)
-
-  if (!rawStatus) {
-    return { pct: 0, color: '#E5E5E5', status: null, label: 'SEM STATUS' }
-  }
-
-  return {
-    pct: PILLAR_STATUS_PCT[rawStatus],
-    color: getBetUpdateStatusColor(rawStatus),
-    status: rawStatus,
-    label: formatBetUpdateStatusLabel(rawStatus),
-  }
+export function computeCompanyMomentum(
+  orderedBlocks: { block: { type: OsBlockType }; bets: OsBetRow[] }[]
+): number {
+  const rates = OS_BLOCK_TYPES.map((type) => {
+    const view = orderedBlocks.find((v) => v.block.type === type)
+    return computeOsBetStats(view?.bets ?? []).successRate
+  })
+  return Math.round(rates.reduce((sum, rate) => sum + rate, 0) / OS_BLOCK_TYPES.length)
 }
 
 export function currentWeekStartDate(): string {
