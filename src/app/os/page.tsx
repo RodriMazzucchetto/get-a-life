@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
-import { OsPitchExecutionRow } from "@/components/os/OsPitchExecutionRow";
+import { OsPitchExecutionRow, OS_EXECUTION_TABLE_GRID } from "@/components/os/OsPitchExecutionRow";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
 import { WeeklyUpdateModal } from "@/components/os/WeeklyUpdateModal";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -522,11 +522,13 @@ function OsPageContent() {
               {OS_BLOCK_LABELS[selectedPillar]}
             </h2>
 
-            <div className="flex border-b-2 border-black text-[10px] font-bold tracking-[0.14em] text-black/50">
-              <div className="w-10 shrink-0 border-r-2 border-black" />
-              <div className="flex-[2] border-r-2 border-black px-4 py-2">Priority</div>
-              <div className="flex flex-1 items-center justify-center py-2">Status</div>
-              <div className="w-12 shrink-0 border-l-2 border-black py-2 text-center">+</div>
+            <div
+              className={`${OS_EXECUTION_TABLE_GRID} border-b-2 border-black text-[10px] font-bold tracking-[0.14em] text-black/50`}
+            >
+              <div className="border-r-2 border-black" />
+              <div className="border-r-2 border-black px-4 py-2">Priority</div>
+              <div className="flex items-center justify-center py-2">Status</div>
+              <div className="border-l-2 border-black py-2 text-center">+</div>
             </div>
 
             {executionPitches.length === 0 ? (
