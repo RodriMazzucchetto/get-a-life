@@ -3,9 +3,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { PlayIcon } from "@heroicons/react/24/outline";
-import type { OsBetRow } from "@/lib/os-types";
 import type { OsProjectOption } from "@/lib/os-queries";
-import type { OsTaskRow } from "@/lib/os-types";
+import type { OsBetRow, OsTaskRow } from "@/lib/os-types";
 import { isQuickWinProject } from "@/lib/project-filters";
 
 interface OsTaskItemProps {
@@ -43,12 +42,13 @@ export function OsTaskItem({
 
   const showBacklogButton = task.status !== "backlog";
   const isInFocus = task.status === "in_progress";
+  const companyColor = company?.color ?? "#888888";
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group border-2 border-black bg-white ${task.on_hold ? "bg-[#FFF9E6]" : ""}`}
+      className={`group relative border-2 border-black bg-white ${task.on_hold ? "bg-[#FFF9E6]" : ""}`}
     >
       <div className="flex items-stretch">
         <button
@@ -72,7 +72,7 @@ export function OsTaskItem({
           </span>
         </button>
 
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 pr-2 group-hover:pr-28 md:group-hover:pr-32">
           <input
             type="checkbox"
             checked={false}
@@ -97,25 +97,29 @@ export function OsTaskItem({
           {company ? (
             <span
               className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wide sm:inline"
-              style={{ color: company.color }}
+              style={{ color: companyColor }}
             >
               {company.name}
             </span>
           ) : null}
 
           {linkedBet ? (
-            <span className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#FF0000] lg:inline">
+            <span
+              className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wide lg:inline"
+              style={{ color: companyColor }}
+              title={company ? `Pitch · ${company.name}` : linkedBet.title}
+            >
               {linkedBet.title}
             </span>
           ) : null}
         </div>
 
-        <div className="flex shrink-0 items-center border-l-2 border-black">
+        <div className="pointer-events-none absolute right-0 top-0 flex h-full shrink-0 items-stretch border-l-2 border-black bg-white opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
           {showBacklogButton ? (
             <button
               type="button"
               onClick={() => onMoveToBacklog(task)}
-              className="flex h-full items-center px-2 hover:bg-black/[0.03]"
+              className="flex items-center px-2 hover:bg-black/[0.03]"
               title="Mover para backlog"
               aria-label="Mover para backlog"
             >
@@ -126,7 +130,7 @@ export function OsTaskItem({
           <button
             type="button"
             onClick={() => onMoveToFocus(task)}
-            className="flex h-full items-center border-l-2 border-black px-2 hover:bg-black/[0.03]"
+            className="flex items-center border-l-2 border-black px-2 hover:bg-black/[0.03]"
             title={isInFocus ? "Voltar para Semana Atual" : "Enviar para Foco Agora"}
             aria-label={isInFocus ? "Voltar para Semana Atual" : "Enviar para Foco Agora"}
           >
@@ -140,7 +144,7 @@ export function OsTaskItem({
           <button
             type="button"
             onClick={() => onPutOnHold(task)}
-            className={`flex h-full items-center border-l-2 border-black px-2 hover:bg-black/[0.03] ${
+            className={`flex items-center border-l-2 border-black px-2 hover:bg-black/[0.03] ${
               task.on_hold ? "bg-[#FFD600]/20" : ""
             }`}
             title={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
@@ -156,7 +160,7 @@ export function OsTaskItem({
           <button
             type="button"
             onClick={() => onEdit(task)}
-            className="flex h-full items-center border-l-2 border-black px-2 hover:bg-black/[0.03]"
+            className="flex items-center border-l-2 border-black px-2 hover:bg-black/[0.03]"
             title="Editar"
             aria-label="Editar task"
           >
@@ -166,7 +170,7 @@ export function OsTaskItem({
           <button
             type="button"
             onClick={() => onDelete(task)}
-            className="flex h-full items-center border-l-2 border-black px-2 text-[#FF0000] hover:bg-black/[0.03]"
+            className="flex items-center border-l-2 border-black px-2 text-[#FF0000] hover:bg-black/[0.03]"
             title="Excluir"
             aria-label="Excluir task"
           >
@@ -186,4 +190,11 @@ export function resolveOsTaskCompany(
   const project = projectsById.get(task.project_id);
   if (!project || isQuickWinProject(project)) return null;
   return project;
+}
+
+export function resolveOsTaskCompanyColor(
+  task: OsTaskRow,
+  projectsById: Map<string, OsProjectOption>
+): string {
+  return resolveOsTaskCompany(task, projectsById)?.color ?? "#888888";
 }

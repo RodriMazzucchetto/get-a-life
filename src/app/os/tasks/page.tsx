@@ -7,8 +7,10 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -45,7 +47,7 @@ import type { OsBetRow, OsTaskBoardStatus, OsTaskRow } from "@/lib/os-types";
 
 function osTaskListClassName(taskCount: number): string {
   const base = "space-y-2";
-  if (taskCount === 0) return base;
+  if (taskCount === 0) return `${base} min-h-[5rem]`;
   if (taskCount <= 4) return base;
   return `${base} max-h-[min(42vh,22rem)] overflow-y-auto [scrollbar-gutter:stable] md:max-h-[min(48vh,26rem)]`;
 }
@@ -182,6 +184,12 @@ export default function OsTasksPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
+    const withPointer = pointerWithin(args);
+    if (withPointer.length > 0) return withPointer;
+    return closestCenter(args);
+  }, []);
+
   const loadBoard = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -305,6 +313,61 @@ export default function OsTasksPage() {
     await moveTask(task, "backlog");
   }
 
+  async function applyColumnMove(
+    activeId: string,
+    columnTarget: OsTaskBoardStatus,
+    insertBeforeTaskId?: string
+  ) {
+    const rollback = () => {
+      if (dragRollbackRef.current) {
+        setTasks(dragRollbackRef.current);
+        dragRollbackRef.current = null;
+      }
+    };
+
+    let newPos: number;
+    const targetCol = tasks
+      .filter((t) => t.status === columnTarget && t.completed_at == null && t.id !== activeId)
+      .sort(sortOsTasksByPos);
+
+    if (insertBeforeTaskId) {
+      const overIndex = targetCol.findIndex((t) => t.id === insertBeforeTaskId);
+      if (overIndex <= 0) {
+        const first = targetCol[0];
+        newPos = first ? (first.pos ?? 1000) - 500 : 1000;
+      } else {
+        const prev = targetCol[overIndex - 1];
+        const next = targetCol[overIndex];
+        newPos = ((prev.pos ?? 0) + (next.pos ?? 0)) / 2;
+      }
+    } else {
+      newPos = appendOsTaskPosForStatus(tasks, columnTarget, activeId);
+    }
+
+    dragRollbackRef.current = [...tasks];
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === activeId
+          ? { ...t, status: columnTarget, pos: newPos, on_hold: false, on_hold_reason: null }
+          : t
+      )
+    );
+
+    try {
+      const updated = await updateOsTask(activeId, {
+        status: columnTarget,
+        pos: newPos,
+        on_hold: false,
+        on_hold_reason: null,
+      });
+      replaceTask(updated);
+      dragRollbackRef.current = null;
+    } catch {
+      rollback();
+      setError("Não foi possível mover a task.");
+    }
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over) return;
@@ -314,42 +377,27 @@ export default function OsTasksPage() {
     const activeTask = tasks.find((t) => t.id === activeId);
     if (!activeTask || activeTask.completed_at) return;
 
+    const overTask = tasks.find((t) => t.id === overId);
+
+    if (overTask && activeTask.status !== overTask.status) {
+      await applyColumnMove(activeId, overTask.status, overId);
+      return;
+    }
+
+    const columnTarget = osColumnStatusFromId(overId);
+    if (columnTarget && activeTask.status !== columnTarget) {
+      await applyColumnMove(activeId, columnTarget);
+      return;
+    }
+
+    if (!overTask || activeTask.status !== overTask.status) return;
+
     const rollback = () => {
       if (dragRollbackRef.current) {
         setTasks(dragRollbackRef.current);
         dragRollbackRef.current = null;
       }
     };
-
-    const columnTarget = osColumnStatusFromId(overId);
-    if (columnTarget && activeTask.status !== columnTarget) {
-      dragRollbackRef.current = [...tasks];
-      const pos = appendOsTaskPosForStatus(tasks, columnTarget, activeId);
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === activeId
-            ? { ...t, status: columnTarget, pos, on_hold: false, on_hold_reason: null }
-            : t
-        )
-      );
-      try {
-        const updated = await updateOsTask(activeId, {
-          status: columnTarget,
-          pos,
-          on_hold: false,
-          on_hold_reason: null,
-        });
-        replaceTask(updated);
-        dragRollbackRef.current = null;
-      } catch {
-        rollback();
-        setError("Não foi possível mover a task.");
-      }
-      return;
-    }
-
-    const overTask = tasks.find((t) => t.id === overId);
-    if (!overTask || activeTask.status !== overTask.status) return;
 
     const col = tasks
       .filter((t) => t.status === activeTask.status && t.completed_at == null)
@@ -396,7 +444,7 @@ export default function OsTasksPage() {
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={collisionDetectionStrategy}
           onDragStart={(e) => setActiveDragId(String(e.active.id))}
           onDragCancel={() => setActiveDragId(null)}
           onDragEnd={(e) => {
