@@ -424,24 +424,6 @@ export default function OsTasksPage() {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:gap-8">
               <OsTaskColumn
-                id={OS_COL_BACKLOG}
-                title="Backlog"
-                subtitle="Tasks de pitch entram aqui"
-                tasks={backlogTasks}
-                betsById={betsById}
-                projectsById={projectsById}
-                onToggleComplete={handleToggleComplete}
-                onEdit={setEditingTask}
-                onPutOnHold={handlePutOnHold}
-                onMoveToFocus={handleMoveToFocus}
-                onMoveToBacklog={handleMoveToBacklog}
-                onDelete={handleDelete}
-                onCreate={(title) => handleCreateInColumn("backlog", title)}
-                createPlaceholder="Nova task no backlog..."
-                className="order-2 md:order-1"
-              />
-
-              <OsTaskColumn
                 id={OS_COL_CURRENT_WEEK}
                 title="Semana Atual"
                 subtitle="Planejadas para esta semana"
@@ -456,7 +438,23 @@ export default function OsTasksPage() {
                 onDelete={handleDelete}
                 onCreate={(title) => handleCreateInColumn("current_week", title)}
                 createPlaceholder="Nova task da semana..."
-                className="order-1 md:order-2"
+              />
+
+              <OsTaskColumn
+                id={OS_COL_BACKLOG}
+                title="Backlog"
+                subtitle="Tasks de pitch entram aqui"
+                tasks={backlogTasks}
+                betsById={betsById}
+                projectsById={projectsById}
+                onToggleComplete={handleToggleComplete}
+                onEdit={setEditingTask}
+                onPutOnHold={handlePutOnHold}
+                onMoveToFocus={handleMoveToFocus}
+                onMoveToBacklog={handleMoveToBacklog}
+                onDelete={handleDelete}
+                onCreate={(title) => handleCreateInColumn("backlog", title)}
+                createPlaceholder="Nova task no backlog..."
               />
             </div>
           </div>
