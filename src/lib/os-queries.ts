@@ -766,36 +766,21 @@ export async function updateOsBet(
 export async function deleteOsBet(betId: string): Promise<void> {
   const supabase = createClient()
 
-  // Remove dependências antes do pitch (evita falha de RLS/cascade em pitches prioritários com updates)
-  const { error: updatesError } = await supabase
-    .from('os_bet_updates')
-    .delete()
-    .eq('bet_id', betId)
+  // Apagar updates primeiro (cascade via DB, mas RLS do browser client precisa de permissão explícita)
+  await supabase.from('os_bet_updates').delete().eq('bet_id', betId)
 
-  if (updatesError) {
-    console.error('Erro ao excluir updates do pitch:', updatesError)
-    throw updatesError
-  }
-
-  const { error: tasksError } = await supabase
+  // Desvincular tasks (FK é on delete set null, mas fazemos manualmente para garantir)
+  await supabase
     .from('os_tasks')
     .update({ bet_id: null, updated_at: new Date().toISOString() })
     .eq('bet_id', betId)
 
-  if (tasksError) {
-    console.error('Erro ao desvincular tasks do pitch:', tasksError)
-    throw tasksError
-  }
-
-  const { data, error } = await supabase.from('os_bets').delete().eq('id', betId).select('id')
+  // Apagar o pitch
+  const { error } = await supabase.from('os_bets').delete().eq('id', betId)
 
   if (error) {
     console.error('Erro ao excluir pitch OS:', error)
     throw error
-  }
-
-  if (!data?.length) {
-    throw new Error('Pitch não encontrado ou sem permissão para excluir.')
   }
 }
 
