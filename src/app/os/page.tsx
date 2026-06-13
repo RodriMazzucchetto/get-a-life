@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
+import { GoalBacklogPanel } from "@/components/os/GoalBacklogPanel";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
 import { OsPitchExecutionRow, OS_EXECUTION_TABLE_GRID } from "@/components/os/OsPitchExecutionRow";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
@@ -73,21 +74,28 @@ function PillarSelectorBar({
   label,
   pct,
   goalTitle,
+  blockId,
+  userId,
   selected,
   onSelect,
   onEditGoal,
   fillColor,
   hasActivePitch,
+  onGoalsChanged,
 }: {
   label: string;
   pct: number;
   goalTitle: string;
+  blockId: string;
+  userId: string;
   selected: boolean;
   onSelect: () => void;
   onEditGoal: () => void;
   fillColor: string;
   hasActivePitch: boolean;
+  onGoalsChanged: () => void;
 }) {
+  const [showBacklog, setShowBacklog] = useState(false);
   const displayGoal = goalTitle || "Definir meta";
 
   return (
@@ -123,24 +131,47 @@ function PillarSelectorBar({
           </span>
         </div>
       </button>
-      <div className={`border-t ${osDivider}`}>
+
+      {/* meta activa + botão toggle backlog */}
+      <div className={`flex items-start border-t ${osDivider}`}>
         <p
           role="button"
           tabIndex={0}
           onClick={onEditGoal}
           onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onEditGoal();
-            }
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEditGoal(); }
           }}
-          className={osGoalText}
+          className={`${osGoalText} flex-1`}
           style={{ whiteSpace: "normal", overflow: "visible", textOverflow: "clip" }}
           title={displayGoal}
         >
           {displayGoal}
         </p>
+        <button
+          type="button"
+          aria-label={showBacklog ? "Fechar backlog de metas" : "Ver backlog de metas"}
+          onClick={() => setShowBacklog((v) => !v)}
+          className={`flex shrink-0 items-center justify-center px-2 py-2.5 text-ta-muted transition-colors hover:text-ta-ink ${
+            showBacklog ? "text-ta-ink" : ""
+          }`}
+        >
+          <span
+            className="material-symbols-outlined text-[18px] transition-transform"
+            style={{ transform: showBacklog ? "rotate(180deg)" : "rotate(0deg)" }}
+          >
+            format_list_bulleted
+          </span>
+        </button>
       </div>
+
+      {/* backlog inline */}
+      {showBacklog ? (
+        <GoalBacklogPanel
+          blockId={blockId}
+          userId={userId}
+          onGoalsChanged={() => { onGoalsChanged(); }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -529,16 +560,19 @@ function OsPageContent() {
               const display = pillarDisplays[blockType];
               return (
                 <div key={view.block.id} className="min-w-0">
-                <PillarSelectorBar
-                  label={OS_BLOCK_LABELS[blockType]}
-                  pct={display.pct}
-                  goalTitle={view.goal?.title ?? "Definir meta"}
-                  selected={selectedPillar === blockType}
-                  onSelect={() => setSelectedPillar(blockType)}
-                  onEditGoal={() => openGoalModal(view.block.id, blockType)}
-                  fillColor={display.color}
-                  hasActivePitch={view.bets.length > 0}
-                />
+                  <PillarSelectorBar
+                    label={OS_BLOCK_LABELS[blockType]}
+                    pct={display.pct}
+                    goalTitle={view.goal?.title ?? "Definir meta"}
+                    blockId={view.block.id}
+                    userId={user?.id ?? ""}
+                    selected={selectedPillar === blockType}
+                    onSelect={() => setSelectedPillar(blockType)}
+                    onEditGoal={() => openGoalModal(view.block.id, blockType)}
+                    fillColor={display.color}
+                    hasActivePitch={view.bets.length > 0}
+                    onGoalsChanged={() => void refreshBoard({ background: true, force: true })}
+                  />
                 </div>
               );
             })}

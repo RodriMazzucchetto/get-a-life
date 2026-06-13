@@ -30,6 +30,8 @@ export interface OsGoalRow {
   description: string | null
   appetite_cycles: number | null
   status: OsGoalStatus
+  is_priority: boolean
+  pos: number | null
   created_at: string
   updated_at: string
 }

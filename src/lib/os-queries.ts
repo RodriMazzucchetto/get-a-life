@@ -422,6 +422,109 @@ export async function updateOsGoal(
   return data
 }
 
+/** Busca todas as metas de um bloco (ativas + concluídas), ordenadas por pos/created_at. */
+export async function fetchGoalsForBlock(blockId: string): Promise<OsGoalRow[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_goals')
+    .select('*')
+    .eq('block_id', blockId)
+    .neq('status', 'abandoned')
+    .order('updated_at', { ascending: false })
+
+  if (error) {
+    console.error('Erro ao buscar metas do bloco:', error)
+    throw error
+  }
+
+  // Normalizar campos que podem não existir antes da migration
+  return (data ?? []).map((g) => ({
+    ...g,
+    is_priority: g.is_priority ?? false,
+    pos: g.pos ?? null,
+  }))
+}
+
+/** Define uma meta como prioritária (única por bloco). */
+export async function setGoalPriority(goalId: string, blockId: string): Promise<OsGoalRow> {
+  const supabase = createClient()
+
+  // Desmarcar todas do bloco
+  await supabase
+    .from('os_goals')
+    .update({ is_priority: false, updated_at: new Date().toISOString() })
+    .eq('block_id', blockId)
+
+  // Marcar esta
+  const { data, error } = await supabase
+    .from('os_goals')
+    .update({ is_priority: true, updated_at: new Date().toISOString() })
+    .eq('id', goalId)
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao definir meta prioritária:', error)
+    throw error
+  }
+  return data
+}
+
+/** Alterna status da meta: active ↔ achieved. */
+export async function toggleGoalDone(goalId: string, done: boolean): Promise<OsGoalRow> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_goals')
+    .update({
+      status: done ? 'achieved' : 'active',
+      is_priority: done ? false : undefined,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', goalId)
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao alternar estado da meta:', error)
+    throw error
+  }
+  return data
+}
+
+/** Apaga uma meta (e todos os pitches associados via cascade). */
+export async function deleteOsGoal(goalId: string): Promise<void> {
+  const supabase = createClient()
+
+  // Desvincular tasks dos pitches desta meta
+  const { data: bets } = await supabase.from('os_bets').select('id').eq('goal_id', goalId)
+  if (bets?.length) {
+    const betIds = bets.map((b) => b.id)
+    await supabase.from('os_bet_updates').delete().in('bet_id', betIds)
+    await supabase.from('os_tasks').update({ bet_id: null }).in('bet_id', betIds)
+    await supabase.from('os_bets').delete().in('id', betIds)
+  }
+
+  const { error } = await supabase.from('os_goals').delete().eq('id', goalId)
+  if (error) {
+    console.error('Erro ao apagar meta:', error)
+    throw error
+  }
+}
+
+/** Reordena metas de um bloco. */
+export async function reorderGoalsForBlock(orderedIds: string[]): Promise<void> {
+  const supabase = createClient()
+  const updates = orderedIds.map((id, index) =>
+    supabase
+      .from('os_goals')
+      .update({ pos: (index + 1) * 1000, updated_at: new Date().toISOString() })
+      .eq('id', id)
+  )
+  const results = await Promise.all(updates)
+  const failed = results.find((r) => r.error)
+  if (failed?.error) throw failed.error
+}
+
 /** Cria ou atualiza a meta ativa de um bloco. */
 export async function saveOsGoal(
   userId: string,
@@ -604,12 +707,13 @@ export async function fetchOsPitchBoard(userId: string, projectId: string): Prom
   const supabase = createClient()
   const blockIds = blocks.map((block) => block.id)
 
+  // Meta activa mais recentemente actualizada por bloco (a priorizada tem updated_at mais recente)
   const { data: goalsData, error: goalsError } = await supabase
     .from('os_goals')
     .select('*')
     .in('block_id', blockIds)
     .eq('status', 'active')
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
 
   if (goalsError) {
     console.error('Erro ao buscar metas OS:', goalsError)
