@@ -445,20 +445,45 @@ export async function fetchGoalsForBlock(blockId: string): Promise<OsGoalRow[]> 
   }))
 }
 
-/** Define uma meta como prioritária (única por bloco). */
+/** Define uma meta como prioritária (única por bloco).
+ *  Resiliente à ausência das colunas is_priority/pos (antes da migration). */
 export async function setGoalPriority(goalId: string, blockId: string): Promise<OsGoalRow> {
   const supabase = createClient()
+  const now = new Date().toISOString()
 
-  // Desmarcar todas do bloco
-  await supabase
+  // Tentar com is_priority; se a coluna não existir cai no fallback por updated_at
+  const { error: clearError } = await supabase
     .from('os_goals')
-    .update({ is_priority: false, updated_at: new Date().toISOString() })
+    .update({ is_priority: false, updated_at: now })
     .eq('block_id', blockId)
+    .neq('id', goalId)
 
-  // Marcar esta
+  const columnMissing =
+    clearError?.message?.includes('is_priority') ||
+    clearError?.message?.includes('column') ||
+    clearError?.code === '42703'
+
+  if (clearError && !columnMissing) {
+    console.error('Erro ao limpar prioridades:', clearError)
+    throw clearError
+  }
+
+  if (columnMissing) {
+    // Fallback: só actualizar updated_at para este goal ficar primeiro no fetchOsPitchBoard
+    const { data, error } = await supabase
+      .from('os_goals')
+      .update({ updated_at: now })
+      .eq('id', goalId)
+      .select('*')
+      .single()
+    if (error) throw error
+    return { ...data, is_priority: true, pos: data.pos ?? null }
+  }
+
+  // Marcar esta como prioritária
   const { data, error } = await supabase
     .from('os_goals')
-    .update({ is_priority: true, updated_at: new Date().toISOString() })
+    .update({ is_priority: true, updated_at: now })
     .eq('id', goalId)
     .select('*')
     .single()

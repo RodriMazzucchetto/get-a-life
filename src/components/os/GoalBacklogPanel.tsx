@@ -177,14 +177,23 @@ export function GoalBacklogPanel({ blockId, userId, onGoalsChanged }: GoalBacklo
   const load = useCallback(async () => {
     try {
       const data = await fetchGoalsForBlock(blockId);
-      // activas primeiro (prioritária no topo), depois concluídas
-      const active = data
+
+      let active = data
         .filter((g) => g.status === "active")
         .sort((a, b) => {
           if (a.is_priority && !b.is_priority) return -1;
           if (!a.is_priority && b.is_priority) return 1;
-          return (a.pos ?? 0) - (b.pos ?? 0);
+          // fallback: mais recentemente actualizada primeiro
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
         });
+
+      // Se nenhuma tiver is_priority=true (migration ainda não aplicada),
+      // marcar a primeira (mais recente) como prioritária visualmente
+      const hasExplicitPriority = active.some((g) => g.is_priority);
+      if (!hasExplicitPriority && active.length > 0) {
+        active = active.map((g, i) => ({ ...g, is_priority: i === 0 }));
+      }
+
       const done = data.filter((g) => g.status !== "active");
       setGoals([...active, ...done]);
     } catch {
@@ -198,7 +207,7 @@ export function GoalBacklogPanel({ blockId, userId, onGoalsChanged }: GoalBacklo
 
   const handlePrioritize = async (goalId: string) => {
     const goal = goals.find((g) => g.id === goalId);
-    if (!goal || goal.is_priority) return; // já é prioritária
+    if (!goal) return;
     setPrioritizingId(goalId);
     try {
       const updated = await setGoalPriority(goalId, blockId);
