@@ -13,6 +13,7 @@ import {
 } from "@/lib/os-ui";
 import type { OsBetRow, OsTaskRow } from "@/lib/os-types";
 import { isQuickWinProject } from "@/lib/project-filters";
+import { projectShortCode } from "@/lib/problemHelpers";
 
 interface OsTaskItemProps {
   task: OsTaskRow;
@@ -114,54 +115,64 @@ export function OsTaskItem({
           </span>
         </button>
 
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-0.5 pr-2 group-hover:pr-24 md:group-hover:pr-28">
-          <input
-            type="checkbox"
-            checked={false}
-            onChange={() => onToggleComplete(task)}
-            onPointerDown={stopActionPointer}
-            className="h-3.5 w-3.5 shrink-0 border border-ta-ink accent-ta-ink"
-            aria-label="Marcar como concluída"
-          />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-2 pl-0.5 pr-2 group-hover:pr-24 md:group-hover:pr-28">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <input
+              type="checkbox"
+              checked={false}
+              onChange={() => onToggleComplete(task)}
+              onPointerDown={stopActionPointer}
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 border border-ta-ink accent-ta-ink"
+              aria-label="Marcar como concluída"
+            />
 
-          <button
-            type="button"
-            onClick={(e) => {
-              stopActionPointer(e);
-              onEdit(task);
-            }}
-            onPointerDown={stopActionPointer}
-            className="min-w-0 flex-1 text-left hover:underline"
-          >
-            <span className="block truncate text-sm font-bold normal-case">{task.title}</span>
-            {task.on_hold && task.on_hold_reason ? (
-              <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-wide text-ta-amber">
-                Em espera: {task.on_hold_reason}
+            <button
+              type="button"
+              onClick={(e) => {
+                stopActionPointer(e);
+                onEdit(task);
+              }}
+              onPointerDown={stopActionPointer}
+              className="min-w-0 flex-1 border border-ta-ink bg-ta-paper px-2 py-1.5 text-left transition-colors hover:bg-ta-paper-2"
+            >
+              <span
+                className="block text-sm font-bold normal-case leading-snug break-words"
+                style={{ whiteSpace: "normal", overflow: "visible", textOverflow: "clip" }}
+              >
+                {task.title}
               </span>
-            ) : null}
-          </button>
+              {task.on_hold && task.on_hold_reason ? (
+                <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-ta-amber break-words">
+                  Em espera: {task.on_hold_reason}
+                </span>
+              ) : null}
+            </button>
+          </div>
 
-          {company ? (
-            <span
-              className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wide sm:inline"
-              style={{ color: companyColor }}
-            >
-              {company.name}
-            </span>
-          ) : null}
-
-          {linkedBet ? (
-            <span
-              className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wide lg:inline"
-              style={{ color: companyColor }}
-              title={company ? `Pitch · ${company.name}` : linkedBet.title}
-            >
-              {linkedBet.title}
-            </span>
+          {company || linkedBet ? (
+            <div className="flex min-w-0 flex-wrap items-start gap-1.5 pl-[1.375rem]">
+              {company ? (
+                <span
+                  className="inline-block max-w-full shrink-0 border border-ta-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-snug"
+                  style={{ color: companyColor }}
+                  title={company.name}
+                >
+                  {projectShortCode(company.name)}
+                </span>
+              ) : null}
+              {linkedBet ? (
+                <span
+                  className="inline-block min-w-0 max-w-full flex-1 border border-ta-ink/40 px-1.5 py-0.5 text-[10px] font-bold normal-case leading-snug break-words text-ta-muted"
+                  title={linkedBet.title}
+                >
+                  {linkedBet.title}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
-        <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 border border-ta-ink bg-ta-paper px-0.5 py-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <div className="absolute right-1.5 top-2 flex items-center gap-0.5 border border-ta-ink bg-ta-paper px-0.5 py-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
           {showBacklogButton ? (
             <button
               type="button"
