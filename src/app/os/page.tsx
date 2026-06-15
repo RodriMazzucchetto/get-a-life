@@ -284,8 +284,14 @@ function OsPageContent() {
   }, [companyMomentum, orderedBlocks]);
 
   const companyStats = useMemo(() => {
-    const allBets = orderedBlocks.flatMap((view) => view.bets);
-    return computeOsBetStats(allBets);
+    const priorityBets: OsBetRow[] = [];
+    for (const type of OS_BLOCK_TYPES) {
+      const view = orderedBlocks.find((v) => v.block.type === type);
+      if (!view) continue;
+      const priority = view.bets.find((bet) => bet.is_priority) ?? view.priorityBet;
+      if (priority) priorityBets.push(priority);
+    }
+    return computeOsBetStats(priorityBets);
   }, [orderedBlocks]);
 
   const priorityExecutionRows = useMemo(() => {
