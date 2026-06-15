@@ -39,6 +39,16 @@ export function appendPosForOnHoldAtBottomForProblems(
   return Math.max(...col.map((p) => p.pos)) + 1000
 }
 
+/** Posição ao fim da lista unificada (todos os tipos). */
+export function appendPosOnHoldAtBottomAllProblems(
+  allProblems: Problem[],
+  excludeProblemId?: string
+): number {
+  const col = allProblems.filter((p) => !p.resolved && p.id !== excludeProblemId)
+  if (col.length === 0) return 1000
+  return Math.max(...col.map((p) => p.pos)) + 1000
+}
+
 export function appendPosForKindProblems(
   allProblems: Problem[],
   kind: Problem['kind'],
@@ -47,6 +57,17 @@ export function appendPosForKindProblems(
   const col = allProblems.filter(
     (p) => p.kind === kind && !p.resolved && p.id !== excludeProblemId
   )
+  return computeNextPosForKindProblems(
+    col.map((p) => ({ pos: p.pos, onHold: p.onHold }))
+  )
+}
+
+/** Próxima posição na lista unificada (todos os tipos). */
+export function appendPosForAllProblems(
+  allProblems: Problem[],
+  excludeProblemId?: string
+): number {
+  const col = allProblems.filter((p) => !p.resolved && p.id !== excludeProblemId)
   return computeNextPosForKindProblems(
     col.map((p) => ({ pos: p.pos, onHold: p.onHold }))
   )

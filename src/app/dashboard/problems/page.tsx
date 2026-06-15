@@ -21,7 +21,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { TrashIcon } from "@heroicons/react/24/outline";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -31,12 +30,11 @@ import {
   problemsService,
   fromDbProblem,
   type Problem,
-  type ProblemKind,
   type Project,
 } from "@/lib/planning";
 import {
-  appendPosForKindProblems,
-  appendPosForOnHoldAtBottomForProblems,
+  appendPosForAllProblems,
+  appendPosOnHoldAtBottomAllProblems,
   computePosAtNewIndexForProblems,
   formatRelativeDaysPt,
   projectShortCode,
@@ -46,15 +44,28 @@ import {
   friendlySchemaHint,
   getSupabaseErrorMessage,
 } from "@/lib/supabaseErrors";
+import {
+  osBtnGhost,
+  osBtnPrimary,
+  osCard,
+  osEmptyState,
+  osErrorBanner,
+  osIconBtn,
+  osIconBtnDanger,
+  osInput,
+  osInputRow,
+  osLabelMuted,
+  osNav,
+  osNavLinkActive,
+  osNavLinkIdle,
+  osPage,
+  osTaskRow,
+  osTaskRowOnHold,
+} from "@/lib/os-ui";
 import { ProjectIdsPicker } from "@/components/ProjectIdsPicker";
 
 const NONE = "__none__";
 type TabKey = "active" | "resolved" | "archived";
-
-const KIND_LABELS: Record<ProblemKind, string> = {
-  market: "Problemas de Mercado (Estratégico)",
-  operational: "Problemas Práticos (Operacional)",
-};
 
 /** Mesmo ícone de bandeira das tasks (planning). */
 function ProblemPriorityToggle({
@@ -75,15 +86,15 @@ function ProblemPriorityToggle({
       }}
       onPointerDown={(e) => e.stopPropagation()}
       disabled={disabled}
-      className={`mt-0.5 shrink-0 rounded-md p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/25 ${
-        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/10"
+      className={`mt-0.5 shrink-0 p-1 transition-colors focus:outline-none ${
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-ta-paper-2"
       }`}
       title={isHighPriority ? "Clique para remover prioridade" : "Clique para marcar como prioridade"}
       aria-pressed={isHighPriority}
       aria-label={isHighPriority ? "Remover prioridade alta" : "Marcar como prioridade alta"}
     >
       <svg
-        className={`h-4 w-4 ${isHighPriority ? "text-red-500" : "text-gray-400"}`}
+        className={`h-4 w-4 ${isHighPriority ? "text-ta-red" : "text-ta-muted"}`}
         fill="currentColor"
         viewBox="0 0 24 24"
         aria-hidden
@@ -110,7 +121,6 @@ function SortableProblemRow({
   onToggleResolved,
   onTogglePriority,
   onProjectsChange,
-  onMoveToOtherKind,
   onToggleOnHold,
   onOpenEdit,
   isTitleExpanded,
@@ -118,7 +128,6 @@ function SortableProblemRow({
   onDelete,
 }: {
   problem: Problem;
-  /** Os 3 primeiros itens ativos na lista (fila) — destaque visual, independente da prioridade. */
   isTopThreeSlot: boolean;
   stale: boolean;
   dragDisabled: boolean;
@@ -127,7 +136,6 @@ function SortableProblemRow({
   onToggleResolved: (id: string) => void;
   onTogglePriority: (id: string) => void;
   onProjectsChange: (id: string, projectIds: string[]) => void;
-  onMoveToOtherKind: (id: string) => void;
   onToggleOnHold: (id: string) => void;
   onOpenEdit: (problem: Problem) => void;
   isTitleExpanded: boolean;
@@ -150,12 +158,11 @@ function SortableProblemRow({
     transition,
   };
 
-  /** Top 3 da fila: fundo primary-fixed (design system — #dde1ff), mais claro que o azul do container. */
   const cardSurface = problem.onHold
-    ? "border-2 border-amber-400 bg-amber-50/40 ring-0 shadow-sm dark:border-amber-300/70 dark:bg-amber-900/15"
+    ? osTaskRowOnHold
     : isTopThreeSlot && !problem.resolved
-      ? "bg-primary-fixed ring-1 ring-primary/25 shadow-sm dark:bg-primary-fixed/20 dark:ring-primary/35"
-      : "bg-white ring-1 ring-black/[0.06] dark:bg-slate-900/80";
+      ? "border-ta-cyan bg-ta-paper-2"
+      : "border-ta-ink bg-ta-paper";
   const shouldShowExpandTitle = problem.title.length > 110;
 
   return (
@@ -163,7 +170,7 @@ function SortableProblemRow({
       ref={setNodeRef}
       style={style}
       onClick={() => onOpenEdit(problem)}
-      className={`group flex items-start gap-3 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md ${cardSurface} ${
+      className={`group flex items-start gap-2 p-3 transition-colors hover:bg-ta-paper-2 ${osTaskRow} ${cardSurface} ${
         problem.resolved ? "opacity-60" : ""
       } ${isDragging ? "pointer-events-none opacity-0" : ""} cursor-pointer`}
     >
@@ -174,13 +181,13 @@ function SortableProblemRow({
         {...(dragDisabled ? {} : attributes)}
         {...(dragDisabled ? {} : listeners)}
         onClick={(e) => e.stopPropagation()}
-        className={`drag-handle relative z-10 -m-2 mt-0.5 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg p-2 touch-none select-none text-outline/35 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-          dragDisabled ? "cursor-default opacity-30" : "cursor-grab text-outline/50 hover:bg-black/[0.04] hover:text-outline active:cursor-grabbing dark:hover:bg-white/10"
+        className={`drag-handle relative z-10 flex min-h-9 min-w-9 shrink-0 items-center justify-center touch-none select-none text-ta-muted transition-colors focus:outline-none ${
+          dragDisabled ? "cursor-default opacity-30" : "cursor-grab hover:text-ta-ink active:cursor-grabbing"
         }`}
         aria-label="Arrastar para reordenar"
         aria-hidden={dragDisabled}
       >
-        <span className="pointer-events-none material-symbols-outlined text-[22px]" aria-hidden>
+        <span className="pointer-events-none material-symbols-outlined text-[20px]" aria-hidden>
           drag_indicator
         </span>
       </button>
@@ -193,14 +200,14 @@ function SortableProblemRow({
           e.stopPropagation();
           onToggleResolved(problem.id);
         }}
-        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center border-[1.5px] transition-colors ${
           problem.resolved
-            ? "border-primary bg-primary text-on-primary"
-            : "border-[#c4c5d5] bg-white group-hover:border-primary/50 dark:border-slate-600 dark:bg-transparent"
+            ? "border-ta-ink bg-ta-ink text-ta-paper"
+            : "border-ta-ink bg-ta-paper group-hover:bg-ta-paper-2"
         }`}
       >
         {problem.resolved && (
-          <span className="material-symbols-outlined text-[16px] leading-none">check</span>
+          <span className="material-symbols-outlined text-[14px] leading-none">check</span>
         )}
       </button>
 
@@ -225,10 +232,10 @@ function SortableProblemRow({
             />
           </div>
           <h3
-            className={`min-w-0 flex-1 break-words font-headline text-sm font-semibold leading-snug transition-colors ${
+            className={`min-w-0 flex-1 break-words text-xs font-bold normal-case leading-snug transition-colors ${
               problem.resolved
-                ? "text-on-surface-variant line-through"
-                : "text-on-surface"
+                ? "text-ta-muted line-through"
+                : "text-ta-ink"
             } ${isTitleExpanded ? "line-clamp-none" : "line-clamp-2"}`}
             title={problem.title}
           >
@@ -236,10 +243,10 @@ function SortableProblemRow({
           </h3>
           {problem.onHold && problem.onHoldReason && (
             <span
-              className="max-w-[40%] shrink cursor-help truncate text-xs text-yellow-700 dark:text-yellow-300"
+              className="max-w-[40%] shrink cursor-help truncate text-[10px] font-semibold normal-case text-ta-amber"
               title={problem.onHoldReason}
             >
-              - Em espera:{" "}
+              — em espera:{" "}
               {problem.onHoldReason.length > 24
                 ? `${problem.onHoldReason.substring(0, 24)}...`
                 : problem.onHoldReason}
@@ -254,28 +261,26 @@ function SortableProblemRow({
                 e.stopPropagation();
                 onToggleTitleExpanded(problem.id);
               }}
-              className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/10"
+              className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ta-cyan transition-colors hover:bg-ta-paper-2"
             >
               {isTitleExpanded ? "Ver menos" : "Ver mais"}
             </button>
           </div>
         )}
         {problem.description && (
-          <p className="line-clamp-2 text-xs text-on-surface-variant/80">
+          <p className="line-clamp-2 text-[10px] font-semibold normal-case text-ta-muted">
             {problem.description}
           </p>
         )}
-        <div className="flex flex-wrap items-center gap-4 text-[11px] leading-normal text-on-surface-variant/70">
+        <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold normal-case leading-normal text-ta-muted">
           <span className="inline-flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px] text-on-surface-variant/60">
-              schedule
-            </span>
+            <span className="material-symbols-outlined text-[14px]">schedule</span>
             {problem.resolved
               ? `Resolvido ${formatRelativeDaysPt(problem.updatedAt)}`
               : formatRelativeDaysPt(problem.createdAt)}
           </span>
           {stale && !problem.resolved && (
-            <span className="inline-flex items-center gap-1 text-error">
+            <span className="inline-flex items-center gap-1 text-ta-red">
               <span className="material-symbols-outlined text-[14px]">warning</span>
               Atenção
             </span>
@@ -283,7 +288,7 @@ function SortableProblemRow({
         </div>
       </div>
 
-      <div className="mt-0.5 flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+      <div className="mt-0.5 flex shrink-0 items-center gap-0 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
           onClick={(e) => {
@@ -291,39 +296,17 @@ function SortableProblemRow({
             onToggleOnHold(problem.id);
           }}
           disabled={problem.resolved}
-          className={`rounded-lg p-2 transition-all ${
-            problem.onHold
-              ? "text-yellow-700 hover:bg-yellow-50 hover:text-yellow-800 dark:text-yellow-300 dark:hover:bg-yellow-900/30"
-              : "text-outline opacity-70 hover:bg-yellow-50 hover:text-yellow-700 dark:hover:bg-yellow-900/30"
+          className={`${osIconBtn} ${
+            problem.onHold ? "text-ta-amber" : ""
           } ${problem.resolved ? "cursor-not-allowed opacity-40" : ""}`}
           title={problem.onHold ? "Remover da espera" : "Colocar em espera"}
           aria-label={problem.onHold ? "Remover problema da espera" : "Colocar problema em espera"}
         >
           {problem.onHold ? (
-            <span className="material-symbols-outlined text-lg">play_circle</span>
+            <span className="material-symbols-outlined text-[18px]">play_circle</span>
           ) : (
-            <span className="material-symbols-outlined text-lg">pause_circle</span>
+            <span className="material-symbols-outlined text-[18px]">pause_circle</span>
           )}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoveToOtherKind(problem.id);
-          }}
-          className="rounded-lg p-2 text-outline opacity-70 transition-all hover:bg-surface-container-high hover:text-primary"
-          title={
-            problem.kind === "market"
-              ? "Mover para operacional"
-              : "Mover para mercado (estratégico)"
-          }
-          aria-label={
-            problem.kind === "market"
-              ? "Mover problema para lista operacional"
-              : "Mover problema para lista de mercado"
-          }
-        >
-          <span className="material-symbols-outlined text-lg">swap_horiz</span>
         </button>
         <button
           type="button"
@@ -331,10 +314,10 @@ function SortableProblemRow({
             e.stopPropagation();
             onDelete(problem.id);
           }}
-          className="rounded-lg p-2 text-outline opacity-70 transition-all hover:bg-surface-container-high hover:text-error"
+          className={osIconBtnDanger}
           aria-label="Excluir problema"
         >
-          <TrashIcon className="h-4 w-4" />
+          <span className="material-symbols-outlined text-[18px]">delete</span>
         </button>
       </div>
     </div>
@@ -346,7 +329,6 @@ export default function ProblemsPage() {
   const { projects } = usePlanningData();
   const { problems, setProblems, loading } = useProblemsData();
   const [tab, setTab] = useState<TabKey>("active");
-  const [kindTab, setKindTab] = useState<ProblemKind>("market");
   const [filterProjectId, setFilterProjectId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [draft, setDraft] = useState("");
@@ -388,16 +370,11 @@ export default function ProblemsPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const kindFiltered = useMemo(
-    () => problems.filter((p) => p.kind === kindTab),
-    [problems, kindTab]
-  );
-
   const tabFiltered = useMemo(() => {
-    if (tab === "active") return kindFiltered.filter((p) => !p.resolved);
-    if (tab === "resolved") return kindFiltered.filter((p) => p.resolved);
+    if (tab === "active") return problems.filter((p) => !p.resolved);
+    if (tab === "resolved") return problems.filter((p) => p.resolved);
     return [];
-  }, [kindFiltered, tab]);
+  }, [problems, tab]);
 
   const projectFiltered = useMemo(() => {
     return tabFiltered.filter((p) => matchProjectFilter(p, filterProjectId));
@@ -432,14 +409,14 @@ export default function ProblemsPage() {
   );
 
   const stats = useMemo(() => {
-    const open = problems.filter((p) => p.kind === kindTab && !p.resolved);
+    const open = problems.filter((p) => !p.resolved);
     const projectKeys = new Set<string>();
     open.forEach((p) => {
       if (p.projectIds.length === 0) projectKeys.add("none");
       else p.projectIds.forEach((id) => projectKeys.add(id));
     });
     return { openCount: open.length, projectWithOpenCount: projectKeys.size };
-  }, [problems, kindTab]);
+  }, [problems]);
 
   const focusQuickAdd = useCallback(() => {
     setTab("active");
@@ -457,7 +434,7 @@ export default function ProblemsPage() {
         description: "",
         project_id: quickProjectIds[0] ?? null,
         project_ids: quickProjectIds,
-        kind: kindTab,
+        kind: "operational",
       });
       setProblems((prev) => [...prev, fromDbProblem(row)]);
       setDraft("");
@@ -530,7 +507,7 @@ export default function ProblemsPage() {
     setError(null);
     if (p.onHold) {
       try {
-        const pos = appendPosForKindProblems(problems, p.kind, p.id);
+        const pos = appendPosForAllProblems(problems, p.id);
         const row = await problemsService.updateProblem(id, {
           on_hold: false,
           on_hold_reason: null,
@@ -556,9 +533,8 @@ export default function ProblemsPage() {
       return;
     }
     try {
-      const pos = appendPosForOnHoldAtBottomForProblems(
+      const pos = appendPosOnHoldAtBottomAllProblems(
         problems,
-        problemToPutOnHold.kind,
         problemToPutOnHold.id
       );
       const row = await problemsService.updateProblem(problemToPutOnHold.id, {
@@ -671,115 +647,81 @@ export default function ProblemsPage() {
     }
   };
 
-  const moveToOtherKind = async (id: string) => {
-    const p = problems.find((x) => x.id === id);
-    if (!p) return;
-    const nextKind: ProblemKind = p.kind === "market" ? "operational" : "market";
-    setError(null);
-    try {
-      const row = await problemsService.moveProblemKind(id, nextKind);
-      setProblems((prev) => prev.map((x) => (x.id === id ? fromDbProblem(row) : x)));
-    } catch (e) {
-      console.error(e);
-      const raw = getSupabaseErrorMessage(e);
-      setError(friendlySchemaHint(raw) ?? `Não foi possível mover o problema: ${raw}`);
-    }
-  };
-
   const daysSince = (iso: string) =>
     (Date.now() - new Date(iso).getTime()) / 86400000;
 
   if (loading && problems.length === 0 && projects.length === 0) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-on-surface-variant">
-        <span
-          className="h-10 w-10 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
-          aria-hidden
-        />
+      <div className={`flex min-h-[40vh] items-center justify-center ${osEmptyState} border-0`}>
+        Carregando...
       </div>
     );
   }
 
   return (
-    <div className="font-body text-on-surface">
-      {/* Top bar — mock Velocity / Problems */}
-      <header className="sticky top-0 z-30 -mx-4 mb-8 border-b border-outline-variant/15 bg-background px-4 pb-0 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex flex-col gap-4 pb-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
-            <span className="font-headline text-xl font-bold tracking-tight text-on-surface">
-              Problemas
+    <div className={osPage}>
+      {/* Header */}
+      <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-4">
+          <h1 className="text-xl font-bold tracking-[0.12em]">Problemas</h1>
+          <div className={osNav}>
+            {(
+              [
+                ["active", "Ativos"],
+                ["resolved", "Resolvidos"],
+                ["archived", "Arquivados"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={`flex-1 px-4 py-2.5 ${tab === key ? osNavLinkActive : osNavLinkIdle}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className={`relative ${osInputRow}`}>
+            <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-ta-muted">
+              search
             </span>
-            <nav className="flex gap-6 border-b border-transparent text-sm">
-              {(
-                [
-                  ["active", "Ativos"],
-                  ["resolved", "Resolvidos"],
-                  ["archived", "Arquivados"],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setTab(key)}
-                  className={`pb-2 font-semibold transition-colors ${
-                    tab === key
-                      ? "border-b-2 border-primary text-primary"
-                      : "text-on-surface-variant hover:text-on-surface"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Busca rápida…"
+              className="min-w-[12rem] border-0 bg-transparent py-2 pl-10 pr-4 text-xs font-semibold normal-case tracking-normal outline-none placeholder:text-ta-muted sm:w-48"
+            />
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
-              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-outline">
-                search
-              </span>
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Busca rápida…"
-                className="w-full min-w-[12rem] rounded-full border-0 bg-surface-container-low py-1.5 pl-10 pr-4 text-sm text-on-surface shadow-sm ring-1 ring-outline-variant/10 transition-all focus:w-64 focus:ring-2 focus:ring-primary/20 sm:w-48"
-              />
-            </div>
-            <Link
-              href="/dashboard/settings"
-              className="rounded-full p-2 text-outline transition-colors hover:bg-surface-container-low"
-              aria-label="Configurações"
-            >
-              <span className="material-symbols-outlined">settings</span>
-            </Link>
-            <button
-              type="button"
-              onClick={focusQuickAdd}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-primary shadow-sm transition-all hover:bg-primary-container active:scale-[0.98]"
-            >
-              <span className="material-symbols-outlined text-lg">add</span>
+          <button
+            type="button"
+            onClick={focusQuickAdd}
+            className={osBtnPrimary}
+          >
+            <span className="inline-flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">add</span>
               Novo problema
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
       </header>
 
       {error && (
-        <div
-          className="mb-4 rounded-lg border border-error/40 bg-error/10 px-4 py-2 text-sm text-error"
-          role="alert"
-        >
+        <div className={osErrorBanner} role="alert">
           {error}
         </div>
       )}
 
-      {/* Entrada rápida — barra cinza única (mock Velocity): título + projeto no mesmo elemento */}
-      <section className="mb-10">
-        <div className="group relative rounded-2xl bg-surface-container-lowest shadow-sm ring-1 ring-outline-variant/10">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-            <span className="material-symbols-outlined text-primary">add_circle</span>
+      {/* Entrada rápida */}
+      <section className="mb-8">
+        <div className={osInputRow}>
+          <div className="pointer-events-none flex items-center pl-3 text-ta-cyan">
+            <span className="material-symbols-outlined text-[20px]">add_circle</span>
           </div>
-          <div className="flex flex-col gap-3 py-4 pl-12 pr-4 sm:flex-row sm:items-center sm:gap-4 sm:py-3 sm:pr-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 py-2 pl-2 pr-3 sm:flex-row sm:items-center sm:gap-4">
             <input
               ref={quickInputRef}
               type="text"
@@ -793,7 +735,7 @@ export default function ProblemsPage() {
               }}
               placeholder="Adicionar novo problema…"
               disabled={saving}
-              className="min-w-0 flex-1 border-0 bg-transparent py-2 font-headline text-lg text-on-surface placeholder:text-outline/50 focus:outline-none focus:ring-0 sm:py-3"
+              className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm font-bold normal-case tracking-normal outline-none placeholder:text-ta-muted disabled:opacity-50"
             />
             <div className="flex min-w-0 max-w-full shrink flex-wrap items-center gap-2 sm:max-w-[min(100%,22rem)]">
               <span className="sr-only">Projetos</span>
@@ -804,24 +746,18 @@ export default function ProblemsPage() {
                 variant="default"
               />
             </div>
-            <div className="flex shrink-0 items-center justify-end sm:justify-start">
-              <span className="rounded bg-surface-container px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-outline">
-                Enter
-              </span>
-            </div>
+            <span className={`shrink-0 ${osLabelMuted}`}>Enter</span>
           </div>
         </div>
       </section>
 
-      {/* Project filter pills — dados reais */}
+      {/* Filtro por projeto */}
       <section className="mb-8 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant/60">
-            Filtro por projeto
-          </h2>
+          <h2 className={osLabelMuted}>Filtro por projeto</h2>
           <Link
             href="/dashboard/planning"
-            className="inline-flex items-center gap-1 text-xs font-bold text-primary"
+            className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-ta-cyan"
           >
             <span className="material-symbols-outlined text-sm">folder</span>
             Gerir projetos
@@ -831,10 +767,10 @@ export default function ProblemsPage() {
           <button
             type="button"
             onClick={() => setFilterProjectId("all")}
-            className={`rounded-full px-5 py-2 text-xs font-bold shadow-sm transition-colors ${
+            className={`border-[1.5px] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
               filterProjectId === "all"
-                ? "bg-primary text-on-primary"
-                : "bg-surface-container-lowest text-on-surface ring-1 ring-outline-variant/15 hover:bg-surface-container-high"
+                ? "border-ta-ink bg-ta-ink text-ta-paper"
+                : "border-ta-ink bg-ta-paper text-ta-ink hover:bg-ta-paper-2"
             }`}
           >
             Todos
@@ -842,10 +778,10 @@ export default function ProblemsPage() {
           <button
             type="button"
             onClick={() => setFilterProjectId(NONE)}
-            className={`rounded-full px-5 py-2 text-xs font-semibold transition-colors ${
+            className={`border-[1.5px] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
               filterProjectId === NONE
-                ? "bg-primary text-on-primary"
-                : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-high"
+                ? "border-ta-ink bg-ta-ink text-ta-paper"
+                : "border-ta-ink bg-ta-paper text-ta-ink hover:bg-ta-paper-2"
             }`}
           >
             Sem projeto
@@ -858,15 +794,15 @@ export default function ProblemsPage() {
                 key={p.id}
                 type="button"
                 onClick={() => setFilterProjectId(p.id)}
-                className={`rounded-full px-5 py-2 text-xs font-semibold transition-colors ${
+                className={`border-[1.5px] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
                   active
-                    ? "text-on-primary shadow-sm"
-                    : "bg-surface-container-lowest text-on-surface hover:bg-surface-container-high"
+                    ? "border-ta-ink text-ta-paper"
+                    : "border-ta-ink bg-ta-paper text-ta-ink hover:bg-ta-paper-2"
                 }`}
                 style={
                   active
-                    ? { backgroundColor: p.color, color: "#fff" }
-                    : { borderLeft: `3px solid ${p.color}` }
+                    ? { backgroundColor: p.color }
+                    : { boxShadow: `inset 3px 0 0 0 ${p.color}` }
                 }
               >
                 {code}
@@ -875,43 +811,23 @@ export default function ProblemsPage() {
           })}
           <Link
             href="/dashboard/planning"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-lowest text-outline ring-1 ring-outline-variant/15 transition-colors hover:bg-surface-container-high"
+            className="inline-flex h-9 w-9 items-center justify-center border-[1.5px] border-ta-ink bg-ta-paper text-ta-muted transition-colors hover:bg-ta-paper-2 hover:text-ta-ink"
             title="Novo projeto"
           >
             <span className="material-symbols-outlined text-sm">add</span>
           </Link>
         </div>
         {tab !== "archived" && (
-          <p className="text-xs text-on-surface-variant">
-            Arraste pelo ícone à esquerda (linhas horizontais) para alterar a ordem.
+          <p className={`${osLabelMuted} normal-case`}>
+            Arraste pelo ícone à esquerda para alterar a ordem.
           </p>
         )}
       </section>
 
-      {/* Tipo de problema: mercado vs operacional */}
-      <div className="mb-6 flex items-center gap-8 border-b border-outline-variant/20 font-headline">
-        {(["market", "operational"] as const).map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setKindTab(k)}
-            className={`border-b-2 px-2 pb-4 text-sm transition-all ${
-              kindTab === k
-                ? "border-primary font-bold text-primary"
-                : "border-transparent font-medium text-on-surface-variant/60 hover:border-outline-variant/30 hover:text-on-surface"
-            }`}
-          >
-            {KIND_LABELS[k]}
-          </button>
-        ))}
-      </div>
-
-      {/* List */}
+      {/* Lista */}
       {tab === "archived" ? (
-        <div className="rounded-2xl border border-dashed border-outline-variant/40 bg-surface-container-low/40 px-6 py-16 text-center">
-          <p className="font-headline text-on-surface-variant">
-            Arquivamento em breve — por agora use <strong>Resolvidos</strong>.
-          </p>
+        <div className={osEmptyState}>
+          Arquivamento em breve — por agora use <strong className="normal-case">Resolvidos</strong>.
         </div>
       ) : (
         <DndContext
@@ -925,10 +841,10 @@ export default function ProblemsPage() {
             items={sortedList.map((p) => String(p.id))}
             strategy={verticalListSortingStrategy}
           >
-            <section className="space-y-3">
+            <section className="space-y-2">
               {sortedList.length === 0 ? (
-                <p className="rounded-2xl bg-surface-container-low/50 px-6 py-12 text-center text-sm text-on-surface-variant">
-                  Nenhum problema nesta vista. Use <strong>Novo problema</strong> ou o campo acima.
+                <p className={osEmptyState}>
+                  Nenhum problema nesta vista. Use o campo acima ou <strong className="normal-case">Novo problema</strong>.
                 </p>
               ) : (
                 sortedList.map((p) => (
@@ -943,7 +859,6 @@ export default function ProblemsPage() {
                     onToggleResolved={toggleResolved}
                     onTogglePriority={togglePriority}
                     onProjectsChange={assignProjects}
-                    onMoveToOtherKind={moveToOtherKind}
                     onToggleOnHold={handleToggleOnHold}
                     onOpenEdit={handleOpenEditProblem}
                     isTitleExpanded={expandedTitleIds.includes(p.id)}
@@ -956,8 +871,8 @@ export default function ProblemsPage() {
           </SortableContext>
           <DragOverlay dropAnimation={null}>
             {activeProblem ? (
-              <div className="rounded-2xl bg-surface-container-lowest px-5 py-4 shadow-xl ring-2 ring-primary/30">
-                <p className="font-headline text-sm font-medium text-on-surface">
+              <div className={`${osCard} px-4 py-3 shadow-lg`}>
+                <p className="text-xs font-bold normal-case text-ta-ink">
                   {activeProblem.title}
                 </p>
               </div>
@@ -966,11 +881,11 @@ export default function ProblemsPage() {
         </DndContext>
       )}
 
-      {/* Bottom CTA */}
-      <div className="mt-12 flex flex-col items-start justify-between gap-6 rounded-[2rem] bg-gradient-to-r from-primary to-primary-container p-8 text-on-primary shadow-xl sm:flex-row sm:items-center">
+      {/* Resumo */}
+      <div className={`mt-10 flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between ${osCard}`}>
         <div>
-          <h3 className="font-headline text-xl font-bold">Visão geral</h3>
-          <p className="mt-1 text-sm text-white/80">
+          <h3 className="text-sm font-bold tracking-[0.12em]">Visão geral</h3>
+          <p className="mt-2 text-xs font-semibold normal-case tracking-normal text-ta-muted">
             {stats.openCount} problema{stats.openCount !== 1 ? "s" : ""} em aberto
             {stats.projectWithOpenCount > 0
               ? ` em ${stats.projectWithOpenCount} projeto${stats.projectWithOpenCount !== 1 ? "s" : ""} com itens ativos.`
@@ -981,21 +896,9 @@ export default function ProblemsPage() {
           type="button"
           disabled
           title="Em breve"
-          className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-primary shadow-lg opacity-70"
+          className={`${osBtnGhost} opacity-50`}
         >
           Gerar relatório
-        </button>
-      </div>
-
-      {/* FAB */}
-      <div className="fixed bottom-8 right-8 z-20 lg:right-10">
-        <button
-          type="button"
-          onClick={focusQuickAdd}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-on-primary shadow-2xl transition-transform hover:scale-105 active:scale-95"
-          aria-label="Novo problema"
-        >
-          <span className="material-symbols-outlined text-3xl">add</span>
         </button>
       </div>
 
@@ -1006,18 +909,18 @@ export default function ProblemsPage() {
           onBackdropClick={handleConfirmOnHold}
         >
           <ModalPanel maxWidthClass="max-w-md" padding="none">
-            <div className="flex items-center justify-between border-b border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900">Colocar problema em espera</h2>
+            <div className="flex items-center justify-between border-b-[1.5px] border-ta-ink p-6">
+              <h2 className="text-sm font-bold uppercase tracking-[0.12em]">Colocar em espera</h2>
               <button
                 onClick={handleCancelOnHold}
-                className="text-gray-400 transition-colors hover:text-gray-600"
+                className={osIconBtn}
                 aria-label="Fechar"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="p-6">
-              <label htmlFor="problem_on_hold_reason" className="mb-2 block text-sm font-medium text-gray-700">
+              <label htmlFor="problem_on_hold_reason" className={`mb-2 block ${osLabelMuted}`}>
                 Motivo da espera
               </label>
               <textarea
@@ -1025,21 +928,18 @@ export default function ProblemsPage() {
                 value={onHoldReason}
                 onChange={(e) => setOnHoldReason(e.target.value)}
                 placeholder="Explique por que este problema está aguardando..."
-                className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full resize-none px-3 py-2 text-xs font-semibold normal-case tracking-normal ${osInput}`}
                 rows={4}
               />
             </div>
-            <div className="flex justify-end gap-3 border-t border-gray-200 p-6">
-              <button
-                onClick={handleCancelOnHold}
-                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50"
-              >
+            <div className="flex justify-end gap-3 border-t-[1.5px] border-ta-ink p-6">
+              <button onClick={handleCancelOnHold} className={osBtnGhost}>
                 Cancelar
               </button>
               <button
                 onClick={handleConfirmOnHold}
                 disabled={!onHoldReason.trim()}
-                className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className={osBtnPrimary}
               >
                 Confirmar
               </button>
@@ -1055,11 +955,11 @@ export default function ProblemsPage() {
           onBackdropClick={handleSaveEditProblem}
         >
           <ModalPanel maxWidthClass="max-w-2xl" padding="none">
-            <div className="flex items-center justify-between border-b border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900">Editar problema</h2>
+            <div className="flex items-center justify-between border-b-[1.5px] border-ta-ink p-6">
+              <h2 className="text-sm font-bold uppercase tracking-[0.12em]">Editar problema</h2>
               <button
                 onClick={handleCancelEditProblem}
-                className="text-gray-400 transition-colors hover:text-gray-600"
+                className={osIconBtn}
                 aria-label="Fechar"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -1067,7 +967,7 @@ export default function ProblemsPage() {
             </div>
             <div className="space-y-5 p-6">
               <div>
-                <label htmlFor="problem_edit_title" className="mb-2 block text-sm font-medium text-gray-700">
+                <label htmlFor="problem_edit_title" className={`mb-2 block ${osLabelMuted}`}>
                   Título
                 </label>
                 <input
@@ -1080,11 +980,11 @@ export default function ProblemsPage() {
                     )
                   }
                   placeholder="Título do problema..."
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 text-xs font-semibold normal-case tracking-normal ${osInput}`}
                 />
               </div>
               <div>
-                <label htmlFor="problem_edit_description" className="mb-2 block text-sm font-medium text-gray-700">
+                <label htmlFor="problem_edit_description" className={`mb-2 block ${osLabelMuted}`}>
                   Descrição
                 </label>
                 <textarea
@@ -1097,11 +997,11 @@ export default function ProblemsPage() {
                   }
                   placeholder="Adicione detalhes, contexto, hipótese, evidências..."
                   rows={6}
-                  className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full resize-none px-3 py-2 text-xs font-semibold normal-case tracking-normal ${osInput}`}
                 />
               </div>
               <div>
-                <span className="mb-2 block text-sm font-medium text-gray-700">Projetos</span>
+                <span className={`mb-2 block ${osLabelMuted}`}>Projetos</span>
                 <ProjectIdsPicker
                   projects={projects}
                   value={editingProblem.projectIds}
@@ -1114,17 +1014,14 @@ export default function ProblemsPage() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t border-gray-200 p-6">
-              <button
-                onClick={handleCancelEditProblem}
-                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50"
-              >
+            <div className="flex justify-end gap-3 border-t-[1.5px] border-ta-ink p-6">
+              <button onClick={handleCancelEditProblem} className={osBtnGhost}>
                 Cancelar
               </button>
               <button
                 onClick={handleSaveEditProblem}
                 disabled={savingEditProblem || !editingProblem.title.trim()}
-                className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className={osBtnPrimary}
               >
                 {savingEditProblem ? "Salvando..." : "Salvar alterações"}
               </button>

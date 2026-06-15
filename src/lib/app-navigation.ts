@@ -26,9 +26,9 @@ export const mainNav: AppNavItem[] = [
     active: (pathname) => pathname === "/dashboard/planning",
   },
   {
-    name: "Problemas",
+    name: "Pessoal",
     href: "/dashboard/problems",
-    icon: "error_outline",
+    icon: "person",
     active: (pathname) => pathname === "/dashboard/problems",
   },
   {

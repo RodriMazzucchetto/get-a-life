@@ -34,6 +34,8 @@ export function AppShell({
   const { user, signOut } = useAuthContext();
   const router = useRouter();
   const isOsRoute = pathname === "/os" || pathname.startsWith("/os/");
+  const isPersonalRoute = pathname === "/dashboard/problems";
+  const useTaShell = isOsRoute || isPersonalRoute;
 
   const handleSignOut = async () => {
     await signOut();
@@ -116,7 +118,7 @@ export function AppShell({
     "flex flex-col fixed left-0 top-0 bottom-0 w-64 z-40 bg-ta-paper border-r-[1.5px] border-ta-ink pt-6 px-4 pb-6";
 
   return (
-    <div className={`min-h-screen font-body ${isOsRoute ? "bg-ta-paper text-ta-ink" : "bg-background text-on-surface"}`}>
+    <div className={`min-h-screen font-body ${useTaShell ? "bg-ta-paper text-ta-ink" : "bg-background text-on-surface"}`}>
       {sidebarOpen && (
         <button
           type="button"
