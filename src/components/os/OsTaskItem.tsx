@@ -160,7 +160,7 @@ export function OsTaskItem({
                 {task.title}
               </span>
               {task.on_hold && task.on_hold_reason ? (
-                <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-ta-amber break-words">
+                <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-ta-muted break-words">
                   Em espera: {task.on_hold_reason}
                 </span>
               ) : null}
@@ -237,7 +237,7 @@ export function OsTaskItem({
               stopActionPointer(e);
               onPutOnHold(task);
             }}
-            className={`${osIconBtn} ${task.on_hold ? "bg-ta-amber/20 text-ta-ink" : ""}`}
+            className={`${osIconBtn} ${task.on_hold ? "bg-ta-on-hold text-ta-ink" : ""}`}
             title={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
             aria-label={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
           >
