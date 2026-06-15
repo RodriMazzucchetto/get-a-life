@@ -76,6 +76,7 @@ function OsTaskColumn({
   onCreate,
   createPlaceholder,
   className,
+  deletingTaskId,
 }: {
   id: string;
   title: string;
@@ -92,6 +93,7 @@ function OsTaskColumn({
   onCreate: (title: string) => Promise<void>;
   createPlaceholder: string;
   className?: string;
+  deletingTaskId?: string | null;
 }) {
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
@@ -163,6 +165,7 @@ function OsTaskColumn({
                   onMoveToFocus={onMoveToFocus}
                   onMoveToBacklog={onMoveToBacklog}
                   onDelete={onDelete}
+                  deleting={deletingTaskId === task.id}
                 />
               ))}
             </SortableContext>
@@ -189,6 +192,7 @@ export default function OsTasksPage() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<OsTaskRow | null>(null);
   const [onHoldTask, setOnHoldTask] = useState<OsTaskRow | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const dragRollbackRef = useRef<OsTaskRow[] | null>(null);
 
   const sensors = useSensors(
@@ -228,61 +232,95 @@ export default function OsTasksPage() {
   }
 
   async function handleToggleComplete(task: OsTaskRow) {
-    const completed_at = new Date().toISOString();
-    const updated = await updateOsTask(task.id, { completed_at });
-    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    setError(null);
+    try {
+      const completed_at = new Date().toISOString();
+      const updated = await updateOsTask(task.id, { completed_at });
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    } catch {
+      setError("Não foi possível concluir a task.");
+    }
   }
 
   async function handleSaveEdit(taskId: string, data: { title: string; description: string }) {
-    const updated = await updateOsTask(taskId, {
-      title: data.title,
-      description: data.description || null,
-    });
-    replaceTask(updated);
+    setError(null);
+    try {
+      const updated = await updateOsTask(taskId, {
+        title: data.title,
+        description: data.description || null,
+      });
+      replaceTask(updated);
+    } catch {
+      setError("Não foi possível salvar a task.");
+      throw new Error("save failed");
+    }
   }
 
   async function handleDelete(task: OsTaskRow) {
-    if (!confirm(`Excluir task "${task.title}"?`)) return;
-    await deleteOsTask(task.id);
-    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    setError(null);
+    setDeletingTaskId(task.id);
+    try {
+      await deleteOsTask(task.id);
+      setTasks((prev) => prev.filter((t) => t.id !== task.id));
+      if (editingTask?.id === task.id) setEditingTask(null);
+    } catch {
+      setError("Não foi possível excluir a task.");
+    } finally {
+      setDeletingTaskId(null);
+    }
   }
 
   async function handlePutOnHold(task: OsTaskRow) {
-    if (task.on_hold) {
-      const pos = appendOsTaskPosForStatus(tasks, task.status, task.id);
-      const updated = await updateOsTask(task.id, {
-        on_hold: false,
-        on_hold_reason: null,
-        pos,
-      });
-      replaceTask(updated);
-      return;
+    setError(null);
+    try {
+      if (task.on_hold) {
+        const pos = appendOsTaskPosForStatus(tasks, task.status, task.id);
+        const updated = await updateOsTask(task.id, {
+          on_hold: false,
+          on_hold_reason: null,
+          pos,
+        });
+        replaceTask(updated);
+        return;
+      }
+      setOnHoldTask(task);
+    } catch {
+      setError("Não foi possível alterar o estado de espera.");
     }
-    setOnHoldTask(task);
   }
 
   async function confirmOnHold(reason: string) {
     if (!onHoldTask) return;
-    const pos = appendOsTaskPosOnHoldAtBottom(tasks, onHoldTask.status, onHoldTask.id);
-    const updated = await updateOsTask(onHoldTask.id, {
-      on_hold: true,
-      on_hold_reason: reason,
-      pos,
-    });
-    replaceTask(updated);
-    setOnHoldTask(null);
+    setError(null);
+    try {
+      const pos = appendOsTaskPosOnHoldAtBottom(tasks, onHoldTask.status, onHoldTask.id);
+      const updated = await updateOsTask(onHoldTask.id, {
+        on_hold: true,
+        on_hold_reason: reason,
+        pos,
+      });
+      replaceTask(updated);
+      setOnHoldTask(null);
+    } catch {
+      setError("Não foi possível colocar a task em espera.");
+    }
   }
 
   async function moveTask(task: OsTaskRow, status: OsTaskBoardStatus) {
     if (task.status === status) return;
-    const pos = appendOsTaskPosForStatus(tasks, status, task.id);
-    const updated = await updateOsTask(task.id, {
-      status,
-      pos,
-      on_hold: false,
-      on_hold_reason: null,
-    });
-    replaceTask(updated);
+    setError(null);
+    try {
+      const pos = appendOsTaskPosForStatus(tasks, status, task.id);
+      const updated = await updateOsTask(task.id, {
+        status,
+        pos,
+        on_hold: false,
+        on_hold_reason: null,
+      });
+      replaceTask(updated);
+    } catch {
+      setError("Não foi possível mover a task.");
+    }
   }
 
   async function handleMoveToFocus(task: OsTaskRow) {
@@ -448,6 +486,7 @@ export default function OsTasksPage() {
               onDelete={handleDelete}
               onCreate={(title) => handleCreateInColumn("in_progress", title)}
               createPlaceholder="Nova task em foco..."
+              deletingTaskId={deletingTaskId}
             />
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:gap-8">
@@ -466,6 +505,7 @@ export default function OsTasksPage() {
                 onDelete={handleDelete}
                 onCreate={(title) => handleCreateInColumn("current_week", title)}
                 createPlaceholder="Nova task da semana..."
+                deletingTaskId={deletingTaskId}
               />
 
               <OsTaskColumn
@@ -483,6 +523,7 @@ export default function OsTasksPage() {
                 onDelete={handleDelete}
                 onCreate={(title) => handleCreateInColumn("backlog", title)}
                 createPlaceholder="Nova task no backlog..."
+                deletingTaskId={deletingTaskId}
               />
             </div>
           </div>

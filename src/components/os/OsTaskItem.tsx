@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type MouseEvent, type PointerEvent } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { PlayIcon } from "@heroicons/react/24/outline";
@@ -23,6 +24,11 @@ interface OsTaskItemProps {
   onMoveToFocus: (task: OsTaskRow) => void;
   onMoveToBacklog: (task: OsTaskRow) => void;
   onDelete: (task: OsTaskRow) => void;
+  deleting?: boolean;
+}
+
+function stopActionPointer(e: MouseEvent | PointerEvent) {
+  e.stopPropagation();
 }
 
 export function OsTaskItem({
@@ -35,7 +41,9 @@ export function OsTaskItem({
   onMoveToFocus,
   onMoveToBacklog,
   onDelete,
+  deleting = false,
 }: OsTaskItemProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
   });
@@ -49,6 +57,34 @@ export function OsTaskItem({
   const showBacklogButton = task.status !== "backlog";
   const isInFocus = task.status === "in_progress";
   const companyColor = company?.color ?? "#888888";
+
+  if (confirmDelete) {
+    return (
+      <div ref={setNodeRef} style={style} className={`${osTaskRow} border-ta-red bg-red-50/40`}>
+        <div className="flex items-center gap-2 px-3 py-2.5">
+          <span className="min-w-0 flex-1 truncate text-xs font-bold normal-case text-ta-red">
+            Excluir &ldquo;{task.title}&rdquo;?
+          </span>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => void onDelete(task)}
+            className="shrink-0 border-[1.5px] border-ta-red bg-ta-red px-2 py-1 text-[10px] font-bold uppercase text-ta-paper hover:bg-ta-red/90 disabled:opacity-50"
+          >
+            {deleting ? "..." : "Sim"}
+          </button>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => setConfirmDelete(false)}
+            className="shrink-0 border-[1.5px] border-ta-ink px-2 py-1 text-[10px] font-bold uppercase hover:bg-ta-paper-2 disabled:opacity-50"
+          >
+            Não
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -83,13 +119,18 @@ export function OsTaskItem({
             type="checkbox"
             checked={false}
             onChange={() => onToggleComplete(task)}
+            onPointerDown={stopActionPointer}
             className="h-3.5 w-3.5 shrink-0 border border-ta-ink accent-ta-ink"
             aria-label="Marcar como concluída"
           />
 
           <button
             type="button"
-            onClick={() => onEdit(task)}
+            onClick={(e) => {
+              stopActionPointer(e);
+              onEdit(task);
+            }}
+            onPointerDown={stopActionPointer}
             className="min-w-0 flex-1 text-left hover:underline"
           >
             <span className="block truncate text-sm font-bold normal-case">{task.title}</span>
@@ -120,11 +161,15 @@ export function OsTaskItem({
           ) : null}
         </div>
 
-        <div className="pointer-events-none absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 border border-ta-ink bg-ta-paper px-0.5 py-0.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 border border-ta-ink bg-ta-paper px-0.5 py-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
           {showBacklogButton ? (
             <button
               type="button"
-              onClick={() => onMoveToBacklog(task)}
+              onPointerDown={stopActionPointer}
+              onClick={(e) => {
+                stopActionPointer(e);
+                onMoveToBacklog(task);
+              }}
               className={osIconBtn}
               title="Mover para backlog"
               aria-label="Mover para backlog"
@@ -135,7 +180,11 @@ export function OsTaskItem({
 
           <button
             type="button"
-            onClick={() => onMoveToFocus(task)}
+            onPointerDown={stopActionPointer}
+            onClick={(e) => {
+              stopActionPointer(e);
+              onMoveToFocus(task);
+            }}
             className={osIconBtn}
             title={isInFocus ? "Voltar para Semana Atual" : "Enviar para Foco Agora"}
             aria-label={isInFocus ? "Voltar para Semana Atual" : "Enviar para Foco Agora"}
@@ -149,7 +198,11 @@ export function OsTaskItem({
 
           <button
             type="button"
-            onClick={() => onPutOnHold(task)}
+            onPointerDown={stopActionPointer}
+            onClick={(e) => {
+              stopActionPointer(e);
+              onPutOnHold(task);
+            }}
             className={`${osIconBtn} ${task.on_hold ? "bg-ta-amber/20 text-ta-ink" : ""}`}
             title={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
             aria-label={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
@@ -163,7 +216,11 @@ export function OsTaskItem({
 
           <button
             type="button"
-            onClick={() => onEdit(task)}
+            onPointerDown={stopActionPointer}
+            onClick={(e) => {
+              stopActionPointer(e);
+              onEdit(task);
+            }}
             className={osIconBtn}
             title="Editar"
             aria-label="Editar task"
@@ -173,7 +230,11 @@ export function OsTaskItem({
 
           <button
             type="button"
-            onClick={() => onDelete(task)}
+            onPointerDown={stopActionPointer}
+            onClick={(e) => {
+              stopActionPointer(e);
+              setConfirmDelete(true);
+            }}
             className={osIconBtnDanger}
             title="Excluir"
             aria-label="Excluir task"
