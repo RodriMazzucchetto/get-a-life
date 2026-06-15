@@ -153,7 +153,7 @@ export function OsTaskItem({
             <div className="flex min-w-0 flex-wrap items-start gap-1.5 pl-[1.375rem]">
               {company ? (
                 <span
-                  className="inline-block max-w-full shrink-0 border border-ta-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-snug"
+                  className="inline-block max-w-full shrink-0 px-0.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-snug"
                   style={{ color: companyColor }}
                   title={company.name}
                 >
@@ -162,7 +162,7 @@ export function OsTaskItem({
               ) : null}
               {linkedBet ? (
                 <span
-                  className="inline-block min-w-0 max-w-full flex-1 border border-ta-ink/40 px-1.5 py-0.5 text-[10px] font-bold normal-case leading-snug break-words text-ta-muted"
+                  className="inline-block min-w-0 max-w-full flex-1 px-0.5 py-0.5 text-[10px] font-bold normal-case leading-snug break-words text-ta-muted"
                   title={linkedBet.title}
                 >
                   {linkedBet.title}
