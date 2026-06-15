@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { projectShortCode } from "@/lib/problemHelpers";
 
 export type ProjectLite = { id: string; name: string; color: string };
@@ -24,7 +25,10 @@ export function ProjectIdsPicker({
   className = "",
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
 
   const add = (id: string) => {
     if (!id || value.includes(id)) return;
@@ -37,12 +41,33 @@ export function ProjectIdsPicker({
 
   const available = projects.filter((p) => !value.includes(p.id));
 
+  useLayoutEffect(() => {
+    if (!menuOpen || !buttonRef.current) {
+      setMenuPos(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!buttonRef.current) return;
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [menuOpen]);
+
   useEffect(() => {
     if (!menuOpen) return;
     const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
+      const target = e.target as Node;
+      if (wrapRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
@@ -57,10 +82,52 @@ export function ProjectIdsPicker({
 
   const isLine = variant === "line";
 
+  const menu =
+    menuOpen && menuPos && available.length > 0 ? (
+      <ul
+        ref={menuRef}
+        role="listbox"
+        style={{ top: menuPos.top, left: menuPos.left }}
+        className="fixed z-[10000] min-w-[10.5rem] overflow-hidden rounded-lg border border-outline-variant/25 bg-white py-1 text-left shadow-lg ring-1 ring-black/5 dark:border-slate-600 dark:bg-slate-900"
+      >
+        {available.map((p) => (
+          <li key={p.id} role="none">
+            <button
+              type="button"
+              role="option"
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-on-surface transition-colors hover:bg-surface-container-low dark:hover:bg-slate-800"
+              onClick={() => {
+                add(p.id);
+                setMenuOpen(false);
+              }}
+            >
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+                style={{ backgroundColor: p.color || "#6366f1" }}
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1 truncate">
+                {variant === "compact" || variant === "line" ? (
+                  <>
+                    <span className="font-black uppercase tracking-wide">
+                      {projectShortCode(p.name)}
+                    </span>
+                    <span className="text-on-surface-variant"> — {p.name}</span>
+                  </>
+                ) : (
+                  p.name
+                )}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : null;
+
   return (
     <div
       className={`flex items-center gap-x-2 gap-y-1 ${
-        isLine ? "min-w-0 flex-nowrap overflow-hidden" : "flex-wrap"
+        isLine ? "min-w-0 flex-nowrap" : "flex-wrap"
       } ${className}`}
     >
       {value.map((id) => {
@@ -117,8 +184,9 @@ export function ProjectIdsPicker({
         );
       })}
       {!disabled && available.length > 0 && (
-        <div className="relative inline-flex" ref={wrapRef}>
+        <div className="relative inline-flex shrink-0" ref={wrapRef}>
           <button
+            ref={buttonRef}
             type="button"
             aria-label="Adicionar projeto"
             aria-expanded={menuOpen}
@@ -131,44 +199,7 @@ export function ProjectIdsPicker({
               add
             </span>
           </button>
-          {menuOpen && (
-            <ul
-              role="listbox"
-              className="absolute left-0 top-full z-50 mt-1 min-w-[10.5rem] overflow-hidden rounded-lg border border-outline-variant/25 bg-white py-1 text-left shadow-lg ring-1 ring-black/5 dark:border-slate-600 dark:bg-slate-900"
-            >
-              {available.map((p) => (
-                <li key={p.id} role="none">
-                  <button
-                    type="button"
-                    role="option"
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-on-surface transition-colors hover:bg-surface-container-low dark:hover:bg-slate-800"
-                    onClick={() => {
-                      add(p.id);
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
-                      style={{ backgroundColor: p.color || "#6366f1" }}
-                      aria-hidden
-                    />
-                    <span className="min-w-0 flex-1 truncate">
-                      {variant === "compact" || variant === "line" ? (
-                        <>
-                          <span className="font-black uppercase tracking-wide">
-                            {projectShortCode(p.name)}
-                          </span>
-                          <span className="text-on-surface-variant"> — {p.name}</span>
-                        </>
-                      ) : (
-                        p.name
-                      )}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {typeof document !== "undefined" && menu ? createPortal(menu, document.body) : null}
         </div>
       )}
     </div>
