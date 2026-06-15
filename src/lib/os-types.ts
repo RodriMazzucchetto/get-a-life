@@ -94,6 +94,7 @@ export interface OsTaskRow {
   pos: number | null
   importance: number | null
   urgency: number | null
+  projectIds: string[]
   created_at: string
   updated_at: string
 }

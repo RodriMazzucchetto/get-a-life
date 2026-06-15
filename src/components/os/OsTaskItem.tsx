@@ -13,12 +13,11 @@ import {
 } from "@/lib/os-ui";
 import type { OsBetRow, OsTaskRow } from "@/lib/os-types";
 import { computeOsTaskScore, hasOsTaskScore } from "@/lib/osBoardHelpers";
-import { isQuickWinProject } from "@/lib/project-filters";
 import { projectShortCode } from "@/lib/problemHelpers";
 
 interface OsTaskItemProps {
   task: OsTaskRow;
-  company: OsProjectOption | null;
+  projectTags: OsProjectOption[];
   linkedBet: OsBetRow | null;
   onToggleComplete: (task: OsTaskRow) => void;
   onEdit: (task: OsTaskRow) => void;
@@ -35,7 +34,7 @@ function stopActionPointer(e: MouseEvent | PointerEvent) {
 
 export function OsTaskItem({
   task,
-  company,
+  projectTags,
   linkedBet,
   onToggleComplete,
   onEdit,
@@ -58,7 +57,6 @@ export function OsTaskItem({
 
   const showBacklogButton = task.status !== "backlog";
   const isInFocus = task.status === "in_progress";
-  const companyColor = company?.color ?? "#888888";
   const taskScore = computeOsTaskScore(task);
 
   if (confirmDelete) {
@@ -159,17 +157,18 @@ export function OsTaskItem({
             </button>
           </div>
 
-          {company || linkedBet ? (
+          {projectTags.length > 0 || linkedBet ? (
             <div className="flex min-w-0 flex-wrap items-start gap-1.5 pl-[1.375rem]">
-              {company ? (
+              {projectTags.map((project) => (
                 <span
+                  key={project.id}
                   className="inline-block max-w-full shrink-0 px-0.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-snug"
-                  style={{ color: companyColor }}
-                  title={company.name}
+                  style={{ color: project.color ?? "#888888" }}
+                  title={project.name}
                 >
-                  {projectShortCode(company.name)}
+                  {projectShortCode(project.name)}
                 </span>
-              ) : null}
+              ))}
               {linkedBet ? (
                 <span
                   className="inline-block min-w-0 max-w-full flex-1 px-0.5 py-0.5 text-[10px] font-bold normal-case leading-snug break-words text-ta-muted"
@@ -268,19 +267,16 @@ export function OsTaskItem({
   );
 }
 
-export function resolveOsTaskCompany(
-  task: OsTaskRow,
-  projectsById: Map<string, OsProjectOption>
-): OsProjectOption | null {
-  if (!task.project_id) return null;
-  const project = projectsById.get(task.project_id);
-  if (!project || isQuickWinProject(project)) return null;
-  return project;
+export function resolveOsTaskProjectIds(task: OsTaskRow): string[] {
+  if (task.projectIds?.length) return task.projectIds;
+  return task.project_id ? [task.project_id] : [];
 }
 
-export function resolveOsTaskCompanyColor(
+export function resolveOsTaskProjectTags(
   task: OsTaskRow,
   projectsById: Map<string, OsProjectOption>
-): string {
-  return resolveOsTaskCompany(task, projectsById)?.color ?? "#888888";
+): OsProjectOption[] {
+  return resolveOsTaskProjectIds(task)
+    .map((id) => projectsById.get(id))
+    .filter((project): project is OsProjectOption => Boolean(project));
 }

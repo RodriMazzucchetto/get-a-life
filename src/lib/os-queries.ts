@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase'
 import { appendOsTaskPosForStatus } from '@/lib/osBoardHelpers'
-import { filterOsCompanies } from '@/lib/project-filters'
+import { filterOsCompanies, isQuickWinProject } from '@/lib/project-filters'
 import type {
   OsBetRow,
   OsBetStatus,
@@ -13,8 +13,42 @@ import type {
   OsTaskRow,
 } from '@/lib/os-types'
 
-function normalizeOsTaskRow(row: OsTaskRow): OsTaskRow {
-  return row
+const OS_TASKS_SELECT = '*, os_task_projects(project_id)' as const
+
+type OsTaskDbRow = OsTaskRow & { os_task_projects?: { project_id: string }[] }
+
+function normalizeOsTaskRow(row: OsTaskDbRow): OsTaskRow {
+  const fromLinks = (row.os_task_projects ?? []).map((link) => link.project_id)
+  const projectIds =
+    fromLinks.length > 0
+      ? [...new Set(fromLinks)]
+      : row.project_id
+        ? [row.project_id]
+        : []
+
+  const { os_task_projects: _links, ...rest } = row
+  return { ...rest, projectIds }
+}
+
+function primaryOsTaskProjectId(
+  projectIds: string[],
+  projects: OsProjectOption[] = []
+): string | null {
+  if (projectIds.length === 0) return null
+  const companyId = projectIds.find((id) => {
+    const project = projects.find((p) => p.id === id)
+    return project && !isQuickWinProject(project)
+  })
+  return companyId ?? projectIds[0] ?? null
+}
+
+function isMissingOsTaskProjectsTable(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false
+  return (
+    error.code === '42P01' ||
+    error.code === 'PGRST200' ||
+    Boolean(error.message?.includes('os_task_projects'))
+  )
 }
 
 export const OS_SELECTED_PROJECT_KEY = 'os_selected_project_id'
@@ -628,12 +662,25 @@ export async function fetchAllOsTasks(userId: string): Promise<OsTaskRow[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('os_tasks')
-    .select('*')
+    .select(OS_TASKS_SELECT)
     .eq('user_id', userId)
     .order('pos', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
 
   if (error) {
+    if (isMissingOsTaskProjectsTable(error)) {
+      const fallback = await supabase
+        .from('os_tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('pos', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false })
+      if (fallback.error) {
+        console.error('Erro ao buscar tasks OS:', fallback.error)
+        throw fallback.error
+      }
+      return (fallback.data ?? []).map(normalizeOsTaskRow)
+    }
     console.error('Erro ao buscar tasks OS:', error)
     throw error
   }
@@ -951,12 +998,25 @@ export async function fetchOsTasksForBet(betId: string): Promise<OsTaskRow[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('os_tasks')
-    .select('*')
+    .select(OS_TASKS_SELECT)
     .eq('bet_id', betId)
     .order('pos', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true })
 
   if (error) {
+    if (isMissingOsTaskProjectsTable(error)) {
+      const fallback = await supabase
+        .from('os_tasks')
+        .select('*')
+        .eq('bet_id', betId)
+        .order('pos', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+      if (fallback.error) {
+        console.error('Erro ao buscar tasks do pitch:', fallback.error)
+        throw fallback.error
+      }
+      return (fallback.data ?? []).map(normalizeOsTaskRow)
+    }
     console.error('Erro ao buscar tasks do pitch:', error)
     throw error
   }
@@ -1001,6 +1061,87 @@ export async function createOsTask(
     throw error
   }
 
+  const projectId = input.projectId ?? null
+  if (projectId) {
+    const { error: linkError } = await supabase.from('os_task_projects').insert({
+      task_id: data.id,
+      project_id: projectId,
+    })
+    if (linkError && !isMissingOsTaskProjectsTable(linkError)) {
+      console.error('Erro ao ligar projeto à task OS:', linkError)
+      throw linkError
+    }
+  }
+
+  return normalizeOsTaskRow({
+    ...data,
+    os_task_projects: projectId ? [{ project_id: projectId }] : [],
+  })
+}
+
+export async function setOsTaskProjects(
+  taskId: string,
+  projectIds: string[],
+  projects: OsProjectOption[] = []
+): Promise<OsTaskRow> {
+  const supabase = createClient()
+  const uniqueIds = [...new Set(projectIds.filter(Boolean))]
+  const primaryProjectId = primaryOsTaskProjectId(uniqueIds, projects)
+
+  const { error: deleteError } = await supabase
+    .from('os_task_projects')
+    .delete()
+    .eq('task_id', taskId)
+
+  if (deleteError && !isMissingOsTaskProjectsTable(deleteError)) {
+    console.error('Erro ao limpar tags de projeto da task OS:', deleteError)
+    throw deleteError
+  }
+
+  if (uniqueIds.length > 0 && !deleteError) {
+    const { error: insertError } = await supabase.from('os_task_projects').insert(
+      uniqueIds.map((project_id) => ({ task_id: taskId, project_id }))
+    )
+    if (insertError && !isMissingOsTaskProjectsTable(insertError)) {
+      console.error('Erro ao salvar tags de projeto da task OS:', insertError)
+      throw insertError
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('os_tasks')
+    .update({
+      project_id: primaryProjectId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+    .select(OS_TASKS_SELECT)
+    .single()
+
+  if (error) {
+    if (isMissingOsTaskProjectsTable(error)) {
+      const fallback = await supabase
+        .from('os_tasks')
+        .update({
+          project_id: primaryProjectId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', taskId)
+        .select('*')
+        .single()
+      if (fallback.error) {
+        console.error('Erro ao atualizar projetos da task OS:', fallback.error)
+        throw fallback.error
+      }
+      return normalizeOsTaskRow({
+        ...fallback.data,
+        os_task_projects: uniqueIds.map((project_id) => ({ project_id })),
+      })
+    }
+    console.error('Erro ao atualizar projetos da task OS:', error)
+    throw error
+  }
+
   return normalizeOsTaskRow(data)
 }
 
@@ -1037,10 +1178,23 @@ export async function updateOsTask(
     .from('os_tasks')
     .update(payload)
     .eq('id', taskId)
-    .select('*')
+    .select(OS_TASKS_SELECT)
     .single()
 
   if (error) {
+    if (isMissingOsTaskProjectsTable(error)) {
+      const fallback = await supabase
+        .from('os_tasks')
+        .update(payload)
+        .eq('id', taskId)
+        .select('*')
+        .single()
+      if (fallback.error) {
+        console.error('Erro ao atualizar task OS:', fallback.error)
+        throw fallback.error
+      }
+      return normalizeOsTaskRow(fallback.data)
+    }
     console.error('Erro ao atualizar task OS:', error)
     throw error
   }

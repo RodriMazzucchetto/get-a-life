@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
+import { ProjectIdsPicker } from "@/components/ProjectIdsPicker";
+import type { OsProjectOption } from "@/lib/os-queries";
 import type { OsTaskRow } from "@/lib/os-types";
 import { computeOsTaskScore } from "@/lib/osBoardHelpers";
 import { osBtnGhost, osBtnPrimary, osInput, osLabelMuted } from "@/lib/os-ui";
@@ -10,6 +12,7 @@ import { osBtnGhost, osBtnPrimary, osInput, osLabelMuted } from "@/lib/os-ui";
 interface OsTaskEditModalProps {
   open: boolean;
   task: OsTaskRow | null;
+  projects: OsProjectOption[];
   onClose: () => void;
   onSave: (
     taskId: string,
@@ -18,6 +21,7 @@ interface OsTaskEditModalProps {
       description: string;
       importance: number | null;
       urgency: number | null;
+      projectIds: string[];
     }
   ) => Promise<void>;
 }
@@ -55,11 +59,12 @@ function ScorePicker({
   );
 }
 
-export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModalProps) {
+export function OsTaskEditModal({ open, task, projects, onClose, onSave }: OsTaskEditModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [importance, setImportance] = useState<number | null>(null);
   const [urgency, setUrgency] = useState<number | null>(null);
+  const [projectIds, setProjectIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -68,6 +73,9 @@ export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModal
     setDescription(task.description ?? "");
     setImportance(task.importance);
     setUrgency(task.urgency);
+    setProjectIds(
+      task.projectIds?.length ? task.projectIds : task.project_id ? [task.project_id] : []
+    );
   }, [task]);
 
   if (!open || !task) return null;
@@ -81,6 +89,7 @@ export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModal
         description: description.trim(),
         importance,
         urgency,
+        projectIds,
       });
       onClose();
     } finally {
@@ -122,6 +131,16 @@ export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModal
               className={`w-full px-3 py-2 text-sm ${osInput}`}
             />
           </label>
+
+          <div>
+            <span className={`mb-1 block ${osLabelMuted}`}>Projetos / Quick Win</span>
+            <ProjectIdsPicker
+              projects={projects}
+              value={projectIds}
+              onChange={setProjectIds}
+              variant="line"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <ScorePicker label="Importância" value={importance} onChange={setImportance} />

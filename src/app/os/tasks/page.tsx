@@ -21,7 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 import { OsDroppableColumn } from "@/components/os/OsDroppableColumn";
 import { OsTaskEditModal, OsTaskOnHoldModal } from "@/components/os/OsTaskEditModal";
-import { OsTaskItem, resolveOsTaskCompany } from "@/components/os/OsTaskItem";
+import { OsTaskItem, resolveOsTaskProjectTags } from "@/components/os/OsTaskItem";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useOsLayout } from "@/contexts/OsLayoutContext";
 import {
@@ -48,6 +48,7 @@ import {
 import {
   createOsTask,
   deleteOsTask,
+  setOsTaskProjects,
   updateOsTask,
   type OsProjectOption,
 } from "@/lib/os-queries";
@@ -157,7 +158,7 @@ function OsTaskColumn({
                 <OsTaskItem
                   key={task.id}
                   task={task}
-                  company={resolveOsTaskCompany(task, projectsById)}
+                  projectTags={resolveOsTaskProjectTags(task, projectsById)}
                   linkedBet={task.bet_id ? (betsById.get(task.bet_id) ?? null) : null}
                   onToggleComplete={onToggleComplete}
                   onEdit={onEdit}
@@ -244,16 +245,23 @@ export default function OsTasksPage() {
 
   async function handleSaveEdit(
     taskId: string,
-    data: { title: string; description: string; importance: number | null; urgency: number | null }
+    data: {
+      title: string;
+      description: string;
+      importance: number | null;
+      urgency: number | null;
+      projectIds: string[];
+    }
   ) {
     setError(null);
     try {
-      const updated = await updateOsTask(taskId, {
+      await updateOsTask(taskId, {
         title: data.title,
         description: data.description || null,
         importance: data.importance,
         urgency: data.urgency,
       });
+      const updated = await setOsTaskProjects(taskId, data.projectIds, projects);
       replaceTask(updated);
     } catch {
       setError("Não foi possível salvar a task.");
@@ -546,6 +554,7 @@ export default function OsTasksPage() {
       <OsTaskEditModal
         open={editingTask !== null}
         task={editingTask}
+        projects={projects}
         onClose={() => setEditingTask(null)}
         onSave={handleSaveEdit}
       />
