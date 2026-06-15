@@ -23,10 +23,11 @@ export const OS_BLOCK_LABELS: Record<OsBlockType, string> = {
   ops: 'OPERATIONS',
 }
 
+/** Cores de identidade por pilar (design system v0.1). */
 export const OS_BLOCK_DOT_COLORS: Record<OsBlockType, string> = {
-  finance: '#FFD600',
-  growth: '#5BC0EB',
-  ops: '#FFD600',
+  finance: '#ffd400',
+  growth: '#1ec7eb',
+  ops: '#18b46b',
 }
 
 export const OS_YELLOW = '#FFD600'

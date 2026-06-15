@@ -283,16 +283,11 @@ function OsPageContent() {
     return getPillarMomentumColor(companyMomentum, allBets.length > 0);
   }, [companyMomentum, orderedBlocks]);
 
-  const selectedBlockView = orderedBlocks.find((view) => view.block.type === selectedPillar);
-  const selectedPillarStats = useMemo(
-    () => computeOsBetStats(selectedBlockView?.bets ?? []),
-    [selectedBlockView]
-  );
-
   const companyStats = useMemo(() => {
     const allBets = orderedBlocks.flatMap((view) => view.bets);
     return computeOsBetStats(allBets);
   }, [orderedBlocks]);
+
   const priorityExecutionRows = useMemo(() => {
     const rows: { bet: OsBetRow; blockType: OsBlockType }[] = [];
     for (const type of OS_BLOCK_TYPES) {
@@ -624,17 +619,17 @@ function OsPageContent() {
             )}
           </div>
 
-          {/* Selected pillar stats */}
+          {/* Resumo geral — todos os pilares */}
           <div className={`mb-6 ${osCard} px-4 py-4`}>
             <p className="mb-3 text-center text-sm font-bold tracking-wide">
-              {OS_BLOCK_LABELS[selectedPillar]} — RESUMO
+              RESUMO GERAL
             </p>
             <div className="space-y-1 text-sm font-bold tracking-wide">
-              <p>STARTED: {selectedPillarStats.started}</p>
-              <p style={{ color: OS_CYAN }}>EXECUTED: {selectedPillarStats.executed}</p>
-              <p style={{ color: OS_CYAN }}>SUCCESS RATE: {selectedPillarStats.successRate}%</p>
-              <p style={{ color: OS_RED }}>FAILED: {selectedPillarStats.failed}</p>
-              <p style={{ color: OS_RED }}>FAILURE RATE: {selectedPillarStats.failureRate}%</p>
+              <p>STARTED: {companyStats.started}</p>
+              <p style={{ color: OS_CYAN }}>EXECUTED: {companyStats.executed}</p>
+              <p style={{ color: OS_CYAN }}>SUCCESS RATE: {companyStats.successRate}%</p>
+              <p style={{ color: OS_RED }}>FAILED: {companyStats.failed}</p>
+              <p style={{ color: OS_RED }}>FAILURE RATE: {companyStats.failureRate}%</p>
             </div>
           </div>
         </>
