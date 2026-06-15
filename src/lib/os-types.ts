@@ -92,8 +92,8 @@ export interface OsTaskRow {
   due_date: string | null
   completed_at: string | null
   pos: number | null
-  importance: number
-  urgency: number
+  importance: number | null
+  urgency: number | null
   created_at: string
   updated_at: string
 }
@@ -167,8 +167,8 @@ export interface OsTaskInsert {
   due_date?: string | null
   completed_at?: string | null
   pos?: number | null
-  importance?: number
-  urgency?: number
+  importance?: number | null
+  urgency?: number | null
   created_at?: string
   updated_at?: string
 }

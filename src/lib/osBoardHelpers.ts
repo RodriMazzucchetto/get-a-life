@@ -15,18 +15,29 @@ export function isOsTaskActive(task: OsTaskRow): boolean {
   return task.completed_at == null
 }
 
-/** Score = importância × urgência (1–25). */
-export function computeOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency'>): number {
-  const importance = task.importance ?? 3
-  const urgency = task.urgency ?? 3
-  return importance * urgency
+/** Task tem score só quando importância e urgência estão definidas. */
+export function hasOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency'>): boolean {
+  return task.importance != null && task.urgency != null
 }
 
-/** Pausa no fim; depois maior score primeiro; empate por pos. */
+/** Score = importância × urgência (1–25), ou null se incompleto. */
+export function computeOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency'>): number | null {
+  if (!hasOsTaskScore(task)) return null
+  return task.importance! * task.urgency!
+}
+
+/** Pausa no fim; com score primeiro (maior→menor); sem score depois; empate por pos. */
 export function sortOsTasksByPos(a: OsTaskRow, b: OsTaskRow): number {
   if (a.on_hold !== b.on_hold) return a.on_hold ? 1 : -1
-  const scoreDiff = computeOsTaskScore(b) - computeOsTaskScore(a)
-  if (scoreDiff !== 0) return scoreDiff
+
+  const aScore = computeOsTaskScore(a)
+  const bScore = computeOsTaskScore(b)
+  const aHasScore = aScore != null
+  const bHasScore = bScore != null
+
+  if (aHasScore !== bHasScore) return aHasScore ? -1 : 1
+  if (aHasScore && bHasScore && aScore !== bScore) return bScore - aScore
+
   return (a.pos ?? 0) - (b.pos ?? 0)
 }
 

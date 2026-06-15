@@ -13,7 +13,12 @@ interface OsTaskEditModalProps {
   onClose: () => void;
   onSave: (
     taskId: string,
-    data: { title: string; description: string; importance: number; urgency: number }
+    data: {
+      title: string;
+      description: string;
+      importance: number | null;
+      urgency: number | null;
+    }
   ) => Promise<void>;
 }
 
@@ -23,8 +28,8 @@ function ScorePicker({
   onChange,
 }: {
   label: string;
-  value: number;
-  onChange: (value: number) => void;
+  value: number | null;
+  onChange: (value: number | null) => void;
 }) {
   return (
     <div>
@@ -34,7 +39,7 @@ function ScorePicker({
           <button
             key={n}
             type="button"
-            onClick={() => onChange(n)}
+            onClick={() => onChange(value === n ? null : n)}
             className={`h-8 w-8 border-[1.5px] text-xs font-bold transition-colors ${
               value === n
                 ? "border-ta-ink bg-ta-ink text-ta-paper"
@@ -53,16 +58,16 @@ function ScorePicker({
 export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [importance, setImportance] = useState(3);
-  const [urgency, setUrgency] = useState(3);
+  const [importance, setImportance] = useState<number | null>(null);
+  const [urgency, setUrgency] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!task) return;
     setTitle(task.title);
     setDescription(task.description ?? "");
-    setImportance(task.importance ?? 3);
-    setUrgency(task.urgency ?? 3);
+    setImportance(task.importance);
+    setUrgency(task.urgency);
   }, [task]);
 
   if (!open || !task) return null;
@@ -126,7 +131,7 @@ export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModal
           <div className="border border-ta-ink bg-ta-paper-2 px-3 py-2 text-center">
             <span className={`block ${osLabelMuted}`}>Score</span>
             <p className="text-2xl font-bold tabular-nums">
-              {computeOsTaskScore({ importance, urgency })}
+              {computeOsTaskScore({ importance, urgency }) ?? "—"}
             </p>
             <p className="text-[10px] text-ta-muted">Importância × Urgência</p>
           </div>

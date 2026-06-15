@@ -244,7 +244,7 @@ export default function OsTasksPage() {
 
   async function handleSaveEdit(
     taskId: string,
-    data: { title: string; description: string; importance: number; urgency: number }
+    data: { title: string; description: string; importance: number | null; urgency: number | null }
   ) {
     setError(null);
     try {

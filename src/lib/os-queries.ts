@@ -14,11 +14,7 @@ import type {
 } from '@/lib/os-types'
 
 function normalizeOsTaskRow(row: OsTaskRow): OsTaskRow {
-  return {
-    ...row,
-    importance: row.importance ?? 3,
-    urgency: row.urgency ?? 3,
-  }
+  return row
 }
 
 export const OS_SELECTED_PROJECT_KEY = 'os_selected_project_id'
@@ -995,8 +991,6 @@ export async function createOsTask(
       status,
       on_hold: false,
       on_hold_reason: null,
-      importance: 3,
-      urgency: 3,
       pos,
     })
     .select('*')
@@ -1020,8 +1014,8 @@ export async function updateOsTask(
     on_hold?: boolean
     on_hold_reason?: string | null
     completed_at?: string | null
-    importance?: number
-    urgency?: number
+    importance?: number | null
+    urgency?: number | null
   }
 ): Promise<OsTaskRow> {
   const supabase = createClient()
