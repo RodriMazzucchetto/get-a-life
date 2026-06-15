@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { osNav, osNavLinkActive, osNavLinkIdle } from "@/lib/os-ui";
 
 const OS_SECTION_ITEMS = [
   { label: "OS", href: "/os" },
-  { label: "PITCH", href: "/os/pitch" },
+  { label: "Pitch", href: "/os/pitch" },
 ];
 
 export function OsSectionNav() {
@@ -16,16 +15,14 @@ export function OsSectionNav() {
   if (!showSubNav) return null;
 
   return (
-    <nav className={osNav} aria-label="Navegação OS">
+    <nav className="os-section-nav" aria-label="Navegação OS">
       {OS_SECTION_ITEMS.map(({ label, href }) => {
         const isActive = pathname === href;
         return (
           <Link
             key={href}
             href={href}
-            className={`flex-1 px-4 py-2.5 text-center ${
-              isActive ? osNavLinkActive : osNavLinkIdle
-            }`}
+            className={isActive ? "active" : undefined}
             aria-current={isActive ? "page" : undefined}
           >
             {label}

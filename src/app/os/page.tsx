@@ -5,7 +5,7 @@ import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
 import { GoalBacklogPanel } from "@/components/os/GoalBacklogPanel";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
-import { OsPitchExecutionRow, OS_EXECUTION_TABLE_GRID } from "@/components/os/OsPitchExecutionRow";
+import { OsPitchExecutionRow } from "@/components/os/OsPitchExecutionRow";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
 import { WeeklyUpdateModal } from "@/components/os/WeeklyUpdateModal";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -14,9 +14,7 @@ import {
   OS_BLOCK_LABELS,
   OS_BLOCK_TYPES,
   OS_CYAN,
-  OS_GREEN,
   OS_RED,
-  OS_YELLOW,
   computeCompanyMomentum,
   computeOsBetStats,
   getPillarMomentumColor,
@@ -35,7 +33,7 @@ import {
 } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
 import { osCacheKey, packBoardCache, setOsCache } from "@/lib/os-cache";
-import { osBtnGhost, osBtnPrimary, osCard, osDivider, osEmptyState, osErrorBanner, osGoalText, osInput, osLabelMuted, osPage } from "@/lib/os-ui";
+import { osBtnGhost, osBtnPrimary, osEmptyState, osErrorBanner, osInput } from "@/lib/os-ui";
 
 function OsProgressBar({
   label,
@@ -52,17 +50,12 @@ function OsProgressBar({
   const fillWidth = pct > 0 ? `${pct}%` : "3.5rem";
 
   return (
-    <div className={`flex overflow-hidden ${osCard}`}>
-      <div
-        className={`flex shrink-0 items-center border-r px-4 py-2.5 text-sm font-bold tracking-wide ${osDivider}`}
-      >
+    <div className="os-metric-row">
+      <div className="label">
         {label}: {value}
       </div>
-      <div className="relative flex min-h-[42px] flex-1 bg-ta-paper">
-        <div
-          className="ml-auto flex items-center justify-center text-sm font-bold text-white"
-          style={{ width: fillWidth, backgroundColor: fillColor, minWidth: "3.5rem" }}
-        >
+      <div className="track">
+        <div className="fill" style={{ width: fillWidth, backgroundColor: fillColor }}>
           {pct}%
         </div>
       </div>
@@ -99,61 +92,36 @@ function PillarSelectorBar({
   const displayGoal = goalTitle || "Definir meta";
 
   return (
-    <div
-      className={`min-w-0 ${osCard} ${
-        selected ? "outline outline-2 outline-ta-cyan -outline-offset-2" : ""
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onSelect}
-        className="flex w-full min-w-0 border-0 bg-transparent p-0 text-inherit transition-opacity hover:opacity-95"
-        aria-pressed={selected}
-      >
+    <div className={`os-pillar-card ${selected ? "selected" : ""}`}>
+      <button type="button" onClick={onSelect} className="pillar-top" aria-pressed={selected}>
         <div
-          className="flex shrink-0 items-center bg-ta-ink px-4 py-3 text-sm font-bold text-ta-paper"
+          className="pillar-label"
           style={hasActivePitch ? { boxShadow: `inset 4px 0 0 0 ${fillColor}` } : undefined}
         >
           {label}
         </div>
-        <div className="relative flex min-h-[46px] min-w-0 flex-1 items-center bg-ta-paper">
+        <div className="pillar-track">
           {pct > 0 ? (
             <div
-              className="absolute inset-y-0 left-0 flex items-center justify-end px-3 text-sm font-bold text-white"
+              className="pillar-fill"
               style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: fillColor }}
             />
           ) : null}
-          <span
-            className="relative ml-auto px-3 text-sm font-bold"
-            style={{ color: hasActivePitch ? fillColor : "var(--color-ta-ink)" }}
-          >
+          <span className="relative z-[1]" style={{ color: hasActivePitch ? fillColor : "var(--color-ta-ink)" }}>
             {pct}%
           </span>
         </div>
       </button>
 
-      {/* meta activa + botão toggle backlog */}
-      <div className={`flex items-start border-t ${osDivider}`}>
-        <p
-          role="button"
-          tabIndex={0}
-          onClick={onEditGoal}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEditGoal(); }
-          }}
-          className={`${osGoalText} flex-1`}
-          style={{ whiteSpace: "normal", overflow: "visible", textOverflow: "clip" }}
-          title={displayGoal}
-        >
+      <div className="pillar-goal-row">
+        <button type="button" onClick={onEditGoal} className="pillar-goal" title={displayGoal}>
           {displayGoal}
-        </p>
+        </button>
         <button
           type="button"
           aria-label={showBacklog ? "Fechar backlog de metas" : "Ver backlog de metas"}
           onClick={() => setShowBacklog((v) => !v)}
-          className={`flex shrink-0 items-center justify-center px-2 py-2.5 text-ta-muted transition-colors hover:text-ta-ink ${
-            showBacklog ? "text-ta-ink" : ""
-          }`}
+          className={`pillar-backlog-btn ${showBacklog ? "open" : ""}`}
         >
           <span
             className="material-symbols-outlined text-[18px] transition-transform"
@@ -164,12 +132,13 @@ function PillarSelectorBar({
         </button>
       </div>
 
-      {/* backlog inline */}
       {showBacklog ? (
         <GoalBacklogPanel
           blockId={blockId}
           userId={userId}
-          onGoalsChanged={() => { onGoalsChanged(); }}
+          onGoalsChanged={() => {
+            onGoalsChanged();
+          }}
         />
       ) : null}
     </div>
@@ -503,7 +472,7 @@ function OsPageContent() {
   };
 
   return (
-    <div className={`pb-8 ${osPage}`}>
+    <div className="pb-8">
       <OsCompanySelector />
 
       {error || boardError ? (
@@ -511,7 +480,7 @@ function OsPageContent() {
       ) : null}
 
       {boardRefreshing && board.length > 0 ? (
-        <p className={`mb-3 text-center ${osLabelMuted} normal-case`}>Atualizando…</p>
+        <p className="os-muted-note">Atualizando…</p>
       ) : null}
 
       {!selectedProjectId && loadingProjects && projects.length === 0 ? (
@@ -520,16 +489,11 @@ function OsPageContent() {
         <div className={osEmptyState}>Selecione uma empresa para visualizar o OS.</div>
       ) : (
         <>
-          {/* Company momentum */}
-          <div className={`mb-6 flex overflow-hidden ${osCard}`}>
-            <div
-              className={`flex shrink-0 items-center border-r px-4 py-3 text-sm font-bold ${osDivider}`}
-            >
-              Company execution momentum
-            </div>
-            <div className="relative flex min-h-[46px] flex-1 bg-ta-paper">
+          <div className="os-metric-row">
+            <div className="label">Company execution momentum</div>
+            <div className="track">
               <div
-                className="ml-auto flex items-center justify-center text-sm font-bold text-white"
+                className="fill"
                 style={{
                   width: `${Math.max(companyMomentum, 8)}%`,
                   backgroundColor: companyMomentumColor,
@@ -541,101 +505,83 @@ function OsPageContent() {
             </div>
           </div>
 
-          {/* Aggregate executed / failed */}
-          <div className="mb-6 space-y-3">
-            <h2 className="text-center text-xl font-bold tracking-[0.08em] sm:text-2xl">
-              PRIORITIES STARTED: {companyStats.started}
-            </h2>
+          <div className="os-kpi-grid">
+            <h2 className="os-kpi-head">Priorities started: {companyStats.started}</h2>
             <OsProgressBar
-              label="EXECUTED"
+              label="Executed"
               value={companyStats.executed}
               pct={companyStats.successRate}
               tone="executed"
             />
             <OsProgressBar
-              label="FAILED"
+              label="Failed"
               value={companyStats.failed}
               pct={companyStats.failureRate}
               tone="failed"
             />
           </div>
 
-          {/* Pillar selectors */}
-          <div className="mb-8 grid grid-cols-1 gap-4 normal-case sm:grid-cols-3">
+          <div className="os-pillar-grid">
             {orderedBlocks.map((view) => {
               const blockType = view.block.type as OsBlockType;
               const display = pillarDisplays[blockType];
               return (
-                <div key={view.block.id} className="min-w-0">
-                  <PillarSelectorBar
-                    label={OS_BLOCK_LABELS[blockType]}
-                    pct={display.pct}
-                    goalTitle={view.goal?.title ?? "Definir meta"}
-                    blockId={view.block.id}
-                    userId={user?.id ?? ""}
-                    selected={selectedPillar === blockType}
-                    onSelect={() => setSelectedPillar(blockType)}
-                    onEditGoal={() => openGoalModal(view.block.id, blockType)}
-                    fillColor={display.color}
-                    hasActivePitch={view.bets.length > 0}
-                    onGoalsChanged={() => void refreshBoard({ background: true, force: true })}
-                  />
-                </div>
+                <PillarSelectorBar
+                  key={view.block.id}
+                  label={OS_BLOCK_LABELS[blockType]}
+                  pct={display.pct}
+                  goalTitle={view.goal?.title ?? "Definir meta"}
+                  blockId={view.block.id}
+                  userId={user?.id ?? ""}
+                  selected={selectedPillar === blockType}
+                  onSelect={() => setSelectedPillar(blockType)}
+                  onEditGoal={() => openGoalModal(view.block.id, blockType)}
+                  fillColor={display.color}
+                  hasActivePitch={view.bets.length > 0}
+                  onGoalsChanged={() => void refreshBoard({ background: true, force: true })}
+                />
               );
             })}
           </div>
 
-          {/* Priority pitches — lista única (todos os pilares) */}
-          <div className={`mb-8 ${osCard}`}>
-            <h2
-              className={`border-b py-4 text-center text-2xl font-bold tracking-[0.12em] ${osDivider}`}
-            >
-              Priority pitches
-            </h2>
-
-            <div
-              className={`${OS_EXECUTION_TABLE_GRID} border-b ${osDivider} ${osLabelMuted}`}
-            >
-              <div className={`border-r ${osDivider}`} />
-              <div className={`border-r px-4 py-2 ${osDivider}`}>Priority</div>
-              <div className="flex items-center justify-center py-2">Status</div>
-              <div className={`border-l py-2 text-center ${osDivider}`}>+</div>
+          <div className="os-section">
+            <div className="section-head">
+              <span className="title">Priority pitches</span>
             </div>
+            <p className="section-sub">Pitches activos por pilar</p>
 
             {priorityExecutionRows.length === 0 ? (
-              <div className={`px-4 py-10 text-center text-sm font-bold normal-case ${osLabelMuted}`}>
-                Nenhum pitch prioritário. Marque um pitch como ativo em{" "}
-                <span className="font-bold uppercase">Pitch</span>.
+              <div className="os-empty-inline">
+                Nenhum pitch prioritário — marque um pitch como activo em Pitch
               </div>
             ) : (
-              priorityExecutionRows.map(({ bet, blockType }) => (
-                <OsPitchExecutionRow
-                  key={bet.id}
-                  bet={bet}
-                  blockType={blockType}
-                  latestUpdate={latestUpdates.get(bet.id) ?? null}
-                  expanded={expandedBetId === bet.id}
-                  onToggleExpand={() =>
-                    setExpandedBetId((prev) => (prev === bet.id ? null : bet.id))
-                  }
-                  onOpenPitch={() => openPitchModal(bet, blockType)}
-                  onAddWeeklyUpdate={() => openWeeklyModal(bet)}
-                />
-              ))
+              <div className="os-pitch-list">
+                {priorityExecutionRows.map(({ bet, blockType }) => (
+                  <OsPitchExecutionRow
+                    key={bet.id}
+                    bet={bet}
+                    blockType={blockType}
+                    latestUpdate={latestUpdates.get(bet.id) ?? null}
+                    expanded={expandedBetId === bet.id}
+                    onToggleExpand={() =>
+                      setExpandedBetId((prev) => (prev === bet.id ? null : bet.id))
+                    }
+                    onOpenPitch={() => openPitchModal(bet, blockType)}
+                    onAddWeeklyUpdate={() => openWeeklyModal(bet)}
+                  />
+                ))}
+              </div>
             )}
           </div>
 
-          {/* Resumo geral — todos os pilares */}
-          <div className={`mb-6 ${osCard} px-4 py-4`}>
-            <p className="mb-3 text-center text-sm font-bold tracking-wide">
-              RESUMO GERAL
-            </p>
-            <div className="space-y-1 text-sm font-bold tracking-wide">
-              <p>STARTED: {companyStats.started}</p>
-              <p style={{ color: OS_CYAN }}>EXECUTED: {companyStats.executed}</p>
-              <p style={{ color: OS_CYAN }}>SUCCESS RATE: {companyStats.successRate}%</p>
-              <p style={{ color: OS_RED }}>FAILED: {companyStats.failed}</p>
-              <p style={{ color: OS_RED }}>FAILURE RATE: {companyStats.failureRate}%</p>
+          <div className="os-summary">
+            <p className="title">Resumo geral</p>
+            <div className="lines">
+              <p>Started: {companyStats.started}</p>
+              <p style={{ color: OS_CYAN }}>Executed: {companyStats.executed}</p>
+              <p style={{ color: OS_CYAN }}>Success rate: {companyStats.successRate}%</p>
+              <p style={{ color: OS_RED }}>Failed: {companyStats.failed}</p>
+              <p style={{ color: OS_RED }}>Failure rate: {companyStats.failureRate}%</p>
             </div>
           </div>
         </>

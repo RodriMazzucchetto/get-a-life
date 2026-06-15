@@ -44,7 +44,6 @@ import {
   type OsProjectOption,
 } from "@/lib/os-queries";
 import type { OsBetRow, OsTaskBoardStatus, OsTaskRow } from "@/lib/os-types";
-import "./os-tasks.css";
 
 function OsTaskColumn({
   id,
@@ -451,7 +450,7 @@ export default function OsTasksPage() {
   }
 
   return (
-    <div className="os-tasks-page pb-10">
+    <div className="pb-10">
       <div className="page-head">
         <h1>Tasks</h1>
       </div>
@@ -535,7 +534,7 @@ export default function OsTasksPage() {
 
           <DragOverlay>
             {activeDragTask ? (
-              <div className="os-tasks-page">
+              <div className="os-refined-page">
                 <div className="os-task bg-ta-paper px-2 shadow-[4px_4px_0_var(--color-ta-ink)]">
                   <span className="dot idle" aria-hidden />
                   <div className="body">
