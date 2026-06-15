@@ -243,12 +243,11 @@
 }
 
 .os-refined-page .os-task .meta .tag {
-  color: var(--color-ta-muted);
+  font-weight: 600;
 }
 
 .os-refined-page .os-task .meta .tag.qw {
-  color: var(--color-ta-ink-2);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .os-refined-page .os-task .meta .state.wait {

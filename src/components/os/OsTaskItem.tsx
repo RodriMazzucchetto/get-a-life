@@ -82,10 +82,15 @@ export function OsTaskItem({
     });
   }
   for (const project of projectTags) {
+    const isQw = isQuickWinProject(project);
     metaItems.push({
       key: project.id,
       node: (
-        <span className={`tag ${isQuickWinProject(project) ? "qw" : ""}`}>
+        <span
+          className={`tag ${isQw ? "qw" : ""}`}
+          style={{ color: project.color || (isQw ? "#1ec7eb" : "#64748b") }}
+          title={project.name}
+        >
           {projectShortCode(project.name)}
         </span>
       ),
