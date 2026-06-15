@@ -1,11 +1,18 @@
 "use client";
 
-import { getBetDisplayStatus } from "@/lib/os-queries";
+import {
+  OS_BLOCK_DOT_COLORS,
+  OS_BLOCK_LABELS,
+  getBetDisplayStatus,
+} from "@/lib/os-queries";
 import { osDivider, osLabelMuted } from "@/lib/os-ui";
-import type { OsBetRow, OsBetUpdateRow } from "@/lib/os-types";
+import type { OsBetRow, OsBetUpdateRow, OsBlockType } from "@/lib/os-types";
+
+const TRACKABLE_STATUSES = new Set(["on_course", "deviating", "executed", "failed"]);
 
 interface OsPitchExecutionRowProps {
   bet: OsBetRow;
+  blockType: OsBlockType;
   latestUpdate: OsBetUpdateRow | null;
   expanded: boolean;
   onToggleExpand: () => void;
@@ -15,6 +22,7 @@ interface OsPitchExecutionRowProps {
 
 export function OsPitchExecutionRow({
   bet,
+  blockType,
   latestUpdate,
   expanded,
   onToggleExpand,
@@ -22,6 +30,10 @@ export function OsPitchExecutionRow({
   onAddWeeklyUpdate,
 }: OsPitchExecutionRowProps) {
   const displayStatus = getBetDisplayStatus(bet, latestUpdate);
+  const hasTrackableStatus =
+    Boolean(latestUpdate) || TRACKABLE_STATUSES.has(bet.status);
+  const pillarColor = OS_BLOCK_DOT_COLORS[blockType];
+  const pillarLabel = OS_BLOCK_LABELS[blockType];
 
   return (
     <div className={`border-b last:border-b-0 ${osDivider}`}>
@@ -44,25 +56,26 @@ export function OsPitchExecutionRow({
         <button
           type="button"
           onClick={onOpenPitch}
-          className={`flex min-w-0 items-center gap-2 border-r px-4 py-3 text-left hover:bg-ta-paper-2 ${osDivider}`}
+          className={`flex min-w-0 flex-1 items-center gap-2 border-r px-4 py-3 text-left hover:bg-ta-paper-2 ${osDivider}`}
         >
-          {bet.is_priority ? (
-            <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center bg-ta-ink text-xs font-bold text-ta-paper"
-              title="Pitch prioritário"
-              aria-label="Pitch prioritário"
-            >
-              !
-            </span>
-          ) : null}
+          <span
+            className="flex h-5 w-5 shrink-0 items-center justify-center text-[10px] font-bold"
+            style={{ color: pillarColor }}
+            title={pillarLabel}
+            aria-label={`Pilar ${pillarLabel}`}
+          >
+            ●
+          </span>
           <span className="truncate text-sm font-bold normal-case">{bet.title}</span>
         </button>
 
         <div
-          className="flex flex-1 items-center justify-center px-2 py-3 text-center text-xs font-bold tracking-wide"
-          style={{ color: displayStatus.color }}
+          className="flex w-36 shrink-0 items-center justify-center px-2 py-3 text-center text-xs font-bold tracking-wide"
+          style={{
+            color: hasTrackableStatus ? displayStatus.color : pillarColor,
+          }}
         >
-          {displayStatus.label}
+          {hasTrackableStatus ? displayStatus.label : pillarLabel}
         </div>
 
         <button

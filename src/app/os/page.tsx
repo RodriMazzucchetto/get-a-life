@@ -293,10 +293,16 @@ function OsPageContent() {
     const allBets = orderedBlocks.flatMap((view) => view.bets);
     return computeOsBetStats(allBets);
   }, [orderedBlocks]);
-  const executionPitches = useMemo(
-    () => (selectedBlockView?.bets.filter((bet) => bet.is_priority) ?? []),
-    [selectedBlockView]
-  );
+  const priorityExecutionRows = useMemo(() => {
+    const rows: { bet: OsBetRow; blockType: OsBlockType }[] = [];
+    for (const type of OS_BLOCK_TYPES) {
+      const view = orderedBlocks.find((v) => v.block.type === type);
+      if (!view) continue;
+      const priority = view.bets.find((bet) => bet.is_priority) ?? view.priorityBet;
+      if (priority) rows.push({ bet: priority, blockType: type });
+    }
+    return rows;
+  }, [orderedBlocks]);
 
   const openGoalModal = (blockId: string, blockType: OsBlockType) => {
     const existingGoal = orderedBlocks.find((v) => v.block.id === blockId)?.goal;
@@ -578,6 +584,46 @@ function OsPageContent() {
             })}
           </div>
 
+          {/* Priority pitches — lista única (todos os pilares) */}
+          <div className={`mb-8 ${osCard}`}>
+            <h2
+              className={`border-b py-4 text-center text-2xl font-bold tracking-[0.12em] ${osDivider}`}
+            >
+              Priority pitches
+            </h2>
+
+            <div
+              className={`${OS_EXECUTION_TABLE_GRID} border-b ${osDivider} ${osLabelMuted}`}
+            >
+              <div className={`border-r ${osDivider}`} />
+              <div className={`border-r px-4 py-2 ${osDivider}`}>Priority</div>
+              <div className="flex items-center justify-center py-2">Status</div>
+              <div className={`border-l py-2 text-center ${osDivider}`}>+</div>
+            </div>
+
+            {priorityExecutionRows.length === 0 ? (
+              <div className={`px-4 py-10 text-center text-sm font-bold normal-case ${osLabelMuted}`}>
+                Nenhum pitch prioritário. Marque um pitch como ativo em{" "}
+                <span className="font-bold uppercase">Pitch</span>.
+              </div>
+            ) : (
+              priorityExecutionRows.map(({ bet, blockType }) => (
+                <OsPitchExecutionRow
+                  key={bet.id}
+                  bet={bet}
+                  blockType={blockType}
+                  latestUpdate={latestUpdates.get(bet.id) ?? null}
+                  expanded={expandedBetId === bet.id}
+                  onToggleExpand={() =>
+                    setExpandedBetId((prev) => (prev === bet.id ? null : bet.id))
+                  }
+                  onOpenPitch={() => openPitchModal(bet, blockType)}
+                  onAddWeeklyUpdate={() => openWeeklyModal(bet)}
+                />
+              ))
+            )}
+          </div>
+
           {/* Selected pillar stats */}
           <div className={`mb-6 ${osCard} px-4 py-4`}>
             <p className="mb-3 text-center text-sm font-bold tracking-wide">
@@ -590,45 +636,6 @@ function OsPageContent() {
               <p style={{ color: OS_RED }}>FAILED: {selectedPillarStats.failed}</p>
               <p style={{ color: OS_RED }}>FAILURE RATE: {selectedPillarStats.failureRate}%</p>
             </div>
-          </div>
-
-          {/* Selected pillar detail */}
-          <div className={osCard}>
-            <h2
-              className={`border-b py-4 text-center text-2xl font-bold tracking-[0.12em] ${osDivider}`}
-            >
-              {OS_BLOCK_LABELS[selectedPillar]}
-            </h2>
-
-            <div
-              className={`${OS_EXECUTION_TABLE_GRID} border-b ${osDivider} ${osLabelMuted}`}
-            >
-              <div className={`border-r ${osDivider}`} />
-              <div className={`border-r px-4 py-2 ${osDivider}`}>Priority</div>
-              <div className="flex items-center justify-center py-2">Status</div>
-              <div className={`border-l py-2 text-center ${osDivider}`}>+</div>
-            </div>
-
-            {executionPitches.length === 0 ? (
-              <div className={`px-4 py-10 text-center text-sm font-bold normal-case ${osLabelMuted}`}>
-                Nenhum pitch em execução neste pilar. Marque um pitch como ativo em{" "}
-                <span className="font-bold uppercase">Pitch</span>.
-              </div>
-            ) : (
-              executionPitches.map((bet) => (
-                <OsPitchExecutionRow
-                  key={bet.id}
-                  bet={bet}
-                  latestUpdate={latestUpdates.get(bet.id) ?? null}
-                  expanded={expandedBetId === bet.id}
-                  onToggleExpand={() =>
-                    setExpandedBetId((prev) => (prev === bet.id ? null : bet.id))
-                  }
-                  onOpenPitch={() => openPitchModal(bet, selectedPillar)}
-                  onAddWeeklyUpdate={() => openWeeklyModal(bet)}
-                />
-              ))
-            )}
           </div>
         </>
       )}
