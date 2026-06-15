@@ -4,24 +4,65 @@ import { useEffect, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
 import type { OsTaskRow } from "@/lib/os-types";
+import { computeOsTaskScore } from "@/lib/osBoardHelpers";
 import { osBtnGhost, osBtnPrimary, osInput, osLabelMuted } from "@/lib/os-ui";
 
 interface OsTaskEditModalProps {
   open: boolean;
   task: OsTaskRow | null;
   onClose: () => void;
-  onSave: (taskId: string, data: { title: string; description: string }) => Promise<void>;
+  onSave: (
+    taskId: string,
+    data: { title: string; description: string; importance: number; urgency: number }
+  ) => Promise<void>;
+}
+
+function ScorePicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div>
+      <span className={`mb-1 block ${osLabelMuted}`}>{label}</span>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(n)}
+            className={`h-8 w-8 border-[1.5px] text-xs font-bold transition-colors ${
+              value === n
+                ? "border-ta-ink bg-ta-ink text-ta-paper"
+                : "border-ta-ink bg-ta-paper hover:bg-ta-paper-2"
+            }`}
+            aria-pressed={value === n}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [importance, setImportance] = useState(3);
+  const [urgency, setUrgency] = useState(3);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!task) return;
     setTitle(task.title);
     setDescription(task.description ?? "");
+    setImportance(task.importance ?? 3);
+    setUrgency(task.urgency ?? 3);
   }, [task]);
 
   if (!open || !task) return null;
@@ -30,7 +71,12 @@ export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModal
     if (!task || !title.trim()) return;
     setSaving(true);
     try {
-      await onSave(task.id, { title: title.trim(), description: description.trim() });
+      await onSave(task.id, {
+        title: title.trim(),
+        description: description.trim(),
+        importance,
+        urgency,
+      });
       onClose();
     } finally {
       setSaving(false);
@@ -71,6 +117,19 @@ export function OsTaskEditModal({ open, task, onClose, onSave }: OsTaskEditModal
               className={`w-full px-3 py-2 text-sm ${osInput}`}
             />
           </label>
+
+          <div className="grid grid-cols-2 gap-4">
+            <ScorePicker label="Importância" value={importance} onChange={setImportance} />
+            <ScorePicker label="Urgência" value={urgency} onChange={setUrgency} />
+          </div>
+
+          <div className="border border-ta-ink bg-ta-paper-2 px-3 py-2 text-center">
+            <span className={`block ${osLabelMuted}`}>Score</span>
+            <p className="text-2xl font-bold tabular-nums">
+              {computeOsTaskScore({ importance, urgency })}
+            </p>
+            <p className="text-[10px] text-ta-muted">Importância × Urgência</p>
+          </div>
 
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className={osBtnGhost}>

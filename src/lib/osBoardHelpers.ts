@@ -15,8 +15,18 @@ export function isOsTaskActive(task: OsTaskRow): boolean {
   return task.completed_at == null
 }
 
+/** Score = importância × urgência (1–25). */
+export function computeOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency'>): number {
+  const importance = task.importance ?? 3
+  const urgency = task.urgency ?? 3
+  return importance * urgency
+}
+
+/** Pausa no fim; depois maior score primeiro; empate por pos. */
 export function sortOsTasksByPos(a: OsTaskRow, b: OsTaskRow): number {
   if (a.on_hold !== b.on_hold) return a.on_hold ? 1 : -1
+  const scoreDiff = computeOsTaskScore(b) - computeOsTaskScore(a)
+  if (scoreDiff !== 0) return scoreDiff
   return (a.pos ?? 0) - (b.pos ?? 0)
 }
 

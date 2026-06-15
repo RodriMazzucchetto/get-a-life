@@ -12,6 +12,7 @@ import {
   osTaskRowOnHold,
 } from "@/lib/os-ui";
 import type { OsBetRow, OsTaskRow } from "@/lib/os-types";
+import { computeOsTaskScore } from "@/lib/osBoardHelpers";
 import { isQuickWinProject } from "@/lib/project-filters";
 import { projectShortCode } from "@/lib/problemHelpers";
 
@@ -133,10 +134,16 @@ export function OsTaskItem({
                 onEdit(task);
               }}
               onPointerDown={stopActionPointer}
-              className="min-w-0 flex-1 border border-ta-ink bg-ta-paper px-2 py-1.5 text-left transition-colors hover:bg-ta-paper-2"
+              className="relative min-w-0 flex-1 border border-ta-ink bg-ta-paper px-2 py-1.5 text-left transition-colors hover:bg-ta-paper-2"
             >
               <span
-                className="block text-sm font-bold normal-case leading-snug break-words"
+                className="pointer-events-none absolute right-2 top-1.5 text-base font-bold tabular-nums text-ta-ink"
+                aria-label={`Score ${computeOsTaskScore(task)}`}
+              >
+                {computeOsTaskScore(task)}
+              </span>
+              <span
+                className="block pr-10 text-sm font-bold normal-case leading-snug break-words"
                 style={{ whiteSpace: "normal", overflow: "visible", textOverflow: "clip" }}
               >
                 {task.title}

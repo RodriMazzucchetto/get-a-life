@@ -242,12 +242,17 @@ export default function OsTasksPage() {
     }
   }
 
-  async function handleSaveEdit(taskId: string, data: { title: string; description: string }) {
+  async function handleSaveEdit(
+    taskId: string,
+    data: { title: string; description: string; importance: number; urgency: number }
+  ) {
     setError(null);
     try {
       const updated = await updateOsTask(taskId, {
         title: data.title,
         description: data.description || null,
+        importance: data.importance,
+        urgency: data.urgency,
       });
       replaceTask(updated);
     } catch {

@@ -13,6 +13,14 @@ import type {
   OsTaskRow,
 } from '@/lib/os-types'
 
+function normalizeOsTaskRow(row: OsTaskRow): OsTaskRow {
+  return {
+    ...row,
+    importance: row.importance ?? 3,
+    urgency: row.urgency ?? 3,
+  }
+}
+
 export const OS_SELECTED_PROJECT_KEY = 'os_selected_project_id'
 
 export const OS_BLOCK_TYPES: OsBlockType[] = ['finance', 'growth', 'ops']
@@ -634,7 +642,7 @@ export async function fetchAllOsTasks(userId: string): Promise<OsTaskRow[]> {
     throw error
   }
 
-  return data ?? []
+  return (data ?? []).map(normalizeOsTaskRow)
 }
 
 export async function fetchOsBetsForGoal(goalId: string): Promise<OsBetRow[]> {
@@ -957,7 +965,7 @@ export async function fetchOsTasksForBet(betId: string): Promise<OsTaskRow[]> {
     throw error
   }
 
-  return data ?? []
+  return (data ?? []).map(normalizeOsTaskRow)
 }
 
 export async function createOsTask(
@@ -987,6 +995,8 @@ export async function createOsTask(
       status,
       on_hold: false,
       on_hold_reason: null,
+      importance: 3,
+      urgency: 3,
       pos,
     })
     .select('*')
@@ -997,7 +1007,7 @@ export async function createOsTask(
     throw error
   }
 
-  return data
+  return normalizeOsTaskRow(data)
 }
 
 export async function updateOsTask(
@@ -1010,6 +1020,8 @@ export async function updateOsTask(
     on_hold?: boolean
     on_hold_reason?: string | null
     completed_at?: string | null
+    importance?: number
+    urgency?: number
   }
 ): Promise<OsTaskRow> {
   const supabase = createClient()
@@ -1024,6 +1036,8 @@ export async function updateOsTask(
   if (updates.on_hold !== undefined) payload.on_hold = updates.on_hold
   if (updates.on_hold_reason !== undefined) payload.on_hold_reason = updates.on_hold_reason
   if (updates.completed_at !== undefined) payload.completed_at = updates.completed_at
+  if (updates.importance !== undefined) payload.importance = updates.importance
+  if (updates.urgency !== undefined) payload.urgency = updates.urgency
 
   const { data, error } = await supabase
     .from('os_tasks')
@@ -1037,7 +1051,7 @@ export async function updateOsTask(
     throw error
   }
 
-  return data
+  return normalizeOsTaskRow(data)
 }
 
 export async function deleteOsTask(taskId: string): Promise<void> {
