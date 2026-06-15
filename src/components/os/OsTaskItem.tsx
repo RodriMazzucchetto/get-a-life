@@ -1,27 +1,20 @@
 "use client";
 
-import { useState, type MouseEvent, type PointerEvent } from "react";
+import { useState, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { PlayIcon } from "@heroicons/react/24/outline";
 import type { OsProjectOption } from "@/lib/os-queries";
-import {
-  osIconBtn,
-  osIconBtnDanger,
-  osTaskActionsOnHold,
-  osTaskRow,
-  osTaskRowBase,
-  osTaskRowOnHold,
-  osTaskTitleOnHold,
-} from "@/lib/os-ui";
 import type { OsBetRow, OsTaskRow } from "@/lib/os-types";
 import { computeOsTaskScore, hasOsTaskScore } from "@/lib/osBoardHelpers";
+import { isQuickWinProject } from "@/lib/project-filters";
 import { projectShortCode } from "@/lib/problemHelpers";
 
 interface OsTaskItemProps {
   task: OsTaskRow;
   projectTags: OsProjectOption[];
   linkedBet: OsBetRow | null;
+  inFocoColumn?: boolean;
   onToggleComplete: (task: OsTaskRow) => void;
   onEdit: (task: OsTaskRow) => void;
   onPutOnHold: (task: OsTaskRow) => void;
@@ -35,10 +28,24 @@ function stopActionPointer(e: MouseEvent | PointerEvent) {
   e.stopPropagation();
 }
 
+function taskDotClass(task: OsTaskRow): string {
+  if (task.on_hold) return "wait";
+  if (task.status === "in_progress") return "run";
+  return "idle";
+}
+
+function taskDesc(task: OsTaskRow, linkedBet: OsBetRow | null): string | null {
+  const desc = task.description?.trim();
+  if (desc) return desc;
+  if (linkedBet?.title) return linkedBet.title;
+  return null;
+}
+
 export function OsTaskItem({
   task,
   projectTags,
   linkedBet,
+  inFocoColumn = false,
   onToggleComplete,
   onEdit,
   onPutOnHold,
@@ -61,29 +68,39 @@ export function OsTaskItem({
   const showBacklogButton = task.status !== "backlog";
   const isInFocus = task.status === "in_progress";
   const taskScore = computeOsTaskScore(task);
-  const onHold = task.on_hold;
+  const desc = taskDesc(task, linkedBet);
+  const showRunState = inFocoColumn && task.status === "in_progress" && !task.on_hold;
+
+  const metaItems: { key: string; node: ReactNode }[] = [];
+  if (showRunState) {
+    metaItems.push({ key: "run", node: <span className="state run">Em execução</span> });
+  }
+  if (task.on_hold && task.on_hold_reason) {
+    metaItems.push({
+      key: "wait",
+      node: <span className="state wait">Em espera · {task.on_hold_reason}</span>,
+    });
+  }
+  for (const project of projectTags) {
+    metaItems.push({
+      key: project.id,
+      node: (
+        <span className={`tag ${isQuickWinProject(project) ? "qw" : ""}`}>
+          {projectShortCode(project.name)}
+        </span>
+      ),
+    });
+  }
 
   if (confirmDelete) {
     return (
-      <div ref={setNodeRef} style={style} className={`${osTaskRow} border-ta-red bg-red-50/40`}>
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <span className="min-w-0 flex-1 truncate text-xs font-bold normal-case text-ta-red">
-            Excluir &ldquo;{task.title}&rdquo;?
-          </span>
-          <button
-            type="button"
-            disabled={deleting}
-            onClick={() => void onDelete(task)}
-            className="shrink-0 border-[1.5px] border-ta-red bg-ta-red px-2 py-1 text-[10px] font-bold uppercase text-ta-paper hover:bg-ta-red/90 disabled:opacity-50"
-          >
+      <div ref={setNodeRef} style={style} className="os-task os-task-delete">
+        <span className="msg">Excluir &ldquo;{task.title}&rdquo;?</span>
+        <div className="actions">
+          <button type="button" disabled={deleting} className="confirm" onClick={() => void onDelete(task)}>
             {deleting ? "..." : "Sim"}
           </button>
-          <button
-            type="button"
-            disabled={deleting}
-            onClick={() => setConfirmDelete(false)}
-            className="shrink-0 border-[1.5px] border-ta-ink px-2 py-1 text-[10px] font-bold uppercase hover:bg-ta-paper-2 disabled:opacity-50"
-          >
+          <button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)}>
             Não
           </button>
         </div>
@@ -92,110 +109,48 @@ export function OsTaskItem({
   }
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={onHold ? `${osTaskRowBase} ${osTaskRowOnHold}` : osTaskRow}
-    >
-      <div className="flex items-stretch gap-0">
+    <div ref={setNodeRef} style={style} className="os-task group">
+      <button
+        type="button"
+        className="handle"
+        aria-label="Arrastar task"
+        {...attributes}
+        {...listeners}
+      >
+        ⋮⋮
+      </button>
+
+      <span className={`dot ${taskDotClass(task)}`} aria-hidden />
+
+      <div className="body">
         <button
           type="button"
-          className={`flex w-7 shrink-0 cursor-grab items-center justify-center text-ta-muted active:cursor-grabbing hover:text-ta-ink ${
-            onHold ? "hover:bg-ta-on-hold-hover" : "hover:bg-ta-paper-2"
-          }`}
-          aria-label="Arrastar task"
-          {...attributes}
-          {...listeners}
+          className="task-title"
+          onClick={(e) => {
+            stopActionPointer(e);
+            onEdit(task);
+          }}
+          onPointerDown={stopActionPointer}
         >
-          <span className="flex gap-0.5">
-            <span className="flex flex-col gap-0.5">
-              <span className="h-0.5 w-0.5 rounded-full bg-current" />
-              <span className="h-0.5 w-0.5 rounded-full bg-current" />
-              <span className="h-0.5 w-0.5 rounded-full bg-current" />
-            </span>
-            <span className="flex flex-col gap-0.5">
-              <span className="h-0.5 w-0.5 rounded-full bg-current" />
-              <span className="h-0.5 w-0.5 rounded-full bg-current" />
-              <span className="h-0.5 w-0.5 rounded-full bg-current" />
-            </span>
-          </span>
+          {task.title}
         </button>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-2 pl-0.5 pr-2 group-hover:pr-24 md:group-hover:pr-28">
-          <div className="flex min-w-0 items-start gap-2.5">
-            <input
-              type="checkbox"
-              checked={false}
-              onChange={() => onToggleComplete(task)}
-              onPointerDown={stopActionPointer}
-              className="mt-0.5 h-3.5 w-3.5 shrink-0 border border-ta-ink accent-ta-ink"
-              aria-label="Marcar como concluída"
-            />
-
-            <button
-              type="button"
-              onClick={(e) => {
-                stopActionPointer(e);
-                onEdit(task);
-              }}
-              onPointerDown={stopActionPointer}
-              className={`relative min-w-0 flex-1 border px-2 py-1.5 text-left transition-colors ${
-                onHold
-                  ? osTaskTitleOnHold
-                  : "border-ta-ink bg-ta-paper hover:bg-ta-paper-2"
-              }`}
-            >
-              {hasOsTaskScore(task) ? (
-                <span
-                  className="pointer-events-none absolute right-2 top-1.5 text-base font-bold tabular-nums text-ta-ink"
-                  aria-label={`Score ${taskScore}`}
-                >
-                  {taskScore}
-                </span>
-              ) : null}
-              <span
-                className={`block text-sm font-bold normal-case leading-snug break-words ${hasOsTaskScore(task) ? "pr-10" : ""}`}
-                style={{ whiteSpace: "normal", overflow: "visible", textOverflow: "clip" }}
-              >
-                {task.title}
+        {metaItems.length > 0 ? (
+          <div className="meta">
+            {metaItems.map((item, index) => (
+              <span key={item.key} className="inline-flex items-center gap-2.5">
+                {index > 0 ? <span className="sep">·</span> : null}
+                {item.node}
               </span>
-              {task.on_hold && task.on_hold_reason ? (
-                <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-ta-muted break-words">
-                  Em espera: {task.on_hold_reason}
-                </span>
-              ) : null}
-            </button>
+            ))}
           </div>
+        ) : null}
 
-          {projectTags.length > 0 || linkedBet ? (
-            <div className="flex min-w-0 flex-wrap items-start gap-1.5 pl-[1.375rem]">
-              {projectTags.map((project) => (
-                <span
-                  key={project.id}
-                  className="inline-block max-w-full shrink-0 px-0.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-snug"
-                  style={{ color: project.color ?? "#888888" }}
-                  title={project.name}
-                >
-                  {projectShortCode(project.name)}
-                </span>
-              ))}
-              {linkedBet ? (
-                <span
-                  className="inline-block min-w-0 max-w-full flex-1 px-0.5 py-0.5 text-[10px] font-bold normal-case leading-snug break-words text-ta-muted"
-                  title={linkedBet.title}
-                >
-                  {linkedBet.title}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+        {desc ? <div className="desc">{desc}</div> : null}
+      </div>
 
-        <div
-          className={`absolute right-1.5 top-2 flex items-center gap-0.5 border px-0.5 py-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 ${
-            onHold ? osTaskActionsOnHold : "border-ta-ink bg-ta-paper"
-          }`}
-        >
+      <div className="right">
+        <div className="os-task-actions">
           {showBacklogButton ? (
             <button
               type="button"
@@ -204,7 +159,6 @@ export function OsTaskItem({
                 stopActionPointer(e);
                 onMoveToBacklog(task);
               }}
-              className={osIconBtn}
               title="Mover para backlog"
               aria-label="Mover para backlog"
             >
@@ -219,7 +173,6 @@ export function OsTaskItem({
               stopActionPointer(e);
               onMoveToFocus(task);
             }}
-            className={osIconBtn}
             title={isInFocus ? "Voltar para Semana Atual" : "Enviar para Foco Agora"}
             aria-label={isInFocus ? "Voltar para Semana Atual" : "Enviar para Foco Agora"}
           >
@@ -237,7 +190,6 @@ export function OsTaskItem({
               stopActionPointer(e);
               onPutOnHold(task);
             }}
-            className={`${osIconBtn} ${task.on_hold ? "bg-ta-on-hold text-ta-ink" : ""}`}
             title={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
             aria-label={task.on_hold ? "Retirar da espera" : "Colocar em espera"}
           >
@@ -255,7 +207,6 @@ export function OsTaskItem({
               stopActionPointer(e);
               onEdit(task);
             }}
-            className={osIconBtn}
             title="Editar"
             aria-label="Editar task"
           >
@@ -264,18 +215,31 @@ export function OsTaskItem({
 
           <button
             type="button"
+            className="danger"
             onPointerDown={stopActionPointer}
             onClick={(e) => {
               stopActionPointer(e);
               setConfirmDelete(true);
             }}
-            className={osIconBtnDanger}
             title="Excluir"
             aria-label="Excluir task"
           >
             <span className="material-symbols-outlined text-[17px]">close</span>
           </button>
         </div>
+
+        {hasOsTaskScore(task) ? (
+          <span className={`prio ${taskScore != null && taskScore >= 12 ? "high" : ""}`}>{taskScore}</span>
+        ) : null}
+
+        <input
+          type="checkbox"
+          checked={false}
+          onChange={() => onToggleComplete(task)}
+          onPointerDown={stopActionPointer}
+          className="check"
+          aria-label="Marcar como concluída"
+        />
       </div>
     </div>
   );

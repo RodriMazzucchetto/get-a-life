@@ -24,16 +24,7 @@ import { OsTaskEditModal, OsTaskOnHoldModal } from "@/components/os/OsTaskEditMo
 import { OsTaskItem, resolveOsTaskProjectTags } from "@/components/os/OsTaskItem";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useOsLayout } from "@/contexts/OsLayoutContext";
-import {
-  osCard,
-  osCardHeader,
-  osEmptyState,
-  osErrorBanner,
-  osInput,
-  osInputRow,
-  osLabelMuted,
-  osPage,
-} from "@/lib/os-ui";
+import { osErrorBanner, osEmptyState } from "@/lib/os-ui";
 import {
   OS_COL_BACKLOG,
   OS_COL_CURRENT_WEEK,
@@ -53,13 +44,7 @@ import {
   type OsProjectOption,
 } from "@/lib/os-queries";
 import type { OsBetRow, OsTaskBoardStatus, OsTaskRow } from "@/lib/os-types";
-
-function osTaskListClassName(taskCount: number): string {
-  const base = "space-y-2";
-  if (taskCount === 0) return `${base} min-h-[5rem]`;
-  if (taskCount <= 4) return base;
-  return `${base} max-h-[min(42vh,22rem)] overflow-y-auto [scrollbar-gutter:stable] md:max-h-[min(48vh,26rem)]`;
-}
+import "./os-tasks.css";
 
 function OsTaskColumn({
   id,
@@ -68,6 +53,7 @@ function OsTaskColumn({
   tasks,
   betsById,
   projectsById,
+  variant = "default",
   onToggleComplete,
   onEdit,
   onPutOnHold,
@@ -75,8 +61,7 @@ function OsTaskColumn({
   onMoveToBacklog,
   onDelete,
   onCreate,
-  createPlaceholder,
-  className,
+  createLabel,
   deletingTaskId,
 }: {
   id: string;
@@ -85,6 +70,7 @@ function OsTaskColumn({
   tasks: OsTaskRow[];
   betsById: Map<string, OsBetRow>;
   projectsById: Map<string, OsProjectOption>;
+  variant?: "default" | "foco";
   onToggleComplete: (task: OsTaskRow) => void;
   onEdit: (task: OsTaskRow) => void;
   onPutOnHold: (task: OsTaskRow) => void;
@@ -92,40 +78,70 @@ function OsTaskColumn({
   onMoveToBacklog: (task: OsTaskRow) => void;
   onDelete: (task: OsTaskRow) => void;
   onCreate: (title: string) => Promise<void>;
-  createPlaceholder: string;
-  className?: string;
+  createLabel: string;
   deletingTaskId?: string | null;
 }) {
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function submitCreate() {
-    const title = draft.trim();
-    if (!title || creating) return;
+    const titleText = draft.trim();
+    if (!titleText || creating) return;
     setCreating(true);
     try {
-      await onCreate(title);
+      await onCreate(titleText);
       setDraft("");
+      setShowCreate(false);
     } finally {
       setCreating(false);
     }
   }
 
-  return (
-    <section className={`flex min-h-0 flex-col ${osCard} ${className ?? ""}`}>
-      <header
-        className={`${osCardHeader} ${tasks.length === 0 ? "py-2.5" : ""}`}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-bold tracking-[0.12em]">{title}</h2>
-          <span className={`${osLabelMuted} normal-case`}>{tasks.length}</span>
-        </div>
-        <p className={`mt-1 ${osLabelMuted}`}>{subtitle}</p>
-      </header>
+  function openCreate() {
+    setShowCreate(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
 
-      <div className="flex flex-col p-3 md:p-4">
-        <div className={`mb-2.5 ${osInputRow}`}>
+  return (
+    <section className={variant === "foco" ? "col foco" : "col"}>
+      <div className="col-head">
+        <span className="title">{title}</span>
+        <span className="count">{tasks.length}</span>
+        <button type="button" className="add" title={createLabel} onClick={openCreate} aria-label={createLabel}>
+          +
+        </button>
+      </div>
+      <div className="col-sub">{subtitle}</div>
+
+      <OsDroppableColumn id={id} className="list" dropHighlightClass="list-drop-active">
+        {tasks.length === 0 ? (
+          <p className="list-empty">Arraste tasks para cá ou crie uma nova.</p>
+        ) : (
+          <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+            {tasks.map((task) => (
+              <OsTaskItem
+                key={task.id}
+                task={task}
+                inFocoColumn={variant === "foco"}
+                projectTags={resolveOsTaskProjectTags(task, projectsById)}
+                linkedBet={task.bet_id ? (betsById.get(task.bet_id) ?? null) : null}
+                onToggleComplete={onToggleComplete}
+                onEdit={onEdit}
+                onPutOnHold={onPutOnHold}
+                onMoveToFocus={onMoveToFocus}
+                onMoveToBacklog={onMoveToBacklog}
+                onDelete={onDelete}
+                deleting={deletingTaskId === task.id}
+              />
+            ))}
+          </SortableContext>
+        )}
+      </OsDroppableColumn>
+
+      {showCreate ? (
+        <div className="new-task-input">
           <input
             ref={inputRef}
             type="text"
@@ -133,46 +149,23 @@ function OsTaskColumn({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") void submitCreate();
+              if (e.key === "Escape") {
+                setShowCreate(false);
+                setDraft("");
+              }
             }}
-            placeholder={createPlaceholder}
-            className={`min-w-0 flex-1 px-3 py-2 text-sm font-bold normal-case ${osInput} border-0 focus:border-0`}
+            placeholder={createLabel}
           />
-          <button
-            type="button"
-            onClick={() => void submitCreate()}
-            disabled={creating || !draft.trim()}
-            className="shrink-0 border-l border-ta-ink px-3 py-2 text-sm font-bold text-ta-muted transition-colors hover:bg-ta-paper-2 hover:text-ta-ink disabled:opacity-40"
-          >
-            +
+          <button type="button" disabled={creating || !draft.trim()} onClick={() => void submitCreate()}>
+            {creating ? "..." : "Add"}
           </button>
         </div>
-
-        <OsDroppableColumn id={id} className={osTaskListClassName(tasks.length)}>
-          {tasks.length === 0 ? (
-            <p className={`py-3 text-center ${osLabelMuted} normal-case`}>
-              Arraste tasks para cá ou crie uma nova.
-            </p>
-          ) : (
-            <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-              {tasks.map((task) => (
-                <OsTaskItem
-                  key={task.id}
-                  task={task}
-                  projectTags={resolveOsTaskProjectTags(task, projectsById)}
-                  linkedBet={task.bet_id ? (betsById.get(task.bet_id) ?? null) : null}
-                  onToggleComplete={onToggleComplete}
-                  onEdit={onEdit}
-                  onPutOnHold={onPutOnHold}
-                  onMoveToFocus={onMoveToFocus}
-                  onMoveToBacklog={onMoveToBacklog}
-                  onDelete={onDelete}
-                  deleting={deletingTaskId === task.id}
-                />
-              ))}
-            </SortableContext>
-          )}
-        </OsDroppableColumn>
-      </div>
+      ) : (
+        <button type="button" className="new-task" onClick={openCreate}>
+          <span className="plus">+</span>
+          {createLabel}
+        </button>
+      )}
     </section>
   );
 }
@@ -458,13 +451,11 @@ export default function OsTasksPage() {
   }
 
   return (
-    <div className={`pb-10 ${osPage}`}>
-      <header className="mb-5 border-b-[1.5px] border-ta-ink pb-4 text-center">
-        <h1 className="text-2xl font-bold tracking-[0.14em]">Tasks OS</h1>
-        <p className={`mt-1 ${osLabelMuted} normal-case`}>
-          Foco Agora · Semana Atual · Backlog
-        </p>
-      </header>
+    <div className="os-tasks-page pb-10">
+      <div className="page-head">
+        <h1>Tasks</h1>
+      </div>
+      <div className="page-sub">Foco agora · Semana atual · Backlog</div>
 
       {error || tasksError ? (
         <div className={osErrorBanner}>{error ?? tasksError}</div>
@@ -483,11 +474,12 @@ export default function OsTasksPage() {
             void handleDragEnd(e);
           }}
         >
-          <div className="flex w-full flex-col gap-4 lg:gap-6">
+          <div className="board">
             <OsTaskColumn
               id={OS_COL_IN_PROGRESS}
-              title="Foco Agora"
-              subtitle="Em execução — play envia para cá"
+              title="Foco agora"
+              subtitle="Em execução · Play envia pra cá"
+              variant="foco"
               tasks={focusTasks}
               betsById={betsById}
               projectsById={projectsById}
@@ -498,14 +490,14 @@ export default function OsTasksPage() {
               onMoveToBacklog={handleMoveToBacklog}
               onDelete={handleDelete}
               onCreate={(title) => handleCreateInColumn("in_progress", title)}
-              createPlaceholder="Nova task em foco..."
+              createLabel="Nova task em foco"
               deletingTaskId={deletingTaskId}
             />
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:gap-8">
+            <div className="row-2">
               <OsTaskColumn
                 id={OS_COL_CURRENT_WEEK}
-                title="Semana Atual"
+                title="Semana atual"
                 subtitle="Planejadas para esta semana"
                 tasks={weekTasks}
                 betsById={betsById}
@@ -517,7 +509,7 @@ export default function OsTasksPage() {
                 onMoveToBacklog={handleMoveToBacklog}
                 onDelete={handleDelete}
                 onCreate={(title) => handleCreateInColumn("current_week", title)}
-                createPlaceholder="Nova task da semana..."
+                createLabel="Nova task da semana"
                 deletingTaskId={deletingTaskId}
               />
 
@@ -535,7 +527,7 @@ export default function OsTasksPage() {
                 onMoveToBacklog={handleMoveToBacklog}
                 onDelete={handleDelete}
                 onCreate={(title) => handleCreateInColumn("backlog", title)}
-                createPlaceholder="Nova task no backlog..."
+                createLabel="Nova task no backlog"
                 deletingTaskId={deletingTaskId}
               />
             </div>
@@ -543,8 +535,13 @@ export default function OsTasksPage() {
 
           <DragOverlay>
             {activeDragTask ? (
-              <div className={`${osCard} px-4 py-3 text-sm font-bold normal-case shadow-[6px_6px_0_var(--color-ta-ink)]`}>
-                {activeDragTask.title}
+              <div className="os-tasks-page">
+                <div className="os-task bg-ta-paper px-2 shadow-[4px_4px_0_var(--color-ta-ink)]">
+                  <span className="dot idle" aria-hidden />
+                  <div className="body">
+                    <div className="task-title">{activeDragTask.title}</div>
+                  </div>
+                </div>
               </div>
             ) : null}
           </DragOverlay>
