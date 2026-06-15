@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { ModalPanel } from "@/components/ModalPanel";
+import Link from "next/link";
 import { GoalBacklogPanel } from "@/components/os/GoalBacklogPanel";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
 import { OsPitchExecutionRow } from "@/components/os/OsPitchExecutionRow";
@@ -11,13 +12,13 @@ import { WeeklyUpdateModal } from "@/components/os/WeeklyUpdateModal";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useOsLayout } from "@/contexts/OsLayoutContext";
 import {
+  OS_BLOCK_DOT_COLORS,
   OS_BLOCK_LABELS,
   OS_BLOCK_TYPES,
   OS_CYAN,
   OS_RED,
   computeCompanyMomentum,
   computeOsBetStats,
-  getPillarMomentumColor,
   createOsBetUpdate,
   createOsTask,
   deleteOsBet,
@@ -35,113 +36,108 @@ import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-
 import { osCacheKey, packBoardCache, setOsCache } from "@/lib/os-cache";
 import { osBtnGhost, osBtnPrimary, osEmptyState, osErrorBanner, osInput } from "@/lib/os-ui";
 
-function OsProgressBar({
-  label,
-  value,
-  pct,
-  tone,
-}: {
-  label: string;
-  value: number;
-  pct: number;
-  tone: "executed" | "failed";
-}) {
-  const fillColor = tone === "executed" ? OS_CYAN : OS_RED;
-  const fillWidth = pct > 0 ? `${pct}%` : "3.5rem";
+function computeMomentumSegments(
+  priorityBets: OsBetRow[],
+  latestUpdates: Map<string, OsBetUpdateRow>
+) {
+  if (priorityBets.length === 0) {
+    return { executed: 0, inFlight: 0, failed: 0, notStarted: 100 };
+  }
 
-  return (
-    <div className="os-metric-row">
-      <div className="label">
-        {label}: {value}
-      </div>
-      <div className="track">
-        <div className="fill" style={{ width: fillWidth, backgroundColor: fillColor }}>
-          {pct}%
-        </div>
-      </div>
-    </div>
-  );
+  let executed = 0;
+  let inFlight = 0;
+  let failed = 0;
+  let notStarted = 0;
+
+  for (const bet of priorityBets) {
+    const update = latestUpdates.get(bet.id);
+    const status = update?.status ?? bet.status;
+    if (status === "executed") executed++;
+    else if (status === "failed") failed++;
+    else if (status === "on_course" || status === "deviating") inFlight++;
+    else notStarted++;
+  }
+
+  const total = priorityBets.length;
+  return {
+    executed: (executed / total) * 100,
+    inFlight: (inFlight / total) * 100,
+    failed: (failed / total) * 100,
+    notStarted: (notStarted / total) * 100,
+  };
 }
 
-function PillarSelectorBar({
+function PillarCard({
+  blockType,
   label,
   pct,
   goalTitle,
   blockId,
   userId,
-  selected,
-  onSelect,
   onEditGoal,
-  fillColor,
-  hasActivePitch,
   onGoalsChanged,
+  stats,
 }: {
+  blockType: OsBlockType;
   label: string;
   pct: number;
   goalTitle: string;
   blockId: string;
   userId: string;
-  selected: boolean;
-  onSelect: () => void;
   onEditGoal: () => void;
-  fillColor: string;
-  hasActivePitch: boolean;
   onGoalsChanged: () => void;
+  stats: { started: number; executed: number; failed: number };
 }) {
   const [showBacklog, setShowBacklog] = useState(false);
   const displayGoal = goalTitle || "Definir meta";
+  const dotColor = OS_BLOCK_DOT_COLORS[blockType];
 
   return (
-    <div className={`os-pillar-card ${selected ? "selected" : ""}`}>
-      <button type="button" onClick={onSelect} className="pillar-top" aria-pressed={selected}>
-        <div
-          className="pillar-label"
-          style={hasActivePitch ? { boxShadow: `inset 4px 0 0 0 ${fillColor}` } : undefined}
-        >
-          {label}
-        </div>
-        <div className="pillar-track">
-          {pct > 0 ? (
-            <div
-              className="pillar-fill"
-              style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: fillColor }}
-            />
-          ) : null}
-          <span className="relative z-[1]" style={{ color: hasActivePitch ? fillColor : "var(--color-ta-ink)" }}>
-            {pct}%
-          </span>
-        </div>
-      </button>
-
-      <div className="pillar-goal-row">
-        <button type="button" onClick={onEditGoal} className="pillar-goal" title={displayGoal}>
-          {displayGoal}
-        </button>
-        <button
-          type="button"
-          aria-label={showBacklog ? "Fechar backlog de metas" : "Ver backlog de metas"}
-          onClick={() => setShowBacklog((v) => !v)}
-          className={`pillar-backlog-btn ${showBacklog ? "open" : ""}`}
-        >
-          <span
-            className="material-symbols-outlined text-[18px] transition-transform"
-            style={{ transform: showBacklog ? "rotate(180deg)" : "rotate(0deg)" }}
-          >
-            format_list_bulleted
-          </span>
-        </button>
+    <article className={`os-pillar ${pct > 0 ? "has-progress" : ""}`}>
+      <div className="head">
+        <span className="dot" style={{ backgroundColor: dotColor }} aria-hidden />
+        <span className="name">{label}</span>
+        <span className="pct">{pct}%</span>
       </div>
-
+      <div className="body">
+        <div className="target-actions">
+          <button type="button" onClick={onEditGoal} className="target target-btn" title={displayGoal}>
+            <span className="lab">Meta</span>
+            {displayGoal}
+          </button>
+          <button
+            type="button"
+            aria-label={showBacklog ? "Fechar backlog de metas" : "Ver backlog de metas"}
+            onClick={() => setShowBacklog((v) => !v)}
+            className={`backlog-btn ${showBacklog ? "open" : ""}`}
+          >
+            <span
+              className="material-symbols-outlined text-[18px] transition-transform"
+              style={{ transform: showBacklog ? "rotate(180deg)" : "rotate(0deg)" }}
+            >
+              format_list_bulleted
+            </span>
+          </button>
+        </div>
+        <div className="breakdown">
+          <div className="item">
+            <span className="l">Started</span>
+            <span className="v">{stats.started}</span>
+          </div>
+          <div className="item cyan">
+            <span className="l">Executed</span>
+            <span className={`v ${stats.executed === 0 ? "zero" : ""}`}>{stats.executed}</span>
+          </div>
+          <div className="item red">
+            <span className="l">Failed</span>
+            <span className={`v ${stats.failed === 0 ? "zero" : ""}`}>{stats.failed}</span>
+          </div>
+        </div>
+      </div>
       {showBacklog ? (
-        <GoalBacklogPanel
-          blockId={blockId}
-          userId={userId}
-          onGoalsChanged={() => {
-            onGoalsChanged();
-          }}
-        />
+        <GoalBacklogPanel blockId={blockId} userId={userId} onGoalsChanged={onGoalsChanged} />
       ) : null}
-    </div>
+    </article>
   );
 }
 
@@ -165,7 +161,6 @@ function OsPageContent() {
     setLatestUpdates,
   } = useOsLayout();
   const [error, setError] = useState<string | null>(null);
-  const [selectedPillar, setSelectedPillar] = useState<OsBlockType>("finance");
   const [expandedBetId, setExpandedBetId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -247,11 +242,6 @@ function OsPageContent() {
     [orderedBlocks, latestUpdates]
   );
 
-  const companyMomentumColor = useMemo(() => {
-    const allBets = orderedBlocks.flatMap((view) => view.bets);
-    return getPillarMomentumColor(companyMomentum, allBets.length > 0);
-  }, [companyMomentum, orderedBlocks]);
-
   const companyStats = useMemo(() => {
     const priorityBets: OsBetRow[] = [];
     for (const type of OS_BLOCK_TYPES) {
@@ -272,6 +262,32 @@ function OsPageContent() {
       if (priority) rows.push({ bet: priority, blockType: type });
     }
     return rows;
+  }, [orderedBlocks]);
+
+  const priorityBets = useMemo(() => priorityExecutionRows.map((row) => row.bet), [priorityExecutionRows]);
+
+  const momentumSegments = useMemo(
+    () => computeMomentumSegments(priorityBets, latestUpdates),
+    [priorityBets, latestUpdates]
+  );
+
+  const pillarStatsByType = useMemo(() => {
+    const stats: Record<OsBlockType, { started: number; executed: number; failed: number }> = {
+      finance: { started: 0, executed: 0, failed: 0 },
+      growth: { started: 0, executed: 0, failed: 0 },
+      ops: { started: 0, executed: 0, failed: 0 },
+    };
+    for (const view of orderedBlocks) {
+      const blockType = view.block.type as OsBlockType;
+      const priority = view.bets.find((bet) => bet.is_priority) ?? view.priorityBet;
+      if (!priority) continue;
+      stats[blockType] = {
+        started: 1,
+        executed: priority.status === "executed" ? 1 : 0,
+        failed: priority.status === "failed" ? 1 : 0,
+      };
+    }
+    return stats;
   }, [orderedBlocks]);
 
   const openGoalModal = (blockId: string, blockType: OsBlockType) => {
@@ -489,90 +505,134 @@ function OsPageContent() {
         <div className={osEmptyState}>Selecione uma empresa para visualizar o OS.</div>
       ) : (
         <>
-          <div className="os-metric-row">
-            <div className="label">Company execution momentum</div>
-            <div className="track">
-              <div
-                className="fill"
-                style={{
-                  width: `${Math.max(companyMomentum, 8)}%`,
-                  backgroundColor: companyMomentumColor,
-                  minWidth: "3.5rem",
-                }}
-              >
-                {companyMomentum}%
-              </div>
+          <div className="os-stats">
+            <div className="os-stat">
+              <span className="label">Priorities Started</span>
+              <span className="value">{companyStats.started}</span>
+            </div>
+            <div className={`os-stat ${companyStats.executed > 0 ? "signal-cyan" : ""}`}>
+              <span className="label">Executed</span>
+              <span className="value">
+                {companyStats.executed}
+                <span className="pct">{companyStats.successRate}%</span>
+              </span>
+            </div>
+            <div className={`os-stat ${companyStats.failed > 0 ? "signal-red" : ""}`}>
+              <span className="label">Failed</span>
+              <span className="value">
+                {companyStats.failed}
+                <span className="pct">{companyStats.failureRate}%</span>
+              </span>
+            </div>
+            <div className="os-stat">
+              <span className="label">Momentum</span>
+              <span className="value">{companyMomentum}%</span>
             </div>
           </div>
 
-          <div className="os-kpi-grid">
-            <h2 className="os-kpi-head">Priorities started: {companyStats.started}</h2>
-            <OsProgressBar
-              label="Executed"
-              value={companyStats.executed}
-              pct={companyStats.successRate}
-              tone="executed"
-            />
-            <OsProgressBar
-              label="Failed"
-              value={companyStats.failed}
-              pct={companyStats.failureRate}
-              tone="failed"
-            />
+          <div className="os-momentum">
+            <div className="os-momentum-head">
+              <span className="title">Company Execution Momentum</span>
+              <span className="legend">
+                <span>
+                  <span className="dot" style={{ background: "var(--color-ta-cyan)" }} />
+                  Executed
+                </span>
+                <span>
+                  <span className="dot" style={{ background: "#d99a00" }} />
+                  In flight
+                </span>
+                <span>
+                  <span className="dot" style={{ background: "var(--color-ta-red)" }} />
+                  Failed
+                </span>
+                <span>
+                  <span
+                    className="dot"
+                    style={{
+                      background: "var(--color-ta-paper-2)",
+                      border: "1px solid var(--color-ta-rule-2)",
+                    }}
+                  />
+                  Not started
+                </span>
+              </span>
+            </div>
+            <div className="os-progress">
+              <div
+                className="seg"
+                style={{ background: "var(--color-ta-cyan)", width: `${momentumSegments.executed}%` }}
+              />
+              <div
+                className="seg"
+                style={{ background: "#d99a00", width: `${momentumSegments.inFlight}%` }}
+              />
+              <div
+                className="seg"
+                style={{ background: "var(--color-ta-red)", width: `${momentumSegments.failed}%` }}
+              />
+              <div
+                className="seg"
+                style={{
+                  background: "var(--color-ta-paper-2)",
+                  width: `${momentumSegments.notStarted}%`,
+                }}
+              />
+            </div>
           </div>
 
-          <div className="os-pillar-grid">
+          <div className="os-pillars">
             {orderedBlocks.map((view) => {
               const blockType = view.block.type as OsBlockType;
               const display = pillarDisplays[blockType];
               return (
-                <PillarSelectorBar
+                <PillarCard
                   key={view.block.id}
+                  blockType={blockType}
                   label={OS_BLOCK_LABELS[blockType]}
                   pct={display.pct}
                   goalTitle={view.goal?.title ?? "Definir meta"}
                   blockId={view.block.id}
                   userId={user?.id ?? ""}
-                  selected={selectedPillar === blockType}
-                  onSelect={() => setSelectedPillar(blockType)}
                   onEditGoal={() => openGoalModal(view.block.id, blockType)}
-                  fillColor={display.color}
-                  hasActivePitch={view.bets.length > 0}
                   onGoalsChanged={() => void refreshBoard({ background: true, force: true })}
+                  stats={pillarStatsByType[blockType]}
                 />
               );
             })}
           </div>
 
-          <div className="os-section">
-            <div className="section-head">
-              <span className="title">Priority pitches</span>
-            </div>
-            <p className="section-sub">Pitches activos por pilar</p>
-
-            {priorityExecutionRows.length === 0 ? (
-              <div className="os-empty-inline">
-                Nenhum pitch prioritário — marque um pitch como activo em Pitch
-              </div>
-            ) : (
-              <div className="os-pitch-list">
-                {priorityExecutionRows.map(({ bet, blockType }) => (
-                  <OsPitchExecutionRow
-                    key={bet.id}
-                    bet={bet}
-                    blockType={blockType}
-                    latestUpdate={latestUpdates.get(bet.id) ?? null}
-                    expanded={expandedBetId === bet.id}
-                    onToggleExpand={() =>
-                      setExpandedBetId((prev) => (prev === bet.id ? null : bet.id))
-                    }
-                    onOpenPitch={() => openPitchModal(bet, blockType)}
-                    onAddWeeklyUpdate={() => openWeeklyModal(bet)}
-                  />
-                ))}
-              </div>
-            )}
+          <div className="os-sec-head">
+            <span className="title">Priority pitches</span>
+            <span className="count">{priorityExecutionRows.length}</span>
+            <Link href="/os/pitch" className="add" title="Gerir pitches">
+              +
+            </Link>
           </div>
+          <p className="os-sec-sub">Pitches activos por pilar</p>
+
+          {priorityExecutionRows.length === 0 ? (
+            <div className="os-empty-inline">
+              Nenhum pitch prioritário — marque um pitch como activo em Pitch
+            </div>
+          ) : (
+            <div className="os-pitch-list">
+              {priorityExecutionRows.map(({ bet, blockType }) => (
+                <OsPitchExecutionRow
+                  key={bet.id}
+                  bet={bet}
+                  blockType={blockType}
+                  latestUpdate={latestUpdates.get(bet.id) ?? null}
+                  expanded={expandedBetId === bet.id}
+                  onToggleExpand={() =>
+                    setExpandedBetId((prev) => (prev === bet.id ? null : bet.id))
+                  }
+                  onOpenPitch={() => openPitchModal(bet, blockType)}
+                  onAddWeeklyUpdate={() => openWeeklyModal(bet)}
+                />
+              ))}
+            </div>
+          )}
 
           <div className="os-summary">
             <p className="title">Resumo geral</p>

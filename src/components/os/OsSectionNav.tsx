@@ -15,7 +15,7 @@ export function OsSectionNav() {
   if (!showSubNav) return null;
 
   return (
-    <nav className="os-section-nav" aria-label="Navegação OS">
+    <nav className="os-tabs" aria-label="Navegação OS">
       {OS_SECTION_ITEMS.map(({ label, href }) => {
         const isActive = pathname === href;
         return (

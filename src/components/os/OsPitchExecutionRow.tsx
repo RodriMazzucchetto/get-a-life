@@ -1,13 +1,19 @@
 "use client";
 
-import {
-  OS_BLOCK_DOT_COLORS,
-  OS_BLOCK_LABELS,
-  getBetDisplayStatus,
-} from "@/lib/os-queries";
+import { getBetDisplayStatus } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow, OsBlockType } from "@/lib/os-types";
 
-const TRACKABLE_STATUSES = new Set(["on_course", "deviating", "executed", "failed"]);
+const PILLAR_TONE: Record<OsBlockType, "amber" | "cyan" | "green"> = {
+  finance: "amber",
+  growth: "cyan",
+  ops: "green",
+};
+
+const PILLAR_TAG_LABEL: Record<OsBlockType, string> = {
+  finance: "Finance",
+  growth: "Growth",
+  ops: "Operations",
+};
 
 interface OsPitchExecutionRowProps {
   bet: OsBetRow;
@@ -28,88 +34,74 @@ export function OsPitchExecutionRow({
   onOpenPitch,
   onAddWeeklyUpdate,
 }: OsPitchExecutionRowProps) {
+  const tone = PILLAR_TONE[blockType];
+  const tagLabel = PILLAR_TAG_LABEL[blockType];
   const displayStatus = getBetDisplayStatus(bet, latestUpdate);
-  const hasTrackableStatus =
-    Boolean(latestUpdate) || TRACKABLE_STATUSES.has(bet.status);
-  const pillarColor = OS_BLOCK_DOT_COLORS[blockType];
-  const pillarLabel = OS_BLOCK_LABELS[blockType];
 
   return (
     <div className="os-pitch-row">
-      <div className="os-pitch-row-main">
-        <button
-          type="button"
-          onClick={onToggleExpand}
-          aria-expanded={expanded}
-          aria-label={expanded ? "Recolher update" : "Expandir último update"}
-        >
-          <span
-            className="material-symbols-outlined text-[18px] transition-transform"
-            style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
-          >
-            expand_more
-          </span>
-        </button>
+      <button
+        type="button"
+        className="chev-btn"
+        onClick={onToggleExpand}
+        aria-expanded={expanded}
+        aria-label={expanded ? "Recolher update" : "Expandir último update"}
+      >
+        {expanded ? "▴" : "▾"}
+      </button>
+      <span className={`dot ${tone}`} aria-hidden />
+      <button type="button" className="pitch-title" onClick={onOpenPitch} title={bet.title}>
+        {bet.title}
+      </button>
+      <span className={`tag ${tone}`}>{tagLabel}</span>
+      <button
+        type="button"
+        className="add-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          onAddWeeklyUpdate();
+        }}
+        title="Adicionar weekly update"
+        aria-label="Adicionar weekly update"
+      >
+        +
+      </button>
 
-        <button type="button" onClick={onOpenPitch} className="pitch-title-btn">
-          <span
-            className="shrink-0 text-[10px] font-bold"
-            style={{ color: pillarColor }}
-            title={pillarLabel}
-            aria-label={`Pilar ${pillarLabel}`}
-          >
-            ●
-          </span>
-          <span className="truncate">{bet.title}</span>
-        </button>
-
-        <div
-          className="pitch-status"
-          style={{ color: hasTrackableStatus ? displayStatus.color : pillarColor }}
-        >
-          {hasTrackableStatus ? displayStatus.label : pillarLabel}
-        </div>
-
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddWeeklyUpdate();
-          }}
-          title="Adicionar weekly update"
-          aria-label="Adicionar weekly update"
-        >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-        </button>
-      </div>
-
-      {expanded && latestUpdate ? (
+      {expanded ? (
         <div className="os-pitch-row-detail">
-          <p className="detail-label">Último update — semana {latestUpdate.week_start}</p>
-          {latestUpdate.what_done ? (
-            <p>{latestUpdate.what_done}</p>
+          {latestUpdate ? (
+            <>
+              <p className="detail-label">
+                Último update — semana {latestUpdate.week_start} · {displayStatus.label}
+              </p>
+              {latestUpdate.what_done ? (
+                <p>{latestUpdate.what_done}</p>
+              ) : (
+                <p className="text-ta-muted-2">Sem descrição.</p>
+              )}
+              {latestUpdate.blockers ? (
+                <p className="mt-2 text-xs text-ta-muted">
+                  <span className="font-semibold uppercase tracking-wide">Blockers:</span>{" "}
+                  {latestUpdate.blockers}
+                </p>
+              ) : null}
+            </>
           ) : (
-            <p className="text-ta-muted-2">Sem descrição.</p>
+            <>
+              <p className="text-ta-muted-2">Nenhum weekly update ainda.</p>
+              <button
+                type="button"
+                onClick={onAddWeeklyUpdate}
+                className="mt-2 text-xs font-medium uppercase tracking-wide underline"
+              >
+                Adicionar primeiro update
+              </button>
+            </>
           )}
-          {latestUpdate.blockers ? (
-            <p className="mt-2 text-xs text-ta-muted">
-              <span className="font-semibold uppercase tracking-wide">Blockers:</span>{" "}
-              {latestUpdate.blockers}
-            </p>
-          ) : null}
-        </div>
-      ) : expanded ? (
-        <div className="os-pitch-row-detail">
-          <p className="text-ta-muted-2">Nenhum weekly update ainda.</p>
-          <button
-            type="button"
-            onClick={onAddWeeklyUpdate}
-            className="mt-2 text-xs font-medium uppercase tracking-wide underline"
-          >
-            Adicionar primeiro update
-          </button>
         </div>
       ) : null}
     </div>
   );
 }
+
+export { PILLAR_TONE, PILLAR_TAG_LABEL };

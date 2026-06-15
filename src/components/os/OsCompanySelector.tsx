@@ -11,12 +11,12 @@ export function OsCompanySelector() {
 
   return (
     <>
-      <div className="os-company-bar">
-        <span className="label">Empresa</span>
+      <div className="os-empresa-bar">
+        <span className="lab">Empresa</span>
         {loadingProjects && projects.length === 0 ? (
-          <span className="text-sm text-ta-muted">Carregando…</span>
+          <span className="loading-text">Carregando…</span>
         ) : projects.length === 0 ? (
-          <span className="text-sm text-ta-muted">Nenhuma empresa encontrada</span>
+          <span className="loading-text">Nenhuma empresa encontrada</span>
         ) : (
           <select
             value={selectedProjectId ?? ""}
@@ -32,8 +32,9 @@ export function OsCompanySelector() {
         )}
         {selectedProject ? (
           <span
-            className="dot"
+            className="status-dot"
             style={{ backgroundColor: selectedProject.color }}
+            title="Empresa selecionada"
             aria-hidden
           />
         ) : null}

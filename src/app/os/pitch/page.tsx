@@ -22,7 +22,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
-import { PitchPriorityToggle } from "@/components/os/PitchPriorityToggle";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useOsLayout } from "@/contexts/OsLayoutContext";
 import {
@@ -45,6 +44,7 @@ import {
 } from "@/lib/os-queries";
 import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
 import { osCacheKey, packBoardCache, setOsCache } from "@/lib/os-cache";
+import { osEmptyState, osErrorBanner } from "@/lib/os-ui";
 
 function SortablePitchCard({
   bet,
@@ -73,81 +73,65 @@ function SortablePitchCard({
 
   if (confirmDelete) {
     return (
-      <article
-        ref={setNodeRef}
-        style={style}
-        className="border-2 border-[#FF0000] bg-white"
-      >
-        <div className="flex items-center gap-3 px-3 py-2.5">
-          <span className="flex-1 text-sm font-bold normal-case text-[#FF0000]">Excluir &ldquo;{bet.title}&rdquo;?</span>
-          <button
-            type="button"
-            onClick={() => { setConfirmDelete(false); onDelete(bet.id); }}
-            disabled={deleting}
-            className="border-2 border-[#FF0000] bg-[#FF0000] px-3 py-1 text-xs font-bold uppercase text-white hover:bg-[#CC0000] disabled:opacity-50"
-          >
-            {deleting ? "..." : "Sim"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(false)}
-            className="border-2 border-black px-3 py-1 text-xs font-bold uppercase hover:bg-black/5"
-          >
-            Não
-          </button>
-        </div>
-      </article>
+      <div ref={setNodeRef} style={style} className="os-pitch-item-delete">
+        <span className="msg">Excluir &ldquo;{bet.title}&rdquo;?</span>
+        <button
+          type="button"
+          className="confirm"
+          onClick={() => {
+            setConfirmDelete(false);
+            onDelete(bet.id);
+          }}
+          disabled={deleting}
+        >
+          {deleting ? "…" : "Sim"}
+        </button>
+        <button type="button" onClick={() => setConfirmDelete(false)}>
+          Não
+        </button>
+      </div>
     );
   }
 
   return (
-    <article
-      ref={setNodeRef}
-      style={style}
-      className={`group border-2 border-black bg-white ${bet.is_priority ? "bg-black/[0.02]" : ""}`}
-    >
-      <div className="flex items-stretch">
+    <article ref={setNodeRef} style={style} className={`os-pitch-item ${bet.is_priority ? "on" : ""}`}>
+      <button
+        type="button"
+        className="priority-check"
+        onClick={(e) => {
+          e.stopPropagation();
+          onTogglePriority(bet);
+        }}
+        disabled={priorityLoading}
+        aria-pressed={bet.is_priority}
+        aria-label={bet.is_priority ? "Remover prioridade" : "Marcar como prioritário"}
+      />
+      <button type="button" className="body" onClick={() => onOpen(bet)}>
+        <div className="t">{bet.title}</div>
+        {bet.pitch_outcome ? <div className="d">{bet.pitch_outcome}</div> : null}
+      </button>
+      <div className="flex shrink-0 flex-col gap-1">
         <button
           type="button"
           ref={setActivatorNodeRef}
           {...attributes}
           {...listeners}
-          className={`flex shrink-0 cursor-grab items-center overflow-hidden text-black/50 transition-all duration-150 hover:bg-black/[0.03] active:cursor-grabbing ${
-            isDragging
-              ? "max-w-[2.5rem] border-r-2 border-black px-2 opacity-100"
-              : "max-w-0 border-r-0 px-0 opacity-0 group-hover:max-w-[2.5rem] group-hover:border-r-2 group-hover:border-black group-hover:px-2 group-hover:opacity-100"
-          }`}
+          className="handle"
           aria-label="Arrastar pitch"
         >
-          <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
-        </button>
-        <div className="flex shrink-0 items-center border-r-2 border-black px-2">
-          <PitchPriorityToggle
-            isPriority={bet.is_priority}
-            disabled={priorityLoading}
-            onToggle={() => onTogglePriority(bet)}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => onOpen(bet)}
-          className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5 text-left transition-colors hover:bg-black/[0.03]"
-        >
-          <span className="truncate text-sm font-bold normal-case">{bet.title}</span>
-          {bet.pitch_outcome ? (
-            <span className="line-clamp-2 text-xs normal-case text-black/60">
-              {bet.pitch_outcome}
-            </span>
-          ) : null}
+          <span className="material-symbols-outlined text-[16px]">drag_indicator</span>
         </button>
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setConfirmDelete(true);
+          }}
           disabled={deleting}
-          className="flex max-w-0 shrink-0 items-center overflow-hidden border-l-0 px-0 text-[#FF0000] opacity-0 transition-all duration-150 hover:bg-[#FF0000]/5 disabled:opacity-50 group-hover:max-w-[2.5rem] group-hover:border-l-2 group-hover:border-black group-hover:px-2 group-hover:opacity-100"
+          className="delete-btn"
           aria-label="Excluir pitch"
         >
-          <span className="material-symbols-outlined text-[18px]">delete</span>
+          <span className="material-symbols-outlined text-[16px]">delete</span>
         </button>
       </div>
     </article>
@@ -159,6 +143,7 @@ function PitchColumn({
   onOpenPitch,
   onDeletePitch,
   onTogglePriority,
+  onAddPitch,
   deletingId,
   priorityLoadingId,
 }: {
@@ -166,6 +151,7 @@ function PitchColumn({
   onOpenPitch: (bet: OsBetRow, blockType: OsBlockType) => void;
   onDeletePitch: (betId: string) => void;
   onTogglePriority: (bet: OsBetRow, blockType: OsBlockType) => void;
+  onAddPitch: (blockType: OsBlockType) => void;
   deletingId: string | null;
   priorityLoadingId: string | null;
 }) {
@@ -176,45 +162,40 @@ function PitchColumn({
   const bets = blockView.bets;
 
   return (
-    <section className="flex flex-col">
-      <header className="flex items-center justify-between bg-black px-3 py-2.5 text-white">
-        <div className="flex items-center gap-2">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: dotColor }}
-            aria-hidden
-          />
-          <h2 className="text-sm font-bold tracking-[0.12em]">{blockLabel}</h2>
-        </div>
+    <section className="os-pitch-col">
+      <header className="os-pitch-col-head">
+        <span className="dot" style={{ backgroundColor: dotColor }} aria-hidden />
+        <span className="name">{blockLabel}</span>
+        <span className="count">{bets.length}</span>
       </header>
 
-      <div className="flex flex-1 flex-col border-x-2 border-b-2 border-black">
-        <div className="border-b-2 border-black px-3 py-3">
-          <p className="text-sm font-bold normal-case leading-snug">{goalTitle}</p>
-        </div>
-
-        <SortableContext items={bets.map((bet) => bet.id)} strategy={verticalListSortingStrategy}>
-          <div className="flex min-h-[120px] flex-col gap-2 p-3">
-            {bets.length === 0 ? (
-              <p className="py-4 text-center text-xs font-bold normal-case text-black/50">
-                Nenhum pitch neste pilar
-              </p>
-            ) : (
-              bets.map((bet) => (
-                <SortablePitchCard
-                  key={bet.id}
-                  bet={bet}
-                  onOpen={() => onOpenPitch(bet, blockType)}
-                  onDelete={onDeletePitch}
-                  onTogglePriority={() => onTogglePriority(bet, blockType)}
-                  deleting={deletingId === bet.id}
-                  priorityLoading={priorityLoadingId === bet.id}
-                />
-              ))
-            )}
-          </div>
-        </SortableContext>
+      <div className="os-pitch-col-target">
+        <span className="lab">Meta</span>
+        {goalTitle}
       </div>
+
+      <SortableContext items={bets.map((bet) => bet.id)} strategy={verticalListSortingStrategy}>
+        <div className="os-pitch-col-list">
+          {bets.length === 0 ? (
+            <p className="os-pitch-col-empty">Nenhum pitch neste pilar</p>
+          ) : (
+            bets.map((bet) => (
+              <SortablePitchCard
+                key={bet.id}
+                bet={bet}
+                onOpen={() => onOpenPitch(bet, blockType)}
+                onDelete={onDeletePitch}
+                onTogglePriority={() => onTogglePriority(bet, blockType)}
+                deleting={deletingId === bet.id}
+                priorityLoading={priorityLoadingId === bet.id}
+              />
+            ))
+          )}
+          <button type="button" className="os-pitch-add" onClick={() => onAddPitch(blockType)}>
+            <span className="plus">+</span> Novo pitch
+          </button>
+        </div>
+      </SortableContext>
     </section>
   );
 }
@@ -306,11 +287,12 @@ export default function OsPitchPage() {
     }
   }, []);
 
-  const openCreateModal = () => {
+  const openCreateModal = (blockType: OsBlockType = "finance") => {
     setEditingPitch(null);
-    setEditingBlockType("finance");
+    setEditingBlockType(blockType);
     setModalPriority(false);
     setPitchTasks([]);
+    setWeeklyUpdates([]);
     setModalOpen(true);
   };
 
@@ -327,6 +309,7 @@ export default function OsPitchPage() {
     setModalOpen(false);
     setEditingPitch(null);
     setPitchTasks([]);
+    setWeeklyUpdates([]);
     setModalPriority(false);
   };
 
@@ -500,22 +483,20 @@ export default function OsPitchPage() {
     : null;
 
   return (
-    <div className="pb-8 font-mono uppercase tracking-wide text-black">
+    <div className="pb-8">
       <OsCompanySelector />
 
       {error || boardError ? (
-        <div className="mb-4 border-2 border-black bg-white px-4 py-2 text-sm font-bold normal-case text-[#FF0000]">
-          {error ?? boardError}
-        </div>
+        <div className={osErrorBanner}>{error ?? boardError}</div>
       ) : null}
 
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold tracking-[0.08em] sm:text-3xl">PITCHES</h1>
+      <div className="os-pitch-head">
+        <h2>Pitches</h2>
         <button
           type="button"
-          onClick={openCreateModal}
+          className="os-btn-add"
+          onClick={() => openCreateModal()}
           disabled={!selectedProjectId || (!boardReady && boardLoading)}
-          className="border-2 border-black bg-black px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-black/85 disabled:opacity-50"
         >
           + Adicionar pitch
         </button>
@@ -523,13 +504,9 @@ export default function OsPitchPage() {
 
       {(loadingProjects && projects.length === 0) ||
       (!boardReady && boardLoading && board.length === 0) ? (
-        <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
-          Carregando pitches...
-        </div>
+        <div className={osEmptyState}>Carregando pitches...</div>
       ) : !selectedProjectId ? (
-        <div className="border-2 border-black bg-white px-4 py-12 text-center text-sm font-bold normal-case">
-          Selecione uma empresa para visualizar os pitches.
-        </div>
+        <div className={osEmptyState}>Selecione uma empresa para visualizar os pitches.</div>
       ) : (
         <DndContext
           sensors={sensors}
@@ -538,7 +515,7 @@ export default function OsPitchPage() {
           onDragEnd={(event) => void handleDragEnd(event)}
           onDragCancel={() => setActiveDragId(null)}
         >
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-4">
+          <div className="os-pitch-cols">
             {orderedBlocks.map((blockView) => (
               <PitchColumn
                 key={blockView.block.id}
@@ -546,6 +523,7 @@ export default function OsPitchPage() {
                 onOpenPitch={openEditModal}
                 onDeletePitch={(betId) => void handleDeletePitch(betId)}
                 onTogglePriority={(bet, blockType) => void handleTogglePriority(bet, blockType)}
+                onAddPitch={openCreateModal}
                 deletingId={deletingId}
                 priorityLoadingId={priorityLoadingId}
               />
@@ -554,9 +532,7 @@ export default function OsPitchPage() {
 
           <DragOverlay>
             {activeDragBet ? (
-              <div className="border-2 border-black bg-white px-3 py-2.5 text-sm font-bold normal-case shadow-lg">
-                {activeDragBet.title}
-              </div>
+              <div className="os-drag-overlay">{activeDragBet.title}</div>
             ) : null}
           </DragOverlay>
         </DndContext>
