@@ -8,8 +8,11 @@ import type { OsProjectOption } from "@/lib/os-queries";
 import {
   osIconBtn,
   osIconBtnDanger,
+  osTaskActionsOnHold,
   osTaskRow,
+  osTaskRowBase,
   osTaskRowOnHold,
+  osTaskTitleOnHold,
 } from "@/lib/os-ui";
 import type { OsBetRow, OsTaskRow } from "@/lib/os-types";
 import { computeOsTaskScore, hasOsTaskScore } from "@/lib/osBoardHelpers";
@@ -58,6 +61,7 @@ export function OsTaskItem({
   const showBacklogButton = task.status !== "backlog";
   const isInFocus = task.status === "in_progress";
   const taskScore = computeOsTaskScore(task);
+  const onHold = task.on_hold;
 
   if (confirmDelete) {
     return (
@@ -91,12 +95,14 @@ export function OsTaskItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`${osTaskRow} ${task.on_hold ? osTaskRowOnHold : ""}`}
+      className={onHold ? `${osTaskRowBase} ${osTaskRowOnHold}` : osTaskRow}
     >
       <div className="flex items-stretch gap-0">
         <button
           type="button"
-          className="flex w-7 shrink-0 cursor-grab items-center justify-center text-ta-muted active:cursor-grabbing hover:bg-ta-paper-2 hover:text-ta-ink"
+          className={`flex w-7 shrink-0 cursor-grab items-center justify-center text-ta-muted active:cursor-grabbing hover:text-ta-ink ${
+            onHold ? "hover:bg-ta-on-hold-hover" : "hover:bg-ta-paper-2"
+          }`}
           aria-label="Arrastar task"
           {...attributes}
           {...listeners}
@@ -133,7 +139,11 @@ export function OsTaskItem({
                 onEdit(task);
               }}
               onPointerDown={stopActionPointer}
-              className="relative min-w-0 flex-1 border border-ta-ink bg-ta-paper px-2 py-1.5 text-left transition-colors hover:bg-ta-paper-2"
+              className={`relative min-w-0 flex-1 border px-2 py-1.5 text-left transition-colors ${
+                onHold
+                  ? osTaskTitleOnHold
+                  : "border-ta-ink bg-ta-paper hover:bg-ta-paper-2"
+              }`}
             >
               {hasOsTaskScore(task) ? (
                 <span
@@ -181,7 +191,11 @@ export function OsTaskItem({
           ) : null}
         </div>
 
-        <div className="absolute right-1.5 top-2 flex items-center gap-0.5 border border-ta-ink bg-ta-paper px-0.5 py-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <div
+          className={`absolute right-1.5 top-2 flex items-center gap-0.5 border px-0.5 py-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 ${
+            onHold ? osTaskActionsOnHold : "border-ta-ink bg-ta-paper"
+          }`}
+        >
           {showBacklogButton ? (
             <button
               type="button"

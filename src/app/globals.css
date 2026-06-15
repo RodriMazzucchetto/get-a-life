@@ -14,6 +14,8 @@
   --ta-red: #e7252b;
   --ta-amber: #ffd400;
   --ta-green: #18b46b;
+  --ta-on-hold: #fff6d6;
+  --ta-on-hold-hover: #ffefab;
 }
 
 @theme inline {
@@ -76,6 +78,8 @@
   --color-ta-red: #e7252b;
   --color-ta-amber: #ffd400;
   --color-ta-green: #18b46b;
+  --color-ta-on-hold: #fff6d6;
+  --color-ta-on-hold-hover: #ffefab;
 
   --font-headline: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;

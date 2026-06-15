@@ -20,10 +20,19 @@ export const osBtnPrimary =
 export const osBtnGhost =
   "border-[1.5px] border-ta-ink bg-ta-paper px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-ta-ink transition-colors hover:bg-ta-paper-2 disabled:opacity-50";
 
-export const osTaskRow =
-  "group relative border border-ta-ink bg-ta-paper transition-colors hover:bg-ta-paper-2";
+export const osTaskRowBase =
+  "group relative border border-ta-ink transition-colors";
 
-export const osTaskRowOnHold = "border-ta-amber bg-[#fffbeb]";
+export const osTaskRow =
+  `${osTaskRowBase} bg-ta-paper hover:bg-ta-paper-2`;
+
+export const osTaskRowOnHold =
+  "border-ta-amber bg-ta-on-hold hover:bg-ta-on-hold-hover";
+
+export const osTaskTitleOnHold =
+  "border-ta-amber bg-ta-on-hold hover:bg-ta-on-hold-hover";
+
+export const osTaskActionsOnHold = "border-ta-amber bg-ta-on-hold";
 
 export const osErrorBanner =
   "mb-4 border-[1.5px] border-ta-red bg-red-50 px-4 py-2 text-sm font-semibold normal-case text-ta-red";
