@@ -201,6 +201,11 @@
   margin-top: 8px;
 }
 
+.os-refined-page .os-task .dot.project {
+  /* background set inline via project color */
+  opacity: 0.85;
+}
+
 .os-refined-page .os-task .body {
   min-width: 0;
   display: flex;
@@ -839,6 +844,186 @@
 .os-refined-page .os-pillar .breakdown .item.cyan .v.zero,
 .os-refined-page .os-pillar .breakdown .item.red .v.zero {
   color: var(--color-ta-muted);
+}
+
+/* Pitches inline inside pillar card */
+.os-refined-page .os-pillar .pitches-section {
+  border-top: 1px solid var(--color-ta-rule);
+}
+
+.os-refined-page .os-pillar .pitches-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ta-muted);
+}
+
+.os-refined-page .os-pillar .pitches-head .count {
+  font-size: 10px;
+  color: var(--color-ta-ink);
+}
+
+.os-refined-page .os-pillar .pitches-empty {
+  padding: 8px 16px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ta-muted-2);
+  letter-spacing: 0.04em;
+}
+
+.os-refined-page .os-pillar-pitch {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.045);
+  border-left: 3px solid transparent;
+  transition: background 0.1s;
+}
+
+.os-refined-page .os-pillar-pitch:last-child {
+  border-bottom: 0;
+}
+
+.os-refined-page .os-pillar-pitch:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.os-refined-page .os-pillar-pitch .pitch-check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--color-ta-muted);
+  cursor: pointer;
+  margin-top: 1px;
+  transition: color 0.12s, opacity 0.12s;
+}
+
+.os-refined-page .os-pillar-pitch .pitch-check.on {
+  color: var(--color-ta-cyan);
+}
+
+.os-refined-page .os-pillar-pitch .pitch-check:hover:not(:disabled) {
+  color: var(--color-ta-ink);
+}
+
+.os-refined-page .os-pillar-pitch .pitch-check:disabled {
+  opacity: 0.5;
+}
+
+.os-refined-page .os-pillar-pitch .pitch-body {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.os-refined-page .os-pillar-pitch .pitch-body:hover .pitch-title {
+  opacity: 0.75;
+}
+
+.os-refined-page .os-pillar-pitch .pitch-title {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ta-ink);
+  line-height: 1.45;
+  transition: opacity 0.1s;
+}
+
+.os-refined-page .os-pillar-pitch .pitch-desc {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-ta-muted);
+  margin-top: 3px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+}
+
+/* Collapsible backlog rows at bottom of pillar */
+.os-refined-page .os-pillar .pillar-backlog-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-top: 1px solid var(--color-ta-rule);
+  width: 100%;
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ta-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.12s, background 0.1s;
+}
+
+.os-refined-page .os-pillar .pillar-backlog-row:hover {
+  color: var(--color-ta-ink);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.os-refined-page .os-pillar .pillar-backlog-row .row-count {
+  font-size: 10px;
+  color: var(--color-ta-muted);
+  font-weight: 500;
+}
+
+.os-refined-page .os-pillar .pillar-backlog-bets {
+  padding: 4px 16px 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.os-refined-page .os-pillar .pillar-backlog-bets .bet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ta-muted);
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+
+.os-refined-page .os-pillar .pillar-backlog-bets .bet-row:last-child {
+  border-bottom: 0;
+}
+
+.os-refined-page .os-pillar .pillar-backlog-bets .bet-row:hover {
+  color: var(--color-ta-ink);
 }
 
 /* Section headings */

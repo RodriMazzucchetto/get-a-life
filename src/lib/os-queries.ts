@@ -493,7 +493,7 @@ export async function setGoalPriority(goalId: string, blockId: string): Promise<
   // Tentar com is_priority; se a coluna não existir cai no fallback por updated_at
   const { error: clearError } = await supabase
     .from('os_goals')
-    .update({ is_priority: false, updated_at: now })
+    .update({ is_priority: false })
     .eq('block_id', blockId)
     .neq('id', goalId)
 
@@ -529,6 +529,22 @@ export async function setGoalPriority(goalId: string, blockId: string): Promise<
 
   if (error) {
     console.error('Erro ao definir meta prioritária:', error)
+    throw error
+  }
+  return data
+}
+
+/** Remove a prioridade de uma meta (deixa sem nenhuma prioritária no bloco). */
+export async function unsetGoalPriority(goalId: string): Promise<OsGoalRow> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_goals')
+    .update({ is_priority: false })
+    .eq('id', goalId)
+    .select('*')
+    .single()
+  if (error) {
+    console.error('Erro ao remover prioridade da meta:', error)
     throw error
   }
   return data
@@ -784,12 +800,12 @@ export async function fetchOsPitchBoard(userId: string, projectId: string): Prom
   const supabase = createClient()
   const blockIds = blocks.map((block) => block.id)
 
-  // Meta activa mais recentemente actualizada por bloco (a priorizada tem updated_at mais recente)
   const { data: goalsData, error: goalsError } = await supabase
     .from('os_goals')
     .select('*')
     .in('block_id', blockIds)
     .eq('status', 'active')
+    .order('is_priority', { ascending: false })
     .order('updated_at', { ascending: false })
 
   if (goalsError) {
@@ -1157,6 +1173,7 @@ export async function updateOsTask(
     completed_at?: string | null
     importance?: number | null
     urgency?: number | null
+    effort?: number | null
   }
 ): Promise<OsTaskRow> {
   const supabase = createClient()
@@ -1173,6 +1190,7 @@ export async function updateOsTask(
   if (updates.completed_at !== undefined) payload.completed_at = updates.completed_at
   if (updates.importance !== undefined) payload.importance = updates.importance
   if (updates.urgency !== undefined) payload.urgency = updates.urgency
+  if (updates.effort !== undefined) payload.effort = updates.effort
 
   const { data, error } = await supabase
     .from('os_tasks')
@@ -1324,4 +1342,101 @@ export function getBetDisplayStatus(
     }
   }
   return { label: bet.status.toUpperCase(), color: '#888888', source: 'bet' }
+}
+
+// ─── OS Task Cycles (Reports) ───────────────────────────────────────────────
+
+import type { OsTaskCycleRow } from '@/lib/os-types'
+
+export async function fetchActiveOsTaskCycle(userId: string): Promise<OsTaskCycleRow | null> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('os_task_cycles')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle()
+  return data ?? null
+}
+
+export async function fetchAllOsTaskCycles(userId: string): Promise<OsTaskCycleRow[]> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('os_task_cycles')
+    .select('*')
+    .eq('user_id', userId)
+    .order('cycle_number', { ascending: true })
+  return data ?? []
+}
+
+export async function startOsTaskCycle(userId: string, plannedPoints: number): Promise<OsTaskCycleRow> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+
+  const { data: last } = await supabase
+    .from('os_task_cycles')
+    .select('cycle_number')
+    .eq('user_id', userId)
+    .order('cycle_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const nextNumber = (last?.cycle_number ?? 0) + 1
+
+  const { data, error } = await supabase
+    .from('os_task_cycles')
+    .insert({
+      user_id: userId,
+      cycle_number: nextNumber,
+      status: 'active',
+      started_at: now,
+      planned_points: plannedPoints,
+      added_after_points: 0,
+      delivered_points: 0,
+    })
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function endOsTaskCycle(cycleId: string): Promise<OsTaskCycleRow> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_task_cycles')
+    .update({ status: 'closed', ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', cycleId)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function incrementCycleDeliveredPoints(cycleId: string, points: number): Promise<void> {
+  const supabase = createClient()
+  const { data: current } = await supabase
+    .from('os_task_cycles')
+    .select('delivered_points')
+    .eq('id', cycleId)
+    .single()
+  if (!current) return
+  await supabase
+    .from('os_task_cycles')
+    .update({ delivered_points: (current.delivered_points ?? 0) + points, updated_at: new Date().toISOString() })
+    .eq('id', cycleId)
+}
+
+export async function incrementCycleAddedAfterPoints(cycleId: string, points: number): Promise<void> {
+  const supabase = createClient()
+  const { data: current } = await supabase
+    .from('os_task_cycles')
+    .select('added_after_points')
+    .eq('id', cycleId)
+    .single()
+  if (!current) return
+  await supabase
+    .from('os_task_cycles')
+    .update({ added_after_points: (current.added_after_points ?? 0) + points, updated_at: new Date().toISOString() })
+    .eq('id', cycleId)
 }
