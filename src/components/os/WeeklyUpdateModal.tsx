@@ -59,31 +59,35 @@ export function WeeklyUpdateModal({
     <ModalOverlay isOpen={open} onClose={onClose}>
       <div
         data-modal-content
-        className="pointer-events-auto relative z-[1] mx-auto w-full max-w-lg border-2 border-black bg-white font-mono"
+        className="pointer-events-auto relative z-[1] mx-auto w-full max-w-lg border border-ta-rule-2 bg-ta-paper font-sans shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)]"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b-2 border-black px-5 py-4">
-          <h2 className="text-lg font-bold uppercase tracking-wide">Weekly update</h2>
-          <p className="mt-1 text-xs font-bold normal-case text-black/60">{pitch.title}</p>
-          <p className="mt-0.5 text-[10px] uppercase tracking-wide text-black/40">
+        <div className="bg-ta-ink px-5 py-4 text-ta-paper">
+          <h2 className="font-mono text-[13px] font-semibold uppercase tracking-[0.22em]">
+            Weekly update
+          </h2>
+          <p className="mt-1.5 font-sans text-xs text-ta-paper/70">{pitch.title}</p>
+          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-ta-paper/40">
             Semana de {currentWeekStartDate()}
           </p>
         </div>
 
-        <div className="space-y-5 px-5 py-5 normal-case">
+        <div className="space-y-5 px-5 py-5">
           <fieldset>
-            <legend className="mb-2 text-xs font-bold uppercase tracking-wide">Status</legend>
+            <legend className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ta-muted">
+              Status
+            </legend>
             <div className="grid grid-cols-2 gap-2">
               {UPDATE_STATUS_OPTIONS.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => setStatus(option.value)}
-                  className={`border-2 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide transition-colors ${
+                  className={`border px-3 py-2 text-left font-mono text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors ${
                     status === option.value
-                      ? "border-black text-white"
-                      : "border-black/30 bg-white text-black hover:bg-black/[0.03]"
+                      ? "border-ta-ink text-white"
+                      : "border-ta-rule-2 bg-ta-paper text-ta-ink hover:bg-ta-paper-2"
                   }`}
                   style={status === option.value ? { backgroundColor: option.color } : undefined}
                 >
@@ -94,37 +98,37 @@ export function WeeklyUpdateModal({
           </fieldset>
 
           <label className="block">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-wide">
+            <span className="mb-2 block font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ta-muted">
               O que foi feito?
             </span>
             <textarea
               rows={3}
               value={whatDone}
               onChange={(e) => setWhatDone(e.target.value)}
-              className="w-full border-2 border-black px-3 py-2 text-sm outline-none focus:bg-black/[0.03]"
+              className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2.5 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-wide">
+            <span className="mb-2 block font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ta-muted">
               Blockers (opcional)
             </span>
             <textarea
               rows={2}
               value={blockers}
               onChange={(e) => setBlockers(e.target.value)}
-              className="w-full border-2 border-black px-3 py-2 text-sm outline-none focus:bg-black/[0.03]"
+              className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2.5 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink"
             />
           </label>
 
-          {error ? <p className="text-sm font-bold text-[#FF0000]">{error}</p> : null}
+          {error ? <p className="font-sans text-sm font-semibold text-ta-red">{error}</p> : null}
 
-          <div className="flex justify-end gap-2 border-t-2 border-black pt-4">
+          <div className="flex justify-end gap-2 border-t border-ta-rule-2 pt-4">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="border-2 border-black px-4 py-2 text-sm font-bold uppercase hover:bg-black/5 disabled:opacity-50"
+              className="border border-ta-rule-2 px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ta-ink transition-colors hover:bg-ta-paper-2 disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -132,7 +136,7 @@ export function WeeklyUpdateModal({
               type="button"
               onClick={() => void handleSubmit()}
               disabled={saving}
-              className="border-2 border-black bg-black px-4 py-2 text-sm font-bold uppercase text-white hover:bg-black/85 disabled:opacity-50"
+              className="border border-ta-ink bg-ta-ink px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ta-paper transition-colors hover:bg-ta-ink/90 disabled:opacity-50"
             >
               {saving ? "Salvando..." : "Salvar update"}
             </button>

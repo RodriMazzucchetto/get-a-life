@@ -902,6 +902,11 @@
 .os-refined-page .meta-zone .meta-text:hover { opacity: 0.82; }
 .os-refined-page .meta-zone .edit { color: var(--color-ta-muted); font-size: 13px; cursor: pointer; flex: 0 0 auto; margin-top: 2px; background: transparent; border: 0; line-height: 1; }
 .os-refined-page .meta-zone .edit:hover { color: var(--color-ta-ink); }
+.os-refined-page .meta-zone .meta-text.meta-empty { font-weight: 500; font-size: 13px; color: var(--color-ta-muted); font-style: italic; }
+.os-refined-page .unprio { flex: 0 0 auto; background: transparent; border: 0; cursor: pointer; line-height: 1; padding: 0; color: var(--accent, var(--color-ta-amber-muted)); font-size: 14px; }
+.os-refined-page .unprio:hover { color: var(--color-ta-red); }
+.os-refined-page .unprio:disabled { opacity: 0.4; cursor: default; }
+.os-refined-page .meta-zone .unprio { margin-top: 1px; }
 .os-refined-page .meta-zone .meta-stats { display: flex; gap: 20px; margin-top: 14px; }
 .os-refined-page .meta-zone .meta-stats .ms { display: flex; flex-direction: column; gap: 3px; }
 .os-refined-page .meta-zone .meta-stats .ms .l { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-ta-muted); }

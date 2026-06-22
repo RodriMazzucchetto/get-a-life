@@ -813,9 +813,11 @@ export async function fetchOsPitchBoard(userId: string, projectId: string): Prom
     throw goalsError
   }
 
+  // META ATIVA = meta priorizada do bloco. Se nenhuma estiver priorizada,
+  // o bloco fica sem meta ativa (view.goal = null) — as demais vão para o backlog.
   const goalByBlockId = new Map<string, OsGoalRow>()
   for (const goal of goalsData ?? []) {
-    if (!goalByBlockId.has(goal.block_id)) {
+    if (goal.is_priority && !goalByBlockId.has(goal.block_id)) {
       goalByBlockId.set(goal.block_id, goal)
     }
   }

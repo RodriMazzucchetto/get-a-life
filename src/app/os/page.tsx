@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
-import { ModalPanel } from "@/components/ModalPanel";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
 import { WeeklyUpdateModal } from "@/components/os/WeeklyUpdateModal";
@@ -29,6 +28,7 @@ import {
   saveOsGoal,
   setGoalPriority,
   setOsBetPriority,
+  unsetGoalPriority,
   updateOsBet,
   updateOsGoal,
   type OsBlockView,
@@ -41,7 +41,7 @@ import type {
   OsTaskRow,
 } from "@/lib/os-types";
 import { osCacheKey, packBoardCache, setOsCache } from "@/lib/os-cache";
-import { osBtnGhost, osBtnPrimary, osEmptyState, osErrorBanner, osInput } from "@/lib/os-ui";
+import { osEmptyState, osErrorBanner } from "@/lib/os-ui";
 
 /** Cor de accent por pilar (borda esquerda dos pitches + dot do header). */
 const PILLAR_ACCENT: Record<OsBlockType, string> = {
@@ -96,12 +96,14 @@ type PillarCardProps = {
   onEditGoal: (goal: OsGoalRow | null) => void;
   onAddGoal: (title: string) => Promise<void>;
   onPrioritizeGoal: (goal: OsGoalRow) => Promise<void>;
+  onUnprioritizeGoal: (goal: OsGoalRow) => Promise<void>;
   onRenameGoal: (goal: OsGoalRow, title: string) => Promise<void>;
   onDeleteGoal: (goal: OsGoalRow) => Promise<void>;
   onOpenPitch: (bet: OsBetRow) => void;
   onTogglePitchDone: (bet: OsBetRow) => void;
   onAddPitch: (title: string) => Promise<void>;
   onPrioritizePitch: (bet: OsBetRow) => Promise<void>;
+  onUnprioritizePitch: (bet: OsBetRow) => Promise<void>;
 };
 
 function PillarCard({
@@ -119,12 +121,14 @@ function PillarCard({
   onEditGoal,
   onAddGoal,
   onPrioritizeGoal,
+  onUnprioritizeGoal,
   onRenameGoal,
   onDeleteGoal,
   onOpenPitch,
   onTogglePitchDone,
   onAddPitch,
   onPrioritizePitch,
+  onUnprioritizePitch,
 }: PillarCardProps) {
   const [pitchBacklogOpen, setPitchBacklogOpen] = useState(false);
   const [metaBacklogOpen, setMetaBacklogOpen] = useState(false);
@@ -183,13 +187,26 @@ function PillarCard({
               {goal.title}
             </button>
           ) : (
-            <button type="button" className="meta-text" onClick={() => onEditGoal(null)}>
-              Definir meta
+            <button type="button" className="meta-text meta-empty" onClick={() => onEditGoal(null)}>
+              Nenhuma meta priorizada — priorize uma do backlog ou crie uma nova
             </button>
           )}
-          <button type="button" className="edit" onClick={() => onEditGoal(goal)} title="Editar meta">
-            ✎
-          </button>
+          {goal ? (
+            <>
+              <button
+                type="button"
+                className="unprio"
+                title="Despriorizar meta (volta ao backlog)"
+                disabled={busy}
+                onClick={() => void onUnprioritizeGoal(goal)}
+              >
+                ★
+              </button>
+              <button type="button" className="edit" onClick={() => onEditGoal(goal)} title="Editar meta">
+                ✎
+              </button>
+            </>
+          ) : null}
         </div>
         <div className="meta-stats">
           <div className="ms">
@@ -243,6 +260,18 @@ function PillarCard({
                     <div className="t">{bet.title}</div>
                     {desc ? <div className="d">{desc}</div> : null}
                   </div>
+                  <button
+                    type="button"
+                    className="unprio"
+                    title="Despriorizar pitch (volta ao backlog)"
+                    disabled={busy}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void onUnprioritizePitch(bet);
+                    }}
+                  >
+                    ★
+                  </button>
                 </div>
                 <div className="pc-foot">
                   <span className="arrow">→</span>
@@ -620,6 +649,19 @@ function OsPageContent() {
     }
   };
 
+  const handleUnprioritizeGoal = async (goal: OsGoalRow, blockId: string) => {
+    setBusyPillar(blockId);
+    try {
+      await unsetGoalPriority(goal.id);
+      await refreshBoard({ background: true, force: true });
+      await loadGoalsByBlock();
+    } catch {
+      setError("Não foi possível despriorizar a meta.");
+    } finally {
+      setBusyPillar(null);
+    }
+  };
+
   const handleRenameGoal = async (goal: OsGoalRow, title: string, blockId: string) => {
     setBusyPillar(blockId);
     try {
@@ -759,6 +801,19 @@ function OsPageContent() {
       await loadActivityCounts();
     } catch {
       setError("Não foi possível priorizar o pitch.");
+    } finally {
+      setBusyPillar(null);
+    }
+  };
+
+  const handleUnprioritizePitchInline = async (bet: OsBetRow, blockId: string) => {
+    setBusyPillar(blockId);
+    try {
+      await setOsBetPriority(bet.id, false);
+      await refreshBoard({ background: true, force: true });
+      await loadActivityCounts();
+    } catch {
+      setError("Não foi possível despriorizar o pitch.");
     } finally {
       setBusyPillar(null);
     }
@@ -929,12 +984,14 @@ function OsPageContent() {
                   onEditGoal={(g) => openGoalModal(blockId, blockType, g)}
                   onAddGoal={(title) => handleAddGoal(blockId, title)}
                   onPrioritizeGoal={(g) => handlePrioritizeGoal(g, blockId)}
+                  onUnprioritizeGoal={(g) => handleUnprioritizeGoal(g, blockId)}
                   onRenameGoal={(g, title) => handleRenameGoal(g, title, blockId)}
                   onDeleteGoal={(g) => handleDeleteGoal(g, blockId)}
                   onOpenPitch={(bet) => openPitchModal(bet, blockType)}
                   onTogglePitchDone={(bet) => openWeeklyModal(bet)}
                   onAddPitch={(title) => handleAddPitch(blockType, blockId, title)}
                   onPrioritizePitch={(bet) => handlePrioritizePitchInline(bet, blockId)}
+                  onUnprioritizePitch={(bet) => handleUnprioritizePitchInline(bet, blockId)}
                 />
               );
             })}
@@ -957,49 +1014,58 @@ function OsPageContent() {
       {/* Goal modal */}
       {goalModalOpen ? (
         <ModalOverlay isOpen={goalModalOpen} onClose={() => setGoalModalOpen(false)}>
-          <ModalPanel maxWidthClass="max-w-md">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-mono text-lg font-bold uppercase tracking-wide text-ta-ink">
+          <div
+            data-modal-content
+            role="dialog"
+            aria-modal="true"
+            className="pointer-events-auto relative z-[1] mx-auto w-full max-w-md border border-ta-rule-2 bg-ta-paper font-sans shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)]"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 bg-ta-ink px-5 py-4 text-ta-paper">
+              <h2 className="font-mono text-[13px] font-semibold uppercase tracking-[0.22em]">
                 {goalDraft.goalId ? "Editar meta" : "Definir meta"}
               </h2>
-              <button type="button" onClick={() => setGoalModalOpen(false)} aria-label="Fechar">
-                <span className="material-symbols-outlined">close</span>
-              </button>
+              <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.16em] text-ta-paper/60">
+                {goalDraft.blockType ? OS_BLOCK_LABELS[goalDraft.blockType] : ""}
+              </span>
             </div>
-            <div className="space-y-4 font-mono normal-case">
-              <p className="text-sm text-ta-muted">
-                Pilar:{" "}
-                <span className="font-bold uppercase text-ta-ink">
-                  {goalDraft.blockType ? OS_BLOCK_LABELS[goalDraft.blockType] : ""}
-                </span>
-              </p>
+            <div className="space-y-5 px-5 py-5">
               <label className="block">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-ta-muted">
+                <span className="mb-2 block font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ta-muted">
                   Meta
                 </span>
                 <input
                   type="text"
+                  autoFocus
                   value={goalDraft.title}
                   onChange={(e) => setGoalDraft((p) => ({ ...p, title: e.target.value }))}
-                  className={`w-full px-3 py-2 text-sm font-bold ${osInput}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleSaveGoal();
+                  }}
+                  className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2.5 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink"
                 />
               </label>
-              {goalError ? <p className="text-sm font-bold text-[#FF0000]">{goalError}</p> : null}
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setGoalModalOpen(false)} className={osBtnGhost}>
+              {goalError ? <p className="font-sans text-sm font-semibold text-ta-red">{goalError}</p> : null}
+              <div className="flex justify-end gap-2 border-t border-ta-rule-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setGoalModalOpen(false)}
+                  className="border border-ta-rule-2 px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ta-ink transition-colors hover:bg-ta-paper-2"
+                >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleSaveGoal()}
                   disabled={goalSaving}
-                  className={osBtnPrimary}
+                  className="border border-ta-ink bg-ta-ink px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ta-paper transition-colors hover:bg-ta-ink/90 disabled:opacity-50"
                 >
-                  Salvar
+                  {goalSaving ? "Salvando..." : "Salvar"}
                 </button>
               </div>
             </div>
-          </ModalPanel>
+          </div>
         </ModalOverlay>
       ) : null}
 
