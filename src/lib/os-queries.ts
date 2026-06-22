@@ -960,6 +960,32 @@ export async function updateOsBet(
   return data
 }
 
+/** Conta to-dos (tasks) e updates por pitch, em 2 queries agregadas.
+ *  Usado para o rodapé dos cards de pitch (→ N to-dos · N updates). */
+export async function fetchOsBetActivityCounts(
+  betIds: string[]
+): Promise<Map<string, { todos: number; updates: number }>> {
+  const result = new Map<string, { todos: number; updates: number }>()
+  if (betIds.length === 0) return result
+  for (const id of betIds) result.set(id, { todos: 0, updates: 0 })
+
+  const supabase = createClient()
+  const [tasksRes, updatesRes] = await Promise.all([
+    supabase.from('os_tasks').select('bet_id').in('bet_id', betIds),
+    supabase.from('os_bet_updates').select('bet_id').in('bet_id', betIds),
+  ])
+
+  for (const row of tasksRes.data ?? []) {
+    const betId = (row as { bet_id: string | null }).bet_id
+    if (betId && result.has(betId)) result.get(betId)!.todos += 1
+  }
+  for (const row of updatesRes.data ?? []) {
+    const betId = (row as { bet_id: string | null }).bet_id
+    if (betId && result.has(betId)) result.get(betId)!.updates += 1
+  }
+  return result
+}
+
 export async function deleteOsBet(betId: string): Promise<void> {
   const supabase = createClient()
 
