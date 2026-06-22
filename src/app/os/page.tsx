@@ -844,12 +844,15 @@ function OsPageContent() {
     await createOsTask(user.id, { projectId: selectedProjectId, betId: editingPitch.id, title });
     await loadPitchTasks(editingPitch.id);
     await loadActivityCounts();
+    // Invalida o cache do board de Tasks OS para a nova task aparecer lá imediatamente.
+    await refreshTasks({ background: true, force: true });
   };
 
   const handleDeleteTask = async (taskId: string) => {
     await deleteOsTask(taskId);
     if (editingPitch) await loadPitchTasks(editingPitch.id);
     await loadActivityCounts();
+    await refreshTasks({ background: true, force: true });
   };
 
   const openWeeklyModal = (bet: OsBetRow) => {
