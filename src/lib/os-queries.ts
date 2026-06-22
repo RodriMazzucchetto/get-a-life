@@ -1350,6 +1350,62 @@ export async function createOsBetUpdate(
   return data
 }
 
+/** Re-sincroniza o status do pitch a partir do update mais recente (ou 'draft' se não houver). */
+async function resyncBetStatusFromUpdates(betId: string): Promise<void> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('os_bet_updates')
+    .select('status')
+    .eq('bet_id', betId)
+    .order('week_start', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const nextStatus: OsBetStatus = (data?.status as OsBetStatus | undefined) ?? 'draft'
+  await supabase
+    .from('os_bets')
+    .update({ status: nextStatus, updated_at: new Date().toISOString() })
+    .eq('id', betId)
+}
+
+export async function updateOsBetUpdate(
+  updateId: string,
+  betId: string,
+  updates: { status?: OsBetUpdateStatus; whatDone?: string; blockers?: string }
+): Promise<OsBetUpdateRow> {
+  const supabase = createClient()
+  const payload: Record<string, unknown> = {}
+  if (updates.status !== undefined) payload.status = updates.status
+  if (updates.whatDone !== undefined) payload.what_done = updates.whatDone.trim() || null
+  if (updates.blockers !== undefined) payload.blockers = updates.blockers.trim() || null
+
+  const { data, error } = await supabase
+    .from('os_bet_updates')
+    .update(payload)
+    .eq('id', updateId)
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Erro ao editar weekly update:', error)
+    throw error
+  }
+
+  await resyncBetStatusFromUpdates(betId)
+  return data
+}
+
+export async function deleteOsBetUpdate(updateId: string, betId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase.from('os_bet_updates').delete().eq('id', updateId)
+  if (error) {
+    console.error('Erro ao remover weekly update:', error)
+    throw error
+  }
+  await resyncBetStatusFromUpdates(betId)
+}
+
 export function getBetDisplayStatus(
   bet: OsBetRow,
   latestUpdate: OsBetUpdateRow | null | undefined

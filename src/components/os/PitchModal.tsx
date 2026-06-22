@@ -7,10 +7,30 @@ import {
   OS_BLOCK_DOT_COLORS,
   OS_BLOCK_LABELS,
   OS_BLOCK_TYPES,
+  currentWeekStartDate,
   getBetUpdateStatusColor,
   formatBetUpdateStatusLabel,
 } from "@/lib/os-queries";
-import type { OsBetRow, OsBetUpdateRow, OsBlockType, OsTaskRow } from "@/lib/os-types";
+import type {
+  OsBetRow,
+  OsBetUpdateRow,
+  OsBetUpdateStatus,
+  OsBlockType,
+  OsTaskRow,
+} from "@/lib/os-types";
+
+interface UpdateFormData {
+  status: OsBetUpdateStatus;
+  whatDone: string;
+  blockers: string;
+}
+
+const UPDATE_STATUS_OPTIONS: { value: OsBetUpdateStatus; label: string }[] = [
+  { value: "on_course", label: "On course" },
+  { value: "deviating", label: "Deviating" },
+  { value: "executed", label: "Executed" },
+  { value: "failed", label: "Failed" },
+];
 
 export interface PitchBlockGoal {
   id: string;
@@ -40,6 +60,9 @@ interface PitchModalProps {
   priorityLoading: boolean;
   weeklyUpdates?: OsBetUpdateRow[];
   weeklyUpdatesLoading?: boolean;
+  onAddUpdate?: (data: UpdateFormData) => Promise<void>;
+  onEditUpdate?: (updateId: string, data: UpdateFormData) => Promise<void>;
+  onDeleteUpdate?: (updateId: string) => Promise<void>;
   onSave: (data: PitchFormData) => Promise<void>;
   onDelete?: (pitchId: string) => Promise<void>;
   saving: boolean;
@@ -52,6 +75,59 @@ const EMPTY_FORM: PitchFormData = {
   pitchData: "",
   executionOwner: "",
 };
+
+const UPDATE_STATUS_COLORS: Record<OsBetUpdateStatus, string> = {
+  on_course: "var(--color-ta-green)",
+  deviating: "var(--color-ta-amber-muted)",
+  executed: "var(--color-ta-cyan)",
+  failed: "var(--color-ta-red)",
+};
+
+/** Campos compartilhados do formulário de weekly update (criar e editar). */
+function UpdateFields({
+  value,
+  onChange,
+}: {
+  value: UpdateFormData;
+  onChange: (next: UpdateFormData) => void;
+}) {
+  return (
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-4 gap-1.5">
+        {UPDATE_STATUS_OPTIONS.map((opt) => {
+          const selected = value.status === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange({ ...value, status: opt.value })}
+              className={`border px-2 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] transition-colors ${
+                selected ? "border-ta-ink text-white" : "border-ta-rule-2 bg-ta-paper text-ta-ink hover:bg-ta-paper"
+              }`}
+              style={selected ? { backgroundColor: UPDATE_STATUS_COLORS[opt.value] } : undefined}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      <textarea
+        rows={2}
+        value={value.whatDone}
+        onChange={(e) => onChange({ ...value, whatDone: e.target.value })}
+        placeholder="O que foi feito esta semana?"
+        className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink"
+      />
+      <textarea
+        rows={2}
+        value={value.blockers}
+        onChange={(e) => onChange({ ...value, blockers: e.target.value })}
+        placeholder="Blockers (opcional)"
+        className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink"
+      />
+    </div>
+  );
+}
 
 // Estilos refinados (paper/ink, IBM Plex, regras 1px) — alinhados ao novo design OS.
 const LABEL = "mb-2 block font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ta-muted";
@@ -74,6 +150,9 @@ export function PitchModal({
   priorityLoading,
   weeklyUpdates = [],
   weeklyUpdatesLoading = false,
+  onAddUpdate,
+  onEditUpdate,
+  onDeleteUpdate,
   onSave,
   onDelete,
   saving,
@@ -83,6 +162,60 @@ export function PitchModal({
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [addingTask, setAddingTask] = useState(false);
   const isEditing = pitch !== null;
+
+  // Weekly update — formulário de criação e edição inline
+  const EMPTY_UPDATE: UpdateFormData = { status: "on_course", whatDone: "", blockers: "" };
+  const [addingUpdate, setAddingUpdate] = useState(false);
+  const [updateForm, setUpdateForm] = useState<UpdateFormData>(EMPTY_UPDATE);
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [editingUpdateId, setEditingUpdateId] = useState<string | null>(null);
+  const [editUpdateForm, setEditUpdateForm] = useState<UpdateFormData>(EMPTY_UPDATE);
+
+  const submitNewUpdate = async () => {
+    if (!onAddUpdate || !updateForm.whatDone.trim()) {
+      setError("Descreva o que foi feito no update.");
+      return;
+    }
+    setUpdateBusy(true);
+    setError(null);
+    try {
+      await onAddUpdate(updateForm);
+      setUpdateForm(EMPTY_UPDATE);
+      setAddingUpdate(false);
+    } catch {
+      setError("Não foi possível salvar o update.");
+    } finally {
+      setUpdateBusy(false);
+    }
+  };
+
+  const submitEditUpdate = async (updateId: string) => {
+    if (!onEditUpdate || !editUpdateForm.whatDone.trim()) return;
+    setUpdateBusy(true);
+    setError(null);
+    try {
+      await onEditUpdate(updateId, editUpdateForm);
+      setEditingUpdateId(null);
+    } catch {
+      setError("Não foi possível editar o update.");
+    } finally {
+      setUpdateBusy(false);
+    }
+  };
+
+  const removeUpdate = async (updateId: string) => {
+    if (!onDeleteUpdate) return;
+    if (!window.confirm("Remover este weekly update?")) return;
+    setUpdateBusy(true);
+    setError(null);
+    try {
+      await onDeleteUpdate(updateId);
+    } catch {
+      setError("Não foi possível remover o update.");
+    } finally {
+      setUpdateBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -274,39 +407,142 @@ export function PitchModal({
 
           {isEditing && isPriority ? (
             <section className="border-t border-ta-rule-2 pt-6">
-              <h3 className={LABEL}>Weekly updates</h3>
+              <div className="mb-2 flex items-baseline justify-between">
+                <h3 className={`${LABEL} mb-0`}>Weekly updates</h3>
+                {!addingUpdate && onAddUpdate ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUpdateForm(EMPTY_UPDATE);
+                      setAddingUpdate(true);
+                      setEditingUpdateId(null);
+                    }}
+                    className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-ta-ink hover:underline"
+                  >
+                    + Novo update
+                  </button>
+                ) : null}
+              </div>
               <p className={HELP}>Histórico de updates semanais — mais recente no topo.</p>
+
+              {addingUpdate ? (
+                <div className="mb-4 border border-ta-ink bg-ta-paper-2 p-3">
+                  <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.16em] text-ta-muted">
+                    Novo update · semana {currentWeekStartDate()}
+                  </span>
+                  <UpdateFields
+                    value={updateForm}
+                    onChange={setUpdateForm}
+                  />
+                  <div className="mt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddingUpdate(false)}
+                      disabled={updateBusy}
+                      className="border border-ta-rule-2 px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ta-ink hover:bg-ta-paper disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void submitNewUpdate()}
+                      disabled={updateBusy}
+                      className="border border-ta-ink bg-ta-ink px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ta-paper hover:bg-ta-ink/90 disabled:opacity-50"
+                    >
+                      {updateBusy ? "Salvando..." : "Salvar update"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {weeklyUpdatesLoading ? (
                 <p className="font-sans text-xs text-ta-muted">Carregando updates...</p>
               ) : weeklyUpdates.length > 0 ? (
                 <ul className="space-y-3">
-                  {weeklyUpdates.map((update) => (
-                    <li key={update.id} className="border border-ta-rule-2 bg-ta-paper px-3 py-2.5">
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ta-muted">
-                          Semana {update.week_start}
+                  {weeklyUpdates.map((update) =>
+                    editingUpdateId === update.id ? (
+                      <li key={update.id} className="border border-ta-ink bg-ta-paper-2 p-3">
+                        <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.16em] text-ta-muted">
+                          Editar · semana {update.week_start}
                         </span>
-                        <span
-                          className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]"
-                          style={{ color: getBetUpdateStatusColor(update.status) }}
-                        >
-                          {formatBetUpdateStatusLabel(update.status)}
-                        </span>
-                      </div>
-                      {update.what_done ? (
-                        <p className="font-sans text-sm text-ta-ink">{update.what_done}</p>
-                      ) : null}
-                      {update.blockers ? (
-                        <p className="mt-1 font-sans text-xs text-ta-muted">
-                          <span className="font-semibold uppercase">Blockers:</span> {update.blockers}
-                        </p>
-                      ) : null}
-                    </li>
-                  ))}
+                        <UpdateFields value={editUpdateForm} onChange={setEditUpdateForm} />
+                        <div className="mt-2 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingUpdateId(null)}
+                            disabled={updateBusy}
+                            className="border border-ta-rule-2 px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ta-ink hover:bg-ta-paper disabled:opacity-50"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void submitEditUpdate(update.id)}
+                            disabled={updateBusy}
+                            className="border border-ta-ink bg-ta-ink px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ta-paper hover:bg-ta-ink/90 disabled:opacity-50"
+                          >
+                            {updateBusy ? "Salvando..." : "Salvar"}
+                          </button>
+                        </div>
+                      </li>
+                    ) : (
+                      <li key={update.id} className="border border-ta-rule-2 bg-ta-paper px-3 py-2.5">
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ta-muted">
+                            Semana {update.week_start}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]"
+                              style={{ color: getBetUpdateStatusColor(update.status) }}
+                            >
+                              {formatBetUpdateStatusLabel(update.status)}
+                            </span>
+                            {onEditUpdate ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingUpdateId(update.id);
+                                  setAddingUpdate(false);
+                                  setEditUpdateForm({
+                                    status: update.status,
+                                    whatDone: update.what_done ?? "",
+                                    blockers: update.blockers ?? "",
+                                  });
+                                }}
+                                className="text-ta-muted transition-colors hover:text-ta-ink"
+                                aria-label="Editar update"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                              </button>
+                            ) : null}
+                            {onDeleteUpdate ? (
+                              <button
+                                type="button"
+                                onClick={() => void removeUpdate(update.id)}
+                                className="text-ta-muted transition-colors hover:text-ta-red"
+                                aria-label="Remover update"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">close</span>
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                        {update.what_done ? (
+                          <p className="font-sans text-sm text-ta-ink">{update.what_done}</p>
+                        ) : null}
+                        {update.blockers ? (
+                          <p className="mt-1 font-sans text-xs text-ta-muted">
+                            <span className="font-semibold uppercase">Blockers:</span> {update.blockers}
+                          </p>
+                        ) : null}
+                      </li>
+                    )
+                  )}
                 </ul>
               ) : (
                 <p className="font-sans text-xs text-ta-muted">
-                  Nenhum weekly update ainda. Registre pelo card do pitch no OS.
+                  Nenhum weekly update ainda. Clique em &ldquo;+ Novo update&rdquo;.
                 </p>
               )}
             </section>

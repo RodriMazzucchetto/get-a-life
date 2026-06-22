@@ -30,6 +30,8 @@ import {
   setOsBetPriority,
   unsetGoalPriority,
   updateOsBet,
+  updateOsBetUpdate,
+  deleteOsBetUpdate,
   updateOsGoal,
   type OsBlockView,
 } from "@/lib/os-queries";
@@ -878,6 +880,59 @@ function OsPageContent() {
     }
   };
 
+  // ---------- Weekly updates direto na modal do pitch ----------
+  const refreshAfterUpdateMutation = async (betId: string) => {
+    if (editingPitch?.id === betId) await loadAllWeeklyUpdates(betId);
+    const fresh = await fetchOsBetUpdatesForBet(betId);
+    const latest = fresh[0] ?? null;
+    setLatestUpdates((prev) => {
+      const next = new Map(prev);
+      if (latest) next.set(betId, latest);
+      else next.delete(betId);
+      return next;
+    });
+    await refreshBoard({ background: true, force: true });
+    await loadActivityCounts();
+  };
+
+  const handleAddPitchUpdate = async (data: {
+    status: import("@/lib/os-types").OsBetUpdateStatus;
+    whatDone: string;
+    blockers: string;
+  }) => {
+    if (!user || !editingPitch) return;
+    await createOsBetUpdate(user.id, {
+      betId: editingPitch.id,
+      status: data.status,
+      whatDone: data.whatDone,
+      blockers: data.blockers,
+    });
+    await refreshAfterUpdateMutation(editingPitch.id);
+  };
+
+  const handleEditPitchUpdate = async (
+    updateId: string,
+    data: {
+      status: import("@/lib/os-types").OsBetUpdateStatus;
+      whatDone: string;
+      blockers: string;
+    }
+  ) => {
+    if (!editingPitch) return;
+    await updateOsBetUpdate(updateId, editingPitch.id, {
+      status: data.status,
+      whatDone: data.whatDone,
+      blockers: data.blockers,
+    });
+    await refreshAfterUpdateMutation(editingPitch.id);
+  };
+
+  const handleDeletePitchUpdate = async (updateId: string) => {
+    if (!editingPitch) return;
+    await deleteOsBetUpdate(updateId, editingPitch.id);
+    await refreshAfterUpdateMutation(editingPitch.id);
+  };
+
   return (
     <div className="pb-8">
       <div className="page-head">
@@ -1084,6 +1139,9 @@ function OsPageContent() {
         priorityLoading={priorityLoadingId === editingPitch?.id}
         weeklyUpdates={weeklyUpdates}
         weeklyUpdatesLoading={weeklyUpdatesLoading}
+        onAddUpdate={handleAddPitchUpdate}
+        onEditUpdate={handleEditPitchUpdate}
+        onDeleteUpdate={handleDeletePitchUpdate}
         onSave={handleSavePitch}
         onDelete={editingPitch ? handleDeletePitch : undefined}
         saving={pitchSaving || pitchDeleting}
