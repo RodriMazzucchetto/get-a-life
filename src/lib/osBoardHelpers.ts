@@ -20,18 +20,27 @@ export function hasOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency'>):
   return task.importance != null && task.urgency != null
 }
 
-/** Score = importância × urgência (1–25), ou null se incompleto. */
-export function computeOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency'>): number | null {
+/** Score = (importância × urgência) / esforço. Esforço null = divisor 1 (neutro). */
+export function computeOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency' | 'effort'>): number | null {
   if (!hasOsTaskScore(task)) return null
-  return task.importance! * task.urgency!
+  const raw = task.importance! * task.urgency!
+  const effort = task.effort ?? 1
+  return Math.round((raw / effort) * 10) / 10
+}
+
+/** Esforço da task (escala 1–5). Usado como unidade dos relatórios de ciclo
+ *  (capacidade/velocidade entregue), em vez do score composto de prioridade.
+ *  Esforço não definido conta como 1 (tarefa mínima). */
+export function computeOsTaskEffort(task: Pick<OsTaskRow, 'effort'>): number {
+  return task.effort ?? 1
 }
 
 /** Pausa no fim; com score primeiro (maior→menor); sem score depois; empate por pos. */
 export function sortOsTasksByPos(a: OsTaskRow, b: OsTaskRow): number {
   if (a.on_hold !== b.on_hold) return a.on_hold ? 1 : -1
 
-  const aScore = computeOsTaskScore(a)
-  const bScore = computeOsTaskScore(b)
+  const aScore = computeOsTaskScore({ importance: a.importance, urgency: a.urgency, effort: a.effort })
+  const bScore = computeOsTaskScore({ importance: b.importance, urgency: b.urgency, effort: b.effort })
   const aHasScore = aScore != null
   const bHasScore = bScore != null
 

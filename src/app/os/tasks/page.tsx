@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -39,11 +39,17 @@ import {
 import {
   createOsTask,
   deleteOsTask,
+  endOsTaskCycle,
+  fetchActiveOsTaskCycle,
+  incrementCycleAddedAfterPoints,
+  incrementCycleDeliveredPoints,
   setOsTaskProjects,
+  startOsTaskCycle,
   updateOsTask,
   type OsProjectOption,
 } from "@/lib/os-queries";
-import type { OsBetRow, OsTaskBoardStatus, OsTaskRow } from "@/lib/os-types";
+import type { OsBetRow, OsTaskBoardStatus, OsTaskCycleRow, OsTaskRow } from "@/lib/os-types";
+import { computeOsTaskEffort } from "@/lib/osBoardHelpers";
 
 function OsTaskColumn({
   id,
@@ -188,6 +194,14 @@ export default function OsTasksPage() {
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const dragRollbackRef = useRef<OsTaskRow[] | null>(null);
 
+  const [activeCycle, setActiveCycle] = useState<OsTaskCycleRow | null>(null);
+  const [cycleLoading, setCycleLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    void fetchActiveOsTaskCycle(user.id).then(setActiveCycle);
+  }, [user]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -214,6 +228,36 @@ export default function OsTasksPage() {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
   }
 
+  async function handleStartCycle() {
+    if (!user || cycleLoading || activeCycle) return;
+    setCycleLoading(true);
+    try {
+      const activeTasks = tasks.filter((t) => t.completed_at == null && (t.status === "current_week" || t.status === "in_progress"));
+      const plannedPoints = activeTasks.reduce((sum, t) => sum + computeOsTaskEffort(t), 0);
+      const cycle = await startOsTaskCycle(user.id, plannedPoints);
+      setActiveCycle(cycle);
+    } catch {
+      setError("Não foi possível iniciar o ciclo.");
+    } finally {
+      setCycleLoading(false);
+    }
+  }
+
+  async function handleEndCycle() {
+    if (!activeCycle || cycleLoading) return;
+    setCycleLoading(true);
+    try {
+      const closed = await endOsTaskCycle(activeCycle.id);
+      setActiveCycle(null);
+      // keep closed cycle visible briefly for UX
+      void closed;
+    } catch {
+      setError("Não foi possível encerrar o ciclo.");
+    } finally {
+      setCycleLoading(false);
+    }
+  }
+
   async function handleCreateInColumn(status: OsTaskBoardStatus, title: string) {
     if (!user) return;
     const created = await createOsTask(
@@ -222,6 +266,11 @@ export default function OsTasksPage() {
       tasks.filter((t) => t.completed_at == null)
     );
     setTasks((prev) => [...prev, created]);
+    // se há ciclo ativo e task está em Semana/Foco, conta como adicionada após início
+    if (activeCycle && (status === "current_week" || status === "in_progress")) {
+      const effort = computeOsTaskEffort(created);
+      if (effort > 0) void incrementCycleAddedAfterPoints(activeCycle.id, effort);
+    }
   }
 
   async function handleToggleComplete(task: OsTaskRow) {
@@ -230,6 +279,13 @@ export default function OsTasksPage() {
       const completed_at = new Date().toISOString();
       const updated = await updateOsTask(task.id, { completed_at });
       setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      // se há ciclo ativo, contabiliza o esforço entregue
+      if (activeCycle) {
+        const effort = computeOsTaskEffort(task);
+        if (effort > 0) void incrementCycleDeliveredPoints(activeCycle.id, effort);
+        // atualiza estado local do ciclo
+        setActiveCycle((prev) => prev ? { ...prev, delivered_points: prev.delivered_points + effort } : prev);
+      }
     } catch {
       setError("Não foi possível concluir a task.");
     }
@@ -242,6 +298,7 @@ export default function OsTasksPage() {
       description: string;
       importance: number | null;
       urgency: number | null;
+      effort: number | null;
       projectIds: string[];
     }
   ) {
@@ -252,6 +309,7 @@ export default function OsTasksPage() {
         description: data.description || null,
         importance: data.importance,
         urgency: data.urgency,
+        effort: data.effort,
       });
       const updated = await setOsTaskProjects(taskId, data.projectIds, projects);
       replaceTask(updated);
@@ -449,10 +507,46 @@ export default function OsTasksPage() {
     }
   }
 
+  const effectivenessTotal = activeCycle
+    ? activeCycle.planned_points + activeCycle.added_after_points
+    : 0;
+  const effectivenessPct = effectivenessTotal > 0
+    ? Math.round((activeCycle!.delivered_points / effectivenessTotal) * 100)
+    : 0;
+
   return (
     <div className="pb-10">
-      <div className="page-head">
+      <div className="page-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
         <h1>Tasks</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {activeCycle ? (
+            <>
+              <div style={{ display: "flex", gap: "16px", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--color-ta-muted)" }}>
+                <span>Ciclo #{activeCycle.cycle_number}</span>
+                <span style={{ color: "var(--color-ta-ink)" }}>{activeCycle.planned_points.toFixed(1)} pts planejados</span>
+                <span style={{ color: "var(--color-ta-cyan)" }}>{activeCycle.delivered_points.toFixed(1)} pts entregues</span>
+                <span>{effectivenessPct}% efetividade</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleEndCycle()}
+                disabled={cycleLoading}
+                style={{ border: "1.5px solid var(--color-ta-red)", background: "transparent", color: "var(--color-ta-red)", padding: "6px 14px", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", cursor: "pointer", opacity: cycleLoading ? 0.5 : 1 }}
+              >
+                {cycleLoading ? "..." : "Encerrar ciclo"}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleStartCycle()}
+              disabled={cycleLoading}
+              style={{ border: "1.5px solid var(--color-ta-ink)", background: "var(--color-ta-ink)", color: "var(--color-ta-paper)", padding: "6px 14px", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", cursor: "pointer", opacity: cycleLoading ? 0.5 : 1 }}
+            >
+              {cycleLoading ? "..." : "Iniciar ciclo"}
+            </button>
+          )}
+        </div>
       </div>
       <div className="page-sub">Foco agora · Semana atual · Backlog</div>
 
