@@ -94,6 +94,7 @@ export interface OsTaskRow {
   pos: number | null
   importance: number | null
   urgency: number | null
+  effort: number | null
   projectIds: string[]
   created_at: string
   updated_at: string
@@ -170,11 +171,26 @@ export interface OsTaskInsert {
   pos?: number | null
   importance?: number | null
   urgency?: number | null
+  effort?: number | null
   created_at?: string
   updated_at?: string
 }
 
 export type OsBlockUpdate = Partial<Omit<OsBlockRow, 'id' | 'user_id' | 'project_id' | 'created_at'>>
+export interface OsTaskCycleRow {
+  id: string
+  user_id: string
+  cycle_number: number
+  status: 'active' | 'closed'
+  started_at: string
+  ended_at: string | null
+  planned_points: number
+  added_after_points: number
+  delivered_points: number
+  created_at: string
+  updated_at: string
+}
+
 export type OsGoalUpdate = Partial<Omit<OsGoalRow, 'id' | 'user_id' | 'block_id' | 'created_at'>>
 export type OsCycleUpdate = Partial<Omit<OsCycleRow, 'id' | 'user_id' | 'project_id' | 'created_at'>>
 export type OsBetUpdate = Partial<Omit<OsBetRow, 'id' | 'user_id' | 'goal_id' | 'priority_score' | 'created_at'>>
