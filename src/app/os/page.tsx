@@ -860,6 +860,27 @@ function OsPageContent() {
     setWeeklyModalOpen(true);
   };
 
+  const refreshAfterUpdateMutation = async (betId: string) => {
+    if (editingPitch?.id === betId) await loadAllWeeklyUpdates(betId);
+    const fresh = await fetchOsBetUpdatesForBet(betId);
+    const latest = fresh[0] ?? null;
+    setLatestUpdates((prev) => {
+      const next = new Map(prev);
+      if (latest) next.set(betId, latest);
+      else next.delete(betId);
+      return next;
+    });
+    if (editingPitch?.id === betId && latest) {
+      const terminal = latest.status === "executed" || latest.status === "failed";
+      setEditingPitch((p) =>
+        p ? { ...p, status: latest.status, is_priority: terminal ? false : p.is_priority } : p
+      );
+      if (terminal) setModalPriority(false);
+    }
+    await refreshBoard({ background: true, force: true });
+    await loadActivityCounts();
+  };
+
   const handleWeeklySubmit = async (data: {
     status: import("@/lib/os-types").OsBetUpdateStatus;
     whatDone: string;
@@ -875,27 +896,21 @@ function OsPageContent() {
         blockers: data.blockers,
       });
       setLatestUpdates((prev) => new Map(prev).set(weeklyModalBet.id, update));
-      if (editingPitch?.id === weeklyModalBet.id) await loadAllWeeklyUpdates(weeklyModalBet.id);
+      if (editingPitch?.id === weeklyModalBet.id) {
+        await loadAllWeeklyUpdates(weeklyModalBet.id);
+        const terminal = update.status === "executed" || update.status === "failed";
+        setEditingPitch((p) =>
+          p
+            ? { ...p, status: update.status, is_priority: terminal ? false : p.is_priority }
+            : p
+        );
+        if (terminal) setModalPriority(false);
+      }
       await refreshBoard({ background: true, force: true });
       await loadActivityCounts();
     } finally {
       setWeeklySaving(false);
     }
-  };
-
-  // ---------- Weekly updates direto na modal do pitch ----------
-  const refreshAfterUpdateMutation = async (betId: string) => {
-    if (editingPitch?.id === betId) await loadAllWeeklyUpdates(betId);
-    const fresh = await fetchOsBetUpdatesForBet(betId);
-    const latest = fresh[0] ?? null;
-    setLatestUpdates((prev) => {
-      const next = new Map(prev);
-      if (latest) next.set(betId, latest);
-      else next.delete(betId);
-      return next;
-    });
-    await refreshBoard({ background: true, force: true });
-    await loadActivityCounts();
   };
 
   const handleAddPitchUpdate = async (data: {

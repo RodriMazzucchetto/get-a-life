@@ -1300,6 +1300,7 @@ export async function fetchLatestOsBetUpdatesForBets(
     .select('*')
     .in('bet_id', betIds)
     .order('week_start', { ascending: false })
+    .order('created_at', { ascending: false })
 
   if (error) {
     console.error('Erro ao buscar latest weekly updates:', error)
@@ -1311,6 +1312,44 @@ export async function fetchLatestOsBetUpdatesForBets(
     if (!map.has(row.bet_id)) map.set(row.bet_id, row)
   }
   return map
+}
+
+const TERMINAL_BET_UPDATE_STATUSES = new Set<OsBetUpdateStatus>(['executed', 'failed'])
+
+/** Sincroniza status do pitch com o update mais recente; desprioriza se executed/failed. */
+async function syncBetFromLatestUpdate(betId: string): Promise<void> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('os_bet_updates')
+    .select('status')
+    .eq('bet_id', betId)
+    .order('week_start', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const latestStatus = data?.status as OsBetUpdateStatus | undefined
+  const nextStatus: OsBetStatus = latestStatus ?? 'draft'
+  const payload: Record<string, unknown> = {
+    status: nextStatus,
+    updated_at: new Date().toISOString(),
+  }
+  if (latestStatus && TERMINAL_BET_UPDATE_STATUSES.has(latestStatus)) {
+    payload.is_priority = false
+  }
+
+  await supabase.from('os_bets').update(payload).eq('id', betId)
+}
+
+function betUpdateBetPayload(status: OsBetUpdateStatus): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    status,
+    updated_at: new Date().toISOString(),
+  }
+  if (TERMINAL_BET_UPDATE_STATUSES.has(status)) {
+    payload.is_priority = false
+  }
+  return payload
 }
 
 export async function createOsBetUpdate(
@@ -1344,29 +1383,10 @@ export async function createOsBetUpdate(
 
   await supabase
     .from('os_bets')
-    .update({ status: input.status, updated_at: new Date().toISOString() })
+    .update(betUpdateBetPayload(input.status))
     .eq('id', input.betId)
 
   return data
-}
-
-/** Re-sincroniza o status do pitch a partir do update mais recente (ou 'draft' se não houver). */
-async function resyncBetStatusFromUpdates(betId: string): Promise<void> {
-  const supabase = createClient()
-  const { data } = await supabase
-    .from('os_bet_updates')
-    .select('status')
-    .eq('bet_id', betId)
-    .order('week_start', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const nextStatus: OsBetStatus = (data?.status as OsBetStatus | undefined) ?? 'draft'
-  await supabase
-    .from('os_bets')
-    .update({ status: nextStatus, updated_at: new Date().toISOString() })
-    .eq('id', betId)
 }
 
 export async function updateOsBetUpdate(
@@ -1392,7 +1412,7 @@ export async function updateOsBetUpdate(
     throw error
   }
 
-  await resyncBetStatusFromUpdates(betId)
+  await syncBetFromLatestUpdate(betId)
   return data
 }
 
@@ -1403,7 +1423,7 @@ export async function deleteOsBetUpdate(updateId: string, betId: string): Promis
     console.error('Erro ao remover weekly update:', error)
     throw error
   }
-  await resyncBetStatusFromUpdates(betId)
+  await syncBetFromLatestUpdate(betId)
 }
 
 export function getBetDisplayStatus(
