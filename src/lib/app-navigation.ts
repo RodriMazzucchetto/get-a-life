@@ -8,22 +8,10 @@ export type AppNavItem = {
 
 export const mainNav: AppNavItem[] = [
   {
-    name: "Dashboard",
-    href: "/dashboard",
-    icon: "grid_view",
-    active: (pathname) => pathname === "/dashboard",
-  },
-  {
-    name: "Metas",
-    href: "/dashboard/goals",
-    icon: "ads_click",
-    active: (pathname) => pathname === "/dashboard/goals",
-  },
-  {
-    name: "Tarefas",
-    href: "/dashboard/planning",
-    icon: "checklist",
-    active: (pathname) => pathname === "/dashboard/planning",
+    name: "Relatórios",
+    href: "/os/reports",
+    icon: "analytics",
+    active: (pathname) => pathname === "/os/reports",
   },
   {
     name: "Pessoal",
@@ -42,12 +30,5 @@ export const mainNav: AppNavItem[] = [
     href: "/os/tasks",
     icon: "task_alt",
     active: (pathname) => pathname === "/os/tasks",
-  },
-  {
-    name: "Relatórios",
-    href: "#",
-    icon: "analytics",
-    future: true,
-    active: () => false,
   },
 ];

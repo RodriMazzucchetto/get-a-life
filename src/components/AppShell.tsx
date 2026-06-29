@@ -129,7 +129,7 @@ export function AppShell({
       )}
 
       <aside className={`hidden lg:flex ${sidebarClass}`}>
-        <Link href="/dashboard" className="mb-8 px-1 pt-1 pb-1">
+        <Link href="/os/tasks" className="mb-8 px-1 pt-1 pb-1">
           <BrandLogo variant="sidebar" />
         </Link>
         <nav className="flex flex-col gap-1 flex-1">{renderNav()}</nav>
@@ -149,7 +149,7 @@ export function AppShell({
         >
           <span className="material-symbols-outlined">close</span>
         </button>
-        <Link href="/dashboard" className="mb-8 px-1 pt-1 pb-1" onClick={() => setSidebarOpen(false)}>
+        <Link href="/os/tasks" className="mb-8 px-1 pt-1 pb-1" onClick={() => setSidebarOpen(false)}>
           <BrandLogo variant="sidebar" />
         </Link>
         <nav className="flex flex-col gap-1 flex-1">{renderNav(() => setSidebarOpen(false))}</nav>
