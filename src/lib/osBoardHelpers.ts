@@ -1,4 +1,4 @@
-import type { OsTaskBoardStatus, OsTaskRow } from '@/lib/os-types'
+import type { OsTaskBoardStatus, OsTaskCycleRow, OsTaskRow } from '@/lib/os-types'
 
 export const OS_COL_BACKLOG = 'os-col-backlog'
 export const OS_COL_CURRENT_WEEK = 'os-col-current-week'
@@ -64,15 +64,90 @@ export function countOpenOsTasks(tasks: OsTaskRow[]): number {
   return tasks.filter(isOsTaskActive).length
 }
 
-/** Esforço entregue no ciclo (tasks concluídas desde started_at). */
-export function computeCycleDeliveredEffort(tasks: OsTaskRow[], cycleStartedAt: string): number {
+/** Esforço entregue no ciclo (tasks concluídas desde started_at até ended_at, se houver). */
+export function computeCycleDeliveredEffort(
+  tasks: OsTaskRow[],
+  cycleStartedAt: string,
+  cycleEndedAt?: string | null
+): number {
   const startedMs = new Date(cycleStartedAt).getTime()
+  const endMs = cycleEndedAt ? new Date(cycleEndedAt).getTime() : Number.POSITIVE_INFINITY
   return tasks
     .filter((task) => {
       if (!task.completed_at) return false
-      return new Date(task.completed_at).getTime() >= startedMs
+      const doneMs = new Date(task.completed_at).getTime()
+      return doneMs >= startedMs && doneMs <= endMs
     })
     .reduce((sum, task) => sum + computeOsTaskEffort(task), 0)
+}
+
+/** Esforço em aberto no sprint num instante (tasks não concluídas até asOf). */
+export function computeOpenSprintEffortAt(tasks: OsTaskRow[], asOfMs: number): number {
+  return tasks
+    .filter((task) => {
+      if (!isOsTaskSprintStatus(task.status)) return false
+      if (task.completed_at) {
+        const doneMs = new Date(task.completed_at).getTime()
+        if (doneMs <= asOfMs) return false
+      }
+      return true
+    })
+    .reduce((sum, task) => sum + computeOsTaskEffort(task), 0)
+}
+
+export interface OsTaskCycleStats {
+  delivered: number
+  remainingSprint: number
+  committed: number
+  effectiveness: number
+  planned: number
+  addedAfter: number
+}
+
+/** Métricas do ciclo a partir das tasks (fonte de verdade para efetividade). */
+export function computeOsTaskCycleStats(
+  cycle: Pick<
+    OsTaskCycleRow,
+    | 'started_at'
+    | 'ended_at'
+    | 'planned_points'
+    | 'added_after_points'
+    | 'status'
+    | 'delivered_points'
+    | 'remaining_sprint_points'
+    | 'committed_points'
+  >,
+  tasks: OsTaskRow[]
+): OsTaskCycleStats {
+  const planned = Number(cycle.planned_points) || 0
+  const addedAfter = Number(cycle.added_after_points) || 0
+  const asOfMs =
+    cycle.status === 'closed' && cycle.ended_at
+      ? new Date(cycle.ended_at).getTime()
+      : Date.now()
+
+  if (
+    cycle.status === 'closed' &&
+    cycle.committed_points != null &&
+    Number(cycle.committed_points) > 0
+  ) {
+    const committed = Number(cycle.committed_points)
+    const delivered = Number(cycle.delivered_points) || 0
+    const remainingSprint = Number(cycle.remaining_sprint_points) || 0
+    const effectiveness = committed > 0 ? Math.round((delivered / committed) * 100) : 0
+    return { delivered, remainingSprint, committed, effectiveness, planned, addedAfter }
+  }
+
+  const delivered = computeCycleDeliveredEffort(
+    tasks,
+    cycle.started_at,
+    cycle.status === 'closed' ? cycle.ended_at : null
+  )
+  const remainingSprint = computeOpenSprintEffortAt(tasks, asOfMs)
+  const committed = Math.max(planned + addedAfter, delivered + remainingSprint)
+  const effectiveness = committed > 0 ? Math.round((delivered / committed) * 100) : 0
+
+  return { delivered, remainingSprint, committed, effectiveness, planned, addedAfter }
 }
 
 export function isOsTaskSprintStatus(status: OsTaskBoardStatus): boolean {

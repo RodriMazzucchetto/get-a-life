@@ -189,6 +189,8 @@ export interface OsTaskCycleRow {
   planned_points: number
   added_after_points: number
   delivered_points: number
+  remaining_sprint_points?: number | null
+  committed_points?: number | null
   created_at: string
   updated_at: string
 }

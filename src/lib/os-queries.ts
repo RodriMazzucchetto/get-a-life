@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase'
-import { appendOsTaskPosForStatus } from '@/lib/osBoardHelpers'
+import { appendOsTaskPosForStatus, computeOsTaskCycleStats } from '@/lib/osBoardHelpers'
 import { filterOsCompanies, isQuickWinProject } from '@/lib/project-filters'
 import type {
   OsBetRow,
@@ -1583,6 +1583,9 @@ function normalizeOsTaskCycleRow(row: OsTaskCycleRow): OsTaskCycleRow {
     planned_points: Number(row.planned_points) || 0,
     added_after_points: Number(row.added_after_points) || 0,
     delivered_points: Number(row.delivered_points) || 0,
+    remaining_sprint_points:
+      row.remaining_sprint_points != null ? Number(row.remaining_sprint_points) : null,
+    committed_points: row.committed_points != null ? Number(row.committed_points) : null,
   }
 }
 
@@ -1647,16 +1650,38 @@ export async function startOsTaskCycle(userId: string, plannedPoints: number): P
   return normalizeOsTaskCycleRow(data)
 }
 
-export async function endOsTaskCycle(cycleId: string): Promise<OsTaskCycleRow> {
+export async function endOsTaskCycle(cycleId: string, userId: string): Promise<OsTaskCycleRow> {
   const supabase = createClient()
+  const { data: cycleRow, error: fetchErr } = await supabase
+    .from('os_task_cycles')
+    .select('*')
+    .eq('id', cycleId)
+    .eq('user_id', userId)
+    .single()
+
+  if (fetchErr || !cycleRow) throw fetchErr ?? new Error('Ciclo não encontrado')
+
+  const cycle = normalizeOsTaskCycleRow(cycleRow as OsTaskCycleRow)
+  const tasks = await fetchAllOsTasks(userId)
+  const stats = computeOsTaskCycleStats(cycle, tasks)
+  const endedAt = new Date().toISOString()
+
   const { data, error } = await supabase
     .from('os_task_cycles')
-    .update({ status: 'closed', ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update({
+      status: 'closed',
+      ended_at: endedAt,
+      delivered_points: stats.delivered,
+      remaining_sprint_points: stats.remainingSprint,
+      committed_points: stats.committed,
+      updated_at: endedAt,
+    })
     .eq('id', cycleId)
     .select('*')
     .single()
+
   if (error) throw error
-  return normalizeOsTaskCycleRow(data)
+  return normalizeOsTaskCycleRow(data as OsTaskCycleRow)
 }
 
 export async function incrementCycleDeliveredPoints(cycleId: string, points: number): Promise<void> {

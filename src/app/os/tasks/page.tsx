@@ -31,9 +31,8 @@ import {
   OS_COL_IN_PROGRESS,
   appendOsTaskPosForStatus,
   appendOsTaskPosOnHoldAtBottom,
-  computeCycleDeliveredEffort,
   computeOpenBoardEffort,
-  computeOpenSprintEffort,
+  computeOsTaskCycleStats,
   computeOsTaskEffort,
   computeOsTaskPosAtIndex,
   countOpenOsTasks,
@@ -293,11 +292,11 @@ export default function OsTasksPage() {
   }
 
   async function handleEndCycle() {
-    if (!activeCycle || cycleLoading) return;
+    if (!activeCycle || cycleLoading || !user) return;
     setCycleLoading(true);
     setCycleFetchError(null);
     try {
-      const closed = await endOsTaskCycle(activeCycle.id);
+      const closed = await endOsTaskCycle(activeCycle.id, user.id);
       setActiveCycle(null);
       void closed;
     } catch {
@@ -577,21 +576,12 @@ export default function OsTasksPage() {
     }
   }
 
-  const deliveredPoints = useMemo(() => {
-    if (!activeCycle) return 0;
-    return computeCycleDeliveredEffort(tasks, activeCycle.started_at);
+  const cycleStats = useMemo(() => {
+    if (!activeCycle) return null;
+    return computeOsTaskCycleStats(activeCycle, tasks);
   }, [activeCycle, tasks]);
-  const remainingSprintPoints = useMemo(() => computeOpenSprintEffort(tasks), [tasks]);
   const remainingBoardPoints = useMemo(() => computeOpenBoardEffort(tasks), [tasks]);
   const openActivityCount = useMemo(() => countOpenOsTasks(tasks), [tasks]);
-  const committedPoints = activeCycle
-    ? Math.max(
-        Number(activeCycle.planned_points) + Number(activeCycle.added_after_points),
-        deliveredPoints + remainingSprintPoints
-      )
-    : 0;
-  const effectivenessPct =
-    committedPoints > 0 ? Math.round((deliveredPoints / committedPoints) * 100) : 0;
 
   return (
     <div className="pb-10">
@@ -600,16 +590,16 @@ export default function OsTasksPage() {
           <div className="os-cycle-bar-stats">
             <span className="os-cycle-bar-label">Ciclo #{activeCycle.cycle_number} ativo</span>
             <span>{Number(activeCycle.planned_points).toFixed(1)} pts planejados</span>
-            <span className="cyan">{deliveredPoints.toFixed(1)} pts entregues</span>
+            <span className="cyan">{cycleStats!.delivered.toFixed(1)} pts entregues</span>
             {openActivityCount > 0 ? (
               <span>
                 {openActivityCount} abertas · {remainingBoardPoints.toFixed(1)} pts de esforço em aberto
-                {remainingBoardPoints !== remainingSprintPoints
-                  ? ` (${remainingSprintPoints.toFixed(1)} no sprint)`
+                {remainingBoardPoints !== cycleStats!.remainingSprint
+                  ? ` (${cycleStats!.remainingSprint.toFixed(1)} no sprint)`
                   : null}
               </span>
             ) : null}
-            <span>{effectivenessPct}% efetividade</span>
+            <span>{cycleStats!.effectiveness}% efetividade</span>
           </div>
           <button
             type="button"
