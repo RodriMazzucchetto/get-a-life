@@ -28,10 +28,15 @@ function stopActionPointer(e: MouseEvent | PointerEvent) {
   e.stopPropagation();
 }
 
-function taskDotClass(task: OsTaskRow): string {
-  if (task.on_hold) return "wait";
-  if (task.status === "in_progress") return "run";
-  return "idle";
+function taskDotProps(
+  task: OsTaskRow,
+  projectTags: OsProjectOption[]
+): { cls: string; color?: string } {
+  if (task.on_hold) return { cls: "wait" };
+  if (task.status === "in_progress") return { cls: "run" };
+  const projectColor = projectTags.find((p) => p.color && !isQuickWinProject(p))?.color;
+  if (projectColor) return { cls: "project", color: projectColor };
+  return { cls: "idle" };
 }
 
 function taskDesc(task: OsTaskRow, linkedBet: OsBetRow | null): string | null {
@@ -125,7 +130,16 @@ export function OsTaskItem({
         ⋮⋮
       </button>
 
-      <span className={`dot ${taskDotClass(task)}`} aria-hidden />
+      {(() => {
+        const { cls, color } = taskDotProps(task, projectTags);
+        return (
+          <span
+            className={`dot ${cls}`}
+            style={color ? { background: color } : undefined}
+            aria-hidden
+          />
+        );
+      })()}
 
       <div className="body">
         <button
@@ -234,7 +248,12 @@ export function OsTaskItem({
         </div>
 
         {hasOsTaskScore(task) ? (
-          <span className={`prio ${taskScore != null && taskScore >= 12 ? "high" : ""}`}>{taskScore}</span>
+          <span
+            className={`prio ${taskScore != null && taskScore >= 12 ? "high" : ""}`}
+            title="Prioridade (importância × urgência ÷ esforço)"
+          >
+            {taskScore}
+          </span>
         ) : null}
 
         <input
