@@ -31,10 +31,10 @@ import {
   OS_COL_IN_PROGRESS,
   appendOsTaskPosForStatus,
   appendOsTaskPosOnHoldAtBottom,
-  computeCycleDeliveredPoints,
+  computeCycleDeliveredEffort,
   computeOpenBoardEffort,
   computeOpenSprintEffort,
-  computeOsTaskCyclePoints,
+  computeOsTaskEffort,
   computeOsTaskPosAtIndex,
   countOpenOsTasks,
   isOsTaskSprintStatus,
@@ -267,12 +267,12 @@ export default function OsTasksPage() {
 
   function trackCycleSprintEntry(task: OsTaskRow, newStatus: OsTaskBoardStatus) {
     if (!activeCycle || !isOsTaskSprintStatus(newStatus) || isOsTaskSprintStatus(task.status)) return;
-    const points = computeOsTaskCyclePoints(task);
-    if (points <= 0) return;
-    void incrementCycleAddedAfterPoints(activeCycle.id, points);
+    const effort = computeOsTaskEffort(task);
+    if (effort <= 0) return;
+    void incrementCycleAddedAfterPoints(activeCycle.id, effort);
     setActiveCycle((prev) =>
       prev
-        ? { ...prev, added_after_points: Number(prev.added_after_points) + points }
+        ? { ...prev, added_after_points: Number(prev.added_after_points) + effort }
         : prev
     );
   }
@@ -282,7 +282,7 @@ export default function OsTasksPage() {
     setCycleLoading(true);
     try {
       const activeTasks = tasks.filter((t) => t.completed_at == null && (t.status === "current_week" || t.status === "in_progress"));
-      const plannedPoints = activeTasks.reduce((sum, t) => sum + computeOsTaskCyclePoints(t), 0);
+      const plannedPoints = activeTasks.reduce((sum, t) => sum + computeOsTaskEffort(t), 0);
       const cycle = await startOsTaskCycle(user.id, plannedPoints);
       setActiveCycle(cycle);
     } catch {
@@ -317,14 +317,14 @@ export default function OsTasksPage() {
     setTasks((prev) => [...prev, created]);
     // se há ciclo ativo e task está em Semana/Foco, conta como adicionada após início
     if (activeCycle && (status === "current_week" || status === "in_progress")) {
-      const points = computeOsTaskCyclePoints(created);
-      if (points > 0) {
-        void incrementCycleAddedAfterPoints(activeCycle.id, points);
+      const effort = computeOsTaskEffort(created);
+      if (effort > 0) {
+        void incrementCycleAddedAfterPoints(activeCycle.id, effort);
         setActiveCycle((prev) =>
           prev
             ? {
                 ...prev,
-                added_after_points: Number(prev.added_after_points) + points,
+                added_after_points: Number(prev.added_after_points) + effort,
               }
             : prev
         );
@@ -340,13 +340,13 @@ export default function OsTasksPage() {
       setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       // se há ciclo ativo, contabiliza o esforço entregue
       if (activeCycle) {
-        const points = computeOsTaskCyclePoints(task);
-        if (points > 0) void incrementCycleDeliveredPoints(activeCycle.id, points);
+        const effort = computeOsTaskEffort(task);
+        if (effort > 0) void incrementCycleDeliveredPoints(activeCycle.id, effort);
         setActiveCycle((prev) =>
           prev
             ? {
                 ...prev,
-                delivered_points: Number(prev.delivered_points) + points,
+                delivered_points: Number(prev.delivered_points) + effort,
               }
             : prev
         );
@@ -579,7 +579,7 @@ export default function OsTasksPage() {
 
   const deliveredPoints = useMemo(() => {
     if (!activeCycle) return 0;
-    return computeCycleDeliveredPoints(tasks, activeCycle.started_at);
+    return computeCycleDeliveredEffort(tasks, activeCycle.started_at);
   }, [activeCycle, tasks]);
   const remainingSprintPoints = useMemo(() => computeOpenSprintEffort(tasks), [tasks]);
   const remainingBoardPoints = useMemo(() => computeOpenBoardEffort(tasks), [tasks]);
@@ -603,7 +603,7 @@ export default function OsTasksPage() {
             <span className="cyan">{deliveredPoints.toFixed(1)} pts entregues</span>
             {openActivityCount > 0 ? (
               <span>
-                {openActivityCount} abertas · {remainingBoardPoints.toFixed(1)} pts em aberto
+                {openActivityCount} abertas · {remainingBoardPoints.toFixed(1)} pts de esforço em aberto
                 {remainingBoardPoints !== remainingSprintPoints
                   ? ` (${remainingSprintPoints.toFixed(1)} no sprint)`
                   : null}

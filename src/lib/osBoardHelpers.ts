@@ -28,16 +28,12 @@ export function computeOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency
   return Math.round((raw / effort) * 10) / 10
 }
 
-/** Pontos do ciclo: score de prioridade quando definido; senão esforço (1–5). */
-export function computeOsTaskCyclePoints(
-  task: Pick<OsTaskRow, 'importance' | 'urgency' | 'effort'>
-): number {
-  const score = computeOsTaskScore(task)
-  if (score != null) return score
-  return computeOsTaskEffort(task)
+/** Esforço da task (escala 1–5). Unidade dos ciclos de entrega; null conta como 1. */
+export function computeOsTaskEffort(task: Pick<OsTaskRow, 'effort'>): number {
+  return task.effort ?? 1
 }
 
-function sumOpenCyclePoints(
+function sumOpenEffort(
   tasks: OsTaskRow[],
   statusFilter?: (status: OsTaskBoardStatus) => boolean
 ): number {
@@ -46,46 +42,41 @@ function sumOpenCyclePoints(
       (task) =>
         isOsTaskActive(task) && (statusFilter ? statusFilter(task.status) : true)
     )
-    .reduce((sum, task) => sum + computeOsTaskCyclePoints(task), 0)
+    .reduce((sum, task) => sum + computeOsTaskEffort(task), 0)
 }
 
-/** Pontos das tasks abertas no sprint (Foco + Semana). */
+/** Esforço das tasks abertas no sprint (Foco + Semana). */
 export function computeOpenSprintEffort(tasks: OsTaskRow[]): number {
-  return sumOpenCyclePoints(tasks, isOsTaskSprintStatus)
+  return sumOpenEffort(tasks, isOsTaskSprintStatus)
 }
 
-/** Pontos das tasks abertas no backlog. */
+/** Esforço das tasks abertas no backlog. */
 export function computeOpenBacklogEffort(tasks: OsTaskRow[]): number {
-  return sumOpenCyclePoints(tasks, (status) => status === 'backlog')
+  return sumOpenEffort(tasks, (status) => status === 'backlog')
 }
 
-/** Pontos de todas as tasks abertas no board (backlog + sprint). */
+/** Esforço de todas as tasks abertas no board (backlog + sprint). */
 export function computeOpenBoardEffort(tasks: OsTaskRow[]): number {
-  return sumOpenCyclePoints(tasks)
+  return sumOpenEffort(tasks)
 }
 
 export function countOpenOsTasks(tasks: OsTaskRow[]): number {
   return tasks.filter(isOsTaskActive).length
 }
 
-/** Pontos entregues no ciclo (tasks concluídas desde started_at). */
-export function computeCycleDeliveredPoints(tasks: OsTaskRow[], cycleStartedAt: string): number {
+/** Esforço entregue no ciclo (tasks concluídas desde started_at). */
+export function computeCycleDeliveredEffort(tasks: OsTaskRow[], cycleStartedAt: string): number {
   const startedMs = new Date(cycleStartedAt).getTime()
   return tasks
     .filter((task) => {
       if (!task.completed_at) return false
       return new Date(task.completed_at).getTime() >= startedMs
     })
-    .reduce((sum, task) => sum + computeOsTaskCyclePoints(task), 0)
+    .reduce((sum, task) => sum + computeOsTaskEffort(task), 0)
 }
 
 export function isOsTaskSprintStatus(status: OsTaskBoardStatus): boolean {
   return status === 'current_week' || status === 'in_progress'
-}
-
-/** Esforço bruto da task (escala 1–5). Esforço não definido conta como 1. */
-export function computeOsTaskEffort(task: Pick<OsTaskRow, 'effort'>): number {
-  return task.effort ?? 1
 }
 
 /** Pausa no fim; com score primeiro (maior→menor); sem score depois; empate por pos. */
