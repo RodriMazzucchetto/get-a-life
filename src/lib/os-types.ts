@@ -199,6 +199,37 @@ export type OsBetUpdate = Partial<Omit<OsBetRow, 'id' | 'user_id' | 'goal_id' | 
 export type OsBetWeeklyUpdate = Partial<Omit<OsBetUpdateRow, 'id' | 'user_id' | 'bet_id' | 'created_at'>>
 export type OsTaskUpdate = Partial<Omit<OsTaskRow, 'id' | 'user_id' | 'created_at'>>
 
+export interface OsPillarPitchCounts {
+  pillar: OsBlockType
+  executed: number
+  failed: number
+  total: number
+}
+
+export interface OsPillarGoalCounts {
+  pillar: OsBlockType
+  achieved: number
+  abandoned: number
+  total: number
+}
+
+export interface OsPerformanceReport {
+  year: number
+  month: number
+  pitches: {
+    executed: number
+    failed: number
+    total: number
+    byPillar: OsPillarPitchCounts[]
+  }
+  goals: {
+    achieved: number
+    abandoned: number
+    total: number
+    byPillar: OsPillarGoalCounts[]
+  }
+}
+
 export interface OsDatabaseTables {
   os_blocks: {
     Row: OsBlockRow

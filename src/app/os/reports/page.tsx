@@ -13,6 +13,7 @@ import {
   YAxis,
   Legend,
 } from "recharts";
+import { OsPerformanceReportSection } from "@/components/os/OsPerformanceReportSection";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { fetchAllOsTaskCycles } from "@/lib/os-queries";
 import type { OsTaskCycleRow } from "@/lib/os-types";
@@ -103,11 +104,15 @@ export default function ReportsPage() {
 
   return (
     <div className="pb-16 font-mono">
+      <OsPerformanceReportSection />
+
+      <div className="mb-8 border-t-[1.5px] border-ta-ink pt-10" />
+
       {/* Header */}
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className={`mb-1 ${osLabelMuted}`}>Sistema de acompanhamento</div>
-          <h1 className="text-2xl font-bold uppercase tracking-tight">Relatórios</h1>
+          <div className={`mb-1 ${osLabelMuted}`}>Tasks OS</div>
+          <h1 className="text-2xl font-bold uppercase tracking-tight">Ciclos de entrega</h1>
         </div>
 
         <div className="flex items-center gap-3">

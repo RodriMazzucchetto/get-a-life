@@ -11,6 +11,9 @@ import type {
   OsCycleRow,
   OsGoalRow,
   OsGoalStatus,
+  OsPerformanceReport,
+  OsPillarGoalCounts,
+  OsPillarPitchCounts,
   OsTaskRow,
 } from '@/lib/os-types'
 
@@ -1665,4 +1668,176 @@ export async function incrementCycleAddedAfterPoints(cycleId: string, points: nu
     .from('os_task_cycles')
     .update({ added_after_points: (current.added_after_points ?? 0) + points, updated_at: new Date().toISOString() })
     .eq('id', cycleId)
+}
+
+function isInCalendarMonth(iso: string, year: number, month: number): boolean {
+  const date = new Date(iso)
+  return date.getFullYear() === year && date.getMonth() + 1 === month
+}
+
+function emptyPitchCountsByPillar(): OsPillarPitchCounts[] {
+  return OS_BLOCK_TYPES.map((pillar) => ({
+    pillar,
+    executed: 0,
+    failed: 0,
+    total: 0,
+  }))
+}
+
+function emptyGoalCountsByPillar(): OsPillarGoalCounts[] {
+  return OS_BLOCK_TYPES.map((pillar) => ({
+    pillar,
+    achieved: 0,
+    abandoned: 0,
+    total: 0,
+  }))
+}
+
+function getBetConclusionEvent(
+  bet: OsBetRow,
+  terminalUpdates: OsBetUpdateRow[]
+): { status: 'executed' | 'failed'; at: string } | null {
+  const updates = terminalUpdates
+    .filter((update) => update.bet_id === bet.id)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+
+  if (updates.length > 0) {
+    const first = updates[0]
+    return { status: first.status as 'executed' | 'failed', at: first.created_at }
+  }
+
+  if (bet.status === 'executed' || bet.status === 'failed') {
+    return { status: bet.status, at: bet.updated_at }
+  }
+
+  return null
+}
+
+/** Performance de pitches e metas concluídos num mês, por empresa e pilar. */
+export async function fetchOsPerformanceReport(
+  userId: string,
+  projectId: string,
+  year: number,
+  month: number
+): Promise<OsPerformanceReport> {
+  const blocks = await ensureOsBlocksForProject(userId, projectId)
+  const blockTypeById = new Map(blocks.map((block) => [block.id, block.type]))
+  const blockIds = blocks.map((block) => block.id)
+
+  if (blockIds.length === 0) {
+    return {
+      year,
+      month,
+      pitches: { executed: 0, failed: 0, total: 0, byPillar: emptyPitchCountsByPillar() },
+      goals: { achieved: 0, abandoned: 0, total: 0, byPillar: emptyGoalCountsByPillar() },
+    }
+  }
+
+  const supabase = createClient()
+
+  const [{ data: goalsData }] = await Promise.all([
+    supabase.from('os_goals').select('*').in('block_id', blockIds),
+  ])
+
+  const goals = (goalsData ?? []) as OsGoalRow[]
+  const goalIds = goals.map((goal) => goal.id)
+
+  let bets: OsBetRow[] = []
+  if (goalIds.length > 0) {
+    const { data: betsData, error: betsError } = await supabase
+      .from('os_bets')
+      .select('*')
+      .in('goal_id', goalIds)
+
+    if (betsError) {
+      console.error('Erro ao buscar pitches para relatório:', betsError)
+      throw betsError
+    }
+    bets = betsData ?? []
+  }
+
+  const betIds = bets.map((bet) => bet.id)
+
+  let terminalUpdates: OsBetUpdateRow[] = []
+  if (betIds.length > 0) {
+    const { data: updatesData, error: updatesError } = await supabase
+      .from('os_bet_updates')
+      .select('*')
+      .in('bet_id', betIds)
+      .in('status', ['executed', 'failed'])
+      .order('created_at', { ascending: true })
+
+    if (updatesError) {
+      console.error('Erro ao buscar updates para relatório:', updatesError)
+      throw updatesError
+    }
+    terminalUpdates = updatesData ?? []
+  }
+
+  const pitchByPillar = new Map<OsBlockType, OsPillarPitchCounts>(
+    emptyPitchCountsByPillar().map((row) => [row.pillar, { ...row }])
+  )
+  let pitchExecuted = 0
+  let pitchFailed = 0
+
+  for (const bet of bets) {
+    const conclusion = getBetConclusionEvent(bet, terminalUpdates)
+    if (!conclusion || !isInCalendarMonth(conclusion.at, year, month)) continue
+
+    const goal = goals.find((g) => g.id === bet.goal_id)
+    const pillar = goal ? blockTypeById.get(goal.block_id) : undefined
+    if (!pillar) continue
+
+    const row = pitchByPillar.get(pillar)!
+    if (conclusion.status === 'executed') {
+      row.executed += 1
+      pitchExecuted += 1
+    } else {
+      row.failed += 1
+      pitchFailed += 1
+    }
+    row.total += 1
+  }
+
+  const goalByPillar = new Map<OsBlockType, OsPillarGoalCounts>(
+    emptyGoalCountsByPillar().map((row) => [row.pillar, { ...row }])
+  )
+  let goalAchieved = 0
+  let goalAbandoned = 0
+
+  for (const goal of goals) {
+    if (goal.status !== 'achieved' && goal.status !== 'abandoned') continue
+    const closedAt = goal.closed_at ?? goal.updated_at
+    if (!isInCalendarMonth(closedAt, year, month)) continue
+
+    const pillar = blockTypeById.get(goal.block_id)
+    if (!pillar) continue
+
+    const row = goalByPillar.get(pillar)!
+    if (goal.status === 'achieved') {
+      row.achieved += 1
+      goalAchieved += 1
+    } else {
+      row.abandoned += 1
+      goalAbandoned += 1
+    }
+    row.total += 1
+  }
+
+  return {
+    year,
+    month,
+    pitches: {
+      executed: pitchExecuted,
+      failed: pitchFailed,
+      total: pitchExecuted + pitchFailed,
+      byPillar: OS_BLOCK_TYPES.map((pillar) => pitchByPillar.get(pillar)!),
+    },
+    goals: {
+      achieved: goalAchieved,
+      abandoned: goalAbandoned,
+      total: goalAchieved + goalAbandoned,
+      byPillar: OS_BLOCK_TYPES.map((pillar) => goalByPillar.get(pillar)!),
+    },
+  }
 }
