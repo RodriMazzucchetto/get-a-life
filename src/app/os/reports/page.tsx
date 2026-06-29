@@ -161,10 +161,18 @@ export default function ReportsPage() {
 
       {/* Ciclo ativo banner */}
       {activeCycle && (
-        <div className="mb-6 border-[1.5px] border-ta-cyan bg-ta-paper px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-ta-cyan">
-          Ciclo #{activeCycle.cycle_number} em andamento ·{" "}
-          {activeCycle.delivered_points.toFixed(1)} de esforço entregue de{" "}
-          {(activeCycle.planned_points + activeCycle.added_after_points).toFixed(1)} total
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-[1.5px] border-ta-cyan bg-ta-paper px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-ta-cyan">
+          <span>
+            Ciclo #{activeCycle.cycle_number} em andamento ·{" "}
+            {activeCycle.delivered_points.toFixed(1)} de esforço entregue de{" "}
+            {(activeCycle.planned_points + activeCycle.added_after_points).toFixed(1)} total
+          </span>
+          <a
+            href="/os/tasks"
+            className="border border-ta-cyan px-3 py-1.5 font-mono text-[10px] tracking-[0.14em] text-ta-cyan transition-colors hover:bg-ta-cyan hover:text-ta-paper"
+          >
+            Finalizar ciclo
+          </a>
         </div>
       )}
 

@@ -29,6 +29,62 @@
   margin-bottom: 28px;
 }
 
+.os-refined-page .os-cycle-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--color-ta-cyan);
+  background: color-mix(in srgb, var(--color-ta-cyan) 8%, var(--color-ta-paper));
+}
+
+.os-refined-page .os-cycle-bar-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ta-muted);
+}
+
+.os-refined-page .os-cycle-bar-stats .os-cycle-bar-label {
+  color: var(--color-ta-ink);
+}
+
+.os-refined-page .os-cycle-bar-stats .cyan {
+  color: var(--color-ta-cyan-ink, #0e9bb8);
+}
+
+.os-refined-page .os-cycle-bar-end {
+  border: 1.5px solid var(--color-ta-red);
+  background: var(--color-ta-red);
+  color: var(--color-ta-paper);
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.os-refined-page .os-cycle-bar-end:hover {
+  opacity: 0.9;
+}
+
+.os-refined-page .os-cycle-bar-end:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .os-refined-page .board {
   display: flex;
   flex-direction: column;

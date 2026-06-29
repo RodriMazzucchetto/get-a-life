@@ -1579,12 +1579,20 @@ import type { OsTaskCycleRow } from '@/lib/os-types'
 
 export async function fetchActiveOsTaskCycle(userId: string): Promise<OsTaskCycleRow | null> {
   const supabase = createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('os_task_cycles')
     .select('*')
     .eq('user_id', userId)
     .eq('status', 'active')
+    .order('started_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
+
+  if (error) {
+    console.error('Erro ao buscar ciclo OS ativo:', error)
+    throw error
+  }
+
   return data ?? null
 }
 

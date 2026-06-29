@@ -196,11 +196,43 @@ export default function OsTasksPage() {
 
   const [activeCycle, setActiveCycle] = useState<OsTaskCycleRow | null>(null);
   const [cycleLoading, setCycleLoading] = useState(false);
+  const [cycleReady, setCycleReady] = useState(false);
+  const [cycleFetchError, setCycleFetchError] = useState<string | null>(null);
+
+  const loadActiveCycle = useCallback(async () => {
+    if (!user) {
+      setActiveCycle(null);
+      setCycleReady(true);
+      return;
+    }
+    setCycleFetchError(null);
+    try {
+      const cycle = await fetchActiveOsTaskCycle(user.id);
+      setActiveCycle(cycle);
+    } catch {
+      setCycleFetchError(
+        "Não foi possível carregar o ciclo ativo. Verifique a conexão ou tente novamente."
+      );
+      setActiveCycle(null);
+    } finally {
+      setCycleReady(true);
+    }
+  }, [user]);
 
   useEffect(() => {
-    if (!user) return;
-    void fetchActiveOsTaskCycle(user.id).then(setActiveCycle);
-  }, [user]);
+    setCycleReady(false);
+    void loadActiveCycle();
+  }, [loadActiveCycle]);
+
+  useEffect(() => {
+    const refresh = () => void loadActiveCycle();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadActiveCycle]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -246,13 +278,13 @@ export default function OsTasksPage() {
   async function handleEndCycle() {
     if (!activeCycle || cycleLoading) return;
     setCycleLoading(true);
+    setCycleFetchError(null);
     try {
       const closed = await endOsTaskCycle(activeCycle.id);
       setActiveCycle(null);
-      // keep closed cycle visible briefly for UX
       void closed;
     } catch {
-      setError("Não foi possível encerrar o ciclo.");
+      setError("Não foi possível finalizar o ciclo.");
     } finally {
       setCycleLoading(false);
     }
@@ -516,26 +548,47 @@ export default function OsTasksPage() {
 
   return (
     <div className="pb-10">
+      {activeCycle ? (
+        <div className="os-cycle-bar">
+          <div className="os-cycle-bar-stats">
+            <span className="os-cycle-bar-label">Ciclo #{activeCycle.cycle_number} ativo</span>
+            <span>{activeCycle.planned_points.toFixed(1)} pts planejados</span>
+            <span className="cyan">{activeCycle.delivered_points.toFixed(1)} pts entregues</span>
+            <span>{effectivenessPct}% efetividade</span>
+          </div>
+          <button
+            type="button"
+            className="os-cycle-bar-end"
+            onClick={() => void handleEndCycle()}
+            disabled={cycleLoading}
+          >
+            {cycleLoading ? "..." : "Finalizar ciclo"}
+          </button>
+        </div>
+      ) : null}
+
       <div className="page-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
         <h1>Tasks</h1>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {activeCycle ? (
-            <>
-              <div style={{ display: "flex", gap: "16px", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--color-ta-muted)" }}>
-                <span>Ciclo #{activeCycle.cycle_number}</span>
-                <span style={{ color: "var(--color-ta-ink)" }}>{activeCycle.planned_points.toFixed(1)} pts planejados</span>
-                <span style={{ color: "var(--color-ta-cyan)" }}>{activeCycle.delivered_points.toFixed(1)} pts entregues</span>
-                <span>{effectivenessPct}% efetividade</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => void handleEndCycle()}
-                disabled={cycleLoading}
-                style={{ border: "1.5px solid var(--color-ta-red)", background: "transparent", color: "var(--color-ta-red)", padding: "6px 14px", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", cursor: "pointer", opacity: cycleLoading ? 0.5 : 1 }}
-              >
-                {cycleLoading ? "..." : "Encerrar ciclo"}
-              </button>
-            </>
+          {!cycleReady ? (
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--color-ta-muted)" }}>
+              Carregando ciclo...
+            </span>
+          ) : cycleFetchError ? (
+            <button
+              type="button"
+              onClick={() => {
+                setCycleReady(false);
+                void loadActiveCycle();
+              }}
+              style={{ border: "1.5px solid var(--color-ta-red)", background: "transparent", color: "var(--color-ta-red)", padding: "6px 14px", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", cursor: "pointer" }}
+            >
+              Recarregar ciclo
+            </button>
+          ) : activeCycle ? (
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--color-ta-muted)" }}>
+              Ciclo em andamento
+            </span>
           ) : (
             <button
               type="button"
@@ -549,6 +602,10 @@ export default function OsTasksPage() {
         </div>
       </div>
       <div className="page-sub">Foco agora · Semana atual · Backlog</div>
+
+      {cycleFetchError ? (
+        <div className={osErrorBanner}>{cycleFetchError}</div>
+      ) : null}
 
       {error || tasksError ? (
         <div className={osErrorBanner}>{error ?? tasksError}</div>
