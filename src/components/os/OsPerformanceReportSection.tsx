@@ -129,7 +129,7 @@ export function OsPerformanceReportSection() {
   const goalSuccess = successPct(report?.goals.achieved ?? 0, report?.goals.total ?? 0);
 
   return (
-    <section className="mb-14">
+    <section>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className={`mb-1 ${osLabelMuted}`}>OS · Pitches &amp; metas</div>

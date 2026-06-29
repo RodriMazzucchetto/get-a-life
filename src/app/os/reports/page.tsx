@@ -104,11 +104,7 @@ export default function ReportsPage() {
 
   return (
     <div className="pb-16 font-mono">
-      <OsPerformanceReportSection />
-
-      <div className="mb-8 border-t-[1.5px] border-ta-ink pt-10" />
-
-      {/* Header */}
+      {/* Header — análise geral (Tasks OS) */}
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className={`mb-1 ${osLabelMuted}`}>Tasks OS</div>
@@ -301,6 +297,10 @@ export default function ReportsPage() {
           </div>
         </>
       )}
+
+      <div className="my-14 border-t-[1.5px] border-ta-ink pt-10" />
+
+      <OsPerformanceReportSection />
     </div>
   );
 }
