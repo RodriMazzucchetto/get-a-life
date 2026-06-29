@@ -301,7 +301,17 @@ export default function OsTasksPage() {
     // se há ciclo ativo e task está em Semana/Foco, conta como adicionada após início
     if (activeCycle && (status === "current_week" || status === "in_progress")) {
       const effort = computeOsTaskEffort(created);
-      if (effort > 0) void incrementCycleAddedAfterPoints(activeCycle.id, effort);
+      if (effort > 0) {
+        void incrementCycleAddedAfterPoints(activeCycle.id, effort);
+        setActiveCycle((prev) =>
+          prev
+            ? {
+                ...prev,
+                added_after_points: Number(prev.added_after_points) + effort,
+              }
+            : prev
+        );
+      }
     }
   }
 
@@ -315,8 +325,14 @@ export default function OsTasksPage() {
       if (activeCycle) {
         const effort = computeOsTaskEffort(task);
         if (effort > 0) void incrementCycleDeliveredPoints(activeCycle.id, effort);
-        // atualiza estado local do ciclo
-        setActiveCycle((prev) => prev ? { ...prev, delivered_points: prev.delivered_points + effort } : prev);
+        setActiveCycle((prev) =>
+          prev
+            ? {
+                ...prev,
+                delivered_points: Number(prev.delivered_points) + effort,
+              }
+            : prev
+        );
       }
     } catch {
       setError("Não foi possível concluir a task.");
@@ -540,10 +556,10 @@ export default function OsTasksPage() {
   }
 
   const effectivenessTotal = activeCycle
-    ? activeCycle.planned_points + activeCycle.added_after_points
+    ? Number(activeCycle.planned_points) + Number(activeCycle.added_after_points)
     : 0;
   const effectivenessPct = effectivenessTotal > 0
-    ? Math.round((activeCycle!.delivered_points / effectivenessTotal) * 100)
+    ? Math.round((Number(activeCycle!.delivered_points) / effectivenessTotal) * 100)
     : 0;
 
   return (
@@ -552,8 +568,8 @@ export default function OsTasksPage() {
         <div className="os-cycle-bar">
           <div className="os-cycle-bar-stats">
             <span className="os-cycle-bar-label">Ciclo #{activeCycle.cycle_number} ativo</span>
-            <span>{activeCycle.planned_points.toFixed(1)} pts planejados</span>
-            <span className="cyan">{activeCycle.delivered_points.toFixed(1)} pts entregues</span>
+            <span>{Number(activeCycle.planned_points).toFixed(1)} pts planejados</span>
+            <span className="cyan">{Number(activeCycle.delivered_points).toFixed(1)} pts entregues</span>
             <span>{effectivenessPct}% efetividade</span>
           </div>
           <button

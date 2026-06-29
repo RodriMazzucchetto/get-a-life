@@ -1577,6 +1577,15 @@ export function getBetDisplayStatus(
 
 import type { OsTaskCycleRow } from '@/lib/os-types'
 
+function normalizeOsTaskCycleRow(row: OsTaskCycleRow): OsTaskCycleRow {
+  return {
+    ...row,
+    planned_points: Number(row.planned_points) || 0,
+    added_after_points: Number(row.added_after_points) || 0,
+    delivered_points: Number(row.delivered_points) || 0,
+  }
+}
+
 export async function fetchActiveOsTaskCycle(userId: string): Promise<OsTaskCycleRow | null> {
   const supabase = createClient()
   const { data, error } = await supabase
@@ -1593,7 +1602,7 @@ export async function fetchActiveOsTaskCycle(userId: string): Promise<OsTaskCycl
     throw error
   }
 
-  return data ?? null
+  return data ? normalizeOsTaskCycleRow(data) : null
 }
 
 export async function fetchAllOsTaskCycles(userId: string): Promise<OsTaskCycleRow[]> {
@@ -1603,7 +1612,7 @@ export async function fetchAllOsTaskCycles(userId: string): Promise<OsTaskCycleR
     .select('*')
     .eq('user_id', userId)
     .order('cycle_number', { ascending: true })
-  return data ?? []
+  return (data ?? []).map(normalizeOsTaskCycleRow)
 }
 
 export async function startOsTaskCycle(userId: string, plannedPoints: number): Promise<OsTaskCycleRow> {
@@ -1635,7 +1644,7 @@ export async function startOsTaskCycle(userId: string, plannedPoints: number): P
     .single()
 
   if (error) throw error
-  return data
+  return normalizeOsTaskCycleRow(data)
 }
 
 export async function endOsTaskCycle(cycleId: string): Promise<OsTaskCycleRow> {
@@ -1647,7 +1656,7 @@ export async function endOsTaskCycle(cycleId: string): Promise<OsTaskCycleRow> {
     .select('*')
     .single()
   if (error) throw error
-  return data
+  return normalizeOsTaskCycleRow(data)
 }
 
 export async function incrementCycleDeliveredPoints(cycleId: string, points: number): Promise<void> {
@@ -1658,9 +1667,10 @@ export async function incrementCycleDeliveredPoints(cycleId: string, points: num
     .eq('id', cycleId)
     .single()
   if (!current) return
+  const next = Number(current.delivered_points ?? 0) + points
   await supabase
     .from('os_task_cycles')
-    .update({ delivered_points: (current.delivered_points ?? 0) + points, updated_at: new Date().toISOString() })
+    .update({ delivered_points: next, updated_at: new Date().toISOString() })
     .eq('id', cycleId)
 }
 
@@ -1672,9 +1682,10 @@ export async function incrementCycleAddedAfterPoints(cycleId: string, points: nu
     .eq('id', cycleId)
     .single()
   if (!current) return
+  const next = Number(current.added_after_points ?? 0) + points
   await supabase
     .from('os_task_cycles')
-    .update({ added_after_points: (current.added_after_points ?? 0) + points, updated_at: new Date().toISOString() })
+    .update({ added_after_points: next, updated_at: new Date().toISOString() })
     .eq('id', cycleId)
 }
 
