@@ -10,6 +10,7 @@ import type {
   OsBlockType,
   OsCycleRow,
   OsGoalRow,
+  OsGoalStatus,
   OsTaskRow,
 } from '@/lib/os-types'
 
@@ -197,6 +198,27 @@ export function currentWeekStartDate(): string {
 
 export function formatBetUpdateStatusLabel(status: string): string {
   return status.replace('_', ' ').toUpperCase()
+}
+
+export type OsGoalOutcome = Extract<OsGoalStatus, 'achieved' | 'abandoned'>
+
+export function goalIsConcluded(goal: OsGoalRow): boolean {
+  return goal.status === 'achieved' || goal.status === 'abandoned'
+}
+
+export function formatGoalOutcomeLabel(status: OsGoalStatus): string {
+  switch (status) {
+    case 'achieved':
+      return 'Achieved'
+    case 'abandoned':
+      return 'Abandoned'
+    default:
+      return 'Active'
+  }
+}
+
+export function getGoalOutcomeColor(status: OsGoalOutcome): string {
+  return status === 'achieved' ? OS_CYAN : OS_RED
 }
 
 export function formatExecutionOwnerInitials(owner: string | null): string {
@@ -483,7 +505,6 @@ export async function fetchGoalsForBlock(blockId: string): Promise<OsGoalRow[]> 
     .from('os_goals')
     .select('*')
     .eq('block_id', blockId)
-    .neq('status', 'abandoned')
     .order('updated_at', { ascending: false })
 
   if (error) {
@@ -496,6 +517,8 @@ export async function fetchGoalsForBlock(blockId: string): Promise<OsGoalRow[]> 
     ...g,
     is_priority: g.is_priority ?? false,
     pos: g.pos ?? null,
+    closed_at: g.closed_at ?? null,
+    closure_note: g.closure_note ?? null,
   }))
 }
 
@@ -504,6 +527,20 @@ export async function fetchGoalsForBlock(blockId: string): Promise<OsGoalRow[]> 
 export async function setGoalPriority(goalId: string, blockId: string): Promise<OsGoalRow> {
   const supabase = createClient()
   const now = new Date().toISOString()
+
+  const { data: goalRow, error: goalError } = await supabase
+    .from('os_goals')
+    .select('status')
+    .eq('id', goalId)
+    .single()
+
+  if (goalError) {
+    console.error('Erro ao validar meta para priorização:', goalError)
+    throw goalError
+  }
+  if (goalRow.status !== 'active') {
+    throw new Error('Só é possível priorizar metas ativas.')
+  }
 
   // Tentar com is_priority; se a coluna não existir cai no fallback por updated_at
   const { error: clearError } = await supabase
@@ -565,14 +602,65 @@ export async function unsetGoalPriority(goalId: string): Promise<OsGoalRow> {
   return data
 }
 
+/** Conclui meta priorizada: achieved ou abandoned. Desprioriza automaticamente. */
+export async function concludeOsGoal(
+  goalId: string,
+  outcome: OsGoalOutcome,
+  closureNote?: string
+): Promise<OsGoalRow> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+  const payload: Record<string, unknown> = {
+    status: outcome,
+    is_priority: false,
+    updated_at: now,
+    closed_at: now,
+    closure_note: closureNote?.trim() || null,
+  }
+
+  const { data, error } = await supabase
+    .from('os_goals')
+    .update(payload)
+    .eq('id', goalId)
+    .select('*')
+    .single()
+
+  if (error) {
+    const columnMissing =
+      error.message?.includes('closed_at') ||
+      error.message?.includes('closure_note') ||
+      error.code === '42703'
+    if (columnMissing) {
+      const { closed_at: _c, closure_note: _n, ...fallbackPayload } = payload
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('os_goals')
+        .update(fallbackPayload)
+        .eq('id', goalId)
+        .select('*')
+        .single()
+      if (fallbackError) {
+        console.error('Erro ao concluir meta OS:', fallbackError)
+        throw fallbackError
+      }
+      return { ...fallbackData, closed_at: null, closure_note: null }
+    }
+    console.error('Erro ao concluir meta OS:', error)
+    throw error
+  }
+  return data
+}
+
 /** Alterna status da meta: active ↔ achieved. */
 export async function toggleGoalDone(goalId: string, done: boolean): Promise<OsGoalRow> {
+  if (done) return concludeOsGoal(goalId, 'achieved')
+
   const supabase = createClient()
   const { data, error } = await supabase
     .from('os_goals')
     .update({
-      status: done ? 'achieved' : 'active',
-      is_priority: done ? false : undefined,
+      status: 'active',
+      closed_at: null,
+      closure_note: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', goalId)
@@ -580,6 +668,20 @@ export async function toggleGoalDone(goalId: string, done: boolean): Promise<OsG
     .single()
 
   if (error) {
+    const columnMissing =
+      error.message?.includes('closed_at') ||
+      error.message?.includes('closure_note') ||
+      error.code === '42703'
+    if (columnMissing) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('os_goals')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', goalId)
+        .select('*')
+        .single()
+      if (fallbackError) throw fallbackError
+      return { ...fallbackData, closed_at: null, closure_note: null }
+    }
     console.error('Erro ao alternar estado da meta:', error)
     throw error
   }

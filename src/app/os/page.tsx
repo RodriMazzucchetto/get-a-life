@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
+import { GoalOutcomeModal } from "@/components/os/GoalOutcomeModal";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
 import { WeeklyUpdateModal } from "@/components/os/WeeklyUpdateModal";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -12,6 +13,7 @@ import {
   OS_BLOCK_TYPES,
   computeCompanyMomentum,
   computeOsBetStats,
+  concludeOsGoal,
   createOsBet,
   createOsBetUpdate,
   createOsGoal,
@@ -23,7 +25,9 @@ import {
   fetchOsBetActivityCounts,
   fetchOsBetUpdatesForBet,
   fetchOsTasksForBet,
+  formatGoalOutcomeLabel,
   getPillarStatusDisplay,
+  goalIsConcluded,
   removeBetFromBoardViews,
   saveOsGoal,
   setGoalPriority,
@@ -108,6 +112,7 @@ type PillarCardProps = {
   onAddGoal: (title: string) => Promise<void>;
   onPrioritizeGoal: (goal: OsGoalRow) => Promise<void>;
   onUnprioritizeGoal: (goal: OsGoalRow) => Promise<void>;
+  onConcludeGoal: (goal: OsGoalRow) => void;
   onRenameGoal: (goal: OsGoalRow, title: string) => Promise<void>;
   onDeleteGoal: (goal: OsGoalRow) => Promise<void>;
   onOpenPitch: (bet: OsBetRow) => void;
@@ -133,6 +138,7 @@ function PillarCard({
   onAddGoal,
   onPrioritizeGoal,
   onUnprioritizeGoal,
+  onConcludeGoal,
   onRenameGoal,
   onDeleteGoal,
   onOpenPitch,
@@ -156,6 +162,8 @@ function PillarCard({
     (b) => (latestUpdates.get(b.id)?.status ?? b.status) === "failed"
   ).length;
 
+  const backlogMetasActive = backlogMetas.filter((g) => g.status === "active");
+  const backlogMetasConcluded = backlogMetas.filter((g) => goalIsConcluded(g));
   const backlogActive = backlogPitches.filter((b) => !betIsConcluded(b, latestUpdates));
   const backlogConcluded = backlogPitches.filter((b) => betIsConcluded(b, latestUpdates));
 
@@ -197,9 +205,18 @@ function PillarCard({
         </div>
         <div className="meta-row">
           {goal ? (
-            <button type="button" className="meta-text" onClick={() => onEditGoal(goal)} title="Editar meta">
-              {goal.title}
-            </button>
+            <>
+              <button
+                type="button"
+                className="check meta-check"
+                title="Concluir meta"
+                disabled={busy}
+                onClick={() => onConcludeGoal(goal)}
+              />
+              <button type="button" className="meta-text" onClick={() => onEditGoal(goal)} title="Editar meta">
+                {goal.title}
+              </button>
+            </>
           ) : (
             <button type="button" className="meta-text meta-empty" onClick={() => onEditGoal(null)}>
               Nenhuma meta priorizada — priorize uma do backlog ou crie uma nova
@@ -390,7 +407,7 @@ function PillarCard({
           <span className="count-pill">{backlogMetas.length}</span>
         </button>
         <div className="backlog-body">
-          {backlogMetas.map((g) =>
+          {backlogMetasActive.map((g) =>
             editingMetaId === g.id ? (
               <div key={g.id} className="add-row">
                 <input
@@ -440,6 +457,28 @@ function PillarCard({
               </div>
             )
           )}
+          {backlogMetasConcluded.length > 0 ? (
+            <div className="pb-concluded-section">
+              <div className="pb-concluded-label">Já trabalhadas</div>
+              {backlogMetasConcluded.map((g) => {
+                const statusClass = g.status === "abandoned" ? "abandoned" : "achieved";
+                return (
+                  <div key={g.id} className={`backlog-meta concluded ${statusClass}`}>
+                    <span className="pb-status-dot" aria-hidden />
+                    <span className="bm-text">{g.title}</span>
+                    <span className={`pb-outcome ${statusClass === "abandoned" ? "failed" : "executed"}`}>
+                      {formatGoalOutcomeLabel(g.status)}
+                    </span>
+                    <div className="bm-actions">
+                      <button type="button" className="edit" title="Editar" onClick={() => onEditGoal(g)}>
+                        ✎
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
           {addingMeta ? (
             <div className="add-row">
               <input
@@ -524,6 +563,11 @@ function OsPageContent() {
   const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
   const [weeklyModalBet, setWeeklyModalBet] = useState<OsBetRow | null>(null);
   const [weeklySaving, setWeeklySaving] = useState(false);
+
+  // Goal outcome modal
+  const [goalOutcomeModalOpen, setGoalOutcomeModalOpen] = useState(false);
+  const [goalOutcomeTarget, setGoalOutcomeTarget] = useState<OsGoalRow | null>(null);
+  const [goalOutcomeSaving, setGoalOutcomeSaving] = useState(false);
 
   const orderedBlocks = useMemo(
     () =>
@@ -723,6 +767,31 @@ function OsPageContent() {
     } catch {
       setError("Não foi possível excluir a meta.");
     } finally {
+      setBusyPillar(null);
+    }
+  };
+
+  const openGoalOutcomeModal = (goal: OsGoalRow) => {
+    setGoalOutcomeTarget(goal);
+    setGoalOutcomeModalOpen(true);
+  };
+
+  const handleGoalOutcomeSubmit = async (data: { outcome: "achieved" | "abandoned"; note: string }) => {
+    if (!goalOutcomeTarget) return;
+    const blockId = goalOutcomeTarget.block_id;
+    setGoalOutcomeSaving(true);
+    setBusyPillar(blockId);
+    try {
+      await concludeOsGoal(goalOutcomeTarget.id, data.outcome, data.note);
+      setGoalOutcomeModalOpen(false);
+      setGoalOutcomeTarget(null);
+      await refreshBoard({ background: true, force: true });
+      await loadGoalsByBlock();
+    } catch {
+      setError("Não foi possível concluir a meta.");
+      throw new Error("goal outcome failed");
+    } finally {
+      setGoalOutcomeSaving(false);
       setBusyPillar(null);
     }
   };
@@ -1072,9 +1141,7 @@ function OsPageContent() {
               const blockType = view.block.type as OsBlockType;
               const blockId = view.block.id;
               const allGoals = goalsByBlock.get(blockId) ?? [];
-              const backlogMetas = allGoals.filter(
-                (g) => g.status === "active" && g.id !== view.goal?.id
-              );
+              const backlogMetas = allGoals.filter((g) => g.id !== view.goal?.id);
               const priorityPitches = view.bets.filter((b) => b.is_priority);
               const backlogPitches = view.bets.filter((b) => !b.is_priority);
               return (
@@ -1095,6 +1162,7 @@ function OsPageContent() {
                   onAddGoal={(title) => handleAddGoal(blockId, title)}
                   onPrioritizeGoal={(g) => handlePrioritizeGoal(g, blockId)}
                   onUnprioritizeGoal={(g) => handleUnprioritizeGoal(g, blockId)}
+                  onConcludeGoal={openGoalOutcomeModal}
                   onRenameGoal={(g, title) => handleRenameGoal(g, title, blockId)}
                   onDeleteGoal={(g) => handleDeleteGoal(g, blockId)}
                   onOpenPitch={(bet) => openPitchModal(bet, blockType)}
@@ -1212,6 +1280,19 @@ function OsPageContent() {
           pitch={weeklyModalBet}
           onSubmit={handleWeeklySubmit}
           saving={weeklySaving}
+        />
+      ) : null}
+
+      {goalOutcomeTarget ? (
+        <GoalOutcomeModal
+          open={goalOutcomeModalOpen}
+          onClose={() => {
+            setGoalOutcomeModalOpen(false);
+            setGoalOutcomeTarget(null);
+          }}
+          goal={goalOutcomeTarget}
+          onSubmit={handleGoalOutcomeSubmit}
+          saving={goalOutcomeSaving}
         />
       ) : null}
     </div>

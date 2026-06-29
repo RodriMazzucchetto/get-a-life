@@ -898,6 +898,8 @@
 .os-refined-page .meta-zone .meta-lab { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--color-ta-muted); margin-bottom: 10px; }
 .os-refined-page .meta-zone .meta-lab .pin { letter-spacing: 0; }
 .os-refined-page .meta-zone .meta-row { display: flex; align-items: flex-start; gap: 12px; }
+.os-refined-page .meta-zone .meta-check { width: 14px; height: 14px; border: 1.5px solid var(--color-ta-ink); background: var(--color-ta-paper); flex: 0 0 auto; margin-top: 4px; padding: 0; cursor: pointer; }
+.os-refined-page .meta-zone .meta-check:hover { background: var(--color-ta-paper-2); }
 .os-refined-page .meta-zone .meta-text { flex: 1; font-family: var(--font-ta-sans); font-weight: 600; font-size: 16px; line-height: 1.35; color: var(--color-ta-ink); letter-spacing: -0.01em; text-align: left; background: transparent; border: 0; cursor: pointer; padding: 0; }
 .os-refined-page .meta-zone .meta-text:hover { opacity: 0.82; }
 .os-refined-page .meta-zone .edit { color: var(--color-ta-muted); font-size: 13px; cursor: pointer; flex: 0 0 auto; margin-top: 2px; background: transparent; border: 0; line-height: 1; }
@@ -979,6 +981,12 @@
 .os-refined-page .pb-item.concluded { padding-left: 8px; border-left: 3px solid transparent; }
 .os-refined-page .pb-item.concluded.executed { border-left-color: var(--color-ta-cyan); background: color-mix(in srgb, var(--color-ta-cyan) 6%, transparent); }
 .os-refined-page .pb-item.concluded.failed { border-left-color: var(--color-ta-red); background: color-mix(in srgb, var(--color-ta-red) 6%, transparent); }
+.os-refined-page .backlog-meta.concluded { padding-left: 8px; border-left: 3px solid transparent; }
+.os-refined-page .backlog-meta.concluded.achieved { border-left-color: var(--color-ta-cyan); background: color-mix(in srgb, var(--color-ta-cyan) 6%, transparent); }
+.os-refined-page .backlog-meta.concluded.abandoned { border-left-color: var(--color-ta-red); background: color-mix(in srgb, var(--color-ta-red) 6%, transparent); }
+.os-refined-page .backlog-meta.concluded .bm-text { color: var(--color-ta-muted); }
+.os-refined-page .backlog-meta.concluded.achieved .pb-status-dot { background: var(--color-ta-cyan); }
+.os-refined-page .backlog-meta.concluded.abandoned .pb-status-dot { background: var(--color-ta-red); }
 .os-refined-page .pb-item.concluded .pb-text { color: var(--color-ta-muted); }
 .os-refined-page .pb-item.concluded .pb-status-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
 .os-refined-page .pb-item.concluded.executed .pb-status-dot { background: var(--color-ta-cyan); }

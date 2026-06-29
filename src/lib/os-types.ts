@@ -32,6 +32,8 @@ export interface OsGoalRow {
   status: OsGoalStatus
   is_priority: boolean
   pos: number | null
+  closed_at: string | null
+  closure_note: string | null
   created_at: string
   updated_at: string
 }
