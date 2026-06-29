@@ -31,7 +31,9 @@ import {
   OS_COL_IN_PROGRESS,
   appendOsTaskPosForStatus,
   appendOsTaskPosOnHoldAtBottom,
+  computeOpenSprintEffort,
   computeOsTaskPosAtIndex,
+  isOsTaskSprintStatus,
   osColumnStatusFromId,
   osTasksForColumn,
   sortOsTasksByPos,
@@ -260,6 +262,18 @@ export default function OsTasksPage() {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
   }
 
+  function trackCycleSprintEntry(task: OsTaskRow, newStatus: OsTaskBoardStatus) {
+    if (!activeCycle || !isOsTaskSprintStatus(newStatus) || isOsTaskSprintStatus(task.status)) return;
+    const effort = computeOsTaskEffort(task);
+    if (effort <= 0) return;
+    void incrementCycleAddedAfterPoints(activeCycle.id, effort);
+    setActiveCycle((prev) =>
+      prev
+        ? { ...prev, added_after_points: Number(prev.added_after_points) + effort }
+        : prev
+    );
+  }
+
   async function handleStartCycle() {
     if (!user || cycleLoading || activeCycle) return;
     setCycleLoading(true);
@@ -429,6 +443,7 @@ export default function OsTasksPage() {
         on_hold_reason: null,
       });
       replaceTask(updated);
+      trackCycleSprintEntry(task, status);
     } catch {
       setError("Não foi possível mover a task.");
     }
@@ -451,6 +466,9 @@ export default function OsTasksPage() {
     columnTarget: OsTaskBoardStatus,
     insertBeforeTaskId?: string
   ) {
+    const activeTask = tasks.find((t) => t.id === activeId);
+    if (!activeTask) return;
+
     const rollback = () => {
       if (dragRollbackRef.current) {
         setTasks(dragRollbackRef.current);
@@ -494,6 +512,7 @@ export default function OsTasksPage() {
         on_hold_reason: null,
       });
       replaceTask(updated);
+      trackCycleSprintEntry(activeTask, columnTarget);
       dragRollbackRef.current = null;
     } catch {
       rollback();
@@ -555,12 +574,16 @@ export default function OsTasksPage() {
     }
   }
 
-  const effectivenessTotal = activeCycle
-    ? Number(activeCycle.planned_points) + Number(activeCycle.added_after_points)
+  const deliveredPoints = activeCycle ? Number(activeCycle.delivered_points) : 0;
+  const remainingSprintEffort = useMemo(() => computeOpenSprintEffort(tasks), [tasks]);
+  const committedPoints = activeCycle
+    ? Math.max(
+        Number(activeCycle.planned_points) + Number(activeCycle.added_after_points),
+        deliveredPoints + remainingSprintEffort
+      )
     : 0;
-  const effectivenessPct = effectivenessTotal > 0
-    ? Math.round((Number(activeCycle!.delivered_points) / effectivenessTotal) * 100)
-    : 0;
+  const effectivenessPct =
+    committedPoints > 0 ? Math.round((deliveredPoints / committedPoints) * 100) : 0;
 
   return (
     <div className="pb-10">
@@ -569,7 +592,10 @@ export default function OsTasksPage() {
           <div className="os-cycle-bar-stats">
             <span className="os-cycle-bar-label">Ciclo #{activeCycle.cycle_number} ativo</span>
             <span>{Number(activeCycle.planned_points).toFixed(1)} pts planejados</span>
-            <span className="cyan">{Number(activeCycle.delivered_points).toFixed(1)} pts entregues</span>
+            <span className="cyan">{deliveredPoints.toFixed(1)} pts entregues</span>
+            {remainingSprintEffort > 0 ? (
+              <span>{remainingSprintEffort.toFixed(1)} pts em aberto</span>
+            ) : null}
             <span>{effectivenessPct}% efetividade</span>
           </div>
           <button

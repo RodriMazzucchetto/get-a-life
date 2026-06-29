@@ -28,6 +28,21 @@ export function computeOsTaskScore(task: Pick<OsTaskRow, 'importance' | 'urgency
   return Math.round((raw / effort) * 10) / 10
 }
 
+/** Esforço das tasks ainda abertas no sprint (Foco + Semana). */
+export function computeOpenSprintEffort(tasks: OsTaskRow[]): number {
+  return tasks
+    .filter(
+      (task) =>
+        isOsTaskActive(task) &&
+        (task.status === 'current_week' || task.status === 'in_progress')
+    )
+    .reduce((sum, task) => sum + computeOsTaskEffort(task), 0)
+}
+
+export function isOsTaskSprintStatus(status: OsTaskBoardStatus): boolean {
+  return status === 'current_week' || status === 'in_progress'
+}
+
 /** Esforço da task (escala 1–5). Usado como unidade dos relatórios de ciclo
  *  (capacidade/velocidade entregue), em vez do score composto de prioridade.
  *  Esforço não definido conta como 1 (tarefa mínima). */
