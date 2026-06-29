@@ -83,6 +83,15 @@ function betIsDone(bet: OsBetRow, latestUpdates: Map<string, OsBetUpdateRow>): b
   return (latestUpdates.get(bet.id)?.status ?? bet.status) === "executed";
 }
 
+function betEffectiveStatus(bet: OsBetRow, latestUpdates: Map<string, OsBetUpdateRow>): string {
+  return latestUpdates.get(bet.id)?.status ?? bet.status;
+}
+
+function betIsConcluded(bet: OsBetRow, latestUpdates: Map<string, OsBetUpdateRow>): boolean {
+  const status = betEffectiveStatus(bet, latestUpdates);
+  return status === "executed" || status === "failed";
+}
+
 type PillarCardProps = {
   blockType: OsBlockType;
   label: string;
@@ -93,7 +102,7 @@ type PillarCardProps = {
   backlogPitches: OsBetRow[];
   backlogMetas: OsGoalRow[];
   latestUpdates: Map<string, OsBetUpdateRow>;
-  activityCounts: Map<string, { todos: number; updates: number }>;
+  activityCounts: Map<string, { todosOpen: number; todosTotal: number; updates: number }>;
   busy: boolean;
   onEditGoal: (goal: OsGoalRow | null) => void;
   onAddGoal: (title: string) => Promise<void>;
@@ -146,6 +155,9 @@ function PillarCard({
   const failed = priorityPitches.filter(
     (b) => (latestUpdates.get(b.id)?.status ?? b.status) === "failed"
   ).length;
+
+  const backlogActive = backlogPitches.filter((b) => !betIsConcluded(b, latestUpdates));
+  const backlogConcluded = backlogPitches.filter((b) => betIsConcluded(b, latestUpdates));
 
   const submitPitch = async () => {
     const t = newPitch.trim();
@@ -238,7 +250,7 @@ function PillarCard({
         ) : (
           priorityPitches.map((bet) => {
             const done = betIsDone(bet, latestUpdates);
-            const counts = activityCounts.get(bet.id) ?? { todos: 0, updates: 0 };
+            const counts = activityCounts.get(bet.id) ?? { todosOpen: 0, todosTotal: 0, updates: 0 };
             const desc = bet.pitch_outcome ?? bet.pitch_objective ?? "";
             return (
               <div
@@ -279,7 +291,9 @@ function PillarCard({
                   <span className="arrow">→</span>
                   <span className="g">
                     <span className="material-symbols-outlined">checklist</span>
-                    <b>{counts.todos}</b> {counts.todos === 1 ? "to-do" : "to-dos"}
+                    <b>
+                      {counts.todosOpen} ({counts.todosTotal})
+                    </b>
                   </span>
                   <span className="g">
                     <span className="material-symbols-outlined">monitoring</span>
@@ -302,7 +316,7 @@ function PillarCard({
             <span className="count-pill">{backlogPitches.length}</span>
           </button>
           <div className="pitch-backlog-body">
-            {backlogPitches.map((bet) => (
+            {backlogActive.map((bet) => (
               <div key={bet.id} className="pb-item">
                 <span className="pb-text">{bet.title}</span>
                 <div className="bm-actions">
@@ -320,6 +334,29 @@ function PillarCard({
                 </div>
               </div>
             ))}
+            {backlogConcluded.length > 0 ? (
+              <div className="pb-concluded-section">
+                <div className="pb-concluded-label">Já trabalhados</div>
+                {backlogConcluded.map((bet) => {
+                  const status = betEffectiveStatus(bet, latestUpdates);
+                  const statusClass = status === "failed" ? "failed" : "executed";
+                  return (
+                    <div key={bet.id} className={`pb-item concluded ${statusClass}`}>
+                      <span className="pb-status-dot" aria-hidden />
+                      <span className="pb-text">{bet.title}</span>
+                      <span className={`pb-outcome ${statusClass}`}>
+                        {status === "failed" ? "Failed" : "Executed"}
+                      </span>
+                      <div className="bm-actions">
+                        <button type="button" className="edit" title="Editar" onClick={() => onOpenPitch(bet)}>
+                          ✎
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
             {addingPitch ? (
               <div className="add-row">
                 <input
@@ -455,7 +492,7 @@ function OsPageContent() {
 
   const [goalsByBlock, setGoalsByBlock] = useState<Map<string, OsGoalRow[]>>(new Map());
   const [activityCounts, setActivityCounts] = useState<
-    Map<string, { todos: number; updates: number }>
+    Map<string, { todosOpen: number; todosTotal: number; updates: number }>
   >(new Map());
 
   // Goal modal

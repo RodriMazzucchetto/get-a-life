@@ -103,6 +103,21 @@ export function computePillarMomentum(
   return Math.round((onTrack / bets.length) * 100)
 }
 
+/** % de execução no header do pilar = executed / pitches priorizados × 100 */
+export function computePillarExecutionPct(
+  bets: OsBetRow[],
+  latestUpdatesByBetId: Map<string, OsBetUpdateRow> = new Map()
+): number {
+  const priority = bets.filter((bet) => bet.is_priority)
+  if (priority.length === 0) return 0
+
+  const executed = priority.filter(
+    (bet) => getBetEffectiveTrackStatus(bet, latestUpdatesByBetId.get(bet.id)) === 'executed'
+  ).length
+
+  return Math.round((executed / priority.length) * 100)
+}
+
 /**
  * Cor da barra conforme momentum:
  * > 50% verde · = 50% amarelo (deviating) · < 50% vermelho
@@ -121,7 +136,7 @@ export function getPillarStatusDisplay(
   latestUpdatesByBetId: Map<string, OsBetUpdateRow> = new Map()
 ): PillarStatusDisplay {
   const hasBets = pillarBets.length > 0
-  const pct = computePillarMomentum(pillarBets, latestUpdatesByBetId)
+  const pct = computePillarExecutionPct(pillarBets, latestUpdatesByBetId)
   const color = getPillarMomentumColor(pct, hasBets)
 
   if (!hasBets) {
@@ -167,7 +182,7 @@ export function computeCompanyMomentum(
 ): number {
   const rates = OS_BLOCK_TYPES.map((type) => {
     const view = orderedBlocks.find((v) => v.block.type === type)
-    return computePillarMomentum(view?.bets ?? [], latestUpdatesByBetId)
+    return computePillarExecutionPct(view?.bets ?? [], latestUpdatesByBetId)
   })
   return Math.round(rates.reduce((sum, rate) => sum + rate, 0) / OS_BLOCK_TYPES.length)
 }
@@ -966,20 +981,25 @@ export async function updateOsBet(
  *  Usado para o rodapé dos cards de pitch (→ N to-dos · N updates). */
 export async function fetchOsBetActivityCounts(
   betIds: string[]
-): Promise<Map<string, { todos: number; updates: number }>> {
-  const result = new Map<string, { todos: number; updates: number }>()
+): Promise<Map<string, { todosOpen: number; todosTotal: number; updates: number }>> {
+  const result = new Map<string, { todosOpen: number; todosTotal: number; updates: number }>()
   if (betIds.length === 0) return result
-  for (const id of betIds) result.set(id, { todos: 0, updates: 0 })
+  for (const id of betIds) result.set(id, { todosOpen: 0, todosTotal: 0, updates: 0 })
 
   const supabase = createClient()
   const [tasksRes, updatesRes] = await Promise.all([
-    supabase.from('os_tasks').select('bet_id').in('bet_id', betIds),
+    supabase.from('os_tasks').select('bet_id, completed_at').in('bet_id', betIds),
     supabase.from('os_bet_updates').select('bet_id').in('bet_id', betIds),
   ])
 
   for (const row of tasksRes.data ?? []) {
-    const betId = (row as { bet_id: string | null }).bet_id
-    if (betId && result.has(betId)) result.get(betId)!.todos += 1
+    const task = row as { bet_id: string | null; completed_at: string | null }
+    const betId = task.bet_id
+    if (betId && result.has(betId)) {
+      const entry = result.get(betId)!
+      entry.todosTotal += 1
+      if (!task.completed_at) entry.todosOpen += 1
+    }
   }
   for (const row of updatesRes.data ?? []) {
     const betId = (row as { bet_id: string | null }).bet_id

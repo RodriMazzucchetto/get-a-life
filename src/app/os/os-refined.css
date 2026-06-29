@@ -974,6 +974,18 @@
 .os-refined-page .backlog-meta, .os-refined-page .pb-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--color-ta-rule); }
 .os-refined-page .backlog-meta:last-of-type, .os-refined-page .pb-item:last-of-type { border-bottom: 0; }
 .os-refined-page .backlog-meta .bm-text, .os-refined-page .pb-item .pb-text { flex: 1; font-family: var(--font-ta-sans); font-size: 12.5px; color: var(--color-ta-ink-2); line-height: 1.4; }
+.os-refined-page .pb-concluded-section { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--color-ta-rule); }
+.os-refined-page .pb-concluded-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-ta-muted-2); margin-bottom: 4px; }
+.os-refined-page .pb-item.concluded { padding-left: 8px; border-left: 3px solid transparent; }
+.os-refined-page .pb-item.concluded.executed { border-left-color: var(--color-ta-cyan); background: color-mix(in srgb, var(--color-ta-cyan) 6%, transparent); }
+.os-refined-page .pb-item.concluded.failed { border-left-color: var(--color-ta-red); background: color-mix(in srgb, var(--color-ta-red) 6%, transparent); }
+.os-refined-page .pb-item.concluded .pb-text { color: var(--color-ta-muted); }
+.os-refined-page .pb-item.concluded .pb-status-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
+.os-refined-page .pb-item.concluded.executed .pb-status-dot { background: var(--color-ta-cyan); }
+.os-refined-page .pb-item.concluded.failed .pb-status-dot { background: var(--color-ta-red); }
+.os-refined-page .pb-outcome { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; flex: 0 0 auto; }
+.os-refined-page .pb-outcome.executed { color: var(--color-ta-cyan-ink, #0e9bb8); }
+.os-refined-page .pb-outcome.failed { color: var(--color-ta-red); }
 .os-refined-page .bm-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .os-refined-page .prioritize { font-family: var(--font-mono); font-weight: 600; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-ta-ink); background: transparent; border: 1px solid var(--color-ta-rule-2); padding: 5px 9px; cursor: pointer; }
 .os-refined-page .prioritize:hover { background: var(--color-ta-ink); color: var(--color-ta-paper); border-color: var(--color-ta-ink); }
