@@ -21,6 +21,7 @@ interface OsTaskEditModalProps {
       description: string;
       importance: number | null;
       urgency: number | null;
+      effort: number | null;
       projectIds: string[];
     }
   ) => Promise<void>;
@@ -64,6 +65,7 @@ export function OsTaskEditModal({ open, task, projects, onClose, onSave }: OsTas
   const [description, setDescription] = useState("");
   const [importance, setImportance] = useState<number | null>(null);
   const [urgency, setUrgency] = useState<number | null>(null);
+  const [effort, setEffort] = useState<number | null>(null);
   const [projectIds, setProjectIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -73,6 +75,7 @@ export function OsTaskEditModal({ open, task, projects, onClose, onSave }: OsTas
     setDescription(task.description ?? "");
     setImportance(task.importance);
     setUrgency(task.urgency);
+    setEffort(task.effort);
     setProjectIds(
       task.projectIds?.length ? task.projectIds : task.project_id ? [task.project_id] : []
     );
@@ -89,6 +92,7 @@ export function OsTaskEditModal({ open, task, projects, onClose, onSave }: OsTas
         description: description.trim(),
         importance,
         urgency,
+        effort,
         projectIds,
       });
       onClose();
@@ -147,12 +151,18 @@ export function OsTaskEditModal({ open, task, projects, onClose, onSave }: OsTas
             <ScorePicker label="Urgência" value={urgency} onChange={setUrgency} />
           </div>
 
+          <ScorePicker label="Esforço" value={effort} onChange={setEffort} />
+
           <div className="border border-ta-ink bg-ta-paper-2 px-3 py-2 text-center">
             <span className={`block ${osLabelMuted}`}>Score</span>
             <p className="text-2xl font-bold tabular-nums">
-              {computeOsTaskScore({ importance, urgency }) ?? "—"}
+              {computeOsTaskScore({ importance, urgency, effort }) ?? "—"}
             </p>
-            <p className="text-[10px] text-ta-muted">Importância × Urgência</p>
+            <p className="text-[10px] text-ta-muted">
+              {effort != null && effort > 1
+                ? `(Importância × Urgência) ÷ Esforço`
+                : `Importância × Urgência`}
+            </p>
           </div>
 
           <div className="flex justify-end gap-2">
