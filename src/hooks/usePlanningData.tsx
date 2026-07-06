@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useAuthContext } from '@/contexts/AuthContext'
+import { useOsLayout } from '@/contexts/OsLayoutContext'
 import { 
   projectsService, 
   tagsService, 
@@ -59,6 +60,7 @@ export function usePlanningData() {
 
 function usePlanningDataState() {
   const { user } = useAuthContext()
+  const { refreshProjects } = useOsLayout()
   const hydratedUserIdRef = useRef<string | null>(null)
   
   // Estado para projetos
@@ -148,6 +150,10 @@ function usePlanningDataState() {
     void loadAllData()
   }, [user, loadAllData])
 
+  const syncOsProjects = useCallback(() => {
+    void refreshProjects()
+  }, [refreshProjects])
+
   // Funções para projetos
   const createProject = useCallback(async (name: string, color: string) => {
     if (!user) return null
@@ -155,12 +161,13 @@ function usePlanningDataState() {
     try {
       const newProject = await projectsService.createProject(user.id, name, color)
       setProjects(prev => [newProject, ...prev])
+      syncOsProjects()
       return newProject
     } catch (error) {
       console.error('Erro ao criar projeto:', error)
       return null
     }
-  }, [user])
+  }, [user, syncOsProjects])
 
   const updateProject = useCallback(async (projectId: string, updates: Partial<DBProject>) => {
     try {
@@ -168,23 +175,25 @@ function usePlanningDataState() {
       setProjects(prev =>
         prev.map(p => (p.id === projectId ? fromDbProject(updatedProject) : p))
       )
+      syncOsProjects()
       return updatedProject
     } catch (error) {
       console.error('Erro ao atualizar projeto:', error)
       return null
     }
-  }, [])
+  }, [syncOsProjects])
 
   const deleteProject = useCallback(async (projectId: string) => {
     try {
       await projectsService.deleteProject(projectId)
       setProjects(prev => prev.filter(p => p.id !== projectId))
+      syncOsProjects()
       return true
     } catch (error) {
       console.error('Erro ao deletar projeto:', error)
       return false
     }
-  }, [])
+  }, [syncOsProjects])
 
   // Funções para tags
   const createTag = useCallback(async (name: string, color: string) => {

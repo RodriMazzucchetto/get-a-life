@@ -135,6 +135,11 @@ export function invalidateOsCache(keyPrefix: string): void {
   }
 }
 
+export function invalidateOsProjectsCache(userId: string): void {
+  invalidateOsCacheEntry(osCacheKey(userId, "companies"));
+  invalidateOsCacheEntry(osCacheKey(userId, "tasks-board"));
+}
+
 export function invalidateAllOsCacheForUser(userId: string): void {
   invalidateOsCache(`${userId}:`);
 }

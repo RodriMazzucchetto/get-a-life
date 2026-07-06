@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { OsSectionNav } from "@/components/os/OsSectionNav";
+import { useOsLayout } from "@/contexts/OsLayoutContext";
 import "./os-refined.css";
 
 const OS_PAGE_CONTAINER =
@@ -10,7 +12,17 @@ const OS_PAGE_CONTAINER =
 
 export default function OsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { refreshProjects } = useOsLayout();
+  const prevPathRef = useRef<string | null>(null);
   const isTasksRoute = pathname === "/os/tasks" || pathname.startsWith("/os/tasks/");
+
+  useEffect(() => {
+    const prev = prevPathRef.current;
+    prevPathRef.current = pathname;
+    if (pathname.startsWith("/os") && prev && !prev.startsWith("/os")) {
+      void refreshProjects();
+    }
+  }, [pathname, refreshProjects]);
 
   return (
     <AppShell fullWidth={false}>

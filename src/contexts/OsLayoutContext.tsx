@@ -15,6 +15,7 @@ import {
   getOsCache,
   invalidateOsCache,
   invalidateOsCacheEntry,
+  invalidateOsProjectsCache,
   isOsCacheFresh,
   osCacheKey,
   packBoardCache,
@@ -62,6 +63,7 @@ interface OsLayoutContextValue {
   tasksRefreshing: boolean;
   tasksError: string | null;
   refreshTasks: (options?: { background?: boolean; force?: boolean }) => Promise<void>;
+  refreshProjects: () => Promise<void>;
   invalidateOsData: () => void;
 }
 
@@ -366,6 +368,39 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
     [userId]
   );
 
+  const refreshProjects = useCallback(async () => {
+    if (!userId) return;
+
+    invalidateOsProjectsCache(userId);
+
+    const requestId = ++companiesRequestRef.current;
+    setProjectsError(null);
+
+    try {
+      const data = await fetchOsCompanies(userId);
+      if (companiesRequestRef.current !== requestId) return;
+
+      setOsCache(osCacheKey(userId, "companies"), data);
+      setProjects(data);
+
+      setSelectedProjectIdState((prev) => {
+        if (prev && data.some((p) => p.id === prev)) return prev;
+        const stored =
+          typeof window !== "undefined" ? localStorage.getItem(OS_SELECTED_PROJECT_KEY) : null;
+        const storedValid = stored && data.some((p) => p.id === stored);
+        return storedValid ? stored : (data[0]?.id ?? null);
+      });
+    } catch (error) {
+      if (companiesRequestRef.current !== requestId) return;
+      console.error("Erro ao atualizar projetos OS:", error);
+      setProjectsError("Não foi possível atualizar os projetos.");
+    } finally {
+      if (companiesRequestRef.current === requestId) setLoadingProjects(false);
+    }
+
+    await refreshTasks({ force: true, background: true });
+  }, [userId, refreshTasks]);
+
   useLayoutEffect(() => {
     if (!userId || authLoading) return;
     hydrateFromCache(userId);
@@ -422,6 +457,7 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
       tasksRefreshing,
       tasksError,
       refreshTasks,
+      refreshProjects,
       invalidateOsData,
     }),
     [
@@ -445,6 +481,7 @@ export function OsProjectProvider({ children }: { children: React.ReactNode }) {
       tasksRefreshing,
       tasksError,
       refreshTasks,
+      refreshProjects,
       invalidateOsData,
     ]
   );
