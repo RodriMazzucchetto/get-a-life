@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { BRANDING } from "@/lib/branding";
+import { BrandLogo } from "@/components/BrandLogo";
 
 function mapAuthError(message: string): string {
   const m = message.toLowerCase();
@@ -13,7 +13,7 @@ function mapAuthError(message: string): string {
     m.includes("invalid credentials") ||
     m.includes("email not confirmed")
   ) {
-    return "Email ou senha incorretos. Verifique os dados ou confirme o e-mail.";
+    return "Email ou senha incorretos.";
   }
   return message;
 }
@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace("/dashboard/planning");
+      router.replace("/os/reports");
     }
   }, [user, authLoading, router]);
 
@@ -38,7 +38,7 @@ export default function LoginPage() {
     setError(null);
     setInfo(null);
     if (!email.trim()) {
-      setError("Informe seu e-mail acima para enviarmos o link de recuperação.");
+      setError("Informe seu e-mail acima para recuperar a senha.");
       return;
     }
     setLoading(true);
@@ -48,199 +48,149 @@ export default function LoginPage() {
       setError(resetErr.message);
       return;
     }
-    setInfo(
-      "Se existir conta com este e-mail, você receberá instruções para redefinir a senha."
-    );
+    setInfo("Se existir conta com este e-mail, você receberá instruções para redefinir a senha.");
   }, [email, resetPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setInfo(null);
-
     if (!email.trim() || !password) {
       setError("Preencha e-mail e senha.");
       return;
     }
-
     setLoading(true);
     const { error: signInError } = await signIn(email.trim(), password);
-
     if (signInError) {
       setError(mapAuthError(signInError.message));
       setLoading(false);
       return;
     }
-
-    router.push("/dashboard/planning");
+    router.push("/os/reports");
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-on-surface">
-        <div
-          className="h-12 w-12 rounded-full border-2 border-outline-variant border-t-primary animate-spin"
-          aria-hidden
-        />
-        <p className="text-sm font-medium text-on-surface-variant font-body">Carregando…</p>
+      <div className="flex min-h-screen items-center justify-center bg-ta-paper font-mono">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted">
+          Carregando…
+        </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-background font-body text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
-      <div className="absolute top-[-10%] left-[-5%] w-[40%] max-w-md h-[40%] bg-secondary-container/20 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[30%] max-w-sm h-[30%] bg-tertiary-fixed/10 blur-[100px] rounded-full pointer-events-none" />
+    <div className="flex min-h-screen flex-col bg-ta-paper font-mono text-ta-ink">
+      {/* Nav */}
+      <nav className="border-b-[1.5px] border-ta-ink px-6 py-4 md:px-10">
+        <Link href="/">
+          <BrandLogo variant="horizontal" className="origin-left" />
+        </Link>
+      </nav>
 
-      <section className="w-full max-w-[min(100vw-2rem,560px)] z-10">
-        <div className="text-center mb-10">
-          <Link href="/" className="inline-flex flex-col items-center gap-3 w-full">
-            <div className="w-full flex justify-center px-1 origin-center scale-[1.2] sm:scale-[1.35] md:scale-150">
-              <img
-                src={BRANDING.stacked}
-                alt={BRANDING.name}
-                className="h-48 sm:h-56 md:h-64 w-auto max-w-[min(100%,520px)] object-contain mx-auto"
-                width={520}
-                height={260}
-              />
+      {/* Content */}
+      <div className="flex flex-1 items-center justify-center px-6 py-16">
+        <div className="w-full max-w-sm">
+          {/* Header */}
+          <div className="mb-10">
+            <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted">
+              Acesso restrito
             </div>
-          </Link>
-          <p className="font-headline text-on-surface-variant text-sm mt-4 tracking-tight">
-            Precisão para o seu fluxo de trabalho
-          </p>
-        </div>
-
-        <div
-          className="bg-surface-container-lowest rounded-xl p-8 md:p-10 backdrop-blur-xl ring-1 ring-outline-variant/10"
-          style={{
-            boxShadow: "0 12px 24px rgba(25, 28, 30, 0.06)",
-          }}
-        >
-          <div className="mb-8">
-            <h2 className="font-headline font-bold text-2xl text-on-surface">Bem-vindo</h2>
-            <p className="font-body text-on-surface-variant text-sm mt-1">
-              Acesse sua área de planejamento
-            </p>
+            <h1 className="text-2xl font-bold uppercase tracking-tight">
+              Entrar no sistema
+            </h1>
           </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-            <div className="space-y-1">
-              <label
-                className="font-body font-semibold text-xs text-on-secondary-fixed-variant tracking-wider uppercase px-1"
-                htmlFor="login-email"
-              >
-                Email
-              </label>
-              <input
-                id="login-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                placeholder="nome@exemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                className="quiet-input w-full bg-surface-container-high py-3 px-4 text-on-surface font-body text-sm rounded-t-lg placeholder:text-on-surface-variant/60 disabled:opacity-60"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex justify-between items-center gap-2 px-1">
+          {/* Form */}
+          <form onSubmit={handleSubmit} noValidate className="space-y-0">
+            <div className="border-[1.5px] border-ta-ink">
+              {/* Email */}
+              <div className="border-b-[1.5px] border-ta-ink">
                 <label
-                  className="font-body font-semibold text-xs text-on-secondary-fixed-variant tracking-wider uppercase"
+                  htmlFor="login-email"
+                  className="block border-b border-ta-rule px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted"
+                >
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  className="w-full bg-ta-paper px-4 py-3 text-sm font-normal normal-case text-ta-ink placeholder:text-ta-muted-2 focus:outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ta-cyan)] disabled:opacity-60"
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label
                   htmlFor="login-password"
+                  className="block border-b border-ta-rule px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted"
                 >
                   Senha
                 </label>
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
+                <input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
-                  className="text-primary font-body text-xs font-medium hover:underline transition-all shrink-0 disabled:opacity-50"
-                >
-                  Esqueceu a senha?
-                </button>
+                  className="w-full bg-ta-paper px-4 py-3 text-sm font-normal normal-case text-ta-ink placeholder:text-ta-muted-2 focus:outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ta-cyan)] disabled:opacity-60"
+                />
               </div>
-              <input
-                id="login-password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                className="quiet-input w-full bg-surface-container-high py-3 px-4 text-on-surface font-body text-sm rounded-t-lg placeholder:text-on-surface-variant/60 disabled:opacity-60"
-              />
             </div>
 
+            {/* Errors / Info */}
             {error && (
-              <div
-                className="rounded-lg px-4 py-3 text-sm bg-error-container text-on-error-container"
-                role="alert"
-              >
+              <div className="border-[1.5px] border-ta-red bg-red-50 px-4 py-3 text-xs font-semibold normal-case text-ta-red">
                 {error}
               </div>
             )}
             {info && (
-              <div
-                className="rounded-lg px-4 py-3 text-sm bg-secondary-container/80 text-on-secondary-fixed"
-                role="status"
-              >
+              <div className="border-[1.5px] border-ta-ink bg-ta-paper-2 px-4 py-3 text-xs font-semibold normal-case text-ta-ink">
                 {info}
               </div>
             )}
 
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold py-4 rounded-lg shadow-sm hover:opacity-95 active:scale-[0.98] transition-all duration-200 mt-4 disabled:opacity-60 disabled:active:scale-100"
+              className="w-full border-[1.5px] border-ta-ink bg-ta-ink py-4 text-xs font-semibold uppercase tracking-[0.2em] text-ta-paper transition-colors hover:bg-ta-ink/90 disabled:opacity-50"
             >
-              {loading ? "Entrando…" : "Entrar"}
+              {loading ? "Entrando…" : "Entrar →"}
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-outline-variant/15 text-center">
-            <p className="font-body text-sm text-on-surface-variant">
-              Não tem uma conta?{" "}
-              <Link
-                href="/auth/register"
-                className="text-primary font-semibold hover:underline"
-              >
-                Criar conta
-              </Link>
-            </p>
+          {/* Forgot password */}
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={loading}
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ta-muted transition-colors hover:text-ta-ink disabled:opacity-50"
+            >
+              Esqueceu a senha?
+            </button>
           </div>
         </div>
+      </div>
 
-        <footer className="mt-12 flex flex-col items-center gap-4">
-          <div className="flex flex-wrap justify-center gap-6">
-            <a
-              className="font-body text-xs text-on-surface-variant hover:text-primary transition-colors"
-              href="#"
-            >
-              Privacidade
-            </a>
-            <a
-              className="font-body text-xs text-on-surface-variant hover:text-primary transition-colors"
-              href="#"
-            >
-              Termos
-            </a>
-            <a
-              className="font-body text-xs text-on-surface-variant hover:text-primary transition-colors"
-              href="#"
-            >
-              Suporte
-            </a>
-          </div>
-          <p className="font-body text-[10px] text-outline opacity-60 tracking-widest uppercase text-center">
-            © {new Date().getFullYear()} {BRANDING.name}. Precisão no fluxo de trabalho.
-          </p>
-        </footer>
-      </section>
-    </main>
+      {/* Footer */}
+      <footer className="border-t-[1.5px] border-ta-ink px-6 py-6 md:px-10">
+        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted">
+          © {new Date().getFullYear()} Task Architect — Acesso por convite
+        </div>
+      </footer>
+    </div>
   );
 }
