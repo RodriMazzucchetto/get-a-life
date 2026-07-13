@@ -7,7 +7,7 @@ import {
   PointerSensor,
   closestCenter,
   pointerWithin,
-  rectIntersection,
+  useDraggable,
   useDroppable,
   useSensor,
   useSensors,
@@ -15,8 +15,6 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
   OS_BLOCK_LABELS,
   currentCalendarQuarter,
@@ -26,6 +24,7 @@ import {
 import type { OsBlockType, OsGoalQuarter, OsGoalRow } from "@/lib/os-types";
 
 const QUARTERS: OsGoalQuarter[] = [1, 2, 3, 4];
+const BACKLOG_ID = "drop-backlog";
 
 const PILLAR_DOT: Record<OsBlockType, string> = {
   finance: "var(--color-ta-amber-muted)",
@@ -33,18 +32,9 @@ const PILLAR_DOT: Record<OsBlockType, string> = {
   ops: "var(--color-ta-green)",
 };
 
-/** Prefere contentores (quarters/backlog) para o drop entre colunas funcionar bem. */
-const goalsCollisionDetection: CollisionDetection = (args) => {
+const collisionDetection: CollisionDetection = (args) => {
   const pointerHits = pointerWithin(args);
-  if (pointerHits.length > 0) {
-    const container = pointerHits.find((c) => String(c.id).startsWith("quarter-"));
-    return container ? [container] : pointerHits;
-  }
-  const rectHits = rectIntersection(args);
-  if (rectHits.length > 0) {
-    const container = rectHits.find((c) => String(c.id).startsWith("quarter-"));
-    return container ? [container] : rectHits;
-  }
+  if (pointerHits.length > 0) return pointerHits;
   return closestCenter(args);
 };
 
@@ -52,6 +42,25 @@ function quarterStatusLabel(q: OsGoalQuarter, current: OsGoalQuarter): string {
   if (q < current) return "Concluído";
   if (q === current) return "Atual";
   return "Planejado";
+}
+
+function dropIdForQuarter(q: OsGoalQuarter) {
+  return `drop-quarter-${q}`;
+}
+
+function resolveTargetQuarter(
+  overId: string,
+  goals: OsGoalRow[]
+): OsGoalQuarter | null | undefined {
+  if (overId === BACKLOG_ID) return null;
+  if (overId.startsWith("drop-quarter-")) {
+    const n = Number(overId.replace("drop-quarter-", ""));
+    if (n === 1 || n === 2 || n === 3 || n === 4) return n;
+    return undefined;
+  }
+  const overGoal = goals.find((g) => g.id === overId);
+  if (overGoal) return overGoal.quarter;
+  return undefined;
 }
 
 type BlockInfo = { id: string; type: OsBlockType };
@@ -91,16 +100,13 @@ function GoalCard({
   const concluded = goalIsConcluded(goal);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(goal.title);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: goal.id,
     disabled: concluded,
+    data: { quarter: goal.quarter },
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
+  const style = isDragging ? { opacity: 0.35 } : undefined;
 
   const submitRename = async () => {
     const next = draft.trim();
@@ -117,7 +123,7 @@ function GoalCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`os-q-goal ${concluded ? "concluded" : ""} ${goal.is_priority ? "prio" : ""}`}
+      className={`os-q-goal ${concluded ? "concluded" : ""} ${goal.is_priority ? "prio" : ""} ${isDragging ? "dragging" : ""}`}
     >
       {!concluded ? (
         <button type="button" className="os-q-handle" aria-label="Arrastar meta" {...attributes} {...listeners}>
@@ -237,7 +243,10 @@ function QuarterColumn({
   onConclude: (goal: OsGoalRow) => void;
   onEdit: (goal: OsGoalRow) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `quarter-${quarter}` });
+  const { setNodeRef, isOver } = useDroppable({
+    id: dropIdForQuarter(quarter),
+    data: { quarter },
+  });
   const [title, setTitle] = useState("");
   const [blockId, setBlockId] = useState<string>("");
   const blocks = useMemo(() => [...blockById.values()], [blockById]);
@@ -268,27 +277,25 @@ function QuarterColumn({
         <span className="count">{goals.length}</span>
       </div>
 
-      <SortableContext items={goals.map((g) => g.id)} strategy={verticalListSortingStrategy}>
-        <div className="os-q-list">
-          {goals.map((goal) => {
-            const block = blockById.get(goal.block_id);
-            if (!block) return null;
-            return (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                blockType={block.type}
-                busy={busy}
-                onRename={onRename}
-                onDelete={onDelete}
-                onTogglePriority={onTogglePriority}
-                onConclude={onConclude}
-                onEdit={onEdit}
-              />
-            );
-          })}
-        </div>
-      </SortableContext>
+      <div className="os-q-list">
+        {goals.map((goal) => {
+          const block = blockById.get(goal.block_id);
+          if (!block) return null;
+          return (
+            <GoalCard
+              key={goal.id}
+              goal={goal}
+              blockType={block.type}
+              busy={busy}
+              onRename={onRename}
+              onDelete={onDelete}
+              onTogglePriority={onTogglePriority}
+              onConclude={onConclude}
+              onEdit={onEdit}
+            />
+          );
+        })}
+      </div>
 
       {adding ? (
         <div className="os-q-add-form">
@@ -325,6 +332,108 @@ function QuarterColumn({
           <span className="plus">+</span> Nova meta
         </button>
       )}
+    </div>
+  );
+}
+
+function GoalsBacklogSection({
+  goals,
+  blockById,
+  busy,
+  open,
+  onToggleOpen,
+  adding,
+  onStartAdd,
+  onCancelAdd,
+  onCreate,
+  onRename,
+  onDelete,
+  onTogglePriority,
+  onConclude,
+  onEdit,
+  expandOnDragOver,
+  onExpand,
+}: {
+  goals: OsGoalRow[];
+  blockById: Map<string, BlockInfo>;
+  busy?: boolean;
+  open: boolean;
+  onToggleOpen: () => void;
+  adding: boolean;
+  onStartAdd: () => void;
+  onCancelAdd: () => void;
+  onCreate: (blockId: string, title: string) => Promise<void>;
+  onRename: (goal: OsGoalRow, title: string) => Promise<void>;
+  onDelete: (goal: OsGoalRow) => Promise<void>;
+  onTogglePriority: (goal: OsGoalRow) => Promise<void>;
+  onConclude: (goal: OsGoalRow) => void;
+  onEdit: (goal: OsGoalRow) => void;
+  expandOnDragOver: boolean;
+  onExpand: () => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: BACKLOG_ID,
+    data: { quarter: null },
+  });
+
+  useEffect(() => {
+    if (isOver && expandOnDragOver && !open) onExpand();
+  }, [isOver, expandOnDragOver, open, onExpand]);
+
+  return (
+    <div ref={setNodeRef} className={`os-q-backlog ${open ? "open" : ""} ${isOver ? "over" : ""}`}>
+      <button
+        type="button"
+        className="os-q-backlog-toggle"
+        onClick={onToggleOpen}
+        aria-expanded={open}
+      >
+        <span className="chev">⌄</span>
+        <span className="title">Backlog de metas</span>
+        <span className="hint">sem quarter · arraste metas para cá</span>
+        <span className="count">{goals.length}</span>
+      </button>
+
+      {open ? (
+        <>
+          <div className="os-q-backlog-list">
+            {goals.length === 0 ? (
+              <p className="os-q-backlog-empty">
+                Arraste metas dos quarters para cá, ou crie uma nova.
+              </p>
+            ) : null}
+            {goals.map((goal) => {
+              const block = blockById.get(goal.block_id);
+              if (!block) return null;
+              return (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  blockType={block.type}
+                  busy={busy}
+                  onRename={onRename}
+                  onDelete={onDelete}
+                  onTogglePriority={onTogglePriority}
+                  onConclude={onConclude}
+                  onEdit={onEdit}
+                />
+              );
+            })}
+          </div>
+
+          {adding ? (
+            <BacklogAddForm
+              blocks={[...blockById.values()]}
+              onCancel={onCancelAdd}
+              onCreate={onCreate}
+            />
+          ) : (
+            <button type="button" className="os-q-add" onClick={onStartAdd}>
+              <span className="plus">+</span> Nova meta no backlog
+            </button>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }
@@ -371,7 +480,6 @@ export function OsGoalsByQuarterPanel({
   }, [goals]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-
   const activeGoal = activeId ? goals.find((g) => g.id === activeId) ?? null : null;
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -383,32 +491,19 @@ export function OsGoalsByQuarterPanel({
     const { active, over } = event;
     if (!over) return;
 
-    const goal = goals.find((g) => g.id === active.id);
+    const goal = goals.find((g) => g.id === String(active.id));
     if (!goal || goalIsConcluded(goal)) return;
 
-    let targetQuarter: OsGoalQuarter | null | undefined = undefined;
-    const overId = String(over.id);
-    if (overId === "quarter-backlog") {
-      targetQuarter = null;
-    } else if (overId.startsWith("quarter-")) {
-      targetQuarter = Number(overId.replace("quarter-", "")) as OsGoalQuarter;
-    } else {
-      const overGoal = goals.find((g) => g.id === overId);
-      if (overGoal) targetQuarter = overGoal.quarter;
-    }
+    const dropData = over.data.current as { quarter?: OsGoalQuarter | null } | undefined;
+    const targetQuarter =
+      dropData && Object.prototype.hasOwnProperty.call(dropData, "quarter")
+        ? (dropData.quarter ?? null)
+        : resolveTargetQuarter(String(over.id), goals);
 
     if (targetQuarter === undefined) return;
     if (targetQuarter === goal.quarter) return;
     await onMoveQuarter(goal, targetQuarter);
   };
-
-  const { setNodeRef: setBacklogRef, isOver: backlogOver } = useDroppable({
-    id: "quarter-backlog",
-  });
-
-  useEffect(() => {
-    if (backlogOver && activeId && !backlogOpen) setBacklogOpen(true);
-  }, [backlogOver, activeId, backlogOpen]);
 
   return (
     <section className={`os-quarters ${open ? "open" : ""}`}>
@@ -422,8 +517,9 @@ export function OsGoalsByQuarterPanel({
       {open ? (
         <DndContext
           sensors={sensors}
-          collisionDetection={goalsCollisionDetection}
+          collisionDetection={collisionDetection}
           onDragStart={handleDragStart}
+          onDragCancel={() => setActiveId(null)}
           onDragEnd={(e) => void handleDragEnd(e)}
         >
           <div className="os-quarters-grid">
@@ -448,77 +544,29 @@ export function OsGoalsByQuarterPanel({
             ))}
           </div>
 
-          <div
-            ref={setBacklogRef}
-            className={`os-q-backlog ${backlogOpen ? "open" : ""} ${backlogOver ? "over" : ""}`}
-          >
-            <button
-              type="button"
-              className="os-q-backlog-toggle"
-              onClick={() => setBacklogOpen((v) => !v)}
-              aria-expanded={backlogOpen}
-            >
-              <span className="chev">⌄</span>
-              <span className="title">Backlog de metas</span>
-              <span className="hint">sem quarter · arraste metas para cá</span>
-              <span className="count">{backlogGoals.length}</span>
-            </button>
+          <GoalsBacklogSection
+            goals={backlogGoals}
+            blockById={blockById}
+            busy={busy}
+            open={backlogOpen}
+            onToggleOpen={() => setBacklogOpen((v) => !v)}
+            adding={addingQuarter === "backlog"}
+            onStartAdd={() => setAddingQuarter("backlog")}
+            onCancelAdd={() => setAddingQuarter(null)}
+            onCreate={async (blockId, title) => {
+              await onCreate(blockId, null, title);
+              setAddingQuarter(null);
+            }}
+            onRename={onRename}
+            onDelete={onDelete}
+            onTogglePriority={onTogglePriority}
+            onConclude={onConclude}
+            onEdit={onEdit}
+            expandOnDragOver={Boolean(activeId)}
+            onExpand={() => setBacklogOpen(true)}
+          />
 
-            {backlogOpen ? (
-              <>
-                <SortableContext
-                  items={backlogGoals.map((g) => g.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="os-q-backlog-list">
-                    {backlogGoals.length === 0 ? (
-                      <p className="os-q-backlog-empty">
-                        Arraste metas dos quarters para cá, ou crie uma nova.
-                      </p>
-                    ) : null}
-                    {backlogGoals.map((goal) => {
-                      const block = blockById.get(goal.block_id);
-                      if (!block) return null;
-                      return (
-                        <GoalCard
-                          key={goal.id}
-                          goal={goal}
-                          blockType={block.type}
-                          busy={busy}
-                          onRename={onRename}
-                          onDelete={onDelete}
-                          onTogglePriority={onTogglePriority}
-                          onConclude={onConclude}
-                          onEdit={onEdit}
-                        />
-                      );
-                    })}
-                  </div>
-                </SortableContext>
-
-                {addingQuarter === "backlog" ? (
-                  <BacklogAddForm
-                    blocks={[...blockById.values()]}
-                    onCancel={() => setAddingQuarter(null)}
-                    onCreate={async (blockId, title) => {
-                      await onCreate(blockId, null, title);
-                      setAddingQuarter(null);
-                    }}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    className="os-q-add"
-                    onClick={() => setAddingQuarter("backlog")}
-                  >
-                    <span className="plus">+</span> Nova meta no backlog
-                  </button>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          <DragOverlay>
+          <DragOverlay dropAnimation={null}>
             {activeGoal ? (
               <div className="os-q-goal dragging">
                 <span className="os-q-title">{activeGoal.title}</span>
