@@ -350,9 +350,9 @@ export function currentCalendarQuarter(date = new Date()): OsGoalQuarter {
 }
 
 export function normalizeOsGoalRow(row: OsGoalRow): OsGoalRow {
-  const q = Number(row.quarter)
-  const quarter: OsGoalQuarter =
-    q === 1 || q === 2 || q === 3 || q === 4 ? q : currentCalendarQuarter()
+  const q = row.quarter == null ? null : Number(row.quarter)
+  const quarter: OsGoalQuarter | null =
+    q === 1 || q === 2 || q === 3 || q === 4 ? q : null
   return {
     ...row,
     is_priority: row.is_priority ?? false,
@@ -514,7 +514,7 @@ export async function createOsGoal(
   blockId: string,
   title: string,
   description?: string,
-  quarter?: OsGoalQuarter
+  quarter?: OsGoalQuarter | null
 ): Promise<OsGoalRow> {
   const supabase = createClient()
   const { data, error } = await supabase
@@ -525,7 +525,7 @@ export async function createOsGoal(
       title,
       description: description ?? null,
       status: 'active',
-      quarter: quarter ?? currentCalendarQuarter(),
+      quarter: quarter === undefined ? currentCalendarQuarter() : quarter,
       is_priority: false,
     })
     .select('*')
@@ -544,7 +544,7 @@ export async function updateOsGoal(
   updates: {
     title?: string
     description?: string | null
-    quarter?: OsGoalQuarter
+    quarter?: OsGoalQuarter | null
     pos?: number | null
   }
 ): Promise<OsGoalRow> {

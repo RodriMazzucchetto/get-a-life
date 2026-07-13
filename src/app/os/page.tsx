@@ -600,7 +600,7 @@ function OsPageContent() {
 
   const handleCreateQuarterGoal = async (
     blockId: string,
-    quarter: OsGoalQuarter,
+    quarter: OsGoalQuarter | null,
     title: string
   ) => {
     if (!user) return;
@@ -672,7 +672,7 @@ function OsPageContent() {
     }
   };
 
-  const handleMoveGoalQuarter = async (goal: OsGoalRow, quarter: OsGoalQuarter) => {
+  const handleMoveGoalQuarter = async (goal: OsGoalRow, quarter: OsGoalQuarter | null) => {
     if (goalIsConcluded(goal)) return;
     setGoalsBusy(true);
     try {

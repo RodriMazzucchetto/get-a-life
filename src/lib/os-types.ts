@@ -33,7 +33,7 @@ export interface OsGoalRow {
   status: OsGoalStatus
   is_priority: boolean
   pos: number | null
-  quarter: OsGoalQuarter
+  quarter: OsGoalQuarter | null
   closed_at: string | null
   closure_note: string | null
   created_at: string
@@ -118,7 +118,7 @@ export interface OsGoalInsert {
   description?: string | null
   appetite_cycles?: number | null
   status?: OsGoalStatus
-  quarter?: OsGoalQuarter
+  quarter?: OsGoalQuarter | null
   created_at?: string
   updated_at?: string
 }

@@ -37,8 +37,10 @@ export function OsAnnualGoalBar({ year, value, onSave }: OsAnnualGoalBarProps) {
   return (
     <div className="os-annual-goal">
       <div className="os-annual-goal-label">
-        <span className="eyebrow">Annual Goal</span>
-        <span className="year">{year}</span>
+        <span className="target" aria-hidden>
+          ⌖
+        </span>
+        <span className="eyebrow">Annual Goal {year}</span>
       </div>
       <div className="os-annual-goal-body">
         {editing ? (

@@ -1068,78 +1068,86 @@
 .os-refined-page .hier-note { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--color-ta-rule); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--color-ta-muted-2); display: flex; gap: 24px; flex-wrap: wrap; }
 .os-refined-page .hier-note b { color: var(--color-ta-muted); font-weight: 600; }
 
-/* Annual Goal */
+/* Annual Goal — barra sólida contínua, sem moldura */
 .os-refined-page .os-annual-goal {
   margin-top: 28px;
   display: flex;
-  align-items: stretch;
-  gap: 0;
+  align-items: center;
+  gap: 18px;
   background: var(--color-ta-ink);
   color: var(--color-ta-paper);
-  min-height: 88px;
+  min-height: 72px;
+  padding: 18px 22px;
+  border: 0;
+  outline: none;
+  box-shadow: none;
 }
 .os-refined-page .os-annual-goal-label {
-  flex: 0 0 140px;
+  flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  padding: 18px 20px;
-  border-right: 1px solid rgba(250, 250, 247, 0.18);
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+}
+.os-refined-page .os-annual-goal-label .target {
+  color: #ff4d4d;
+  font-size: 16px;
+  line-height: 1;
 }
 .os-refined-page .os-annual-goal-label .eyebrow {
   font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.2em;
+  font-size: 11px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #ff4d4d;
+  color: var(--color-ta-paper);
   font-weight: 700;
-}
-.os-refined-page .os-annual-goal-label .year {
-  font-family: var(--font-mono);
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1;
+  white-space: nowrap;
 }
 .os-refined-page .os-annual-goal-body {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
-  padding: 16px 22px;
+  padding: 0;
 }
 .os-refined-page .os-annual-goal-text {
   width: 100%;
   text-align: left;
   background: transparent;
   border: 0;
+  outline: none;
+  box-shadow: none;
   color: var(--color-ta-paper);
   font-family: var(--font-ta-sans);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.4;
   cursor: text;
   padding: 0;
+}
+.os-refined-page .os-annual-goal-text:focus {
+  outline: none;
 }
 .os-refined-page .os-annual-goal-text.empty {
   color: rgba(250, 250, 247, 0.45);
   font-style: italic;
   font-weight: 400;
-  font-size: 15px;
+  font-size: 14px;
 }
 .os-refined-page .os-annual-goal-body textarea {
   width: 100%;
   resize: vertical;
-  min-height: 56px;
+  min-height: 44px;
   background: transparent;
   border: 0;
+  outline: none;
+  box-shadow: none;
   color: var(--color-ta-paper);
   font-family: var(--font-ta-sans);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 500;
-  line-height: 1.35;
-  outline: none;
+  line-height: 1.4;
 }
 .os-refined-page .os-annual-goal-body textarea::placeholder {
   color: rgba(250, 250, 247, 0.4);
@@ -1147,16 +1155,16 @@
 
 /* Metas por quarter */
 .os-refined-page .os-quarters {
-  margin-top: 18px;
-  border: 1.5px solid var(--color-ta-ink);
-  background: var(--color-ta-paper);
+  margin-top: 22px;
+  background: transparent;
+  border: 0;
 }
 .os-refined-page .os-quarters-toggle {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 16px;
+  padding: 4px 2px 14px;
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -1177,11 +1185,12 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+  color: var(--color-ta-muted);
 }
 .os-refined-page .os-quarters-toggle .hint {
   font-size: 10px;
   letter-spacing: 0.04em;
-  color: var(--color-ta-muted);
+  color: var(--color-ta-muted-2);
   text-transform: none;
   font-weight: 400;
 }
@@ -1194,7 +1203,8 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
-  border-top: 1.5px solid var(--color-ta-ink);
+  border: 1.5px solid var(--color-ta-ink);
+  background: var(--color-ta-paper);
 }
 .os-refined-page .os-q-col {
   min-height: 220px;
@@ -1417,26 +1427,77 @@
   font-size: 12.5px;
   color: var(--color-ta-ink);
 }
+
+/* Backlog de metas (sem quarter) */
+.os-refined-page .os-q-backlog {
+  margin-top: 14px;
+  border: 1.5px solid var(--color-ta-ink);
+  background: var(--color-ta-paper);
+  padding: 0 0 10px;
+}
+.os-refined-page .os-q-backlog.over {
+  background: color-mix(in srgb, var(--color-ta-cyan) 8%, var(--color-ta-paper));
+}
+.os-refined-page .os-q-backlog-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-ta-rule);
+  background: var(--color-ta-paper-2);
+}
+.os-refined-page .os-q-backlog-head .title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ta-ink);
+}
+.os-refined-page .os-q-backlog-head .hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-ta-muted);
+  letter-spacing: 0.04em;
+}
+.os-refined-page .os-q-backlog-head .count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ta-muted);
+}
+.os-refined-page .os-q-backlog-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 12px 4px;
+  min-height: 48px;
+}
+.os-refined-page .os-q-backlog .os-q-add {
+  margin: 4px 12px 4px;
+}
+.os-refined-page .os-q-backlog-add {
+  margin: 4px 12px 8px;
+}
+
 @media (max-width: 1100px) {
   .os-refined-page .os-quarters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .os-refined-page .os-q-col:nth-child(2) { border-right: 0; }
   .os-refined-page .os-q-col:nth-child(1),
   .os-refined-page .os-q-col:nth-child(2) { border-bottom: 1px solid var(--color-ta-rule-2); }
+  .os-refined-page .os-q-backlog-list { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .os-refined-page .os-annual-goal { flex-direction: column; }
-  .os-refined-page .os-annual-goal-label {
-    flex-basis: auto;
-    flex-direction: row;
-    align-items: baseline;
-    gap: 12px;
-    border-right: 0;
-    border-bottom: 1px solid rgba(250, 250, 247, 0.18);
+  .os-refined-page .os-annual-goal {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   .os-refined-page .os-quarters-grid { grid-template-columns: 1fr; }
   .os-refined-page .os-q-col { border-right: 0; border-bottom: 1px solid var(--color-ta-rule-2); }
   .os-refined-page .os-q-col:last-child { border-bottom: 0; }
   .os-refined-page .os-quarters-toggle .hint { display: none; }
+  .os-refined-page .os-q-backlog-head .hint { display: none; }
 }
 /* Section headings */
 .os-refined-page .os-sec-head {
