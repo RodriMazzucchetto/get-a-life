@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
   PointerSensor,
   closestCenter,
+  pointerWithin,
+  rectIntersection,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -28,6 +31,21 @@ const PILLAR_DOT: Record<OsBlockType, string> = {
   finance: "var(--color-ta-amber-muted)",
   growth: "var(--color-ta-cyan)",
   ops: "var(--color-ta-green)",
+};
+
+/** Prefere contentores (quarters/backlog) para o drop entre colunas funcionar bem. */
+const goalsCollisionDetection: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  if (pointerHits.length > 0) {
+    const container = pointerHits.find((c) => String(c.id).startsWith("quarter-"));
+    return container ? [container] : pointerHits;
+  }
+  const rectHits = rectIntersection(args);
+  if (rectHits.length > 0) {
+    const container = rectHits.find((c) => String(c.id).startsWith("quarter-"));
+    return container ? [container] : rectHits;
+  }
+  return closestCenter(args);
 };
 
 function quarterStatusLabel(q: OsGoalQuarter, current: OsGoalQuarter): string {
@@ -324,6 +342,7 @@ export function OsGoalsByQuarterPanel({
   onEdit,
 }: OsGoalsByQuarterPanelProps) {
   const [open, setOpen] = useState(true);
+  const [backlogOpen, setBacklogOpen] = useState(true);
   const [addingQuarter, setAddingQuarter] = useState<OsGoalQuarter | "backlog" | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const current = currentCalendarQuarter();
@@ -387,6 +406,10 @@ export function OsGoalsByQuarterPanel({
     id: "quarter-backlog",
   });
 
+  useEffect(() => {
+    if (backlogOver && activeId && !backlogOpen) setBacklogOpen(true);
+  }, [backlogOver, activeId, backlogOpen]);
+
   return (
     <section className={`os-quarters ${open ? "open" : ""}`}>
       <button type="button" className="os-quarters-toggle" onClick={() => setOpen((v) => !v)}>
@@ -399,7 +422,7 @@ export function OsGoalsByQuarterPanel({
       {open ? (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={goalsCollisionDetection}
           onDragStart={handleDragStart}
           onDragEnd={(e) => void handleDragEnd(e)}
         >
@@ -427,57 +450,72 @@ export function OsGoalsByQuarterPanel({
 
           <div
             ref={setBacklogRef}
-            className={`os-q-backlog ${backlogOver ? "over" : ""}`}
+            className={`os-q-backlog ${backlogOpen ? "open" : ""} ${backlogOver ? "over" : ""}`}
           >
-            <div className="os-q-backlog-head">
-              <span className="title">Backlog de metas</span>
-              <span className="hint">sem quarter · futuras oportunidades</span>
-              <span className="count">{backlogGoals.length}</span>
-            </div>
-
-            <SortableContext
-              items={backlogGoals.map((g) => g.id)}
-              strategy={verticalListSortingStrategy}
+            <button
+              type="button"
+              className="os-q-backlog-toggle"
+              onClick={() => setBacklogOpen((v) => !v)}
+              aria-expanded={backlogOpen}
             >
-              <div className="os-q-backlog-list">
-                {backlogGoals.map((goal) => {
-                  const block = blockById.get(goal.block_id);
-                  if (!block) return null;
-                  return (
-                    <GoalCard
-                      key={goal.id}
-                      goal={goal}
-                      blockType={block.type}
-                      busy={busy}
-                      onRename={onRename}
-                      onDelete={onDelete}
-                      onTogglePriority={onTogglePriority}
-                      onConclude={onConclude}
-                      onEdit={onEdit}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
+              <span className="chev">⌄</span>
+              <span className="title">Backlog de metas</span>
+              <span className="hint">sem quarter · arraste metas para cá</span>
+              <span className="count">{backlogGoals.length}</span>
+            </button>
 
-            {addingQuarter === "backlog" ? (
-              <BacklogAddForm
-                blocks={[...blockById.values()]}
-                onCancel={() => setAddingQuarter(null)}
-                onCreate={async (blockId, title) => {
-                  await onCreate(blockId, null, title);
-                  setAddingQuarter(null);
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                className="os-q-add"
-                onClick={() => setAddingQuarter("backlog")}
-              >
-                <span className="plus">+</span> Nova meta no backlog
-              </button>
-            )}
+            {backlogOpen ? (
+              <>
+                <SortableContext
+                  items={backlogGoals.map((g) => g.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="os-q-backlog-list">
+                    {backlogGoals.length === 0 ? (
+                      <p className="os-q-backlog-empty">
+                        Arraste metas dos quarters para cá, ou crie uma nova.
+                      </p>
+                    ) : null}
+                    {backlogGoals.map((goal) => {
+                      const block = blockById.get(goal.block_id);
+                      if (!block) return null;
+                      return (
+                        <GoalCard
+                          key={goal.id}
+                          goal={goal}
+                          blockType={block.type}
+                          busy={busy}
+                          onRename={onRename}
+                          onDelete={onDelete}
+                          onTogglePriority={onTogglePriority}
+                          onConclude={onConclude}
+                          onEdit={onEdit}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+
+                {addingQuarter === "backlog" ? (
+                  <BacklogAddForm
+                    blocks={[...blockById.values()]}
+                    onCancel={() => setAddingQuarter(null)}
+                    onCreate={async (blockId, title) => {
+                      await onCreate(blockId, null, title);
+                      setAddingQuarter(null);
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="os-q-add"
+                    onClick={() => setAddingQuarter("backlog")}
+                  >
+                    <span className="plus">+</span> Nova meta no backlog
+                  </button>
+                )}
+              </>
+            ) : null}
           </div>
 
           <DragOverlay>
