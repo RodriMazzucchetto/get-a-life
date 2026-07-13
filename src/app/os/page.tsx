@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
+import { OsAnnualGoalBar } from "@/components/os/OsAnnualGoalBar";
+import { OsGoalsByQuarterPanel } from "@/components/os/OsGoalsByQuarterPanel";
 import { GoalOutcomeModal } from "@/components/os/GoalOutcomeModal";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
 import { WeeklyUpdateModal } from "@/components/os/WeeklyUpdateModal";
@@ -18,18 +20,17 @@ import {
   createOsBetUpdate,
   createOsGoal,
   createOsTask,
+  currentCalendarQuarter,
   deleteOsBet,
   deleteOsGoal,
   deleteOsTask,
-  fetchGoalsForBlock,
+  fetchGoalsForProject,
   fetchOsBetActivityCounts,
   fetchOsBetUpdatesForBet,
   fetchOsTasksForBet,
-  formatGoalOutcomeLabel,
   getPillarStatusDisplay,
   goalIsConcluded,
   removeBetFromBoardViews,
-  saveOsGoal,
   setGoalPriority,
   setOsBetPriority,
   unsetGoalPriority,
@@ -37,12 +38,14 @@ import {
   updateOsBetUpdate,
   deleteOsBetUpdate,
   updateOsGoal,
+  updateOsProjectAnnualObjective,
   type OsBlockView,
 } from "@/lib/os-queries";
 import type {
   OsBetRow,
   OsBetUpdateRow,
   OsBlockType,
+  OsGoalQuarter,
   OsGoalRow,
   OsTaskRow,
 } from "@/lib/os-types";
@@ -104,17 +107,12 @@ type PillarCardProps = {
   goal: OsGoalRow | null;
   priorityPitches: OsBetRow[];
   backlogPitches: OsBetRow[];
-  backlogMetas: OsGoalRow[];
   latestUpdates: Map<string, OsBetUpdateRow>;
   activityCounts: Map<string, { todosOpen: number; todosTotal: number; updates: number }>;
   busy: boolean;
   onEditGoal: (goal: OsGoalRow | null) => void;
-  onAddGoal: (title: string) => Promise<void>;
-  onPrioritizeGoal: (goal: OsGoalRow) => Promise<void>;
   onUnprioritizeGoal: (goal: OsGoalRow) => Promise<void>;
   onConcludeGoal: (goal: OsGoalRow) => void;
-  onRenameGoal: (goal: OsGoalRow, title: string) => Promise<void>;
-  onDeleteGoal: (goal: OsGoalRow) => Promise<void>;
   onOpenPitch: (bet: OsBetRow) => void;
   onTogglePitchDone: (bet: OsBetRow) => void;
   onAddPitch: (title: string) => Promise<void>;
@@ -130,17 +128,12 @@ function PillarCard({
   goal,
   priorityPitches,
   backlogPitches,
-  backlogMetas,
   latestUpdates,
   activityCounts,
   busy,
   onEditGoal,
-  onAddGoal,
-  onPrioritizeGoal,
   onUnprioritizeGoal,
   onConcludeGoal,
-  onRenameGoal,
-  onDeleteGoal,
   onOpenPitch,
   onTogglePitchDone,
   onAddPitch,
@@ -148,13 +141,8 @@ function PillarCard({
   onUnprioritizePitch,
 }: PillarCardProps) {
   const [pitchBacklogOpen, setPitchBacklogOpen] = useState(false);
-  const [metaBacklogOpen, setMetaBacklogOpen] = useState(false);
   const [addingPitch, setAddingPitch] = useState(false);
-  const [addingMeta, setAddingMeta] = useState(false);
   const [newPitch, setNewPitch] = useState("");
-  const [newMeta, setNewMeta] = useState("");
-  const [editingMetaId, setEditingMetaId] = useState<string | null>(null);
-  const [editMetaText, setEditMetaText] = useState("");
 
   const started = priorityPitches.length;
   const executed = priorityPitches.filter((b) => betIsDone(b, latestUpdates)).length;
@@ -162,8 +150,6 @@ function PillarCard({
     (b) => (latestUpdates.get(b.id)?.status ?? b.status) === "failed"
   ).length;
 
-  const backlogMetasActive = backlogMetas.filter((g) => g.status === "active");
-  const backlogMetasConcluded = backlogMetas.filter((g) => goalIsConcluded(g));
   const backlogActive = backlogPitches.filter((b) => !betIsConcluded(b, latestUpdates));
   const backlogConcluded = backlogPitches.filter((b) => betIsConcluded(b, latestUpdates));
 
@@ -173,18 +159,6 @@ function PillarCard({
     await onAddPitch(t);
     setNewPitch("");
     setAddingPitch(false);
-  };
-  const submitMeta = async () => {
-    const t = newMeta.trim();
-    if (!t) return;
-    await onAddGoal(t);
-    setNewMeta("");
-    setAddingMeta(false);
-  };
-  const submitRename = async (g: OsGoalRow) => {
-    const t = editMetaText.trim();
-    if (t && t !== g.title) await onRenameGoal(g, t);
-    setEditingMetaId(null);
   };
 
   return (
@@ -218,16 +192,16 @@ function PillarCard({
               </button>
             </>
           ) : (
-            <button type="button" className="meta-text meta-empty" onClick={() => onEditGoal(null)}>
-              Nenhuma meta priorizada — priorize uma do backlog ou crie uma nova
-            </button>
+            <span className="meta-text meta-empty">
+              Nenhuma meta priorizada — priorize uma nos quarters abaixo
+            </span>
           )}
           {goal ? (
             <>
               <button
                 type="button"
                 className="unprio"
-                title="Despriorizar meta (volta ao backlog)"
+                title="Despriorizar meta"
                 disabled={busy}
                 onClick={() => void onUnprioritizeGoal(goal)}
               >
@@ -399,110 +373,6 @@ function PillarCard({
           </div>
         </div>
       </div>
-
-      {/* META BACKLOG */}
-      <div className={`backlog ${metaBacklogOpen ? "open" : ""}`}>
-        <button type="button" className="backlog-toggle" onClick={() => setMetaBacklogOpen((v) => !v)}>
-          <span className="chev">⌄</span> Metas no backlog
-          <span className="count-pill">{backlogMetas.length}</span>
-        </button>
-        <div className="backlog-body">
-          {backlogMetasActive.map((g) =>
-            editingMetaId === g.id ? (
-              <div key={g.id} className="add-row">
-                <input
-                  autoFocus
-                  value={editMetaText}
-                  onChange={(e) => setEditMetaText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void submitRename(g);
-                    if (e.key === "Escape") setEditingMetaId(null);
-                  }}
-                  onBlur={() => void submitRename(g)}
-                />
-              </div>
-            ) : (
-              <div key={g.id} className="backlog-meta">
-                <span className="bm-text">{g.title}</span>
-                <div className="bm-actions">
-                  <button
-                    type="button"
-                    className="prioritize"
-                    disabled={busy}
-                    onClick={() => void onPrioritizeGoal(g)}
-                  >
-                    Priorizar
-                  </button>
-                  <button
-                    type="button"
-                    className="edit"
-                    title="Editar"
-                    onClick={() => {
-                      setEditingMetaId(g.id);
-                      setEditMetaText(g.title);
-                    }}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    className="del"
-                    title="Excluir meta"
-                    disabled={busy}
-                    onClick={() => void onDeleteGoal(g)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            )
-          )}
-          {backlogMetasConcluded.length > 0 ? (
-            <div className="pb-concluded-section">
-              <div className="pb-concluded-label">Já trabalhadas</div>
-              {backlogMetasConcluded.map((g) => {
-                const statusClass = g.status === "abandoned" ? "abandoned" : "achieved";
-                return (
-                  <div key={g.id} className={`backlog-meta concluded ${statusClass}`}>
-                    <span className="pb-status-dot" aria-hidden />
-                    <span className="bm-text">{g.title}</span>
-                    <span className={`pb-outcome ${statusClass === "abandoned" ? "failed" : "executed"}`}>
-                      {formatGoalOutcomeLabel(g.status)}
-                    </span>
-                    <div className="bm-actions">
-                      <button type="button" className="edit" title="Editar" onClick={() => onEditGoal(g)}>
-                        ✎
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-          {addingMeta ? (
-            <div className="add-row">
-              <input
-                autoFocus
-                value={newMeta}
-                placeholder="Nova meta…"
-                onChange={(e) => setNewMeta(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void submitMeta();
-                  if (e.key === "Escape") {
-                    setAddingMeta(false);
-                    setNewMeta("");
-                  }
-                }}
-                onBlur={() => void submitMeta()}
-              />
-            </div>
-          ) : (
-            <button type="button" className="add-meta" onClick={() => setAddingMeta(true)}>
-              <span className="plus">+</span> Nova meta
-            </button>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -517,6 +387,7 @@ function OsPageContent() {
     selectedProjectId,
     loadingProjects,
     projects,
+    refreshProjects,
     board,
     latestUpdates,
     boardRefreshing,
@@ -529,7 +400,8 @@ function OsPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [busyPillar, setBusyPillar] = useState<string | null>(null);
 
-  const [goalsByBlock, setGoalsByBlock] = useState<Map<string, OsGoalRow[]>>(new Map());
+  const [goals, setGoals] = useState<OsGoalRow[]>([]);
+  const [goalsBusy, setGoalsBusy] = useState(false);
   const [activityCounts, setActivityCounts] = useState<
     Map<string, { todosOpen: number; todosTotal: number; updates: number }>
   >(new Map());
@@ -577,21 +449,18 @@ function OsPageContent() {
     [board]
   );
 
-  // Carrega todas as metas por bloco (para o drawer "Metas no backlog")
-  const loadGoalsByBlock = useCallback(async () => {
-    if (orderedBlocks.length === 0) return;
-    try {
-      const entries = await Promise.all(
-        orderedBlocks.map(async (view) => {
-          const goals = await fetchGoalsForBlock(view.block.id);
-          return [view.block.id, goals] as const;
-        })
-      );
-      setGoalsByBlock(new Map(entries));
-    } catch {
-      /* silencioso — backlog de metas apenas não popula */
+  // Carrega todas as metas da empresa (quarters)
+  const loadGoals = useCallback(async () => {
+    if (!user || !selectedProjectId) {
+      setGoals([]);
+      return;
     }
-  }, [orderedBlocks]);
+    try {
+      setGoals(await fetchGoalsForProject(user.id, selectedProjectId));
+    } catch {
+      /* silencioso */
+    }
+  }, [user, selectedProjectId]);
 
   // Carrega contagem de to-dos/updates dos pitches priorizados visíveis
   const loadActivityCounts = useCallback(async () => {
@@ -610,21 +479,37 @@ function OsPageContent() {
   }, [orderedBlocks]);
 
   useEffect(() => {
-    void loadGoalsByBlock();
+    void loadGoals();
     void loadActivityCounts();
-  }, [loadGoalsByBlock, loadActivityCounts]);
+  }, [loadGoals, loadActivityCounts]);
+
+  const selectedProject = useMemo(
+    () => projects.find((p) => p.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId]
+  );
+
+  const quarterBlocks = useMemo(
+    () =>
+      orderedBlocks.map((view) => ({
+        id: view.block.id,
+        type: view.block.type as OsBlockType,
+      })),
+    [orderedBlocks]
+  );
+
+  const currentQ = currentCalendarQuarter();
 
   const blockGoals = useMemo(() => {
-    const goals: Record<OsBlockType, { id: string; title: string } | null> = {
+    const map: Record<OsBlockType, { id: string; title: string } | null> = {
       finance: null,
       growth: null,
       ops: null,
     };
     for (const view of orderedBlocks) {
       const type = view.block.type as OsBlockType;
-      if (view.goal) goals[type] = { id: view.goal.id, title: view.goal.title };
+      if (view.goal) map[type] = { id: view.goal.id, title: view.goal.title };
     }
-    return goals;
+    return map;
   }, [orderedBlocks]);
 
   const pillarDisplays = useMemo(() => {
@@ -680,6 +565,13 @@ function OsPageContent() {
       setGoalError("Informe um título para a meta.");
       return;
     }
+    if (goalDraft.goalId) {
+      const existing = goals.find((g) => g.id === goalDraft.goalId);
+      if (existing && goalIsConcluded(existing)) {
+        setGoalError("Metas concluídas não podem ser editadas.");
+        return;
+      }
+    }
     setGoalSaving(true);
     try {
       if (goalDraft.goalId) {
@@ -688,16 +580,17 @@ function OsPageContent() {
           description: goalDraft.description.trim() || null,
         });
       } else {
-        await saveOsGoal(
+        await createOsGoal(
           user.id,
           goalDraft.blockId,
           goalDraft.title.trim(),
-          goalDraft.description.trim() || undefined
+          goalDraft.description.trim() || undefined,
+          currentQ
         );
       }
       setGoalModalOpen(false);
       await refreshBoard({ background: true, force: true });
-      await loadGoalsByBlock();
+      await loadGoals();
     } catch {
       setGoalError("Não foi possível salvar a meta.");
     } finally {
@@ -705,30 +598,36 @@ function OsPageContent() {
     }
   };
 
-  const handleAddGoal = async (blockId: string, title: string) => {
+  const handleCreateQuarterGoal = async (
+    blockId: string,
+    quarter: OsGoalQuarter,
+    title: string
+  ) => {
     if (!user) return;
-    setBusyPillar(blockId);
+    setGoalsBusy(true);
     try {
-      await createOsGoal(user.id, blockId, title);
+      await createOsGoal(user.id, blockId, title, undefined, quarter);
       await refreshBoard({ background: true, force: true });
-      await loadGoalsByBlock();
+      await loadGoals();
     } catch {
       setError("Não foi possível criar a meta.");
     } finally {
-      setBusyPillar(null);
+      setGoalsBusy(false);
     }
   };
 
-  const handlePrioritizeGoal = async (goal: OsGoalRow, blockId: string) => {
-    setBusyPillar(blockId);
+  const handleToggleGoalPriority = async (goal: OsGoalRow) => {
+    if (goalIsConcluded(goal)) return;
+    setGoalsBusy(true);
     try {
-      await setGoalPriority(goal.id, blockId);
+      if (goal.is_priority) await unsetGoalPriority(goal.id);
+      else await setGoalPriority(goal.id, goal.block_id);
       await refreshBoard({ background: true, force: true });
-      await loadGoalsByBlock();
+      await loadGoals();
     } catch {
-      setError("Não foi possível priorizar a meta.");
+      setError("Não foi possível alterar a prioridade da meta.");
     } finally {
-      setBusyPillar(null);
+      setGoalsBusy(false);
     }
   };
 
@@ -737,7 +636,7 @@ function OsPageContent() {
     try {
       await unsetGoalPriority(goal.id);
       await refreshBoard({ background: true, force: true });
-      await loadGoalsByBlock();
+      await loadGoals();
     } catch {
       setError("Não foi possível despriorizar a meta.");
     } finally {
@@ -745,29 +644,54 @@ function OsPageContent() {
     }
   };
 
-  const handleRenameGoal = async (goal: OsGoalRow, title: string, blockId: string) => {
-    setBusyPillar(blockId);
+  const handleRenameGoal = async (goal: OsGoalRow, title: string) => {
+    if (goalIsConcluded(goal)) return;
+    setGoalsBusy(true);
     try {
       await updateOsGoal(goal.id, { title });
       await refreshBoard({ background: true, force: true });
-      await loadGoalsByBlock();
+      await loadGoals();
     } catch {
       setError("Não foi possível renomear a meta.");
     } finally {
-      setBusyPillar(null);
+      setGoalsBusy(false);
     }
   };
 
-  const handleDeleteGoal = async (goal: OsGoalRow, blockId: string) => {
-    setBusyPillar(blockId);
+  const handleDeleteGoal = async (goal: OsGoalRow) => {
+    if (goalIsConcluded(goal)) return;
+    setGoalsBusy(true);
     try {
       await deleteOsGoal(goal.id);
       await refreshBoard({ background: true, force: true });
-      await loadGoalsByBlock();
+      await loadGoals();
     } catch {
       setError("Não foi possível excluir a meta.");
     } finally {
-      setBusyPillar(null);
+      setGoalsBusy(false);
+    }
+  };
+
+  const handleMoveGoalQuarter = async (goal: OsGoalRow, quarter: OsGoalQuarter) => {
+    if (goalIsConcluded(goal)) return;
+    setGoalsBusy(true);
+    try {
+      await updateOsGoal(goal.id, { quarter });
+      await loadGoals();
+    } catch {
+      setError("Não foi possível mover a meta.");
+    } finally {
+      setGoalsBusy(false);
+    }
+  };
+
+  const handleSaveAnnualGoal = async (text: string) => {
+    if (!selectedProjectId) return;
+    try {
+      await updateOsProjectAnnualObjective(selectedProjectId, text);
+      await refreshProjects();
+    } catch {
+      setError("Não foi possível salvar o Annual Goal.");
     }
   };
 
@@ -776,7 +700,10 @@ function OsPageContent() {
     setGoalOutcomeModalOpen(true);
   };
 
-  const handleGoalOutcomeSubmit = async (data: { outcome: "achieved" | "abandoned"; note: string }) => {
+  const handleGoalOutcomeSubmit = async (data: {
+    outcome: "achieved" | "abandoned";
+    note: string;
+  }) => {
     if (!goalOutcomeTarget) return;
     const blockId = goalOutcomeTarget.block_id;
     setGoalOutcomeSaving(true);
@@ -786,7 +713,7 @@ function OsPageContent() {
       setGoalOutcomeModalOpen(false);
       setGoalOutcomeTarget(null);
       await refreshBoard({ background: true, force: true });
-      await loadGoalsByBlock();
+      await loadGoals();
     } catch {
       setError("Não foi possível concluir a meta.");
       throw new Error("goal outcome failed");
@@ -1061,7 +988,7 @@ function OsPageContent() {
     <div className="pb-8">
       <div className="page-head">
         <h1>OS</h1>
-        <span className="os-crumb">Sistema Operacional · Ciclo Q2</span>
+        <span className="os-crumb">Sistema Operacional · Ciclo Q{currentQ}</span>
       </div>
 
       <OsCompanySelector />
@@ -1140,8 +1067,6 @@ function OsPageContent() {
             {orderedBlocks.map((view) => {
               const blockType = view.block.type as OsBlockType;
               const blockId = view.block.id;
-              const allGoals = goalsByBlock.get(blockId) ?? [];
-              const backlogMetas = allGoals.filter((g) => g.id !== view.goal?.id);
               const priorityPitches = view.bets.filter((b) => b.is_priority);
               const backlogPitches = view.bets.filter((b) => !b.is_priority);
               return (
@@ -1154,17 +1079,12 @@ function OsPageContent() {
                   goal={view.goal}
                   priorityPitches={priorityPitches}
                   backlogPitches={backlogPitches}
-                  backlogMetas={backlogMetas}
                   latestUpdates={latestUpdates}
                   activityCounts={activityCounts}
                   busy={busyPillar === blockId}
                   onEditGoal={(g) => openGoalModal(blockId, blockType, g)}
-                  onAddGoal={(title) => handleAddGoal(blockId, title)}
-                  onPrioritizeGoal={(g) => handlePrioritizeGoal(g, blockId)}
                   onUnprioritizeGoal={(g) => handleUnprioritizeGoal(g, blockId)}
                   onConcludeGoal={openGoalOutcomeModal}
-                  onRenameGoal={(g, title) => handleRenameGoal(g, title, blockId)}
-                  onDeleteGoal={(g) => handleDeleteGoal(g, blockId)}
                   onOpenPitch={(bet) => openPitchModal(bet, blockType)}
                   onTogglePitchDone={(bet) => openWeeklyModal(bet)}
                   onAddPitch={(title) => handleAddPitch(blockType, blockId, title)}
@@ -1175,12 +1095,35 @@ function OsPageContent() {
             })}
           </div>
 
+          <OsAnnualGoalBar
+            year={selectedProject?.annual_objective_year ?? new Date().getFullYear()}
+            value={selectedProject?.annual_objective}
+            onSave={handleSaveAnnualGoal}
+          />
+
+          <OsGoalsByQuarterPanel
+            goals={goals}
+            blocks={quarterBlocks}
+            busy={goalsBusy}
+            onCreate={handleCreateQuarterGoal}
+            onRename={handleRenameGoal}
+            onDelete={handleDeleteGoal}
+            onMoveQuarter={handleMoveGoalQuarter}
+            onTogglePriority={handleToggleGoalPriority}
+            onConclude={openGoalOutcomeModal}
+            onEdit={(goal) => {
+              const block = orderedBlocks.find((v) => v.block.id === goal.block_id);
+              if (!block) return;
+              openGoalModal(goal.block_id, block.block.type as OsBlockType, goal);
+            }}
+          />
+
           <div className="hier-note">
             <span>
               <b>HIERARQUIA</b> &nbsp; Pilar → Meta → Pitch → updates &amp; to-dos
             </span>
             <span>
-              <b>META</b> &nbsp; âncora · só priorizadas à mostra · backlog no drawer
+              <b>META</b> &nbsp; planeada por quarter abaixo · só a priorizada aparece no pilar
             </span>
             <span>
               <b>PITCH</b> &nbsp; gera o trabalho da semana

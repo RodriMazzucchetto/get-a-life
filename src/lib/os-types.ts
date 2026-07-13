@@ -1,5 +1,6 @@
 export type OsBlockType = 'finance' | 'growth' | 'ops'
 export type OsGoalStatus = 'active' | 'achieved' | 'abandoned'
+export type OsGoalQuarter = 1 | 2 | 3 | 4
 export type OsCycleStatus = 'active' | 'closed'
 export type OsBetStatus =
   | 'draft'
@@ -32,6 +33,7 @@ export interface OsGoalRow {
   status: OsGoalStatus
   is_priority: boolean
   pos: number | null
+  quarter: OsGoalQuarter
   closed_at: string | null
   closure_note: string | null
   created_at: string
@@ -116,6 +118,7 @@ export interface OsGoalInsert {
   description?: string | null
   appetite_cycles?: number | null
   status?: OsGoalStatus
+  quarter?: OsGoalQuarter
   created_at?: string
   updated_at?: string
 }

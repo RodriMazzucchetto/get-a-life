@@ -9,6 +9,7 @@ import type {
   OsBlockRow,
   OsBlockType,
   OsCycleRow,
+  OsGoalQuarter,
   OsGoalRow,
   OsGoalStatus,
   OsPerformanceReport,
@@ -260,6 +261,8 @@ export interface OsProjectOption {
   id: string
   name: string
   color: string
+  annual_objective?: string | null
+  annual_objective_year?: number | null
 }
 
 export interface OsBlockView {
@@ -323,7 +326,7 @@ export async function fetchOsProjects(userId: string): Promise<OsProjectOption[]
   const supabase = createClient()
   const { data, error } = await supabase
     .from('projects')
-    .select('id, name, color')
+    .select('id, name, color, annual_objective, annual_objective_year')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -332,7 +335,64 @@ export async function fetchOsProjects(userId: string): Promise<OsProjectOption[]
     throw error
   }
 
-  return data ?? []
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    annual_objective: row.annual_objective ?? null,
+    annual_objective_year: row.annual_objective_year ?? null,
+  }))
+}
+
+/** Quarter do calendário atual (1–4). */
+export function currentCalendarQuarter(date = new Date()): OsGoalQuarter {
+  return (Math.floor(date.getMonth() / 3) + 1) as OsGoalQuarter
+}
+
+export function normalizeOsGoalRow(row: OsGoalRow): OsGoalRow {
+  const q = Number(row.quarter)
+  const quarter: OsGoalQuarter =
+    q === 1 || q === 2 || q === 3 || q === 4 ? q : currentCalendarQuarter()
+  return {
+    ...row,
+    is_priority: row.is_priority ?? false,
+    pos: row.pos ?? null,
+    quarter,
+    closed_at: row.closed_at ?? null,
+    closure_note: row.closure_note ?? null,
+  }
+}
+
+export async function updateOsProjectAnnualObjective(
+  projectId: string,
+  text: string
+): Promise<OsProjectOption> {
+  const supabase = createClient()
+  const trimmed = text.trim()
+  const year = new Date().getFullYear()
+  const { data, error } = await supabase
+    .from('projects')
+    .update({
+      annual_objective: trimmed || null,
+      annual_objective_year: trimmed ? year : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', projectId)
+    .select('id, name, color, annual_objective, annual_objective_year')
+    .single()
+
+  if (error) {
+    console.error('Erro ao atualizar annual goal:', error)
+    throw error
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    color: data.color,
+    annual_objective: data.annual_objective ?? null,
+    annual_objective_year: data.annual_objective_year ?? null,
+  }
 }
 
 /** Empresas do OS — exclui Quick Win (QW), que é tag de tasks. */
@@ -453,7 +513,8 @@ export async function createOsGoal(
   userId: string,
   blockId: string,
   title: string,
-  description?: string
+  description?: string,
+  quarter?: OsGoalQuarter
 ): Promise<OsGoalRow> {
   const supabase = createClient()
   const { data, error } = await supabase
@@ -464,6 +525,8 @@ export async function createOsGoal(
       title,
       description: description ?? null,
       status: 'active',
+      quarter: quarter ?? currentCalendarQuarter(),
+      is_priority: false,
     })
     .select('*')
     .single()
@@ -473,18 +536,25 @@ export async function createOsGoal(
     throw error
   }
 
-  return data
+  return normalizeOsGoalRow(data)
 }
 
 export async function updateOsGoal(
   goalId: string,
-  updates: { title?: string; description?: string | null }
+  updates: {
+    title?: string
+    description?: string | null
+    quarter?: OsGoalQuarter
+    pos?: number | null
+  }
 ): Promise<OsGoalRow> {
   const supabase = createClient()
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
   if (updates.title !== undefined) payload.title = updates.title
   if (updates.description !== undefined) payload.description = updates.description
+  if (updates.quarter !== undefined) payload.quarter = updates.quarter
+  if (updates.pos !== undefined) payload.pos = updates.pos
 
   const { data, error } = await supabase
     .from('os_goals')
@@ -498,7 +568,7 @@ export async function updateOsGoal(
     throw error
   }
 
-  return data
+  return normalizeOsGoalRow(data)
 }
 
 /** Busca todas as metas de um bloco (ativas + concluídas), ordenadas por pos/created_at. */
@@ -515,14 +585,34 @@ export async function fetchGoalsForBlock(blockId: string): Promise<OsGoalRow[]> 
     throw error
   }
 
-  // Normalizar campos que podem não existir antes da migration
-  return (data ?? []).map((g) => ({
-    ...g,
-    is_priority: g.is_priority ?? false,
-    pos: g.pos ?? null,
-    closed_at: g.closed_at ?? null,
-    closure_note: g.closure_note ?? null,
-  }))
+  return (data ?? []).map(normalizeOsGoalRow)
+}
+
+/** Todas as metas OS dos blocos de um projeto (empresa). */
+export async function fetchGoalsForProject(
+  userId: string,
+  projectId: string
+): Promise<OsGoalRow[]> {
+  const blocks = await ensureOsBlocksForProject(userId, projectId)
+  if (blocks.length === 0) return []
+
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('os_goals')
+    .select('*')
+    .in(
+      'block_id',
+      blocks.map((b) => b.id)
+    )
+    .order('pos', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Erro ao buscar metas do projeto:', error)
+    throw error
+  }
+
+  return (data ?? []).map(normalizeOsGoalRow)
 }
 
 /** Define uma meta como prioritária (única por bloco).
