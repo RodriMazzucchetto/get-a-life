@@ -187,6 +187,7 @@ function GoalCard({
   blockType,
   blocks,
   busy,
+  variant = "default",
   onRename,
   onChangeBlock,
   onDelete,
@@ -198,6 +199,7 @@ function GoalCard({
   blockType: OsBlockType;
   blocks: BlockInfo[];
   busy?: boolean;
+  variant?: "default" | "backlog";
   onRename: (goal: OsGoalRow, title: string) => Promise<void>;
   onChangeBlock: (goal: OsGoalRow, blockId: string) => Promise<void>;
   onDelete: (goal: OsGoalRow) => Promise<void>;
@@ -206,6 +208,7 @@ function GoalCard({
   onEdit: (goal: OsGoalRow) => void;
 }) {
   const concluded = goalIsConcluded(goal);
+  const compact = variant === "backlog";
   const [editing, setEditing] = useState(false);
   const [editingPillar, setEditingPillar] = useState(false);
   const [draft, setDraft] = useState(goal.title);
@@ -233,7 +236,7 @@ function GoalCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`os-q-goal ${concluded ? "concluded" : ""} ${goal.is_priority ? "prio" : ""} ${isDragging ? "dragging" : ""}`}
+      className={`os-q-goal ${compact ? "compact" : ""} ${concluded ? "concluded" : ""} ${goal.is_priority ? "prio" : ""} ${isDragging ? "dragging" : ""}`}
     >
       {!concluded ? (
         <button type="button" className="os-q-handle" aria-label="Arrastar meta" {...attributes} {...listeners}>
@@ -245,10 +248,8 @@ function GoalCard({
         </span>
       )}
 
-      <span className="os-q-dot" style={{ background: PILLAR_DOT[blockType] }} aria-hidden />
-
-      <div className="os-q-goal-body">
-        {editingPillar && !concluded ? (
+      {editingPillar && !concluded ? (
+        <div className="os-q-goal-pillar-edit">
           <PillarPicks
             blocks={ordered}
             value={goal.block_id}
@@ -258,7 +259,21 @@ function GoalCard({
               if (blockId !== goal.block_id) void onChangeBlock(goal, blockId);
             }}
           />
-        ) : (
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="os-q-dot"
+          style={{ background: PILLAR_DOT[blockType] }}
+          disabled={concluded || busy}
+          title={concluded ? OS_BLOCK_LABELS[blockType] : `Pilar: ${OS_BLOCK_LABELS[blockType]} — clique para alterar`}
+          aria-label={`Pilar ${OS_BLOCK_LABELS[blockType]}`}
+          onClick={() => setEditingPillar(true)}
+        />
+      )}
+
+      <div className="os-q-goal-body">
+        {!compact && !editingPillar ? (
           <button
             type="button"
             className="os-q-pillar"
@@ -268,7 +283,7 @@ function GoalCard({
           >
             {OS_BLOCK_LABELS[blockType]}
           </button>
-        )}
+        ) : null}
         {editing && !concluded ? (
           <input
             autoFocus
@@ -313,15 +328,17 @@ function GoalCard({
             >
               ★
             </button>
-            <button
-              type="button"
-              className="os-q-icon"
-              title="Concluir meta"
-              disabled={busy}
-              onClick={() => onConclude(goal)}
-            >
-              ✓
-            </button>
+            {!compact ? (
+              <button
+                type="button"
+                className="os-q-icon"
+                title="Concluir meta"
+                disabled={busy}
+                onClick={() => onConclude(goal)}
+              >
+                ✓
+              </button>
+            ) : null}
             <button
               type="button"
               className="os-q-icon danger"
@@ -516,6 +533,7 @@ function GoalsBacklogSection({
                   blockType={block.type}
                   blocks={blocks}
                   busy={busy}
+                  variant="backlog"
                   onRename={onRename}
                   onChangeBlock={onChangeBlock}
                   onDelete={onDelete}
