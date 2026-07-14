@@ -199,7 +199,7 @@ function GoalCard({
   blockType: OsBlockType;
   blocks: BlockInfo[];
   busy?: boolean;
-  variant?: "default" | "backlog";
+  variant?: "default" | "compact" | "backlog";
   onRename: (goal: OsGoalRow, title: string) => Promise<void>;
   onChangeBlock: (goal: OsGoalRow, blockId: string) => Promise<void>;
   onDelete: (goal: OsGoalRow) => Promise<void>;
@@ -208,7 +208,7 @@ function GoalCard({
   onEdit: (goal: OsGoalRow) => void;
 }) {
   const concluded = goalIsConcluded(goal);
-  const compact = variant === "backlog";
+  const compact = variant === "compact" || variant === "backlog";
   const [editing, setEditing] = useState(false);
   const [editingPillar, setEditingPillar] = useState(false);
   const [draft, setDraft] = useState(goal.title);
@@ -423,6 +423,7 @@ function QuarterColumn({
               blockType={block.type}
               blocks={blocks}
               busy={busy}
+              variant="compact"
               onRename={onRename}
               onChangeBlock={onChangeBlock}
               onDelete={onDelete}
@@ -533,7 +534,7 @@ function GoalsBacklogSection({
                   blockType={block.type}
                   blocks={blocks}
                   busy={busy}
-                  variant="backlog"
+                  variant="compact"
                   onRename={onRename}
                   onChangeBlock={onChangeBlock}
                   onDelete={onDelete}
