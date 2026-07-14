@@ -117,7 +117,7 @@ function SortablePitchCard({
           {...attributes}
           {...listeners}
           className="handle"
-          aria-label="Arrastar pitch"
+          aria-label="Arrastar aposta"
         >
           <span className="material-symbols-outlined text-[16px]">drag_indicator</span>
         </button>
@@ -129,7 +129,7 @@ function SortablePitchCard({
           }}
           disabled={deleting}
           className="delete-btn"
-          aria-label="Excluir pitch"
+          aria-label="Excluir aposta"
         >
           <span className="material-symbols-outlined text-[16px]">delete</span>
         </button>
@@ -177,7 +177,7 @@ function PitchColumn({
       <SortableContext items={bets.map((bet) => bet.id)} strategy={verticalListSortingStrategy}>
         <div className="os-pitch-col-list">
           {bets.length === 0 ? (
-            <p className="os-pitch-col-empty">Nenhum pitch neste pilar</p>
+            <p className="os-pitch-col-empty">Nenhuma aposta neste pilar</p>
           ) : (
             bets.map((bet) => (
               <SortablePitchCard
@@ -192,7 +192,7 @@ function PitchColumn({
             ))
           )}
           <button type="button" className="os-pitch-add" onClick={() => onAddPitch(blockType)}>
-            <span className="plus">+</span> Novo pitch
+            <span className="plus">+</span> Nova aposta
           </button>
         </div>
       </SortableContext>
@@ -269,7 +269,7 @@ export default function OsPitchPage() {
       const tasks = await fetchOsTasksForBet(betId);
       setPitchTasks(tasks);
     } catch (taskError) {
-      console.error("Erro ao carregar tasks do pitch:", taskError);
+      console.error("Erro ao carregar tasks da aposta:", taskError);
       setPitchTasks([]);
     } finally {
       setTasksLoading(false);
@@ -340,7 +340,7 @@ export default function OsPitchPage() {
       await refreshBoard({ background: true, force: true });
     } catch (priorityError) {
       console.error("Erro ao alterar prioridade:", priorityError);
-      setError("Não foi possível alterar a prioridade do pitch.");
+      setError("Não foi possível alterar a prioridade da aposta.");
     } finally {
       setPriorityLoadingId(null);
     }
@@ -403,8 +403,8 @@ export default function OsPitchPage() {
       closeModal();
       await refreshBoard({ background: true, force: true });
     } catch (saveError) {
-      console.error("Erro ao salvar pitch:", saveError);
-      setError("Não foi possível salvar o pitch.");
+      console.error("Erro ao salvar aposta:", saveError);
+      setError("Não foi possível salvar a aposta.");
     } finally {
       setSaving(false);
     }
@@ -434,7 +434,7 @@ export default function OsPitchPage() {
       await refreshTasks({ background: true, force: true });
     } catch (deleteError) {
       const msg = deleteError instanceof Error ? deleteError.message : String(deleteError);
-      console.error("Erro ao excluir pitch:", msg);
+      console.error("Erro ao excluir aposta:", msg);
       setError(`Erro ao excluir: ${msg}`);
       await refreshBoard({ background: true, force: true });
     } finally {
@@ -472,8 +472,8 @@ export default function OsPitchPage() {
     try {
       await reorderOsBetsInGoal(orderedIds);
     } catch (reorderError) {
-      console.error("Erro ao reordenar pitches:", reorderError);
-      setError("Não foi possível reordenar os pitches.");
+      console.error("Erro ao reordenar apostas:", reorderError);
+      setError("Não foi possível reordenar as apostas.");
       await refreshBoard({ background: true, force: true });
     }
   };
@@ -491,22 +491,22 @@ export default function OsPitchPage() {
       ) : null}
 
       <div className="os-pitch-head">
-        <h2>Pitches</h2>
+        <h2>Apostas</h2>
         <button
           type="button"
           className="os-btn-add"
           onClick={() => openCreateModal()}
           disabled={!selectedProjectId || (!boardReady && boardLoading)}
         >
-          + Adicionar pitch
+          + Adicionar aposta
         </button>
       </div>
 
       {(loadingProjects && projects.length === 0) ||
       (!boardReady && boardLoading && board.length === 0) ? (
-        <div className={osEmptyState}>Carregando pitches...</div>
+        <div className={osEmptyState}>Carregando apostas...</div>
       ) : !selectedProjectId ? (
-        <div className={osEmptyState}>Selecione uma empresa para visualizar os pitches.</div>
+        <div className={osEmptyState}>Selecione uma empresa para visualizar as apostas.</div>
       ) : (
         <DndContext
           sensors={sensors}

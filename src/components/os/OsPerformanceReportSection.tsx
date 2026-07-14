@@ -92,7 +92,7 @@ export function OsPerformanceReportSection() {
         if (!cancelled) setReport(data);
       })
       .catch(() => {
-        if (!cancelled) setError("Não foi possível carregar o relatório de pitches e metas.");
+        if (!cancelled) setError("Não foi possível carregar o relatório de apostas e metas.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -132,10 +132,10 @@ export function OsPerformanceReportSection() {
     <section>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className={`mb-1 ${osLabelMuted}`}>OS · Pitches &amp; metas</div>
+          <div className={`mb-1 ${osLabelMuted}`}>OS · Apostas &amp; metas</div>
           <h2 className="text-xl font-bold uppercase tracking-tight">Performance por empresa</h2>
           <p className="mt-1 max-w-2xl font-sans text-xs normal-case text-ta-muted">
-            Conta pitches e metas <strong>concluídos no mês</strong> (primeiro Executed/Failed do pitch
+            Conta apostas e metas <strong>concluídos no mês</strong> (primeiro Executed/Failed da aposta
             ou data de fechamento da meta).
           </p>
         </div>
@@ -179,7 +179,7 @@ export function OsPerformanceReportSection() {
         <div className="space-y-10">
           {/* Pitches */}
           <div>
-            <div className={`mb-3 ${osLabelMuted}`}>Pitches · Executed / Failed</div>
+            <div className={`mb-3 ${osLabelMuted}`}>Apostas · Executed / Failed</div>
             <div className="mb-6 grid grid-cols-2 border-[1.5px] border-ta-ink md:grid-cols-4">
               {kpiCard("Concluídos", String(report.pitches.total))}
               {kpiCard("Executed", String(report.pitches.executed), "cyan")}
@@ -191,7 +191,7 @@ export function OsPerformanceReportSection() {
               <div className={`mb-4 ${osLabelMuted}`}>Por pilar</div>
               {report.pitches.total === 0 ? (
                 <p className="font-sans text-xs text-ta-muted">
-                  Nenhum pitch concluído neste mês para esta empresa.
+                  Nenhuma aposta concluída neste mês para esta empresa.
                 </p>
               ) : (
                 <ResponsiveContainer width="100%" height={280}>

@@ -236,12 +236,12 @@ export function PitchModal({
 
   const handleSubmit = async () => {
     if (!form.title.trim()) {
-      setError("Informe a ideia do pitch.");
+      setError("Informe a ideia da aposta.");
       return;
     }
     const goal = blockGoals[form.blockType];
     if (!goal) {
-      setError("Defina uma meta ativa para este pilar na página OS antes de criar pitches.");
+      setError("Defina uma meta ativa para este pilar na página OS antes de criar apostas.");
       return;
     }
     setError(null);
@@ -250,12 +250,12 @@ export function PitchModal({
 
   const handleDelete = async () => {
     if (!pitch || !onDelete) return;
-    if (!window.confirm("Excluir este pitch permanentemente?")) return;
+    if (!window.confirm("Excluir esta aposta permanentemente?")) return;
     setError(null);
     try {
       await onDelete(pitch.id);
     } catch {
-      setError("Não foi possível excluir o pitch.");
+      setError("Não foi possível excluir a aposta.");
     }
   };
 
@@ -294,7 +294,7 @@ export function PitchModal({
             id="pitch-modal-title"
             className="font-mono text-[13px] font-semibold uppercase tracking-[0.22em]"
           >
-            {isEditing ? "Editar pitch" : "Submeter pitch"}
+            {isEditing ? "Editar aposta" : "Submeter aposta"}
           </h2>
           {isEditing ? (
             <div className="ml-auto flex items-center gap-2">
@@ -320,7 +320,7 @@ export function PitchModal({
           ) : null}
 
           <label className="block">
-            <span className={LABEL}>Qual é a ideia do pitch?</span>
+            <span className={LABEL}>Qual é a ideia da aposta?</span>
             <input
               type="text"
               value={form.title}
@@ -380,7 +380,7 @@ export function PitchModal({
           <label className="block">
             <span className={LABEL}>Dados objetivos</span>
             <p className={HELP}>
-              Que dados duros sustentam este pitch? Métricas, tendências, custos, uso, pontos de
+              Que dados duros sustentam esta aposta? Métricas, tendências, custos, uso, pontos de
               falha, input de clientes. Sem dados, explique como vai validar antes de executar.
             </p>
             <textarea
@@ -551,7 +551,7 @@ export function PitchModal({
           {isEditing && isPriority ? (
             <section className="border-t border-ta-rule-2 pt-6">
               <div className="mb-2 flex items-baseline justify-between">
-                <h3 className={`${LABEL} mb-0`}>Tasks do pitch</h3>
+                <h3 className={`${LABEL} mb-0`}>Tasks da aposta</h3>
                 {pitchTasks.length > 0 ? (
                   <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ta-muted">
                     {doneTasks}/{pitchTasks.length} entregues
@@ -559,7 +559,7 @@ export function PitchModal({
                 ) : null}
               </div>
               <p className={HELP}>
-                Aparecem em Tasks OS com a tag da empresa e deste pitch. O estado reflete o Tasks OS —
+                Aparecem em Tasks OS com a tag da empresa e desta aposta. O estado reflete o Tasks OS —
                 tasks concluídas aparecem riscadas.
               </p>
 
@@ -665,7 +665,7 @@ export function PitchModal({
                 disabled={saving}
                 className="border border-ta-ink bg-ta-ink px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ta-paper transition-colors hover:bg-ta-ink/90 disabled:opacity-50"
               >
-                {saving ? "Salvando..." : isEditing ? "Salvar" : "Submeter pitch"}
+                {saving ? "Salvando..." : isEditing ? "Salvar" : "Submeter aposta"}
               </button>
             </div>
           </div>

@@ -28,8 +28,8 @@ function PitchPriorityToggle({
       } ${isPriority ? "bg-ta-ink" : "bg-ta-paper"}`}
       title={
         isPriority
-          ? "Pitch em execução — clique para remover"
-          : "Marcar como pitch em execução"
+          ? "Aposta em execução — clique para remover"
+          : "Marcar como aposta em execução"
       }
       aria-pressed={isPriority}
       aria-label={isPriority ? "Remover prioridade de execução" : "Marcar como em execução"}

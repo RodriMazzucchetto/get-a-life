@@ -711,7 +711,7 @@ export default function OsTasksPage() {
               <OsTaskColumn
                 id={OS_COL_BACKLOG}
                 title="Backlog"
-                subtitle="Tasks de pitch entram aqui"
+                subtitle="Tasks de aposta entram aqui"
                 tasks={backlogTasks}
                 betsById={betsById}
                 projectsById={projectsById}

@@ -232,12 +232,12 @@ function PillarCard({
       {/* PITCHES */}
       <div className="pitch-zone">
         <div className="pz-head">
-          <span className="l">Pitches priorizados</span>
+          <span className="l">Apostas priorizadas</span>
           <span className="n">{priorityPitches.length}</span>
         </div>
 
         {priorityPitches.length === 0 ? (
-          <p className="pz-empty">Nenhum pitch ativo</p>
+          <p className="pz-empty">Nenhuma aposta ativa</p>
         ) : (
           priorityPitches.map((bet) => {
             const done = betIsDone(bet, latestUpdates);
@@ -268,7 +268,7 @@ function PillarCard({
                   <button
                     type="button"
                     className="unprio"
-                    title="Despriorizar pitch (volta ao backlog)"
+                    title="Despriorizar aposta (volta ao backlog)"
                     disabled={busy}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -296,14 +296,14 @@ function PillarCard({
           })
         )}
 
-        {/* Pitches no backlog */}
+        {/* Apostas no backlog */}
         <div className={`pitch-backlog ${pitchBacklogOpen ? "open" : ""}`}>
           <button
             type="button"
             className="pitch-backlog-toggle"
             onClick={() => setPitchBacklogOpen((v) => !v)}
           >
-            <span className="chev">⌄</span> Pitches no backlog
+            <span className="chev">⌄</span> Apostas no backlog
             <span className="count-pill">{backlogPitches.length}</span>
           </button>
           <div className="pitch-backlog-body">
@@ -353,7 +353,7 @@ function PillarCard({
                 <input
                   autoFocus
                   value={newPitch}
-                  placeholder="Título do pitch…"
+                  placeholder="Título da aposta…"
                   onChange={(e) => setNewPitch(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void submitPitch();
@@ -367,7 +367,7 @@ function PillarCard({
               </div>
             ) : (
               <button type="button" className="add-meta" onClick={() => setAddingPitch(true)} disabled={!goal}>
-                <span className="plus">+</span> Novo pitch
+                <span className="plus">+</span> Nova aposta
               </button>
             )}
           </div>
@@ -794,7 +794,7 @@ function OsPageContent() {
       closePitchModal();
       await refreshBoard({ background: true, force: true });
     } catch {
-      setError("Não foi possível salvar o pitch.");
+      setError("Não foi possível salvar a aposta.");
     } finally {
       setPitchSaving(false);
     }
@@ -821,7 +821,7 @@ function OsPageContent() {
       await refreshTasks({ background: true, force: true });
       await loadActivityCounts();
     } catch {
-      setError("Não foi possível excluir o pitch.");
+      setError("Não foi possível excluir a aposta.");
       await refreshBoard({ background: true, force: true });
     } finally {
       setPitchDeleting(false);
@@ -851,7 +851,7 @@ function OsPageContent() {
       await refreshBoard({ background: true, force: true });
       await loadActivityCounts();
     } catch {
-      setError("Não foi possível priorizar o pitch.");
+      setError("Não foi possível priorizar a aposta.");
     } finally {
       setBusyPillar(null);
     }
@@ -864,7 +864,7 @@ function OsPageContent() {
       await refreshBoard({ background: true, force: true });
       await loadActivityCounts();
     } catch {
-      setError("Não foi possível despriorizar o pitch.");
+      setError("Não foi possível despriorizar a aposta.");
     } finally {
       setBusyPillar(null);
     }
@@ -874,7 +874,7 @@ function OsPageContent() {
     if (!user) return;
     const goalId = resolveGoalId(blockType);
     if (!goalId) {
-      setError("Defina uma meta ativa antes de criar pitches.");
+      setError("Defina uma meta ativa antes de criar apostas.");
       return;
     }
     setBusyPillar(blockId);
@@ -882,7 +882,7 @@ function OsPageContent() {
       await createOsBet(user.id, { goalId, title });
       await refreshBoard({ background: true, force: true });
     } catch {
-      setError("Não foi possível criar o pitch.");
+      setError("Não foi possível criar a aposta.");
     } finally {
       setBusyPillar(null);
     }
@@ -1137,13 +1137,13 @@ function OsPageContent() {
 
           <div className="hier-note">
             <span>
-              <b>HIERARQUIA</b> &nbsp; Pilar → Meta → Pitch → updates &amp; to-dos
+              <b>HIERARQUIA</b> &nbsp; Pilar → Meta → Aposta → updates &amp; to-dos
             </span>
             <span>
               <b>META</b> &nbsp; planeada por quarter abaixo · só a priorizada aparece no pilar
             </span>
             <span>
-              <b>PITCH</b> &nbsp; gera o trabalho da semana
+              <b>APOSTA</b> &nbsp; gera o trabalho da semana
             </span>
           </div>
         </>

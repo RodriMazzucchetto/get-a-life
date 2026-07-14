@@ -93,11 +93,11 @@ export function HomeLanding({ user }: HomeLandingProps) {
                 </h3>
                 <p className="text-xs font-normal normal-case leading-relaxed text-ta-muted">
                   Blocos, metas e ciclos. Uma visão clara do que você está
-                  construindo em Finance, Growth e Ops. Cada aposta com pitch,
+                  construindo em Finance, Growth e Ops. Cada aposta com ciclo,
                   progresso e execução rastreados.
                 </p>
                 <div className="mt-8 space-y-2">
-                  {["Metas por pilar", "Bets e pitches", "Ciclos de execução", "Weekly updates"].map((item) => (
+                  {["Metas por pilar", "Apostas", "Ciclos de execução", "Weekly updates"].map((item) => (
                     <div key={item} className="flex items-center gap-3 text-[11px] uppercase tracking-wide">
                       <span className="h-px w-4 bg-ta-cyan" />
                       {item}
