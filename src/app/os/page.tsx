@@ -658,6 +658,22 @@ function OsPageContent() {
     }
   };
 
+  const handleChangeGoalBlock = async (goal: OsGoalRow, blockId: string) => {
+    if (goalIsConcluded(goal) || goal.block_id === blockId) return;
+    setGoalsBusy(true);
+    try {
+      // Prioridade é por pilar — ao mudar de bloco, remove a estrela
+      if (goal.is_priority) await unsetGoalPriority(goal.id);
+      await updateOsGoal(goal.id, { block_id: blockId });
+      await refreshBoard({ background: true, force: true });
+      await loadGoals();
+    } catch {
+      setError("Não foi possível alterar o pilar da meta.");
+    } finally {
+      setGoalsBusy(false);
+    }
+  };
+
   const handleDeleteGoal = async (goal: OsGoalRow) => {
     if (goalIsConcluded(goal)) return;
     setGoalsBusy(true);
@@ -1107,6 +1123,7 @@ function OsPageContent() {
             busy={goalsBusy}
             onCreate={handleCreateQuarterGoal}
             onRename={handleRenameGoal}
+            onChangeBlock={handleChangeGoalBlock}
             onDelete={handleDeleteGoal}
             onMoveQuarter={handleMoveGoalQuarter}
             onTogglePriority={handleToggleGoalPriority}

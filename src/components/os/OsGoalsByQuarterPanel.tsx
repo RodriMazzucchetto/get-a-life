@@ -25,6 +25,7 @@ import type { OsBlockType, OsGoalQuarter, OsGoalRow } from "@/lib/os-types";
 
 const QUARTERS: OsGoalQuarter[] = [1, 2, 3, 4];
 const BACKLOG_ID = "drop-backlog";
+const BLOCK_ORDER: OsBlockType[] = ["finance", "growth", "ops"];
 
 const PILLAR_DOT: Record<OsBlockType, string> = {
   finance: "var(--color-ta-amber-muted)",
@@ -65,12 +66,19 @@ function resolveTargetQuarter(
 
 type BlockInfo = { id: string; type: OsBlockType };
 
+function sortBlocks(blocks: BlockInfo[]): BlockInfo[] {
+  return [...blocks].sort(
+    (a, b) => BLOCK_ORDER.indexOf(a.type) - BLOCK_ORDER.indexOf(b.type)
+  );
+}
+
 interface OsGoalsByQuarterPanelProps {
   goals: OsGoalRow[];
   blocks: BlockInfo[];
   busy?: boolean;
   onCreate: (blockId: string, quarter: OsGoalQuarter | null, title: string) => Promise<void>;
   onRename: (goal: OsGoalRow, title: string) => Promise<void>;
+  onChangeBlock: (goal: OsGoalRow, blockId: string) => Promise<void>;
   onDelete: (goal: OsGoalRow) => Promise<void>;
   onMoveQuarter: (goal: OsGoalRow, quarter: OsGoalQuarter | null) => Promise<void>;
   onTogglePriority: (goal: OsGoalRow) => Promise<void>;
@@ -78,11 +86,109 @@ interface OsGoalsByQuarterPanelProps {
   onEdit: (goal: OsGoalRow) => void;
 }
 
+function PillarPicks({
+  blocks,
+  value,
+  onChange,
+  disabled,
+}: {
+  blocks: BlockInfo[];
+  value: string;
+  onChange: (blockId: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="os-q-pillar-picks">
+      {blocks.map((b) => (
+        <button
+          key={b.id}
+          type="button"
+          disabled={disabled}
+          className={`os-q-pillar-pick ${value === b.id ? "on" : ""}`}
+          style={{ "--dot": PILLAR_DOT[b.type] } as React.CSSProperties}
+          // Impede blur do input ao clicar — senão o formulário submete no Finance
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onChange(b.id)}
+        >
+          {OS_BLOCK_LABELS[b.type]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function GoalAddForm({
+  blocks,
+  placeholder,
+  onCancel,
+  onCreate,
+}: {
+  blocks: BlockInfo[];
+  placeholder: string;
+  onCancel: () => void;
+  onCreate: (blockId: string, title: string) => Promise<void>;
+}) {
+  const ordered = useMemo(() => sortBlocks(blocks), [blocks]);
+  const [title, setTitle] = useState("");
+  const [blockId, setBlockId] = useState(ordered[0]?.id ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    const t = title.trim();
+    const bid = blockId || ordered[0]?.id;
+    if (!t || !bid || saving) {
+      if (!t) onCancel();
+      return;
+    }
+    setSaving(true);
+    try {
+      await onCreate(bid, t);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="os-q-add-form">
+      <PillarPicks blocks={ordered} value={blockId || ordered[0]?.id} onChange={setBlockId} disabled={saving} />
+      <input
+        autoFocus
+        value={title}
+        disabled={saving}
+        placeholder={placeholder}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void submit();
+          }
+          if (e.key === "Escape") onCancel();
+        }}
+      />
+      <div className="os-q-add-actions">
+        <button type="button" className="os-q-add-cancel" disabled={saving} onClick={onCancel}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          className="os-q-add-confirm"
+          disabled={saving || !title.trim()}
+          onClick={() => void submit()}
+        >
+          Adicionar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function GoalCard({
   goal,
   blockType,
+  blocks,
   busy,
   onRename,
+  onChangeBlock,
   onDelete,
   onTogglePriority,
   onConclude,
@@ -90,8 +196,10 @@ function GoalCard({
 }: {
   goal: OsGoalRow;
   blockType: OsBlockType;
+  blocks: BlockInfo[];
   busy?: boolean;
   onRename: (goal: OsGoalRow, title: string) => Promise<void>;
+  onChangeBlock: (goal: OsGoalRow, blockId: string) => Promise<void>;
   onDelete: (goal: OsGoalRow) => Promise<void>;
   onTogglePriority: (goal: OsGoalRow) => Promise<void>;
   onConclude: (goal: OsGoalRow) => void;
@@ -99,7 +207,9 @@ function GoalCard({
 }) {
   const concluded = goalIsConcluded(goal);
   const [editing, setEditing] = useState(false);
+  const [editingPillar, setEditingPillar] = useState(false);
   const [draft, setDraft] = useState(goal.title);
+  const ordered = useMemo(() => sortBlocks(blocks), [blocks]);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: goal.id,
     disabled: concluded,
@@ -138,7 +248,27 @@ function GoalCard({
       <span className="os-q-dot" style={{ background: PILLAR_DOT[blockType] }} aria-hidden />
 
       <div className="os-q-goal-body">
-        <div className="os-q-pillar">{OS_BLOCK_LABELS[blockType]}</div>
+        {editingPillar && !concluded ? (
+          <PillarPicks
+            blocks={ordered}
+            value={goal.block_id}
+            disabled={busy}
+            onChange={(blockId) => {
+              setEditingPillar(false);
+              if (blockId !== goal.block_id) void onChangeBlock(goal, blockId);
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="os-q-pillar"
+            disabled={concluded || busy}
+            title={concluded ? undefined : "Alterar pilar"}
+            onClick={() => setEditingPillar(true)}
+          >
+            {OS_BLOCK_LABELS[blockType]}
+          </button>
+        )}
         {editing && !concluded ? (
           <input
             autoFocus
@@ -217,12 +347,14 @@ function QuarterColumn({
   current,
   goals,
   blockById,
+  blocks,
   busy,
   adding,
   onStartAdd,
   onCancelAdd,
   onCreate,
   onRename,
+  onChangeBlock,
   onDelete,
   onTogglePriority,
   onConclude,
@@ -232,12 +364,14 @@ function QuarterColumn({
   current: OsGoalQuarter;
   goals: OsGoalRow[];
   blockById: Map<string, BlockInfo>;
+  blocks: BlockInfo[];
   busy?: boolean;
   adding: boolean;
   onStartAdd: () => void;
   onCancelAdd: () => void;
   onCreate: (blockId: string, title: string) => Promise<void>;
   onRename: (goal: OsGoalRow, title: string) => Promise<void>;
+  onChangeBlock: (goal: OsGoalRow, blockId: string) => Promise<void>;
   onDelete: (goal: OsGoalRow) => Promise<void>;
   onTogglePriority: (goal: OsGoalRow) => Promise<void>;
   onConclude: (goal: OsGoalRow) => void;
@@ -247,22 +381,6 @@ function QuarterColumn({
     id: dropIdForQuarter(quarter),
     data: { quarter },
   });
-  const [title, setTitle] = useState("");
-  const [blockId, setBlockId] = useState<string>("");
-  const blocks = useMemo(() => [...blockById.values()], [blockById]);
-
-  const submit = async () => {
-    const t = title.trim();
-    const bid = blockId || blocks[0]?.id;
-    if (!t || !bid) {
-      onCancelAdd();
-      setTitle("");
-      return;
-    }
-    await onCreate(bid, t);
-    setTitle("");
-    onCancelAdd();
-  };
 
   return (
     <div
@@ -286,8 +404,10 @@ function QuarterColumn({
               key={goal.id}
               goal={goal}
               blockType={block.type}
+              blocks={blocks}
               busy={busy}
               onRename={onRename}
+              onChangeBlock={onChangeBlock}
               onDelete={onDelete}
               onTogglePriority={onTogglePriority}
               onConclude={onConclude}
@@ -298,35 +418,15 @@ function QuarterColumn({
       </div>
 
       {adding ? (
-        <div className="os-q-add-form">
-          <div className="os-q-pillar-picks">
-            {blocks.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                className={`os-q-pillar-pick ${(blockId || blocks[0]?.id) === b.id ? "on" : ""}`}
-                style={{ "--dot": PILLAR_DOT[b.type] } as React.CSSProperties}
-                onClick={() => setBlockId(b.id)}
-              >
-                {OS_BLOCK_LABELS[b.type]}
-              </button>
-            ))}
-          </div>
-          <input
-            autoFocus
-            value={title}
-            placeholder="Nova meta…"
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void submit();
-              if (e.key === "Escape") {
-                setTitle("");
-                onCancelAdd();
-              }
-            }}
-            onBlur={() => void submit()}
-          />
-        </div>
+        <GoalAddForm
+          blocks={blocks}
+          placeholder="Nova meta…"
+          onCancel={onCancelAdd}
+          onCreate={async (blockId, title) => {
+            await onCreate(blockId, title);
+            onCancelAdd();
+          }}
+        />
       ) : (
         <button type="button" className="os-q-add" onClick={onStartAdd}>
           <span className="plus">+</span> Nova meta
@@ -339,6 +439,7 @@ function QuarterColumn({
 function GoalsBacklogSection({
   goals,
   blockById,
+  blocks,
   busy,
   open,
   onToggleOpen,
@@ -347,6 +448,7 @@ function GoalsBacklogSection({
   onCancelAdd,
   onCreate,
   onRename,
+  onChangeBlock,
   onDelete,
   onTogglePriority,
   onConclude,
@@ -356,6 +458,7 @@ function GoalsBacklogSection({
 }: {
   goals: OsGoalRow[];
   blockById: Map<string, BlockInfo>;
+  blocks: BlockInfo[];
   busy?: boolean;
   open: boolean;
   onToggleOpen: () => void;
@@ -364,6 +467,7 @@ function GoalsBacklogSection({
   onCancelAdd: () => void;
   onCreate: (blockId: string, title: string) => Promise<void>;
   onRename: (goal: OsGoalRow, title: string) => Promise<void>;
+  onChangeBlock: (goal: OsGoalRow, blockId: string) => Promise<void>;
   onDelete: (goal: OsGoalRow) => Promise<void>;
   onTogglePriority: (goal: OsGoalRow) => Promise<void>;
   onConclude: (goal: OsGoalRow) => void;
@@ -410,8 +514,10 @@ function GoalsBacklogSection({
                   key={goal.id}
                   goal={goal}
                   blockType={block.type}
+                  blocks={blocks}
                   busy={busy}
                   onRename={onRename}
+                  onChangeBlock={onChangeBlock}
                   onDelete={onDelete}
                   onTogglePriority={onTogglePriority}
                   onConclude={onConclude}
@@ -422,11 +528,14 @@ function GoalsBacklogSection({
           </div>
 
           {adding ? (
-            <BacklogAddForm
-              blocks={[...blockById.values()]}
-              onCancel={onCancelAdd}
-              onCreate={onCreate}
-            />
+            <div className="os-q-backlog-add">
+              <GoalAddForm
+                blocks={blocks}
+                placeholder="Nova meta no backlog…"
+                onCancel={onCancelAdd}
+                onCreate={onCreate}
+              />
+            </div>
           ) : (
             <button type="button" className="os-q-add" onClick={onStartAdd}>
               <span className="plus">+</span> Nova meta no backlog
@@ -444,6 +553,7 @@ export function OsGoalsByQuarterPanel({
   busy,
   onCreate,
   onRename,
+  onChangeBlock,
   onDelete,
   onMoveQuarter,
   onTogglePriority,
@@ -457,6 +567,7 @@ export function OsGoalsByQuarterPanel({
   const current = currentCalendarQuarter();
 
   const blockById = useMemo(() => new Map(blocks.map((b) => [b.id, b])), [blocks]);
+  const orderedBlocks = useMemo(() => sortBlocks(blocks), [blocks]);
 
   const { byQuarter, backlogGoals } = useMemo(() => {
     const map: Record<OsGoalQuarter, OsGoalRow[]> = { 1: [], 2: [], 3: [], 4: [] };
@@ -530,12 +641,14 @@ export function OsGoalsByQuarterPanel({
                 current={current}
                 goals={byQuarter[q]}
                 blockById={blockById}
+                blocks={orderedBlocks}
                 busy={busy}
                 adding={addingQuarter === q}
                 onStartAdd={() => setAddingQuarter(q)}
                 onCancelAdd={() => setAddingQuarter(null)}
                 onCreate={(blockId, title) => onCreate(blockId, q, title)}
                 onRename={onRename}
+                onChangeBlock={onChangeBlock}
                 onDelete={onDelete}
                 onTogglePriority={onTogglePriority}
                 onConclude={onConclude}
@@ -547,6 +660,7 @@ export function OsGoalsByQuarterPanel({
           <GoalsBacklogSection
             goals={backlogGoals}
             blockById={blockById}
+            blocks={orderedBlocks}
             busy={busy}
             open={backlogOpen}
             onToggleOpen={() => setBacklogOpen((v) => !v)}
@@ -558,6 +672,7 @@ export function OsGoalsByQuarterPanel({
               setAddingQuarter(null);
             }}
             onRename={onRename}
+            onChangeBlock={onChangeBlock}
             onDelete={onDelete}
             onTogglePriority={onTogglePriority}
             onConclude={onConclude}
@@ -576,57 +691,5 @@ export function OsGoalsByQuarterPanel({
         </DndContext>
       ) : null}
     </section>
-  );
-}
-
-function BacklogAddForm({
-  blocks,
-  onCancel,
-  onCreate,
-}: {
-  blocks: BlockInfo[];
-  onCancel: () => void;
-  onCreate: (blockId: string, title: string) => Promise<void>;
-}) {
-  const [title, setTitle] = useState("");
-  const [blockId, setBlockId] = useState(blocks[0]?.id ?? "");
-
-  const submit = async () => {
-    const t = title.trim();
-    const bid = blockId || blocks[0]?.id;
-    if (!t || !bid) {
-      onCancel();
-      return;
-    }
-    await onCreate(bid, t);
-  };
-
-  return (
-    <div className="os-q-add-form os-q-backlog-add">
-      <div className="os-q-pillar-picks">
-        {blocks.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            className={`os-q-pillar-pick ${(blockId || blocks[0]?.id) === b.id ? "on" : ""}`}
-            style={{ "--dot": PILLAR_DOT[b.type] } as React.CSSProperties}
-            onClick={() => setBlockId(b.id)}
-          >
-            {OS_BLOCK_LABELS[b.type]}
-          </button>
-        ))}
-      </div>
-      <input
-        autoFocus
-        value={title}
-        placeholder="Nova meta no backlog…"
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") void submit();
-          if (e.key === "Escape") onCancel();
-        }}
-        onBlur={() => void submit()}
-      />
-    </div>
   );
 }

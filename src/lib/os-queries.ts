@@ -545,6 +545,7 @@ export async function updateOsGoal(
     title?: string
     description?: string | null
     quarter?: OsGoalQuarter | null
+    block_id?: string
     pos?: number | null
   }
 ): Promise<OsGoalRow> {
@@ -554,6 +555,7 @@ export async function updateOsGoal(
   if (updates.title !== undefined) payload.title = updates.title
   if (updates.description !== undefined) payload.description = updates.description
   if (updates.quarter !== undefined) payload.quarter = updates.quarter
+  if (updates.block_id !== undefined) payload.block_id = updates.block_id
   if (updates.pos !== undefined) payload.pos = updates.pos
 
   const { data, error } = await supabase
