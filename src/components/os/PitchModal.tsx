@@ -41,6 +41,7 @@ export interface PitchFormData {
   blockType: OsBlockType;
   title: string;
   pitchOutcome: string;
+  failureModes: string;
   pitchObjective: string;
   appetiteScope: string;
   pitchData: string;
@@ -75,6 +76,7 @@ const EMPTY_FORM: PitchFormData = {
   blockType: "finance",
   title: "",
   pitchOutcome: "",
+  failureModes: "",
   pitchObjective: "",
   appetiteScope: "",
   pitchData: "",
@@ -230,6 +232,7 @@ export function PitchModal({
         blockType: initialBlockType ?? "finance",
         title: pitch.title,
         pitchOutcome: pitch.pitch_outcome ?? "",
+        failureModes: pitch.failure_modes ?? "",
         pitchObjective: pitch.pitch_objective ?? "",
         appetiteScope: pitch.appetite_scope ?? "",
         pitchData: pitch.pitch_data ?? "",
@@ -385,6 +388,25 @@ export function PitchModal({
               onChange={(event) => setForm((prev) => ({ ...prev, pitchOutcome: event.target.value }))}
               className={FIELD}
               placeholder='Ex.: "Até 31/jul, 1 cliente pagante."'
+            />
+          </label>
+
+          <label className="block">
+            <span className={LABEL}>
+              O que garantiria a falha garantida ou um resultado ruim nessa aposta?
+            </span>
+            <p className={HELP}>
+              Liste os modos de falha, identifique os casos de pior cenário, blind spots e anti
+              patterns. A ideia é criar safeguards para eliminar esses erros fatais.
+            </p>
+            <textarea
+              rows={4}
+              value={form.failureModes}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, failureModes: event.target.value }))
+              }
+              className={FIELD}
+              placeholder="Modos de falha, worst cases, blind spots, anti-patterns e safeguards"
             />
           </label>
 

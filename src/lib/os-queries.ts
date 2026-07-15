@@ -1109,6 +1109,7 @@ export async function createOsBet(
     pitchData?: string
     appetiteScope?: string
     successCriteria?: string
+    failureModes?: string
     executionOwner?: string
     pos?: number
     cycleId?: string | null
@@ -1127,6 +1128,7 @@ export async function createOsBet(
       pitch_data: input.pitchData ?? null,
       appetite_scope: input.appetiteScope ?? null,
       success_criteria: input.successCriteria ?? null,
+      failure_modes: input.failureModes ?? null,
       execution_owner: input.executionOwner ?? null,
       pos: input.pos ?? null,
       status: 'draft',
@@ -1151,6 +1153,7 @@ export async function updateOsBet(
     pitchData?: string | null
     appetiteScope?: string | null
     successCriteria?: string | null
+    failureModes?: string | null
     executionOwner?: string | null
     goalId?: string
     pos?: number | null
@@ -1166,6 +1169,7 @@ export async function updateOsBet(
   if (updates.pitchData !== undefined) payload.pitch_data = updates.pitchData
   if (updates.appetiteScope !== undefined) payload.appetite_scope = updates.appetiteScope
   if (updates.successCriteria !== undefined) payload.success_criteria = updates.successCriteria
+  if (updates.failureModes !== undefined) payload.failure_modes = updates.failureModes
   if (updates.executionOwner !== undefined) payload.execution_owner = updates.executionOwner
   if (updates.goalId !== undefined) payload.goal_id = updates.goalId
   if (updates.pos !== undefined) payload.pos = updates.pos

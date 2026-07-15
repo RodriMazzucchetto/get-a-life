@@ -61,6 +61,7 @@ export interface OsBetRow {
   pitch_data: string | null
   appetite_scope: string | null
   success_criteria: string | null
+  failure_modes: string | null
   impact_score: number | null
   effort_score: number | null
   priority_score: number | null
@@ -144,6 +145,7 @@ export interface OsBetInsert {
   pitch_data?: string | null
   appetite_scope?: string | null
   success_criteria?: string | null
+  failure_modes?: string | null
   impact_score?: number | null
   effort_score?: number | null
   status?: OsBetStatus

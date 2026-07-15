@@ -388,6 +388,7 @@ export default function OsPitchPage() {
           appetiteScope: data.appetiteScope.trim() || null,
           pitchData: data.pitchData.trim() || null,
           successCriteria: data.successCriteria.trim() || null,
+          failureModes: data.failureModes.trim() || null,
           executionOwner: data.executionOwner || null,
           ...(currentGoalId !== goalId ? { goalId } : {}),
         });
@@ -402,6 +403,7 @@ export default function OsPitchPage() {
           appetiteScope: data.appetiteScope.trim() || undefined,
           pitchData: data.pitchData.trim() || undefined,
           successCriteria: data.successCriteria.trim() || undefined,
+          failureModes: data.failureModes.trim() || undefined,
           executionOwner: data.executionOwner || undefined,
           pos,
         });

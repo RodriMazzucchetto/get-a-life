@@ -788,6 +788,7 @@ function OsPageContent() {
       await updateOsBet(editingPitch.id, {
         title: data.title.trim(),
         pitchOutcome: data.pitchOutcome.trim() || null,
+        failureModes: data.failureModes.trim() || null,
         pitchObjective: data.pitchObjective.trim() || null,
         appetiteScope: data.appetiteScope.trim() || null,
         pitchData: data.pitchData.trim() || null,
