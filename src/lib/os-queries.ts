@@ -1105,7 +1105,10 @@ export async function createOsBet(
     goalId: string
     title: string
     pitchOutcome?: string
+    pitchObjective?: string
     pitchData?: string
+    appetiteScope?: string
+    successCriteria?: string
     executionOwner?: string
     pos?: number
     cycleId?: string | null
@@ -1120,7 +1123,10 @@ export async function createOsBet(
       cycle_id: input.cycleId ?? null,
       title: input.title,
       pitch_outcome: input.pitchOutcome ?? null,
+      pitch_objective: input.pitchObjective ?? null,
       pitch_data: input.pitchData ?? null,
+      appetite_scope: input.appetiteScope ?? null,
+      success_criteria: input.successCriteria ?? null,
       execution_owner: input.executionOwner ?? null,
       pos: input.pos ?? null,
       status: 'draft',
@@ -1141,7 +1147,10 @@ export async function updateOsBet(
   updates: {
     title?: string
     pitchOutcome?: string | null
+    pitchObjective?: string | null
     pitchData?: string | null
+    appetiteScope?: string | null
+    successCriteria?: string | null
     executionOwner?: string | null
     goalId?: string
     pos?: number | null
@@ -1153,7 +1162,10 @@ export async function updateOsBet(
 
   if (updates.title !== undefined) payload.title = updates.title
   if (updates.pitchOutcome !== undefined) payload.pitch_outcome = updates.pitchOutcome
+  if (updates.pitchObjective !== undefined) payload.pitch_objective = updates.pitchObjective
   if (updates.pitchData !== undefined) payload.pitch_data = updates.pitchData
+  if (updates.appetiteScope !== undefined) payload.appetite_scope = updates.appetiteScope
+  if (updates.successCriteria !== undefined) payload.success_criteria = updates.successCriteria
   if (updates.executionOwner !== undefined) payload.execution_owner = updates.executionOwner
   if (updates.goalId !== undefined) payload.goal_id = updates.goalId
   if (updates.pos !== undefined) payload.pos = updates.pos

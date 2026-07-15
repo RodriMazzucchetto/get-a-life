@@ -41,7 +41,10 @@ export interface PitchFormData {
   blockType: OsBlockType;
   title: string;
   pitchOutcome: string;
+  pitchObjective: string;
+  appetiteScope: string;
   pitchData: string;
+  successCriteria: string;
   executionOwner: string;
 }
 
@@ -72,7 +75,10 @@ const EMPTY_FORM: PitchFormData = {
   blockType: "finance",
   title: "",
   pitchOutcome: "",
+  pitchObjective: "",
+  appetiteScope: "",
   pitchData: "",
+  successCriteria: "",
   executionOwner: "",
 };
 
@@ -224,7 +230,10 @@ export function PitchModal({
         blockType: initialBlockType ?? "finance",
         title: pitch.title,
         pitchOutcome: pitch.pitch_outcome ?? "",
+        pitchObjective: pitch.pitch_objective ?? "",
+        appetiteScope: pitch.appetite_scope ?? "",
         pitchData: pitch.pitch_data ?? "",
+        successCriteria: pitch.success_criteria ?? "",
         executionOwner: pitch.execution_owner ?? "",
       });
     } else {
@@ -326,6 +335,7 @@ export function PitchModal({
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
               className={FIELD}
+              placeholder="Nome curto da aposta"
             />
           </label>
 
@@ -363,31 +373,85 @@ export function PitchModal({
           </fieldset>
 
           <label className="block">
-            <span className={LABEL}>Impacto / outcome mensurável</span>
+            <span className={LABEL}>O outcome que a aposta entrega</span>
             <p className={HELP}>
-              O que muda? O que estará verdadeiro e completo quando isto estiver pronto? Receita,
-              eficiência, experiência do cliente, margem, throughput, etc.
+              Uma frase binária e datada. É a promessa ou expectativa: &quot;Até 31/jul, 1 cliente
+              pagante.&quot; O unbreakable é obcecado com isso… sucesso é progresso mensurável, não task
+              feita, não plano bonito.
             </p>
             <textarea
-              rows={4}
+              rows={3}
               value={form.pitchOutcome}
               onChange={(event) => setForm((prev) => ({ ...prev, pitchOutcome: event.target.value }))}
               className={FIELD}
-              placeholder="Objetivos específicos e quantificáveis"
+              placeholder='Ex.: "Até 31/jul, 1 cliente pagante."'
             />
           </label>
 
           <label className="block">
-            <span className={LABEL}>Dados objetivos</span>
+            <span className={LABEL}>Sketch da solução</span>
             <p className={HELP}>
-              Que dados duros sustentam esta aposta? Métricas, tendências, custos, uso, pontos de
-              falha, input de clientes. Sem dados, explique como vai validar antes de executar.
+              Defina o fluxo dessa solução, funcionamento geral de como esperamos que isso funcione,
+              indicando a lógica de como esperamos que isso resolva e como.
+            </p>
+            <textarea
+              rows={4}
+              value={form.pitchObjective}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, pitchObjective: event.target.value }))
+              }
+              className={FIELD}
+              placeholder="Fluxo, lógica e funcionamento esperado da solução"
+            />
+          </label>
+
+          <label className="block">
+            <span className={LABEL}>Até onde vamos com essa aposta?</span>
+            <p className={HELP}>
+              Descreva qual o apetite de trabalhar com isso nesse momento. O que entra e o que fica de
+              fora? Precisamos dessas definições!
+            </p>
+            <textarea
+              rows={4}
+              value={form.appetiteScope}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, appetiteScope: event.target.value }))
+              }
+              className={FIELD}
+              placeholder="O que entra nesta rodada · o que fica de fora"
+            />
+          </label>
+
+          <label className="block">
+            <span className={LABEL}>Por que essa e não outra?</span>
+            <p className={HELP}>
+              Descreva a lógica do porquê faz sentido trabalhar nisso agora em detrimento de outras
+              apostas. Traga os dados que reforçam de verdade que essa aposta tem chances de sucesso e
+              resolução do problema.
             </p>
             <textarea
               rows={4}
               value={form.pitchData}
               onChange={(event) => setForm((prev) => ({ ...prev, pitchData: event.target.value }))}
               className={FIELD}
+              placeholder="Lógica + dados que sustentam priorizar esta aposta agora"
+            />
+          </label>
+
+          <label className="block">
+            <span className={LABEL}>Como saberemos se executamos com sucesso ou falhou?</span>
+            <p className={HELP}>
+              Quais são as coisas que vão nos indicar sucesso ou fracasso dessa aposta? Descreva isso
+              no melhor das suas habilidades.
+            </p>
+            <textarea
+              rows={4}
+              value={form.successCriteria}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, successCriteria: event.target.value }))
+              }
+              className={FIELD}
+              placeholder="Sinais claros de sucesso e de fracasso"
             />
           </label>
 

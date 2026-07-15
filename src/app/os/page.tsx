@@ -788,7 +788,10 @@ function OsPageContent() {
       await updateOsBet(editingPitch.id, {
         title: data.title.trim(),
         pitchOutcome: data.pitchOutcome.trim() || null,
+        pitchObjective: data.pitchObjective.trim() || null,
+        appetiteScope: data.appetiteScope.trim() || null,
         pitchData: data.pitchData.trim() || null,
+        successCriteria: data.successCriteria.trim() || null,
         executionOwner: data.executionOwner || null,
       });
       closePitchModal();

@@ -384,7 +384,10 @@ export default function OsPitchPage() {
         await updateOsBet(editingPitch.id, {
           title: data.title.trim(),
           pitchOutcome: data.pitchOutcome.trim() || null,
+          pitchObjective: data.pitchObjective.trim() || null,
+          appetiteScope: data.appetiteScope.trim() || null,
           pitchData: data.pitchData.trim() || null,
+          successCriteria: data.successCriteria.trim() || null,
           executionOwner: data.executionOwner || null,
           ...(currentGoalId !== goalId ? { goalId } : {}),
         });
@@ -395,7 +398,10 @@ export default function OsPitchPage() {
           goalId,
           title: data.title.trim(),
           pitchOutcome: data.pitchOutcome.trim() || undefined,
+          pitchObjective: data.pitchObjective.trim() || undefined,
+          appetiteScope: data.appetiteScope.trim() || undefined,
           pitchData: data.pitchData.trim() || undefined,
+          successCriteria: data.successCriteria.trim() || undefined,
           executionOwner: data.executionOwner || undefined,
           pos,
         });
