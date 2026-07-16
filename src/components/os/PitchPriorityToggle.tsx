@@ -28,11 +28,11 @@ function PitchPriorityToggle({
       } ${isPriority ? "bg-ta-ink" : "bg-ta-paper"}`}
       title={
         isPriority
-          ? "Aposta em execução — clique para remover"
-          : "Marcar como aposta em execução"
+          ? "Aposta priorizada — clique para voltar ao backlog (outras priorizadas permanecem)"
+          : "Priorizar esta aposta (pode haver várias por meta)"
       }
       aria-pressed={isPriority}
-      aria-label={isPriority ? "Remover prioridade de execução" : "Marcar como em execução"}
+      aria-label={isPriority ? "Remover prioridade" : "Priorizar aposta"}
     >
       {isPriority ? (
         <span className={`block ${dotSize} bg-ta-cyan`} aria-hidden />

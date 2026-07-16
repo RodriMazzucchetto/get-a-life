@@ -1053,6 +1053,18 @@
 .os-refined-page .bm-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .os-refined-page .prioritize { font-family: var(--font-mono); font-weight: 600; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-ta-ink); background: transparent; border: 1px solid var(--color-ta-rule-2); padding: 5px 9px; cursor: pointer; }
 .os-refined-page .prioritize:hover { background: var(--color-ta-ink); color: var(--color-ta-paper); border-color: var(--color-ta-ink); }
+.os-refined-page .prioritize:disabled { opacity: 0.4; cursor: not-allowed; }
+.os-refined-page .pb-shape-section { margin-top: 6px; }
+.os-refined-page .pb-shape-section + .pb-shape-section { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--color-ta-rule); }
+.os-refined-page .pb-shape-label { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-ta-muted-2); margin-bottom: 2px; }
+.os-refined-page .pb-shape-badge { flex: 0 0 auto; font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 6px; border: 1px solid var(--color-ta-rule-2); }
+.os-refined-page .pb-shape-badge.discovery { color: var(--color-ta-muted); border-color: var(--color-ta-rule-2); }
+.os-refined-page .pb-shape-badge.ready { color: var(--color-ta-ink); border-color: var(--color-ta-ink); background: color-mix(in srgb, var(--color-ta-amber-muted) 18%, transparent); }
+.os-refined-page .pb-item .shape-ready,
+.os-refined-page .pb-item .shape-discovery { font-family: var(--font-mono); font-weight: 600; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ta-muted); background: transparent; border: 1px solid var(--color-ta-rule); padding: 5px 8px; cursor: pointer; }
+.os-refined-page .pb-item .shape-ready:hover,
+.os-refined-page .pb-item .shape-discovery:hover { color: var(--color-ta-ink); border-color: var(--color-ta-ink); }
+.os-refined-page .pb-empty { font-family: var(--font-sans); font-size: 12px; color: var(--color-ta-muted-2); padding: 8px 0; }
 .os-refined-page .bm-actions .edit, .os-refined-page .bm-actions .del { color: var(--color-ta-muted); font-size: 12px; cursor: pointer; padding: 4px; background: transparent; border: 0; line-height: 1; }
 .os-refined-page .bm-actions .edit:hover { color: var(--color-ta-ink); }
 .os-refined-page .bm-actions .del:hover { color: var(--color-ta-red); }

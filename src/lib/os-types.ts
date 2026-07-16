@@ -10,6 +10,8 @@ export type OsBetStatus =
   | 'deviating'
   | 'executed'
   | 'failed'
+/** Pipeline de shaping: discovery → ready → prioritized (via is_priority) */
+export type OsBetShapeStatus = 'in_discovery' | 'ready_to_prioritize'
 export type OsBetUpdateStatus = 'on_course' | 'deviating' | 'executed' | 'failed'
 export type OsTaskBoardStatus = 'backlog' | 'current_week' | 'in_progress'
 /** @deprecated Use OsTaskBoardStatus — kept as alias during transition */
@@ -66,6 +68,7 @@ export interface OsBetRow {
   effort_score: number | null
   priority_score: number | null
   status: OsBetStatus
+  shape_status: OsBetShapeStatus
   is_priority: boolean
   pos: number | null
   execution_owner: string | null
@@ -149,6 +152,7 @@ export interface OsBetInsert {
   impact_score?: number | null
   effort_score?: number | null
   status?: OsBetStatus
+  shape_status?: OsBetShapeStatus
   is_priority?: boolean
   pos?: number | null
   execution_owner?: string | null

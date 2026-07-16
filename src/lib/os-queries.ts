@@ -3,6 +3,7 @@ import { appendOsTaskPosForStatus, computeOsTaskCycleStats } from '@/lib/osBoard
 import { filterOsCompanies, isQuickWinProject } from '@/lib/project-filters'
 import type {
   OsBetRow,
+  OsBetShapeStatus,
   OsBetStatus,
   OsBetUpdateRow,
   OsBetUpdateStatus,
@@ -296,6 +297,39 @@ export function getBetStatusBadgeClass(status: OsBetStatus): string {
     default:
       return 'bg-surface-container-high text-on-surface-variant'
   }
+}
+
+export type OsBetPipelineStage = 'in_discovery' | 'ready_to_prioritize' | 'prioritized'
+
+export function getOsBetShapeStatus(bet: Pick<OsBetRow, 'shape_status'>): OsBetShapeStatus {
+  return bet.shape_status === 'ready_to_prioritize' ? 'ready_to_prioritize' : 'in_discovery'
+}
+
+export function getOsBetPipelineStage(
+  bet: Pick<OsBetRow, 'shape_status' | 'is_priority'>
+): OsBetPipelineStage {
+  if (bet.is_priority) return 'prioritized'
+  return getOsBetShapeStatus(bet)
+}
+
+export function formatOsBetPipelineLabel(stage: OsBetPipelineStage): string {
+  switch (stage) {
+    case 'in_discovery':
+      return 'In Discovery'
+    case 'ready_to_prioritize':
+      return 'Ready to prioritize'
+    case 'prioritized':
+      return 'Prioritized'
+  }
+}
+
+export function sortBacklogBetsByShape(bets: OsBetRow[]): OsBetRow[] {
+  return [...bets].sort((a, b) => {
+    const aRank = getOsBetShapeStatus(a) === 'ready_to_prioritize' ? 0 : 1
+    const bRank = getOsBetShapeStatus(b) === 'ready_to_prioritize' ? 0 : 1
+    if (aRank !== bRank) return aRank - bRank
+    return (a.pos ?? 0) - (b.pos ?? 0)
+  })
 }
 
 export function formatBetStatusLabel(status: OsBetStatus): string {
@@ -984,9 +1018,16 @@ export async function setOsBetPriority(
 ): Promise<OsBetRow> {
   const supabase = createClient()
 
+  const payload: Record<string, unknown> = {
+    is_priority: isPriority,
+    updated_at: new Date().toISOString(),
+  }
+  // Priorizar implica discovery concluído; não desfaz ready ao despriorizar
+  if (isPriority) payload.shape_status = 'ready_to_prioritize'
+
   const { data, error } = await supabase
     .from('os_bets')
-    .update({ is_priority: isPriority, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', betId)
     .select('*')
     .single()
@@ -1132,6 +1173,7 @@ export async function createOsBet(
       execution_owner: input.executionOwner ?? null,
       pos: input.pos ?? null,
       status: 'draft',
+      shape_status: 'in_discovery',
     })
     .select('*')
     .single()
@@ -1158,6 +1200,7 @@ export async function updateOsBet(
     goalId?: string
     pos?: number | null
     isPriority?: boolean
+    shapeStatus?: OsBetShapeStatus
   }
 ): Promise<OsBetRow> {
   const supabase = createClient()
@@ -1174,6 +1217,11 @@ export async function updateOsBet(
   if (updates.goalId !== undefined) payload.goal_id = updates.goalId
   if (updates.pos !== undefined) payload.pos = updates.pos
   if (updates.isPriority !== undefined) payload.is_priority = updates.isPriority
+  if (updates.shapeStatus !== undefined) {
+    payload.shape_status = updates.shapeStatus
+    // Voltar a discovery remove prioridade
+    if (updates.shapeStatus === 'in_discovery') payload.is_priority = false
+  }
 
   const { data, error } = await supabase
     .from('os_bets')

@@ -8,11 +8,14 @@ import {
   OS_BLOCK_LABELS,
   OS_BLOCK_TYPES,
   currentWeekStartDate,
+  formatOsBetPipelineLabel,
+  getOsBetShapeStatus,
   getBetUpdateStatusColor,
   formatBetUpdateStatusLabel,
 } from "@/lib/os-queries";
 import type {
   OsBetRow,
+  OsBetShapeStatus,
   OsBetUpdateRow,
   OsBetUpdateStatus,
   OsBlockType,
@@ -57,6 +60,7 @@ interface PitchModalProps {
   blockGoals: Record<OsBlockType, PitchBlockGoal | null>;
   isPriority: boolean;
   onTogglePriority: () => Promise<void>;
+  onChangeShapeStatus?: (shapeStatus: OsBetShapeStatus) => Promise<void>;
   pitchTasks: OsTaskRow[];
   tasksLoading: boolean;
   onAddTask: (title: string) => Promise<void>;
@@ -151,6 +155,7 @@ export function PitchModal({
   blockGoals,
   isPriority,
   onTogglePriority,
+  onChangeShapeStatus,
   pitchTasks,
   tasksLoading,
   onAddTask,
@@ -169,6 +174,7 @@ export function PitchModal({
   const [error, setError] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [addingTask, setAddingTask] = useState(false);
+  const [shapeBusy, setShapeBusy] = useState(false);
   const isEditing = pitch !== null;
 
   // Weekly update — formulário de criação e edição inline
@@ -308,14 +314,47 @@ export function PitchModal({
           >
             {isEditing ? "Editar aposta" : "Submeter aposta"}
           </h2>
-          {isEditing ? (
-            <div className="ml-auto flex items-center gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ta-paper/60">
-                {isPriority ? "Priorizado" : "Backlog"}
-              </span>
+          {isEditing && pitch ? (
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              {isPriority ? (
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ta-cyan">
+                  {formatOsBetPipelineLabel("prioritized")}
+                </span>
+              ) : (
+                <div className="flex items-center gap-1">
+                  {(
+                    [
+                      { value: "in_discovery" as const, short: "Discovery" },
+                      { value: "ready_to_prioritize" as const, short: "Ready" },
+                    ] as const
+                  ).map((opt) => {
+                    const active = getOsBetShapeStatus(pitch) === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        disabled={shapeBusy || priorityLoading || saving || !onChangeShapeStatus}
+                        onClick={() => {
+                          if (!onChangeShapeStatus || active) return;
+                          setShapeBusy(true);
+                          void onChangeShapeStatus(opt.value).finally(() => setShapeBusy(false));
+                        }}
+                        className={`border px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] transition-colors disabled:opacity-50 ${
+                          active
+                            ? "border-ta-paper bg-ta-paper text-ta-ink"
+                            : "border-ta-paper/40 text-ta-paper/70 hover:border-ta-paper hover:text-ta-paper"
+                        }`}
+                        title={formatOsBetPipelineLabel(opt.value)}
+                      >
+                        {opt.short}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <PitchPriorityToggle
                 isPriority={isPriority}
-                disabled={priorityLoading || saving}
+                disabled={priorityLoading || saving || shapeBusy}
                 onToggle={() => void onTogglePriority()}
                 size="md"
               />

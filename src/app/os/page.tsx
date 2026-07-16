@@ -34,6 +34,8 @@ import {
   removeBetFromBoardViews,
   setGoalPriority,
   setOsBetPriority,
+  getOsBetShapeStatus,
+  sortBacklogBetsByShape,
   unsetGoalPriority,
   updateOsBet,
   updateOsBetUpdate,
@@ -44,6 +46,7 @@ import {
 } from "@/lib/os-queries";
 import type {
   OsBetRow,
+  OsBetShapeStatus,
   OsBetUpdateRow,
   OsBlockType,
   OsGoalQuarter,
@@ -119,6 +122,7 @@ type PillarCardProps = {
   onAddPitch: (title: string) => Promise<void>;
   onPrioritizePitch: (bet: OsBetRow) => Promise<void>;
   onUnprioritizePitch: (bet: OsBetRow) => Promise<void>;
+  onSetPitchShapeStatus: (bet: OsBetRow, shapeStatus: OsBetShapeStatus) => Promise<void>;
 };
 
 function PillarCard({
@@ -140,6 +144,7 @@ function PillarCard({
   onAddPitch,
   onPrioritizePitch,
   onUnprioritizePitch,
+  onSetPitchShapeStatus,
 }: PillarCardProps) {
   const [pitchBacklogOpen, setPitchBacklogOpen] = useState(false);
   const [addingPitch, setAddingPitch] = useState(false);
@@ -151,8 +156,12 @@ function PillarCard({
     (b) => (latestUpdates.get(b.id)?.status ?? b.status) === "failed"
   ).length;
 
-  const backlogActive = backlogPitches.filter((b) => !betIsConcluded(b, latestUpdates));
+  const backlogActive = sortBacklogBetsByShape(
+    backlogPitches.filter((b) => !betIsConcluded(b, latestUpdates))
+  );
   const backlogConcluded = backlogPitches.filter((b) => betIsConcluded(b, latestUpdates));
+  const backlogDiscovery = backlogActive.filter((b) => getOsBetShapeStatus(b) === "in_discovery");
+  const backlogReady = backlogActive.filter((b) => getOsBetShapeStatus(b) === "ready_to_prioritize");
 
   const submitPitch = async () => {
     const t = newPitch.trim();
@@ -308,24 +317,67 @@ function PillarCard({
             <span className="count-pill">{backlogPitches.length}</span>
           </button>
           <div className="pitch-backlog-body">
-            {backlogActive.map((bet) => (
-              <div key={bet.id} className="pb-item">
-                <span className="pb-text">{bet.title}</span>
-                <div className="bm-actions">
-                  <button
-                    type="button"
-                    className="prioritize"
-                    disabled={busy}
-                    onClick={() => void onPrioritizePitch(bet)}
-                  >
-                    Priorizar
-                  </button>
-                  <button type="button" className="edit" title="Editar" onClick={() => onOpenPitch(bet)}>
-                    ✎
-                  </button>
-                </div>
+            {backlogDiscovery.length > 0 ? (
+              <div className="pb-shape-section">
+                <div className="pb-shape-label">In Discovery</div>
+                {backlogDiscovery.map((bet) => (
+                  <div key={bet.id} className="pb-item shape-discovery">
+                    <span className="pb-shape-badge discovery">Discovery</span>
+                    <span className="pb-text">{bet.title}</span>
+                    <div className="bm-actions">
+                      <button
+                        type="button"
+                        className="shape-ready"
+                        disabled={busy}
+                        title="Marcar discovery como concluído"
+                        onClick={() => void onSetPitchShapeStatus(bet, "ready_to_prioritize")}
+                      >
+                        Ready
+                      </button>
+                      <button type="button" className="edit" title="Editar" onClick={() => onOpenPitch(bet)}>
+                        ✎
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : null}
+            {backlogReady.length > 0 ? (
+              <div className="pb-shape-section">
+                <div className="pb-shape-label">Ready to prioritize</div>
+                {backlogReady.map((bet) => (
+                  <div key={bet.id} className="pb-item shape-ready">
+                    <span className="pb-shape-badge ready">Ready</span>
+                    <span className="pb-text">{bet.title}</span>
+                    <div className="bm-actions">
+                      <button
+                        type="button"
+                        className="prioritize"
+                        disabled={busy}
+                        onClick={() => void onPrioritizePitch(bet)}
+                      >
+                        Priorizar
+                      </button>
+                      <button
+                        type="button"
+                        className="shape-discovery"
+                        disabled={busy}
+                        title="Voltar para discovery"
+                        onClick={() => void onSetPitchShapeStatus(bet, "in_discovery")}
+                      >
+                        Discovery
+                      </button>
+                      <button type="button" className="edit" title="Editar" onClick={() => onOpenPitch(bet)}>
+                        ✎
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {backlogActive.length === 0 && backlogConcluded.length === 0 ? (
+              <p className="pb-empty">Nenhuma aposta no backlog</p>
+            ) : null}
             {backlogConcluded.length > 0 ? (
               <div className="pb-concluded-section">
                 <div className="pb-concluded-label">Já trabalhados</div>
@@ -862,6 +914,30 @@ function OsPageContent() {
     }
   };
 
+  const handleSetPitchShapeStatus = async (
+    bet: OsBetRow,
+    shapeStatus: OsBetShapeStatus,
+    blockId: string
+  ) => {
+    setBusyPillar(blockId);
+    try {
+      await updateOsBet(bet.id, { shapeStatus });
+      if (editingPitch?.id === bet.id) {
+        setEditingPitch({
+          ...editingPitch,
+          shape_status: shapeStatus,
+          is_priority: shapeStatus === "in_discovery" ? false : editingPitch.is_priority,
+        });
+        if (shapeStatus === "in_discovery") setModalPriority(false);
+      }
+      await refreshBoard({ background: true, force: true });
+    } catch {
+      setError("Não foi possível atualizar o status da aposta.");
+    } finally {
+      setBusyPillar(null);
+    }
+  };
+
   const handleUnprioritizePitchInline = async (bet: OsBetRow, blockId: string) => {
     setBusyPillar(blockId);
     try {
@@ -1111,6 +1187,9 @@ function OsPageContent() {
                   onAddPitch={(title) => handleAddPitch(blockType, blockId, title)}
                   onPrioritizePitch={(bet) => handlePrioritizePitchInline(bet, blockId)}
                   onUnprioritizePitch={(bet) => handleUnprioritizePitchInline(bet, blockId)}
+                  onSetPitchShapeStatus={(bet, shapeStatus) =>
+                    handleSetPitchShapeStatus(bet, shapeStatus, blockId)
+                  }
                 />
               );
             })}
@@ -1249,6 +1328,12 @@ function OsPageContent() {
         blockGoals={blockGoals}
         isPriority={modalPriority}
         onTogglePriority={handleTogglePriorityModal}
+        onChangeShapeStatus={async (shapeStatus) => {
+          if (!editingPitch) return;
+          const blockId =
+            orderedBlocks.find((v) => v.block.type === editingBlockType)?.block.id ?? "";
+          await handleSetPitchShapeStatus(editingPitch, shapeStatus, blockId);
+        }}
         pitchTasks={pitchTasks}
         tasksLoading={tasksLoading}
         onAddTask={handleAddTask}
