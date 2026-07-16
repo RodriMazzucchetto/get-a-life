@@ -28,7 +28,10 @@ import {
   fetchGoalsForProject,
   fetchOsBetActivityCounts,
   fetchOsBetUpdatesForBet,
+  fetchOsBetsForGoal,
   fetchOsTasksForBet,
+  getOsBetPipelineStage,
+  formatOsBetPipelineLabel,
   getPillarStatusDisplay,
   goalIsConcluded,
   removeBetFromBoardViews,
@@ -317,31 +320,6 @@ function PillarCard({
             <span className="count-pill">{backlogPitches.length}</span>
           </button>
           <div className="pitch-backlog-body">
-            {backlogDiscovery.length > 0 ? (
-              <div className="pb-shape-section">
-                <div className="pb-shape-label">In Discovery</div>
-                {backlogDiscovery.map((bet) => (
-                  <div key={bet.id} className="pb-item shape-discovery">
-                    <span className="pb-shape-badge discovery">Discovery</span>
-                    <span className="pb-text">{bet.title}</span>
-                    <div className="bm-actions">
-                      <button
-                        type="button"
-                        className="shape-ready"
-                        disabled={busy}
-                        title="Marcar discovery como concluído"
-                        onClick={() => void onSetPitchShapeStatus(bet, "ready_to_prioritize")}
-                      >
-                        Ready
-                      </button>
-                      <button type="button" className="edit" title="Editar" onClick={() => onOpenPitch(bet)}>
-                        ✎
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
             {backlogReady.length > 0 ? (
               <div className="pb-shape-section">
                 <div className="pb-shape-label">Ready to prioritize</div>
@@ -352,23 +330,64 @@ function PillarCard({
                     <div className="bm-actions">
                       <button
                         type="button"
-                        className="prioritize"
+                        className="prio-icon"
                         disabled={busy}
+                        title="Priorizar"
+                        aria-label="Priorizar"
                         onClick={() => void onPrioritizePitch(bet)}
                       >
-                        Priorizar
+                        <span className="material-symbols-outlined">star</span>
                       </button>
                       <button
                         type="button"
-                        className="shape-discovery"
+                        className="shape-icon"
                         disabled={busy}
                         title="Voltar para discovery"
+                        aria-label="Voltar para discovery"
                         onClick={() => void onSetPitchShapeStatus(bet, "in_discovery")}
                       >
-                        Discovery
+                        <span className="material-symbols-outlined">science</span>
                       </button>
-                      <button type="button" className="edit" title="Editar" onClick={() => onOpenPitch(bet)}>
-                        ✎
+                      <button
+                        type="button"
+                        className="edit"
+                        title="Editar"
+                        aria-label="Editar"
+                        onClick={() => onOpenPitch(bet)}
+                      >
+                        <span className="material-symbols-outlined">edit</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {backlogDiscovery.length > 0 ? (
+              <div className="pb-shape-section">
+                <div className="pb-shape-label">In Discovery</div>
+                {backlogDiscovery.map((bet) => (
+                  <div key={bet.id} className="pb-item shape-discovery">
+                    <span className="pb-shape-badge discovery">Discovery</span>
+                    <span className="pb-text">{bet.title}</span>
+                    <div className="bm-actions">
+                      <button
+                        type="button"
+                        className="shape-icon"
+                        disabled={busy}
+                        title="Marcar como ready to prioritize"
+                        aria-label="Marcar como ready"
+                        onClick={() => void onSetPitchShapeStatus(bet, "ready_to_prioritize")}
+                      >
+                        <span className="material-symbols-outlined">task_alt</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="edit"
+                        title="Editar"
+                        aria-label="Editar"
+                        onClick={() => onOpenPitch(bet)}
+                      >
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                     </div>
                   </div>
@@ -392,8 +411,14 @@ function PillarCard({
                         {status === "failed" ? "Failed" : "Executed"}
                       </span>
                       <div className="bm-actions">
-                        <button type="button" className="edit" title="Editar" onClick={() => onOpenPitch(bet)}>
-                          ✎
+                        <button
+                          type="button"
+                          className="edit"
+                          title="Editar"
+                          aria-label="Editar"
+                          onClick={() => onOpenPitch(bet)}
+                        >
+                          <span className="material-symbols-outlined">edit</span>
                         </button>
                       </div>
                     </div>
@@ -470,11 +495,19 @@ function OsPageContent() {
   });
   const [goalError, setGoalError] = useState<string | null>(null);
   const [goalSaving, setGoalSaving] = useState(false);
+  const [goalModalBets, setGoalModalBets] = useState<OsBetRow[]>([]);
+  const [goalBetsLoading, setGoalBetsLoading] = useState(false);
+  const [goalBetBusyId, setGoalBetBusyId] = useState<string | null>(null);
 
   // Pitch modal
   const [pitchModalOpen, setPitchModalOpen] = useState(false);
   const [editingPitch, setEditingPitch] = useState<OsBetRow | null>(null);
   const [editingBlockType, setEditingBlockType] = useState<OsBlockType>("finance");
+  const [pitchLockedGoal, setPitchLockedGoal] = useState<{
+    id: string;
+    title: string;
+    blockType: OsBlockType;
+  } | null>(null);
   const [modalPriority, setModalPriority] = useState(false);
   const [pitchTasks, setPitchTasks] = useState<OsTaskRow[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
@@ -601,6 +634,29 @@ function OsPageContent() {
   );
 
   // ---------- Goal handlers ----------
+  const loadGoalModalBets = useCallback(async (goalId: string) => {
+    setGoalBetsLoading(true);
+    try {
+      const bets = await fetchOsBetsForGoal(goalId);
+      setGoalModalBets(
+        [...bets].sort((a, b) => {
+          const rank = (bet: OsBetRow) => {
+            if (bet.is_priority) return 0;
+            if (getOsBetShapeStatus(bet) === "ready_to_prioritize") return 1;
+            return 2;
+          };
+          const diff = rank(a) - rank(b);
+          if (diff !== 0) return diff;
+          return (a.pos ?? 0) - (b.pos ?? 0);
+        })
+      );
+    } catch {
+      setGoalModalBets([]);
+    } finally {
+      setGoalBetsLoading(false);
+    }
+  }, []);
+
   const openGoalModal = (blockId: string, blockType: OsBlockType, goal?: OsGoalRow | null) => {
     setGoalDraft({
       goalId: goal?.id ?? "",
@@ -610,7 +666,9 @@ function OsPageContent() {
       description: goal?.description ?? "",
     });
     setGoalError(null);
+    setGoalModalBets([]);
     setGoalModalOpen(true);
+    if (goal?.id) void loadGoalModalBets(goal.id);
   };
 
   const handleSaveGoal = async () => {
@@ -632,16 +690,23 @@ function OsPageContent() {
           title: goalDraft.title.trim(),
           description: goalDraft.description.trim() || null,
         });
+        setGoalModalOpen(false);
       } else {
-        await createOsGoal(
+        const created = await createOsGoal(
           user.id,
           goalDraft.blockId,
           goalDraft.title.trim(),
           goalDraft.description.trim() || undefined,
           currentQ
         );
+        setGoalDraft((p) => ({
+          ...p,
+          goalId: created.id,
+          title: created.title,
+          description: created.description ?? "",
+        }));
+        setGoalModalBets([]);
       }
-      setGoalModalOpen(false);
       await refreshBoard({ background: true, force: true });
       await loadGoals();
     } catch {
@@ -815,7 +880,12 @@ function OsPageContent() {
     }
   };
 
-  const openPitchModal = (bet: OsBetRow, blockType: OsBlockType) => {
+  const openPitchModal = (
+    bet: OsBetRow,
+    blockType: OsBlockType,
+    lockedGoal?: { id: string; title: string; blockType: OsBlockType } | null
+  ) => {
+    setPitchLockedGoal(lockedGoal ?? null);
     setEditingPitch(bet);
     setEditingBlockType(blockType);
     setModalPriority(bet.is_priority);
@@ -824,36 +894,88 @@ function OsPageContent() {
     void loadAllWeeklyUpdates(bet.id);
   };
 
+  const openCreatePitchForGoal = () => {
+    if (!goalDraft.goalId || !goalDraft.blockType) return;
+    setPitchLockedGoal({
+      id: goalDraft.goalId,
+      title: goalDraft.title.trim() || "Meta",
+      blockType: goalDraft.blockType,
+    });
+    setEditingPitch(null);
+    setEditingBlockType(goalDraft.blockType);
+    setModalPriority(false);
+    setPitchTasks([]);
+    setWeeklyUpdates([]);
+    setPitchModalOpen(true);
+  };
+
   const closePitchModal = () => {
     setPitchModalOpen(false);
     setEditingPitch(null);
+    setPitchLockedGoal(null);
     setPitchTasks([]);
     setWeeklyUpdates([]);
+    if (goalModalOpen && goalDraft.goalId) void loadGoalModalBets(goalDraft.goalId);
   };
 
   const resolveGoalId = (blockType: OsBlockType) =>
     orderedBlocks.find((v) => v.block.type === blockType)?.goal?.id ?? null;
 
   const handleSavePitch = async (data: PitchFormData) => {
-    if (!user || !editingPitch) return;
+    if (!user) return;
     setPitchSaving(true);
     try {
-      await updateOsBet(editingPitch.id, {
-        title: data.title.trim(),
-        pitchOutcome: data.pitchOutcome.trim() || null,
-        failureModes: data.failureModes.trim() || null,
-        pitchObjective: data.pitchObjective.trim() || null,
-        appetiteScope: data.appetiteScope.trim() || null,
-        pitchData: data.pitchData.trim() || null,
-        successCriteria: data.successCriteria.trim() || null,
-        executionOwner: data.executionOwner || null,
-      });
+      if (editingPitch) {
+        await updateOsBet(editingPitch.id, {
+          title: data.title.trim(),
+          pitchOutcome: data.pitchOutcome.trim() || null,
+          failureModes: data.failureModes.trim() || null,
+          pitchObjective: data.pitchObjective.trim() || null,
+          appetiteScope: data.appetiteScope.trim() || null,
+          pitchData: data.pitchData.trim() || null,
+          successCriteria: data.successCriteria.trim() || null,
+          executionOwner: data.executionOwner || null,
+        });
+      } else {
+        const goalId = pitchLockedGoal?.id ?? resolveGoalId(data.blockType);
+        if (!goalId) {
+          setError("Defina uma meta antes de criar apostas.");
+          return;
+        }
+        await createOsBet(user.id, {
+          goalId,
+          title: data.title.trim(),
+          pitchOutcome: data.pitchOutcome.trim() || undefined,
+          failureModes: data.failureModes.trim() || undefined,
+          pitchObjective: data.pitchObjective.trim() || undefined,
+          appetiteScope: data.appetiteScope.trim() || undefined,
+          pitchData: data.pitchData.trim() || undefined,
+          successCriteria: data.successCriteria.trim() || undefined,
+          executionOwner: data.executionOwner || undefined,
+        });
+      }
       closePitchModal();
       await refreshBoard({ background: true, force: true });
+      await loadActivityCounts();
     } catch {
       setError("Não foi possível salvar a aposta.");
     } finally {
       setPitchSaving(false);
+    }
+  };
+
+  const handleDeleteGoalBet = async (bet: OsBetRow) => {
+    if (!window.confirm(`Excluir a aposta “${bet.title}”?`)) return;
+    setGoalBetBusyId(bet.id);
+    try {
+      await deleteOsBet(bet.id);
+      if (goalDraft.goalId) await loadGoalModalBets(goalDraft.goalId);
+      await refreshBoard({ background: true, force: true });
+      await loadActivityCounts();
+    } catch {
+      setGoalError("Não foi possível excluir a aposta.");
+    } finally {
+      setGoalBetBusyId(null);
     }
   };
 
@@ -894,6 +1016,7 @@ function OsPageContent() {
       setModalPriority(updated.is_priority);
       await refreshBoard({ background: true, force: true });
       await loadActivityCounts();
+      if (goalModalOpen && goalDraft.goalId) await loadGoalModalBets(goalDraft.goalId);
     } catch {
       setError("Não foi possível alterar prioridade.");
     } finally {
@@ -931,6 +1054,7 @@ function OsPageContent() {
         if (shapeStatus === "in_discovery") setModalPriority(false);
       }
       await refreshBoard({ background: true, force: true });
+      if (goalModalOpen && goalDraft.goalId) await loadGoalModalBets(goalDraft.goalId);
     } catch {
       setError("Não foi possível atualizar o status da aposta.");
     } finally {
@@ -1240,7 +1364,7 @@ function OsPageContent() {
             data-modal-content
             role="dialog"
             aria-modal="true"
-            className="pointer-events-auto relative z-[1] mx-auto max-h-[min(92dvh,40rem)] w-full max-w-xl overflow-y-auto border border-ta-rule-2 bg-ta-paper font-sans shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)]"
+            className="pointer-events-auto relative z-[1] mx-auto max-h-[min(92dvh,52rem)] w-full max-w-xl overflow-y-auto border border-ta-rule-2 bg-ta-paper font-sans shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)]"
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1292,6 +1416,97 @@ function OsPageContent() {
                 />
               </div>
 
+              {goalDraft.goalId ? (
+                <div className="block border-t border-ta-rule-2 pt-5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ta-muted">
+                      Apostas desta meta
+                    </span>
+                    <span className="font-mono text-[10px] text-ta-muted-2">
+                      {goalBetsLoading ? "…" : goalModalBets.length}
+                    </span>
+                  </div>
+                  {goalBetsLoading ? (
+                    <p className="font-sans text-xs text-ta-muted">A carregar apostas…</p>
+                  ) : goalModalBets.length === 0 ? (
+                    <p className="mb-2 font-sans text-xs text-ta-muted">
+                      Ainda sem apostas. Podes shaping aqui mesmo, mesmo sem priorizar a meta.
+                    </p>
+                  ) : (
+                    <ul className="mb-2 divide-y divide-ta-rule">
+                      {goalModalBets.map((bet) => {
+                        const stage = getOsBetPipelineStage(bet);
+                        const badgeClass =
+                          stage === "prioritized"
+                            ? "border-ta-ink bg-ta-ink text-ta-paper"
+                            : stage === "ready_to_prioritize"
+                              ? "border-ta-ink text-ta-ink"
+                              : "border-ta-rule-2 text-ta-muted";
+                        return (
+                          <li
+                            key={bet.id}
+                            className="group flex items-center gap-2 py-2.5"
+                          >
+                            <span
+                              className={`shrink-0 border px-1.5 py-0.5 font-mono text-[8px] font-semibold uppercase tracking-[0.12em] ${badgeClass}`}
+                            >
+                              {formatOsBetPipelineLabel(stage)}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate font-sans text-sm text-ta-ink">
+                              {bet.title}
+                            </span>
+                            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                              <button
+                                type="button"
+                                title="Editar aposta"
+                                aria-label="Editar aposta"
+                                disabled={goalBetBusyId === bet.id}
+                                onClick={() =>
+                                  openPitchModal(bet, goalDraft.blockType as OsBlockType, {
+                                    id: goalDraft.goalId,
+                                    title: goalDraft.title.trim() || "Meta",
+                                    blockType: goalDraft.blockType as OsBlockType,
+                                  })
+                                }
+                                className="inline-flex p-1 text-ta-muted transition-colors hover:text-ta-ink disabled:opacity-40"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                title="Excluir aposta"
+                                aria-label="Excluir aposta"
+                                disabled={goalBetBusyId === bet.id}
+                                onClick={() => void handleDeleteGoalBet(bet)}
+                                className="inline-flex p-1 text-ta-muted transition-colors hover:text-ta-red disabled:opacity-40"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {!(
+                    goalDraft.goalId &&
+                    goals.find((g) => g.id === goalDraft.goalId && goalIsConcluded(g))
+                  ) ? (
+                    <button
+                      type="button"
+                      onClick={openCreatePitchForGoal}
+                      className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-ta-muted-2 transition-colors hover:text-ta-ink"
+                    >
+                      <span className="text-[13px] leading-none">+</span> Nova aposta
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="border-t border-ta-rule-2 pt-4 font-sans text-xs text-ta-muted">
+                  Guarda a meta para poderes adicionar e editar apostas ligadas a ela.
+                </p>
+              )}
+
               {goalError ? <p className="font-sans text-sm font-semibold text-ta-red">{goalError}</p> : null}
               <div className="flex justify-end gap-2 border-t border-ta-rule-2 pt-4">
                 <button
@@ -1325,6 +1540,7 @@ function OsPageContent() {
         onClose={closePitchModal}
         pitch={editingPitch}
         initialBlockType={editingBlockType}
+        lockedGoal={pitchLockedGoal}
         blockGoals={blockGoals}
         isPriority={modalPriority}
         onTogglePriority={handleTogglePriorityModal}

@@ -57,6 +57,8 @@ interface PitchModalProps {
   onClose: () => void;
   pitch: OsBetRow | null;
   initialBlockType?: OsBlockType;
+  /** Quando definido, a aposta fica ligada a esta meta (ex.: modal de meta não priorizada). */
+  lockedGoal?: PitchBlockGoal & { blockType: OsBlockType } | null;
   blockGoals: Record<OsBlockType, PitchBlockGoal | null>;
   isPriority: boolean;
   onTogglePriority: () => Promise<void>;
@@ -152,6 +154,7 @@ export function PitchModal({
   onClose,
   pitch,
   initialBlockType,
+  lockedGoal = null,
   blockGoals,
   isPriority,
   onTogglePriority,
@@ -235,7 +238,7 @@ export function PitchModal({
     if (!open) return;
     if (pitch) {
       setForm({
-        blockType: initialBlockType ?? "finance",
+        blockType: initialBlockType ?? lockedGoal?.blockType ?? "finance",
         title: pitch.title,
         pitchOutcome: pitch.pitch_outcome ?? "",
         failureModes: pitch.failure_modes ?? "",
@@ -246,21 +249,27 @@ export function PitchModal({
         executionOwner: pitch.execution_owner ?? "",
       });
     } else {
-      setForm({ ...EMPTY_FORM, blockType: initialBlockType ?? "finance" });
+      setForm({
+        ...EMPTY_FORM,
+        blockType: lockedGoal?.blockType ?? initialBlockType ?? "finance",
+      });
     }
     setNewTaskTitle("");
     setError(null);
-  }, [open, pitch, initialBlockType]);
+  }, [open, pitch, initialBlockType, lockedGoal]);
 
   const handleSubmit = async () => {
     if (!form.title.trim()) {
       setError("Informe a ideia da aposta.");
       return;
     }
-    const goal = blockGoals[form.blockType];
-    if (!goal) {
-      setError("Defina uma meta ativa para este pilar na página OS antes de criar apostas.");
-      return;
+    // Edição: a aposta já está ligada a uma meta (prioritária ou não)
+    if (!pitch) {
+      const goal = lockedGoal ?? blockGoals[form.blockType];
+      if (!goal) {
+        setError("Defina uma meta para este pilar na página OS antes de criar apostas.");
+        return;
+      }
     }
     setError(null);
     await onSave(form);
@@ -381,38 +390,55 @@ export function PitchModal({
             />
           </label>
 
-          <fieldset>
-            <legend className={LABEL}>Qual meta isto move de forma significativa?</legend>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {OS_BLOCK_TYPES.map((blockType) => {
-                const selected = form.blockType === blockType;
-                const goal = blockGoals[blockType];
-                return (
-                  <div key={blockType} className="flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => setForm((prev) => ({ ...prev, blockType }))}
-                      className={`flex items-center gap-2 border px-3 py-2.5 text-left font-mono text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors ${
-                        selected
-                          ? "border-ta-ink bg-ta-ink text-ta-paper"
-                          : "border-ta-rule-2 bg-ta-paper text-ta-ink hover:bg-ta-paper-2"
-                      }`}
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ backgroundColor: OS_BLOCK_DOT_COLORS[blockType] }}
-                        aria-hidden
-                      />
-                      {OS_BLOCK_LABELS[blockType]}
-                    </button>
-                    <p className="mt-1.5 px-1 font-sans text-xs text-ta-muted">
-                      {goal?.title ?? "Meta não priorizada"}
-                    </p>
-                  </div>
-                );
-              })}
+          {lockedGoal ? (
+            <div className="block">
+              <span className={LABEL}>Meta ligada</span>
+              <div className="flex items-center gap-2 border border-ta-ink bg-ta-ink px-3 py-2.5 text-ta-paper">
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ backgroundColor: OS_BLOCK_DOT_COLORS[lockedGoal.blockType] }}
+                  aria-hidden
+                />
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em]">
+                  {OS_BLOCK_LABELS[lockedGoal.blockType]}
+                </span>
+              </div>
+              <p className="mt-1.5 px-1 font-sans text-xs text-ta-muted">{lockedGoal.title}</p>
             </div>
-          </fieldset>
+          ) : (
+            <fieldset>
+              <legend className={LABEL}>Qual meta isto move de forma significativa?</legend>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {OS_BLOCK_TYPES.map((blockType) => {
+                  const selected = form.blockType === blockType;
+                  const goal = blockGoals[blockType];
+                  return (
+                    <div key={blockType} className="flex flex-col">
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, blockType }))}
+                        className={`flex items-center gap-2 border px-3 py-2.5 text-left font-mono text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+                          selected
+                            ? "border-ta-ink bg-ta-ink text-ta-paper"
+                            : "border-ta-rule-2 bg-ta-paper text-ta-ink hover:bg-ta-paper-2"
+                        }`}
+                      >
+                        <span
+                          className="inline-block h-2 w-2 rounded-full"
+                          style={{ backgroundColor: OS_BLOCK_DOT_COLORS[blockType] }}
+                          aria-hidden
+                        />
+                        {OS_BLOCK_LABELS[blockType]}
+                      </button>
+                      <p className="mt-1.5 px-1 font-sans text-xs text-ta-muted">
+                        {goal?.title ?? "Meta não priorizada"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
 
           <label className="block">
             <span className={LABEL}>O outcome que a aposta entrega</span>
