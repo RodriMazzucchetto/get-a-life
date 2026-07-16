@@ -97,6 +97,42 @@ const UPDATE_STATUS_COLORS: Record<OsBetUpdateStatus, string> = {
   failed: "var(--color-ta-red)",
 };
 
+const FIELD =
+  "w-full border border-ta-rule-2 bg-ta-paper px-3 py-2.5 font-sans text-sm text-ta-ink outline-none transition-[border-color,min-height,box-shadow] duration-200 ease-out focus:border-ta-ink";
+
+/** Textarea que cresce no foco para leitura/edição e volta ao tamanho compacto no blur. */
+function ExpandableTextarea({
+  value,
+  onChange,
+  placeholder,
+  collapsedRows = 3,
+  expandedRows = 12,
+  className = FIELD,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  collapsedRows?: number;
+  expandedRows?: number;
+  className?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <textarea
+      rows={expanded ? expandedRows : collapsedRows}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onFocus={() => setExpanded(true)}
+      onBlur={() => setExpanded(false)}
+      placeholder={placeholder}
+      className={`${className} resize-y ${
+        expanded ? "relative z-[2] shadow-[0_8px_28px_-12px_rgba(0,0,0,0.28)]" : ""
+      }`}
+    />
+  );
+}
+
 /** Campos compartilhados do formulário de weekly update (criar e editar). */
 function UpdateFields({
   value,
@@ -125,19 +161,21 @@ function UpdateFields({
           );
         })}
       </div>
-      <textarea
-        rows={2}
+      <ExpandableTextarea
+        collapsedRows={2}
+        expandedRows={8}
         value={value.whatDone}
-        onChange={(e) => onChange({ ...value, whatDone: e.target.value })}
+        onChange={(whatDone) => onChange({ ...value, whatDone })}
         placeholder="O que foi feito esta semana?"
-        className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink"
+        className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2 font-sans text-sm text-ta-ink outline-none transition-[border-color,box-shadow] duration-200 ease-out focus:border-ta-ink"
       />
-      <textarea
-        rows={2}
+      <ExpandableTextarea
+        collapsedRows={2}
+        expandedRows={6}
         value={value.blockers}
-        onChange={(e) => onChange({ ...value, blockers: e.target.value })}
+        onChange={(blockers) => onChange({ ...value, blockers })}
         placeholder="Blockers (opcional)"
-        className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink"
+        className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2 font-sans text-sm text-ta-ink outline-none transition-[border-color,box-shadow] duration-200 ease-out focus:border-ta-ink"
       />
     </div>
   );
@@ -146,8 +184,6 @@ function UpdateFields({
 // Estilos refinados (paper/ink, IBM Plex, regras 1px) — alinhados ao novo design OS.
 const LABEL = "mb-2 block font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ta-muted";
 const HELP = "mb-2 font-sans text-xs leading-relaxed text-ta-muted";
-const FIELD =
-  "w-full border border-ta-rule-2 bg-ta-paper px-3 py-2.5 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink";
 
 export function PitchModal({
   open,
@@ -447,11 +483,10 @@ export function PitchModal({
               pagante.&quot; O unbreakable é obcecado com isso… sucesso é progresso mensurável, não task
               feita, não plano bonito.
             </p>
-            <textarea
-              rows={3}
+            <ExpandableTextarea
+              collapsedRows={3}
               value={form.pitchOutcome}
-              onChange={(event) => setForm((prev) => ({ ...prev, pitchOutcome: event.target.value }))}
-              className={FIELD}
+              onChange={(pitchOutcome) => setForm((prev) => ({ ...prev, pitchOutcome }))}
               placeholder='Ex.: "Até 31/jul, 1 cliente pagante."'
             />
           </label>
@@ -464,13 +499,10 @@ export function PitchModal({
               Liste os modos de falha, identifique os casos de pior cenário, blind spots e anti
               patterns. A ideia é criar safeguards para eliminar esses erros fatais.
             </p>
-            <textarea
-              rows={4}
+            <ExpandableTextarea
+              collapsedRows={4}
               value={form.failureModes}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, failureModes: event.target.value }))
-              }
-              className={FIELD}
+              onChange={(failureModes) => setForm((prev) => ({ ...prev, failureModes }))}
               placeholder="Modos de falha, worst cases, blind spots, anti-patterns e safeguards"
             />
           </label>
@@ -481,13 +513,10 @@ export function PitchModal({
               Defina o fluxo dessa solução, funcionamento geral de como esperamos que isso funcione,
               indicando a lógica de como esperamos que isso resolva e como.
             </p>
-            <textarea
-              rows={4}
+            <ExpandableTextarea
+              collapsedRows={4}
               value={form.pitchObjective}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, pitchObjective: event.target.value }))
-              }
-              className={FIELD}
+              onChange={(pitchObjective) => setForm((prev) => ({ ...prev, pitchObjective }))}
               placeholder="Fluxo, lógica e funcionamento esperado da solução"
             />
           </label>
@@ -498,13 +527,10 @@ export function PitchModal({
               Descreva qual o apetite de trabalhar com isso nesse momento. O que entra e o que fica de
               fora? Precisamos dessas definições!
             </p>
-            <textarea
-              rows={4}
+            <ExpandableTextarea
+              collapsedRows={4}
               value={form.appetiteScope}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, appetiteScope: event.target.value }))
-              }
-              className={FIELD}
+              onChange={(appetiteScope) => setForm((prev) => ({ ...prev, appetiteScope }))}
               placeholder="O que entra nesta rodada · o que fica de fora"
             />
           </label>
@@ -516,11 +542,10 @@ export function PitchModal({
               apostas. Traga os dados que reforçam de verdade que essa aposta tem chances de sucesso e
               resolução do problema.
             </p>
-            <textarea
-              rows={4}
+            <ExpandableTextarea
+              collapsedRows={4}
               value={form.pitchData}
-              onChange={(event) => setForm((prev) => ({ ...prev, pitchData: event.target.value }))}
-              className={FIELD}
+              onChange={(pitchData) => setForm((prev) => ({ ...prev, pitchData }))}
               placeholder="Lógica + dados que sustentam priorizar esta aposta agora"
             />
           </label>
@@ -531,13 +556,10 @@ export function PitchModal({
               Quais são as coisas que vão nos indicar sucesso ou fracasso dessa aposta? Descreva isso
               no melhor das suas habilidades.
             </p>
-            <textarea
-              rows={4}
+            <ExpandableTextarea
+              collapsedRows={4}
               value={form.successCriteria}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, successCriteria: event.target.value }))
-              }
-              className={FIELD}
+              onChange={(successCriteria) => setForm((prev) => ({ ...prev, successCriteria }))}
               placeholder="Sinais claros de sucesso e de fracasso"
             />
           </label>
