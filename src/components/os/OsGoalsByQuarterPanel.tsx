@@ -188,7 +188,6 @@ function GoalCard({
   blocks,
   busy,
   variant = "default",
-  onRename,
   onChangeBlock,
   onDelete,
   onTogglePriority,
@@ -200,7 +199,7 @@ function GoalCard({
   blocks: BlockInfo[];
   busy?: boolean;
   variant?: "default" | "compact" | "backlog";
-  onRename: (goal: OsGoalRow, title: string) => Promise<void>;
+  onRename?: (goal: OsGoalRow, title: string) => Promise<void>;
   onChangeBlock: (goal: OsGoalRow, blockId: string) => Promise<void>;
   onDelete: (goal: OsGoalRow) => Promise<void>;
   onTogglePriority: (goal: OsGoalRow) => Promise<void>;
@@ -209,9 +208,7 @@ function GoalCard({
 }) {
   const concluded = goalIsConcluded(goal);
   const compact = variant === "compact" || variant === "backlog";
-  const [editing, setEditing] = useState(false);
   const [editingPillar, setEditingPillar] = useState(false);
-  const [draft, setDraft] = useState(goal.title);
   const ordered = useMemo(() => sortBlocks(blocks), [blocks]);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: goal.id,
@@ -220,17 +217,6 @@ function GoalCard({
   });
 
   const style = isDragging ? { opacity: 0.35 } : undefined;
-
-  const submitRename = async () => {
-    const next = draft.trim();
-    if (!next || next === goal.title) {
-      setEditing(false);
-      setDraft(goal.title);
-      return;
-    }
-    await onRename(goal, next);
-    setEditing(false);
-  };
 
   return (
     <div
@@ -284,31 +270,14 @@ function GoalCard({
             {OS_BLOCK_LABELS[blockType]}
           </button>
         ) : null}
-        {editing && !concluded ? (
-          <input
-            autoFocus
-            className="os-q-edit-input"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={() => void submitRename()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void submitRename();
-              if (e.key === "Escape") {
-                setDraft(goal.title);
-                setEditing(false);
-              }
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            className="os-q-title"
-            onClick={() => (concluded ? onEdit(goal) : setEditing(true))}
-            title={concluded ? "Meta concluída" : "Editar título"}
-          >
-            {goal.title}
-          </button>
-        )}
+        <button
+          type="button"
+          className="os-q-title"
+          onClick={() => onEdit(goal)}
+          title="Abrir meta"
+        >
+          {goal.title}
+        </button>
         {concluded ? (
           <span className={`os-q-outcome ${goal.status === "abandoned" ? "failed" : "ok"}`}>
             {formatGoalOutcomeLabel(goal.status)}

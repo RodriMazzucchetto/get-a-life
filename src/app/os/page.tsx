@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { OsCompanySelector } from "@/components/os/OsCompanySelector";
 import { OsAnnualGoalBar } from "@/components/os/OsAnnualGoalBar";
+import { OsGoalDescriptionEditor } from "@/components/os/OsGoalDescriptionEditor";
 import { OsGoalsByQuarterPanel } from "@/components/os/OsGoalsByQuarterPanel";
 import { GoalOutcomeModal } from "@/components/os/GoalOutcomeModal";
 import { PitchModal, type PitchFormData } from "@/components/os/PitchModal";
@@ -1160,7 +1161,7 @@ function OsPageContent() {
             data-modal-content
             role="dialog"
             aria-modal="true"
-            className="pointer-events-auto relative z-[1] mx-auto w-full max-w-md border border-ta-rule-2 bg-ta-paper font-sans shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)]"
+            className="pointer-events-auto relative z-[1] mx-auto max-h-[min(92dvh,40rem)] w-full max-w-xl overflow-y-auto border border-ta-rule-2 bg-ta-paper font-sans shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)]"
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1181,13 +1182,37 @@ function OsPageContent() {
                   type="text"
                   autoFocus
                   value={goalDraft.title}
+                  disabled={
+                    Boolean(goalDraft.goalId) &&
+                    Boolean(goals.find((g) => g.id === goalDraft.goalId && goalIsConcluded(g)))
+                  }
                   onChange={(e) => setGoalDraft((p) => ({ ...p, title: e.target.value }))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void handleSaveGoal();
                   }}
-                  className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2.5 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink"
+                  className="w-full border border-ta-rule-2 bg-ta-paper px-3 py-2.5 font-sans text-sm text-ta-ink outline-none transition-colors focus:border-ta-ink disabled:opacity-70"
                 />
               </label>
+
+              <div className="block">
+                <span className="mb-2 block font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ta-muted">
+                  Problema / detalhes
+                </span>
+                <p className="mb-2 font-sans text-xs leading-relaxed text-ta-muted">
+                  Explicitá o problema ou o contexto que gerou esta meta. Podes colar prints ou anexar
+                  imagens.
+                </p>
+                <OsGoalDescriptionEditor
+                  value={goalDraft.description}
+                  userId={user?.id}
+                  disabled={
+                    Boolean(goalDraft.goalId) &&
+                    Boolean(goals.find((g) => g.id === goalDraft.goalId && goalIsConcluded(g)))
+                  }
+                  onChange={(html) => setGoalDraft((p) => ({ ...p, description: html }))}
+                />
+              </div>
+
               {goalError ? <p className="font-sans text-sm font-semibold text-ta-red">{goalError}</p> : null}
               <div className="flex justify-end gap-2 border-t border-ta-rule-2 pt-4">
                 <button
@@ -1197,14 +1222,19 @@ function OsPageContent() {
                 >
                   Cancelar
                 </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSaveGoal()}
-                  disabled={goalSaving}
-                  className="border border-ta-ink bg-ta-ink px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ta-paper transition-colors hover:bg-ta-ink/90 disabled:opacity-50"
-                >
-                  {goalSaving ? "Salvando..." : "Salvar"}
-                </button>
+                {!(
+                  goalDraft.goalId &&
+                  goals.find((g) => g.id === goalDraft.goalId && goalIsConcluded(g))
+                ) ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveGoal()}
+                    disabled={goalSaving}
+                    className="border border-ta-ink bg-ta-ink px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ta-paper transition-colors hover:bg-ta-ink/90 disabled:opacity-50"
+                  >
+                    {goalSaving ? "Salvando..." : "Salvar"}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>

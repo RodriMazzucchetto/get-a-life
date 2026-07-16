@@ -1068,6 +1068,18 @@
 .os-refined-page .hier-note { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--color-ta-rule); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--color-ta-muted-2); display: flex; gap: 24px; flex-wrap: wrap; }
 .os-refined-page .hier-note b { color: var(--color-ta-muted); font-weight: 600; }
 
+/* Editor de detalhes da meta (texto + imagens) */
+.os-goal-desc-editor img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border: 1px solid var(--color-ta-rule-2);
+}
+.os-goal-desc-editor:focus {
+  outline: none;
+}
+
 /* Annual Goal — barra sólida contínua, sem moldura */
 .os-refined-page .os-annual-goal {
   margin-top: 28px;
