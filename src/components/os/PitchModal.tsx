@@ -510,7 +510,7 @@ export function PitchModal({
             />
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className={LABEL}>Sketch da solução</span>
             <p className={HELP}>
               Defina o fluxo dessa solução, funcionamento geral de como esperamos que isso funcione,
@@ -528,7 +528,7 @@ export function PitchModal({
               mediaFolder="os-bets"
               expandOnFocus
             />
-          </label>
+          </div>
 
           <label className="block">
             <span className={LABEL}>Até onde vamos com essa aposta?</span>
