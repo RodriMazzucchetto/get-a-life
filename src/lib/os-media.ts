@@ -4,7 +4,11 @@ const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 /** Faz upload de imagem para o bucket público `media` e devolve a URL pública. */
-export async function uploadOsGoalImage(userId: string, file: File): Promise<string> {
+export async function uploadOsMediaImage(
+  userId: string,
+  file: File,
+  folder: "os-goals" | "os-bets" = "os-goals"
+): Promise<string> {
   if (!ALLOWED.has(file.type)) {
     throw new Error("Formato de imagem não suportado. Use JPG, PNG, WEBP ou GIF.");
   }
@@ -13,7 +17,7 @@ export async function uploadOsGoalImage(userId: string, file: File): Promise<str
   }
 
   const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
-  const path = `os-goals/${userId}/${crypto.randomUUID()}.${ext}`;
+  const path = `${folder}/${userId}/${crypto.randomUUID()}.${ext}`;
   const supabase = createClient();
 
   const { error } = await supabase.storage.from("media").upload(path, file, {
@@ -23,10 +27,15 @@ export async function uploadOsGoalImage(userId: string, file: File): Promise<str
   });
 
   if (error) {
-    console.error("Erro ao fazer upload de imagem da meta:", error);
+    console.error("Erro ao fazer upload de imagem OS:", error);
     throw new Error("Não foi possível enviar a imagem.");
   }
 
   const { data } = supabase.storage.from("media").getPublicUrl(path);
   return data.publicUrl;
+}
+
+/** @deprecated Prefer uploadOsMediaImage — mantido para callers existentes. */
+export async function uploadOsGoalImage(userId: string, file: File): Promise<string> {
+  return uploadOsMediaImage(userId, file, "os-goals");
 }

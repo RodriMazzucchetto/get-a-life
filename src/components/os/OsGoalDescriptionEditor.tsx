@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { uploadOsGoalImage } from "@/lib/os-media";
+import { uploadOsMediaImage } from "@/lib/os-media";
 
 interface OsGoalDescriptionEditorProps {
   value: string;
@@ -9,6 +9,12 @@ interface OsGoalDescriptionEditorProps {
   userId: string | undefined;
   disabled?: boolean;
   placeholder?: string;
+  ariaLabel?: string;
+  imageAlt?: string;
+  /** Pasta no bucket media */
+  mediaFolder?: "os-goals" | "os-bets";
+  /** Amplia a área ao focar (igual aos textareas da modal de apostas) */
+  expandOnFocus?: boolean;
 }
 
 function isEmptyHtml(html: string) {
@@ -26,11 +32,16 @@ export function OsGoalDescriptionEditor({
   userId,
   disabled,
   placeholder = "Contexto, problema ou detalhes que originaram esta meta…",
+  ariaLabel = "Problema ou detalhes da meta",
+  imageAlt = "Anexo da meta",
+  mediaFolder = "os-goals",
+  expandOnFocus = false,
 }: OsGoalDescriptionEditorProps) {
   const ref = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -53,13 +64,13 @@ export function OsGoalDescriptionEditor({
     setError(null);
     setUploading(true);
     try {
-      const url = await uploadOsGoalImage(userId, file);
+      const url = await uploadOsMediaImage(userId, file, mediaFolder);
       const el = ref.current;
       if (!el) return;
       el.focus();
       const img = document.createElement("img");
       img.src = url;
-      img.alt = "Anexo da meta";
+      img.alt = imageAlt;
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0 && el.contains(selection.anchorNode)) {
         const range = selection.getRangeAt(0);
@@ -81,12 +92,18 @@ export function OsGoalDescriptionEditor({
     }
   };
 
+  const sizeClass = expandOnFocus
+    ? expanded
+      ? "min-h-[280px] max-h-[480px]"
+      : "min-h-[108px] max-h-[140px]"
+    : "min-h-[120px] max-h-[280px]";
+
   return (
     <div className="space-y-2">
       <div
-        className={`relative border border-ta-rule-2 bg-ta-paper transition-colors focus-within:border-ta-ink ${
+        className={`relative border border-ta-rule-2 bg-ta-paper transition-[border-color,box-shadow] duration-200 ease-out focus-within:border-ta-ink ${
           disabled ? "opacity-70" : ""
-        }`}
+        } ${expanded && expandOnFocus ? "relative z-[2] shadow-[0_8px_28px_-12px_rgba(0,0,0,0.28)]" : ""}`}
       >
         {isEmptyHtml(value) && !disabled ? (
           <span className="pointer-events-none absolute left-3 top-2.5 font-sans text-sm text-ta-muted-2">
@@ -99,9 +116,15 @@ export function OsGoalDescriptionEditor({
           suppressContentEditableWarning
           role="textbox"
           aria-multiline="true"
-          aria-label="Problema ou detalhes da meta"
+          aria-label={ariaLabel}
           onInput={emit}
-          onBlur={emit}
+          onFocus={() => {
+            if (expandOnFocus) setExpanded(true);
+          }}
+          onBlur={() => {
+            emit();
+            if (expandOnFocus) setExpanded(false);
+          }}
           onPaste={(e) => {
             const items = Array.from(e.clipboardData?.items ?? []);
             const imageItem = items.find((item) => item.type.startsWith("image/"));
@@ -111,7 +134,7 @@ export function OsGoalDescriptionEditor({
               if (file) void insertImage(file);
             }
           }}
-          className="os-goal-desc-editor min-h-[120px] max-h-[280px] overflow-y-auto px-3 py-2.5 font-sans text-sm leading-relaxed text-ta-ink outline-none empty:before:content-['']"
+          className={`os-goal-desc-editor overflow-y-auto px-3 py-2.5 font-sans text-sm leading-relaxed text-ta-ink outline-none transition-[min-height,max-height] duration-200 ease-out empty:before:content-[''] ${sizeClass}`}
         />
       </div>
       <div className="flex items-center gap-3">

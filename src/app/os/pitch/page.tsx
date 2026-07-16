@@ -564,6 +564,7 @@ export default function OsPitchPage() {
         onSave={handleSavePitch}
         onDelete={editingPitch ? handleDeletePitch : undefined}
         saving={saving}
+        userId={user?.id}
       />
     </div>
   );

@@ -255,7 +255,11 @@ function PillarCard({
           priorityPitches.map((bet) => {
             const done = betIsDone(bet, latestUpdates);
             const counts = activityCounts.get(bet.id) ?? { todosOpen: 0, todosTotal: 0, updates: 0 };
-            const desc = bet.pitch_outcome ?? bet.pitch_objective ?? "";
+                const rawDesc = bet.pitch_outcome ?? bet.pitch_objective ?? "";
+                const desc = rawDesc
+                  .replace(/<[^>]+>/g, " ")
+                  .replace(/\s+/g, " ")
+                  .trim();
             return (
               <div
                 key={bet.id}
@@ -1563,6 +1567,7 @@ function OsPageContent() {
         onSave={handleSavePitch}
         onDelete={editingPitch ? handleDeletePitch : undefined}
         saving={pitchSaving || pitchDeleting}
+        userId={user?.id}
       />
 
       {weeklyModalBet ? (

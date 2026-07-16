@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ModalOverlay from "@/components/ModalOverlay";
 import { PitchPriorityToggle } from "@/components/os/PitchPriorityToggle";
+import { OsGoalDescriptionEditor } from "@/components/os/OsGoalDescriptionEditor";
 import {
   OS_BLOCK_DOT_COLORS,
   OS_BLOCK_LABELS,
@@ -76,6 +77,7 @@ interface PitchModalProps {
   onSave: (data: PitchFormData) => Promise<void>;
   onDelete?: (pitchId: string) => Promise<void>;
   saving: boolean;
+  userId?: string;
 }
 
 const EMPTY_FORM: PitchFormData = {
@@ -208,6 +210,7 @@ export function PitchModal({
   onSave,
   onDelete,
   saving,
+  userId,
 }: PitchModalProps) {
   const [form, setForm] = useState<PitchFormData>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
@@ -511,13 +514,19 @@ export function PitchModal({
             <span className={LABEL}>Sketch da solução</span>
             <p className={HELP}>
               Defina o fluxo dessa solução, funcionamento geral de como esperamos que isso funcione,
-              indicando a lógica de como esperamos que isso resolva e como.
+              indicando a lógica de como esperamos que isso resolva e como. Podes anexar ou colar
+              prints do sketch.
             </p>
-            <ExpandableTextarea
-              collapsedRows={4}
+            <OsGoalDescriptionEditor
               value={form.pitchObjective}
               onChange={(pitchObjective) => setForm((prev) => ({ ...prev, pitchObjective }))}
-              placeholder="Fluxo, lógica e funcionamento esperado da solução"
+              userId={userId}
+              disabled={saving}
+              placeholder="Fluxo, lógica e funcionamento esperado da solução…"
+              ariaLabel="Sketch da solução"
+              imageAlt="Sketch da aposta"
+              mediaFolder="os-bets"
+              expandOnFocus
             />
           </label>
 
