@@ -1181,18 +1181,18 @@
 .os-refined-page .os-strategy-placeholder {
   display: block;
   font-family: var(--font-ta-sans);
-  font-size: 15px;
+  font-size: 13.5px;
   font-style: italic;
   font-weight: 400;
+  line-height: 1.45;
   color: var(--color-ta-muted);
 }
 .os-refined-page .os-strategy-display,
 .os-refined-page .os-strategy-editor {
   font-family: var(--font-ta-sans);
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.55;
-  letter-spacing: -0.01em;
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.45;
   color: var(--color-ta-ink);
   white-space: normal;
   word-wrap: break-word;
@@ -1227,7 +1227,14 @@
 .os-refined-page .os-strategy-display strong,
 .os-refined-page .os-strategy-editor b,
 .os-refined-page .os-strategy-editor strong {
-  font-weight: 700;
+  font-weight: 600;
+}
+.os-refined-page .os-strategy-display i,
+.os-refined-page .os-strategy-display em,
+.os-refined-page .os-strategy-editor i,
+.os-refined-page .os-strategy-editor em {
+  font-style: italic;
+  font-weight: 400;
 }
 .os-refined-page .os-strategy-actions {
   display: flex;
