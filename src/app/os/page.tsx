@@ -188,7 +188,7 @@ function PillarCard({
       {/* META (âncora) */}
       <div className="meta-zone">
         <div className="meta-lab">
-          <span className="pin">📌</span> META ATIVA
+          <span className="pin">📌</span> Milestone Ativo
         </div>
         <div className="meta-row">
           {goal ? (
@@ -206,7 +206,7 @@ function PillarCard({
             </>
           ) : (
             <span className="meta-text meta-empty">
-              Nenhuma meta priorizada — priorize uma nos quarters abaixo
+              Nenhum milestone priorizado — priorize um nos quarters abaixo
             </span>
           )}
           {goal ? (
@@ -829,7 +829,7 @@ function OsPageContent() {
       await updateOsProjectAnnualObjective(selectedProjectId, text);
       await refreshProjects();
     } catch {
-      setError("Não foi possível salvar o Annual Goal.");
+      setError("Não foi possível salvar a Strategy.");
     }
   };
 
@@ -1252,6 +1252,12 @@ function OsPageContent() {
             </div>
           </div>
 
+          <OsAnnualGoalBar
+            year={selectedProject?.annual_objective_year ?? new Date().getFullYear()}
+            value={selectedProject?.annual_objective}
+            onSave={handleSaveAnnualGoal}
+          />
+
           <div className="os-momentum">
             <div className="os-momentum-head">
               <span className="title">Company Execution Momentum</span>
@@ -1323,12 +1329,6 @@ function OsPageContent() {
             })}
           </div>
 
-          <OsAnnualGoalBar
-            year={selectedProject?.annual_objective_year ?? new Date().getFullYear()}
-            value={selectedProject?.annual_objective}
-            onSave={handleSaveAnnualGoal}
-          />
-
           <OsGoalsByQuarterPanel
             goals={goals}
             blocks={quarterBlocks}
@@ -1349,10 +1349,10 @@ function OsPageContent() {
 
           <div className="hier-note">
             <span>
-              <b>HIERARQUIA</b> &nbsp; Pilar → Meta → Aposta → updates &amp; to-dos
+              <b>HIERARQUIA</b> &nbsp; Pilar → Milestone → Aposta → updates &amp; to-dos
             </span>
             <span>
-              <b>META</b> &nbsp; planeada por quarter abaixo · só a priorizada aparece no pilar
+              <b>MILESTONE</b> &nbsp; planeado por quarter abaixo · só o priorizado aparece no pilar
             </span>
             <span>
               <b>APOSTA</b> &nbsp; gera o trabalho da semana

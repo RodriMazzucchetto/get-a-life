@@ -407,7 +407,7 @@ function QuarterColumn({
       {adding ? (
         <GoalAddForm
           blocks={blocks}
-          placeholder="Nova meta…"
+          placeholder="Novo milestone…"
           onCancel={onCancelAdd}
           onCreate={async (blockId, title) => {
             await onCreate(blockId, title);
@@ -416,7 +416,7 @@ function QuarterColumn({
         />
       ) : (
         <button type="button" className="os-q-add" onClick={onStartAdd}>
-          <span className="plus">+</span> Nova meta
+          <span className="plus">+</span> Novo milestone
         </button>
       )}
     </div>
@@ -480,8 +480,8 @@ function GoalsBacklogSection({
         aria-expanded={open}
       >
         <span className="chev">⌄</span>
-        <span className="title">Backlog de metas</span>
-        <span className="hint">sem quarter · arraste metas para cá</span>
+        <span className="title">Backlog de milestones</span>
+        <span className="hint">sem quarter · arraste milestones para cá</span>
         <span className="count">{goals.length}</span>
       </button>
 
@@ -490,7 +490,7 @@ function GoalsBacklogSection({
           <div className="os-q-backlog-list">
             {goals.length === 0 ? (
               <p className="os-q-backlog-empty">
-                Arraste metas dos quarters para cá, ou crie uma nova.
+                Arraste milestones dos quarters para cá, ou crie um novo.
               </p>
             ) : null}
             {goals.map((goal) => {
@@ -519,14 +519,14 @@ function GoalsBacklogSection({
             <div className="os-q-backlog-add">
               <GoalAddForm
                 blocks={blocks}
-                placeholder="Nova meta no backlog…"
+                placeholder="Novo milestone no backlog…"
                 onCancel={onCancelAdd}
                 onCreate={onCreate}
               />
             </div>
           ) : (
             <button type="button" className="os-q-add" onClick={onStartAdd}>
-              <span className="plus">+</span> Nova meta no backlog
+              <span className="plus">+</span> Novo milestone no backlog
             </button>
           )}
         </>
@@ -548,8 +548,8 @@ export function OsGoalsByQuarterPanel({
   onConclude,
   onEdit,
 }: OsGoalsByQuarterPanelProps) {
-  const [open, setOpen] = useState(true);
-  const [backlogOpen, setBacklogOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [backlogOpen, setBacklogOpen] = useState(false);
   const [addingQuarter, setAddingQuarter] = useState<OsGoalQuarter | "backlog" | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const current = currentCalendarQuarter();
@@ -608,7 +608,7 @@ export function OsGoalsByQuarterPanel({
     <section className={`os-quarters ${open ? "open" : ""}`}>
       <button type="button" className="os-quarters-toggle" onClick={() => setOpen((v) => !v)}>
         <span className="chev">⌄</span>
-        <span className="title">Metas por quarter</span>
+        <span className="title">Milestones por quarter</span>
         <span className="hint">arraste entre quarters e backlog · priorize para o pilar</span>
         <span className="count-pill">{goals.length}</span>
       </button>

@@ -1102,92 +1102,118 @@
   outline: none;
 }
 
-/* Annual Goal — barra sólida contínua, sem moldura */
-.os-refined-page .os-annual-goal {
-  margin-top: 28px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  background: var(--color-ta-ink);
-  color: var(--color-ta-paper);
-  min-height: 72px;
-  padding: 18px 22px;
-  border: 0;
-  outline: none;
-  box-shadow: none;
+/* Strategy — mesmo vocabulário visual da página (paper, ink, mono) */
+.os-refined-page .os-strategy {
+  margin-bottom: 28px;
 }
-.os-refined-page .os-annual-goal-label {
-  flex: 0 0 auto;
+.os-refined-page .os-strategy-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 0 2px 10px;
+}
+.os-refined-page .os-strategy-head .title {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ta-ink);
+}
+.os-refined-page .os-strategy-head .year {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ta-muted);
+}
+.os-refined-page .os-strategy-card {
+  position: relative;
+  background: var(--color-ta-paper-2);
+  border: 1px solid var(--color-ta-rule-2);
+  padding: 10px 16px 14px;
+  transition: border-color 150ms;
+}
+.os-refined-page .os-strategy-card.focus {
+  border-color: var(--color-ta-ink);
+  background: var(--color-ta-paper);
+}
+.os-refined-page .os-strategy-card.saving {
+  opacity: 0.7;
+}
+.os-refined-page .os-strategy-toolbar {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0;
-  border: 0;
+  margin-bottom: 6px;
 }
-.os-refined-page .os-annual-goal-label .target {
-  color: #ff4d4d;
-  font-size: 16px;
-  line-height: 1;
-}
-.os-refined-page .os-annual-goal-label .eyebrow {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-ta-paper);
-  font-weight: 700;
-  white-space: nowrap;
-}
-.os-refined-page .os-annual-goal-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  padding: 0;
-}
-.os-refined-page .os-annual-goal-text {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  outline: none;
-  box-shadow: none;
-  color: var(--color-ta-paper);
+.os-refined-page .os-strategy-tool {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--color-ta-rule-2);
+  background: var(--color-ta-paper);
+  color: var(--color-ta-ink);
   font-family: var(--font-ta-sans);
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.4;
-  cursor: text;
-  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
 }
-.os-refined-page .os-annual-goal-text:focus {
-  outline: none;
+.os-refined-page .os-strategy-tool:hover,
+.os-refined-page .os-strategy-card.focus .os-strategy-tool {
+  border-color: var(--color-ta-ink);
 }
-.os-refined-page .os-annual-goal-text.empty {
-  color: rgba(250, 250, 247, 0.45);
+.os-refined-page .os-strategy-toolbar .hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ta-muted-2);
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.os-refined-page .os-strategy-card.focus .os-strategy-toolbar .hint {
+  opacity: 1;
+}
+.os-refined-page .os-strategy-placeholder {
+  position: absolute;
+  left: 16px;
+  top: 42px;
+  pointer-events: none;
+  font-family: var(--font-ta-sans);
+  font-size: 15px;
   font-style: italic;
   font-weight: 400;
-  font-size: 14px;
+  color: var(--color-ta-muted);
 }
-.os-refined-page .os-annual-goal-body textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 44px;
-  background: transparent;
-  border: 0;
-  outline: none;
-  box-shadow: none;
-  color: var(--color-ta-paper);
+.os-refined-page .os-strategy-editor {
+  min-height: 52px;
   font-family: var(--font-ta-sans);
   font-size: 16px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--color-ta-ink);
+  outline: none;
+  cursor: text;
 }
-.os-refined-page .os-annual-goal-body textarea::placeholder {
-  color: rgba(250, 250, 247, 0.4);
+.os-refined-page .os-strategy-editor:focus {
+  outline: none;
+}
+.os-refined-page .os-strategy-editor p {
+  margin: 0 0 0.35em;
+}
+.os-refined-page .os-strategy-editor p:last-child {
+  margin-bottom: 0;
+}
+.os-refined-page .os-strategy-editor b,
+.os-refined-page .os-strategy-editor strong {
+  font-weight: 700;
 }
 
-/* Metas por quarter */
+/* Milestones por quarter */
 .os-refined-page .os-quarters {
   margin-top: 22px;
   background: transparent;
@@ -1681,10 +1707,8 @@
   .os-refined-page .os-q-col:nth-child(2) { border-bottom: 1px solid var(--color-ta-rule-2); }
 }
 @media (max-width: 720px) {
-  .os-refined-page .os-annual-goal {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+  .os-refined-page .os-strategy-toolbar .hint {
+    display: none;
   }
   .os-refined-page .os-quarters-grid { grid-template-columns: 1fr; }
   .os-refined-page .os-q-col { border-right: 0; border-bottom: 1px solid var(--color-ta-rule-2); }
