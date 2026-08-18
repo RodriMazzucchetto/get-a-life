@@ -8,7 +8,28 @@ interface OsAnnualGoalBarProps {
   onSave: (text: string) => Promise<void>;
 }
 
-const ALLOWED_TAGS = new Set(["B", "STRONG", "I", "EM", "BR", "P", "DIV", "SPAN"]);
+const ALLOWED_TAGS = new Set([
+  "B",
+  "STRONG",
+  "I",
+  "EM",
+  "U",
+  "BR",
+  "P",
+  "DIV",
+  "SPAN",
+  "UL",
+  "OL",
+  "LI",
+]);
+
+const TOOLBAR: { cmd: string; label: string; title: string }[] = [
+  { cmd: "bold", label: "B", title: "Negrito (Ctrl+B)" },
+  { cmd: "italic", label: "I", title: "Itálico (Ctrl+I)" },
+  { cmd: "underline", label: "U", title: "Sublinhado (Ctrl+U)" },
+  { cmd: "insertUnorderedList", label: "•", title: "Lista com marcadores" },
+  { cmd: "insertOrderedList", label: "1.", title: "Lista numerada" },
+];
 
 function isEmptyHtml(html: string) {
   const text = html
@@ -50,57 +71,89 @@ function sanitizeStrategyHtml(html: string): string {
     }
   };
   walk(doc.body);
-  return doc.body.innerHTML;
+
+  for (const div of Array.from(doc.body.querySelectorAll("div"))) {
+    const p = doc.createElement("p");
+    p.innerHTML = div.innerHTML;
+    div.replaceWith(p);
+  }
+
+  return doc.body.innerHTML.replace(/(<p>\s*<\/p>|<br>\s*)+$/gi, "").trim();
 }
 
-function toEditorHtml(raw: string) {
+function toDisplayHtml(raw: string) {
   if (!raw.trim()) return "";
   if (looksLikeHtml(raw)) return sanitizeStrategyHtml(raw);
-  return escapeText(raw).replace(/\n/g, "<br>");
+  const escaped = escapeText(raw);
+  const paragraphs = escaped.split(/\n{2,}/);
+  if (paragraphs.length === 1) return escaped.replace(/\n/g, "<br>");
+  return paragraphs.map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
 }
 
 export function OsAnnualGoalBar({ year, value, onSave }: OsAnnualGoalBarProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [focused, setFocused] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState(value ?? "");
+  const [draftHtml, setDraftHtml] = useState(() => toDisplayHtml(value ?? ""));
+
+  const storedHtml = toDisplayHtml(value ?? "");
+  const displayHtml = editing ? draftHtml : storedHtml;
+  const empty = isEmptyHtml(displayHtml);
 
   useLayoutEffect(() => {
-    if (focused) return;
-    const next = toEditorHtml(value ?? "");
-    setDraft(next);
+    if (!editing) return;
     const el = editorRef.current;
-    if (el && el.innerHTML !== next) el.innerHTML = next;
-  }, [value, focused]);
-
-  const empty = isEmptyHtml(draft);
+    if (!el) return;
+    const html = draftHtml || "<p><br></p>";
+    el.innerHTML = html;
+    el.focus();
+    const selection = window.getSelection();
+    if (selection) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init editor só ao entrar em edição
+  }, [editing]);
 
   const emitDraft = () => {
     const el = editorRef.current;
     if (!el) return "";
     const html = sanitizeStrategyHtml(el.innerHTML);
     const next = isEmptyHtml(html) ? "" : html;
-    setDraft(next);
+    setDraftHtml(next);
     return next;
   };
 
-  const applyBold = () => {
+  const runCommand = (cmd: string) => {
     editorRef.current?.focus();
-    document.execCommand("bold");
+    document.execCommand(cmd);
     emitDraft();
   };
 
+  const startEditing = () => {
+    if (saving) return;
+    setDraftHtml(storedHtml);
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setDraftHtml(storedHtml);
+    setEditing(false);
+  };
+
   const commit = async () => {
-    const next = emitDraft();
-    const current = toEditorHtml(value ?? "");
-    if (next === current || (isEmptyHtml(next) && isEmptyHtml(current))) {
-      setFocused(false);
+    const next = editing ? emitDraft() : storedHtml;
+    if (next === storedHtml || (isEmptyHtml(next) && isEmptyHtml(storedHtml))) {
+      setEditing(false);
       return;
     }
     setSaving(true);
     try {
       await onSave(next);
-      setFocused(false);
+      setEditing(false);
     } finally {
       setSaving(false);
     }
@@ -112,58 +165,90 @@ export function OsAnnualGoalBar({ year, value, onSave }: OsAnnualGoalBarProps) {
         <span className="title">Strategy</span>
         <span className="year">{year}</span>
       </div>
-      <div className={`os-strategy-card ${focused ? "focus" : ""} ${saving ? "saving" : ""}`}>
-        <div className="os-strategy-toolbar">
-          <button
-            type="button"
-            className="os-strategy-tool"
-            title="Negrito (Ctrl+B)"
-            aria-label="Negrito"
-            disabled={saving}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={applyBold}
-          >
-            B
-          </button>
-          <span className="hint">Enter para nova linha · Ctrl+B negrito</span>
-        </div>
-        {empty && !focused ? (
-          <span className="os-strategy-placeholder">Clique para definir a estratégia do ano…</span>
-        ) : null}
-        <div
-          ref={editorRef}
-          className="os-strategy-editor"
-          contentEditable={!saving}
-          suppressContentEditableWarning
-          role="textbox"
-          aria-multiline="true"
-          aria-label="Strategy"
-          onInput={emitDraft}
-          onFocus={() => setFocused(true)}
-          onBlur={() => void commit()}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
+
+      {editing ? (
+        <div className={`os-strategy-card editing ${saving ? "saving" : ""}`}>
+          <div className="os-strategy-toolbar" role="toolbar" aria-label="Formatação">
+            {TOOLBAR.map((item) => (
+              <button
+                key={item.cmd}
+                type="button"
+                className="os-strategy-tool"
+                title={item.title}
+                aria-label={item.title}
+                disabled={saving}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => runCommand(item.cmd)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div
+            ref={editorRef}
+            className="os-strategy-editor"
+            contentEditable={!saving}
+            suppressContentEditableWarning
+            role="textbox"
+            aria-multiline="true"
+            aria-label="Strategy"
+            onInput={emitDraft}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                cancelEditing();
+              }
+            }}
+            onPaste={(e) => {
               e.preventDefault();
-              const restored = toEditorHtml(value ?? "");
-              setDraft(restored);
-              if (editorRef.current) editorRef.current.innerHTML = restored;
-              setFocused(false);
-              editorRef.current?.blur();
-            }
-          }}
-          onPaste={(e) => {
-            e.preventDefault();
-            const html = e.clipboardData.getData("text/html");
-            const text = e.clipboardData.getData("text/plain");
-            if (html) {
-              document.execCommand("insertHTML", false, sanitizeStrategyHtml(html));
-            } else {
-              document.execCommand("insertText", false, text);
-            }
-            emitDraft();
-          }}
-        />
-      </div>
+              const html = e.clipboardData.getData("text/html");
+              const text = e.clipboardData.getData("text/plain");
+              if (html) {
+                document.execCommand("insertHTML", false, sanitizeStrategyHtml(html));
+              } else {
+                document.execCommand("insertText", false, text);
+              }
+              emitDraft();
+            }}
+          />
+
+          <div className="os-strategy-actions">
+            <button
+              type="button"
+              className="os-strategy-action cancel"
+              disabled={saving}
+              onClick={cancelEditing}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="os-strategy-action save"
+              disabled={saving}
+              onClick={() => void commit()}
+            >
+              {saving ? "Salvando…" : "Salvar"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={`os-strategy-card os-strategy-view ${empty ? "empty" : ""}`}
+          onClick={startEditing}
+          title="Clique para editar"
+        >
+          {empty ? (
+            <span className="os-strategy-placeholder">Clique para definir a estratégia do ano…</span>
+          ) : (
+            <div
+              className="os-strategy-display"
+              dangerouslySetInnerHTML={{ __html: displayHtml }}
+            />
+          )}
+        </button>
+      )}
     </div>
   );
 }

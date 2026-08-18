@@ -1130,13 +1130,23 @@
 }
 .os-refined-page .os-strategy-card {
   position: relative;
+  width: 100%;
+  text-align: left;
   background: var(--color-ta-paper-2);
   border: 1px solid var(--color-ta-rule-2);
-  padding: 10px 16px 14px;
-  transition: border-color 150ms;
+  padding: 14px 16px;
+  transition: border-color 150ms, background 150ms;
 }
-.os-refined-page .os-strategy-card.focus {
+.os-refined-page .os-strategy-card.editing {
   border-color: var(--color-ta-ink);
+  background: var(--color-ta-paper);
+  padding-top: 10px;
+}
+.os-refined-page .os-strategy-view {
+  cursor: text;
+}
+.os-refined-page .os-strategy-view:hover {
+  border-color: color-mix(in srgb, var(--color-ta-ink) 35%, var(--color-ta-rule-2));
   background: var(--color-ta-paper);
 }
 .os-refined-page .os-strategy-card.saving {
@@ -1145,12 +1155,15 @@
 .os-refined-page .os-strategy-toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-ta-rule-2);
 }
 .os-refined-page .os-strategy-tool {
-  min-width: 26px;
-  height: 24px;
+  min-width: 28px;
+  height: 26px;
   padding: 0 8px;
   border: 1px solid var(--color-ta-rule-2);
   background: var(--color-ta-paper);
@@ -1161,56 +1174,92 @@
   line-height: 1;
   cursor: pointer;
 }
-.os-refined-page .os-strategy-tool:hover,
-.os-refined-page .os-strategy-card.focus .os-strategy-tool {
+.os-refined-page .os-strategy-tool:hover {
   border-color: var(--color-ta-ink);
-}
-.os-refined-page .os-strategy-toolbar .hint {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-ta-muted-2);
-  opacity: 0;
-  transition: opacity 150ms;
-}
-.os-refined-page .os-strategy-card.focus .os-strategy-toolbar .hint {
-  opacity: 1;
+  background: var(--color-ta-paper-2);
 }
 .os-refined-page .os-strategy-placeholder {
-  position: absolute;
-  left: 16px;
-  top: 42px;
-  pointer-events: none;
+  display: block;
   font-family: var(--font-ta-sans);
   font-size: 15px;
   font-style: italic;
   font-weight: 400;
   color: var(--color-ta-muted);
 }
+.os-refined-page .os-strategy-display,
 .os-refined-page .os-strategy-editor {
-  min-height: 52px;
   font-family: var(--font-ta-sans);
   font-size: 16px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.55;
   letter-spacing: -0.01em;
   color: var(--color-ta-ink);
+  white-space: normal;
+  word-wrap: break-word;
+}
+.os-refined-page .os-strategy-editor {
+  min-height: 72px;
   outline: none;
-  cursor: text;
 }
 .os-refined-page .os-strategy-editor:focus {
   outline: none;
 }
+.os-refined-page .os-strategy-display p,
 .os-refined-page .os-strategy-editor p {
-  margin: 0 0 0.35em;
+  margin: 0 0 0.5em;
 }
+.os-refined-page .os-strategy-display p:last-child,
 .os-refined-page .os-strategy-editor p:last-child {
   margin-bottom: 0;
 }
+.os-refined-page .os-strategy-display ul,
+.os-refined-page .os-strategy-editor ul,
+.os-refined-page .os-strategy-display ol,
+.os-refined-page .os-strategy-editor ol {
+  margin: 0.35em 0 0.5em 1.25em;
+  padding: 0;
+}
+.os-refined-page .os-strategy-display li,
+.os-refined-page .os-strategy-editor li {
+  margin: 0.15em 0;
+}
+.os-refined-page .os-strategy-display b,
+.os-refined-page .os-strategy-display strong,
 .os-refined-page .os-strategy-editor b,
 .os-refined-page .os-strategy-editor strong {
   font-weight: 700;
+}
+.os-refined-page .os-strategy-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-ta-rule-2);
+}
+.os-refined-page .os-strategy-action {
+  border: 1px solid var(--color-ta-rule-2);
+  background: var(--color-ta-paper);
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ta-ink);
+  cursor: pointer;
+}
+.os-refined-page .os-strategy-action.save {
+  border-color: var(--color-ta-ink);
+  background: var(--color-ta-ink);
+  color: var(--color-ta-paper);
+}
+.os-refined-page .os-strategy-action:hover {
+  opacity: 0.9;
+}
+.os-refined-page .os-strategy-action:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Milestones por quarter */
@@ -1707,9 +1756,6 @@
   .os-refined-page .os-q-col:nth-child(2) { border-bottom: 1px solid var(--color-ta-rule-2); }
 }
 @media (max-width: 720px) {
-  .os-refined-page .os-strategy-toolbar .hint {
-    display: none;
-  }
   .os-refined-page .os-quarters-grid { grid-template-columns: 1fr; }
   .os-refined-page .os-q-col { border-right: 0; border-bottom: 1px solid var(--color-ta-rule-2); }
   .os-refined-page .os-q-col:last-child { border-bottom: 0; }
