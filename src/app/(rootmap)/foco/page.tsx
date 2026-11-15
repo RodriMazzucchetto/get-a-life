@@ -3,7 +3,12 @@
 import { Suspense, useMemo, useState } from "react";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
-import { createTask, toggleTaskDone } from "@/lib/rootmap/queries";
+import {
+  createTask,
+  deleteTask,
+  setTaskWait,
+  toggleTaskDone,
+} from "@/lib/rootmap/queries";
 import type { HorizonStatus, RmTask } from "@/lib/rootmap/types";
 
 function FocoInner() {
@@ -64,7 +69,15 @@ function FocoInner() {
   });
 
   const openTasks = enriched.filter((t) => !t.completed);
-  const queue = openTasks.filter((t) => t.status === tab);
+  const queue = openTasks
+    .filter((t) => t.status === tab)
+    .slice()
+    .sort((a, b) => {
+      const aw = a.wait_reason ? 1 : 0;
+      const bw = b.wait_reason ? 1 : 0;
+      if (aw !== bw) return aw - bw;
+      return a.pos - b.pos;
+    });
   const doneCount = enriched.filter((t) => t.completed).length;
 
   async function add() {
@@ -86,6 +99,26 @@ function FocoInner() {
 
   async function onToggle(t: RmTask) {
     await toggleTaskDone(t, !t.completed);
+    await reload();
+  }
+
+  async function onToggleWait(t: RmTask) {
+    if (t.wait_reason) {
+      await setTaskWait(t.id, null);
+    } else {
+      const reason = window.prompt(
+        "Motivo da espera",
+        "aguardando algo externo"
+      );
+      if (!reason?.trim()) return;
+      await setTaskWait(t.id, reason.trim());
+    }
+    await reload();
+  }
+
+  async function onDelete(t: RmTask) {
+    if (!window.confirm(`Excluir “${t.title}”?`)) return;
+    await deleteTask(t.id);
     await reload();
   }
 
@@ -251,7 +284,7 @@ function FocoInner() {
           {queue.map((t, i) => (
             <div
               key={t.id}
-              className="flex items-start gap-2 border-b border-[var(--rm-line-soft)] py-3"
+              className="rm-task-row flex items-start gap-2 border-b border-[var(--rm-line-soft)] py-3"
               style={{ opacity: tab === "depois" ? 0.55 : 1 }}
             >
               <span className="w-5 pt-0.5 text-[13px] font-bold text-[var(--rm-muted)]">
@@ -281,6 +314,33 @@ function FocoInner() {
               {t.wait_reason && (
                 <span className="rm-wait">Em espera · {t.wait_reason}</span>
               )}
+              <div className="rm-task-actions shrink-0">
+                <button
+                  type="button"
+                  title={
+                    t.wait_reason ? "Retirar da espera" : "Colocar em espera"
+                  }
+                  aria-label={
+                    t.wait_reason ? "Retirar da espera" : "Colocar em espera"
+                  }
+                  onClick={() => void onToggleWait(t)}
+                >
+                  {t.wait_reason ? (
+                    <PlayIcon />
+                  ) : (
+                    <PauseIcon />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  title="Excluir"
+                  aria-label="Excluir task"
+                  onClick={() => void onDelete(t)}
+                >
+                  <CloseIcon />
+                </button>
+              </div>
               <span
                 className="rounded-md px-2 py-0.5 text-[11px] font-extrabold text-white"
                 style={{ background: t.color }}
@@ -297,6 +357,36 @@ function FocoInner() {
         </div>
       </section>
     </div>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <rect x="3" y="2" width="3.5" height="12" rx="0.5" />
+      <rect x="9.5" y="2" width="3.5" height="12" rx="0.5" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <path d="M4 2.5v11l9-5.5L4 2.5z" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M4 4l8 8M12 4l-8 8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

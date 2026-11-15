@@ -423,6 +423,34 @@ export async function updateTaskStatus(id: string, status: HorizonStatus) {
   if (error) throw error;
 }
 
+/** Coloca em espera (motivo) ou tira da espera. Em espera → fundo da fila (pos). */
+export async function setTaskWait(taskId: string, reason: string | null) {
+  const supabase = sb();
+  const patch: { wait_reason: string | null; pos?: number } = {
+    wait_reason: reason,
+  };
+  if (reason) {
+    const { data: maxRow } = await supabase
+      .from("rm_tasks")
+      .select("pos")
+      .order("pos", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    patch.pos = (maxRow?.pos ?? Date.now()) + 1;
+  }
+  const { error } = await supabase
+    .from("rm_tasks")
+    .update(patch)
+    .eq("id", taskId);
+  if (error) throw error;
+}
+
+export async function deleteTask(taskId: string) {
+  const supabase = sb();
+  const { error } = await supabase.from("rm_tasks").delete().eq("id", taskId);
+  if (error) throw error;
+}
+
 export async function addEvidence(opportunityId: string, body: string) {
   const supabase = sb();
   const {

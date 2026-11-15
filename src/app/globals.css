@@ -147,6 +147,49 @@ a {
   white-space: nowrap;
 }
 
+.rm-task-row {
+  position: relative;
+}
+
+.rm-task-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms;
+  background: color-mix(in oklab, var(--rm-panel) 92%, transparent);
+  padding: 1px 2px;
+  border-radius: 8px;
+}
+
+.rm-task-row:hover .rm-task-actions,
+.rm-task-row:focus-within .rm-task-actions {
+  opacity: 1;
+}
+
+.rm-task-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--rm-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.rm-task-actions button:hover {
+  color: var(--rm-ink);
+  background: color-mix(in oklab, var(--rm-card) 80%, transparent);
+}
+
+.rm-task-actions button.danger:hover {
+  color: oklch(0.5 0.18 25);
+}
+
 .rm-muted {
   color: var(--rm-muted);
 }

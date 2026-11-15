@@ -6,7 +6,9 @@ import { useRootmapModal } from "@/hooks/useRootmapModal";
 import {
   addTaskStep,
   applyTestResult,
+  deleteTask,
   fetchTaskBundle,
+  setTaskWait,
   toggleStep,
   toggleTaskDone,
   updateTaskStatus,
@@ -28,7 +30,7 @@ const STATUSES: Array<HorizonStatus | "feita"> = [
 
 export function TaskPanel({ id }: { id: string }) {
   const { tree, reload } = useRootmapTree();
-  const { open } = useRootmapModal();
+  const { open, back } = useRootmapModal();
   const [task, setTask] = useState<RmTask | null>(null);
   const [steps, setSteps] = useState<RmTaskStep[]>([]);
   const [assumption, setAssumption] = useState<RmAssumption | null>(null);
@@ -342,6 +344,38 @@ export function TaskPanel({ id }: { id: string }) {
           }}
         >
           Marcar como feita
+        </button>
+        <button
+          type="button"
+          className="rm-btn rm-btn-ghost"
+          onClick={async () => {
+            if (task.wait_reason) {
+              await setTaskWait(id, null);
+            } else {
+              const reason = window.prompt(
+                "Motivo da espera",
+                task.wait_reason ?? "aguardando algo externo"
+              );
+              if (!reason?.trim()) return;
+              await setTaskWait(id, reason.trim());
+            }
+            await load();
+            await reload();
+          }}
+        >
+          {task.wait_reason ? "Retirar da espera" : "Colocar em espera"}
+        </button>
+        <button
+          type="button"
+          className="rm-btn rm-btn-ghost"
+          onClick={async () => {
+            if (!window.confirm(`Excluir “${task.title}”?`)) return;
+            await deleteTask(id);
+            await reload();
+            back();
+          }}
+        >
+          Excluir
         </button>
       </div>
     </div>
