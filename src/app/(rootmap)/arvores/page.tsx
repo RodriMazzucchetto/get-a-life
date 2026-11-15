@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
+import { useRootmapModal } from "@/hooks/useRootmapModal";
 import {
   createOpportunity,
   createSolution,
@@ -12,6 +12,7 @@ import {
 
 function ArvoresInner() {
   const { tree, loading, error, reload } = useRootmapTree();
+  const { open } = useRootmapModal();
   const params = useSearchParams();
   const filterParam = params.get("obj");
   const [filter, setFilter] = useState<string>(filterParam ?? "all");
@@ -147,12 +148,13 @@ function ArvoresInner() {
                                 {opp.status}
                               </span>
                             </div>
-                            <Link
-                              href={`/oportunidades/${opp.id}`}
-                              className="text-[16px] font-semibold hover:underline"
+                            <button
+                              type="button"
+                              onClick={() => open("opp", opp.id)}
+                              className="text-left text-[16px] font-semibold hover:underline"
                             >
                               {opp.title}
-                            </Link>
+                            </button>
                           </div>
                         </div>
 
@@ -195,12 +197,13 @@ function ArvoresInner() {
                                         {sol.is_focus && <span>★</span>}
                                         <span>{sol.status}</span>
                                       </div>
-                                      <Link
-                                        href={`/solucoes/${sol.id}`}
-                                        className="text-[15px] font-semibold hover:underline"
+                                      <button
+                                        type="button"
+                                        onClick={() => open("sol", sol.id)}
+                                        className="text-left text-[15px] font-semibold hover:underline"
                                       >
                                         {sol.title}
-                                      </Link>
+                                      </button>
                                       <div className="text-[12px] text-[var(--rm-muted)]">
                                         {sol.tasks.length
                                           ? `${done}/${sol.tasks.length} tasks feitas`
@@ -211,10 +214,11 @@ function ArvoresInner() {
                                   {!sc && (
                                     <div className="ml-6 mt-2 space-y-1">
                                       {sol.tasks.map((t) => (
-                                        <Link
+                                        <button
                                           key={t.id}
-                                          href={`/tasks/${t.id}`}
-                                          className="flex items-center gap-2 text-[14px] hover:underline"
+                                          type="button"
+                                          onClick={() => open("task", t.id)}
+                                          className="flex w-full items-center gap-2 text-left text-[14px] hover:underline"
                                           style={{
                                             textDecoration: t.completed
                                               ? "line-through"
@@ -238,7 +242,7 @@ function ArvoresInner() {
                                             </span>
                                           )}
                                           <span>{t.title}</span>
-                                        </Link>
+                                        </button>
                                       ))}
                                       <button
                                         type="button"

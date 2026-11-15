@@ -1,13 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
+import { useRootmapModal } from "@/hooks/useRootmapModal";
 import { createTask, toggleTaskDone } from "@/lib/rootmap/queries";
 import type { HorizonStatus, RmTask } from "@/lib/rootmap/types";
 
-export default function FocoPage() {
+function FocoInner() {
   const { tree, tasks, loading, error, reload } = useRootmapTree();
+  const { open } = useRootmapModal();
   const [tab, setTab] = useState<HorizonStatus>("agora");
   const [draft, setDraft] = useState("");
   const [draftTag, setDraftTag] = useState<string | null>(null);
@@ -62,8 +63,8 @@ export default function FocoPage() {
     return { ob, fo, fs, done, total };
   });
 
-  const open = enriched.filter((t) => !t.completed);
-  const queue = open.filter((t) => t.status === tab);
+  const openTasks = enriched.filter((t) => !t.completed);
+  const queue = openTasks.filter((t) => t.status === tab);
   const doneCount = enriched.filter((t) => t.completed).length;
 
   async function add() {
@@ -140,14 +141,17 @@ export default function FocoPage() {
                   ★ Problema / Oportunidade
                 </div>
                 {fo ? (
-                  <Link
-                    href={`/oportunidades/${fo.id}`}
-                    className="text-[15px] font-semibold leading-snug hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => open("opp", fo.id)}
+                    className="text-left text-[15px] font-semibold leading-snug hover:underline"
                   >
                     {fo.title}
-                  </Link>
+                  </button>
                 ) : (
-                  <p className="text-[15px] font-semibold">Sem problema em foco</p>
+                  <p className="text-[15px] font-semibold">
+                    Sem problema em foco
+                  </p>
                 )}
               </div>
               <div>
@@ -158,12 +162,13 @@ export default function FocoPage() {
                   ★ Solução
                 </div>
                 {fs ? (
-                  <Link
-                    href={`/solucoes/${fs.id}`}
-                    className="block text-[14px] font-semibold leading-snug hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => open("sol", fs.id)}
+                    className="block text-left text-[14px] font-semibold leading-snug hover:underline"
                   >
                     {fs.title}
-                  </Link>
+                  </button>
                 ) : (
                   <p className="text-[14px]">Sem solução em foco</p>
                 )}
@@ -180,7 +185,7 @@ export default function FocoPage() {
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="rm-display text-[28px] font-bold">Tasks</h2>
           {(["agora", "proximo", "depois"] as HorizonStatus[]).map((k) => {
-            const count = open.filter((t) => t.status === k).length;
+            const count = openTasks.filter((t) => t.status === k).length;
             const label =
               k === "agora" ? "Agora" : k === "proximo" ? "Próximo" : "Depois";
             return (
@@ -266,15 +271,20 @@ export default function FocoPage() {
                 className="mt-0.5 h-[15px] w-[15px] shrink-0 rounded-[4px] border-2 border-[var(--rm-ink)]"
                 onClick={() => void onToggle(t)}
               />
-              {t.kind === "teste" && <span className="rm-test-badge">TESTE</span>}
+              {t.kind === "teste" && (
+                <span className="rm-test-badge">TESTE</span>
+              )}
               <div className="min-w-0 flex-1">
-                <Link
-                  href={`/tasks/${t.id}`}
-                  className="text-[15px] font-medium hover:underline"
+                <button
+                  type="button"
+                  onClick={() => open("task", t.id)}
+                  className="text-left text-[15px] font-medium hover:underline"
                 >
                   {t.title}
-                </Link>
-                <div className="text-[12px] text-[var(--rm-muted)]">{t.origin}</div>
+                </button>
+                <div className="text-[12px] text-[var(--rm-muted)]">
+                  {t.origin}
+                </div>
               </div>
               {t.wait_reason && (
                 <span className="rm-wait">Em espera · {t.wait_reason}</span>
@@ -295,5 +305,13 @@ export default function FocoPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function FocoPage() {
+  return (
+    <Suspense fallback={<p className="rm-muted">A carregar Foco…</p>}>
+      <FocoInner />
+    </Suspense>
   );
 }

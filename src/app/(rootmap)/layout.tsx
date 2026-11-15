@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+import { RootmapModals } from "@/components/rootmap/RootmapModals";
 import { RootmapShell } from "@/components/rootmap/RootmapShell";
 import {
   RootmapTreeProvider,
@@ -8,7 +10,14 @@ import {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { tree } = useRootmapTree();
-  return <RootmapShell objectives={tree}>{children}</RootmapShell>;
+  return (
+    <RootmapShell objectives={tree}>
+      {children}
+      <Suspense fallback={null}>
+        <RootmapModals />
+      </Suspense>
+    </RootmapShell>
+  );
 }
 
 export default function RootmapLayout({
