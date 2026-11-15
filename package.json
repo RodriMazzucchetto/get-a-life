@@ -6,7 +6,7 @@
     "branding:png": "node scripts/process-branding-logos.mjs",
     "db:push": "supabase db push",
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "test": "node --experimental-strip-types --test src/_archive/lib/**/*.test.ts"
