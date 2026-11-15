@@ -116,69 +116,61 @@ function FocoInner() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {focusCards.map(({ ob, fo, fs, done, total }, idx) => (
-          <article
-            key={ob.id}
-            className="flex min-h-[220px] flex-col rounded-[16px] border-2 border-[var(--rm-ink)] bg-[var(--rm-card)] p-4"
-            style={{ boxShadow: fo ? `4px 4px 0 ${ob.color}` : undefined }}
-          >
-            <div className="mb-2 flex items-center gap-2 text-[13px] font-bold">
-              <span
-                className="rounded-md px-2 py-0.5 text-white"
-                style={{ background: ob.color }}
-              >
-                {ob.tag}
-              </span>
-              <span className="text-[var(--rm-muted)]">#{idx + 1}</span>
-            </div>
-            <h2 className="rm-display text-[20px] font-bold leading-tight">
-              {ob.title}
-            </h2>
-            <p className="mt-1 text-[13px] font-semibold">{ob.metric}</p>
-            <div className="mt-4 space-y-3">
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted)]">
-                  ★ Problema / Oportunidade
-                </div>
-                {fo ? (
-                  <button
-                    type="button"
-                    onClick={() => open("opp", fo.id)}
-                    className="text-left text-[15px] font-semibold leading-snug hover:underline"
-                  >
-                    {fo.title}
-                  </button>
-                ) : (
-                  <p className="text-[15px] font-semibold">
-                    Sem problema em foco
-                  </p>
-                )}
-              </div>
-              <div>
-                <div
-                  className="text-[11px] font-bold uppercase tracking-wide"
-                  style={{ color: ob.color }}
+        {focusCards.map(({ ob, fo, fs, done, total }, idx) => {
+          const canOpen = Boolean(fo);
+          return (
+            <button
+              key={ob.id}
+              type="button"
+              disabled={!canOpen}
+              onClick={() => {
+                if (fo) open("opp", fo.id);
+              }}
+              className="flex min-h-[220px] flex-col rounded-[16px] border-2 border-[var(--rm-ink)] bg-[var(--rm-card)] p-4 text-left transition hover:-translate-y-0.5 hover:brightness-[0.99] disabled:cursor-default disabled:hover:translate-y-0 disabled:hover:brightness-100"
+              style={{ boxShadow: fo ? `4px 4px 0 ${ob.color}` : undefined }}
+            >
+              <div className="mb-2 flex items-center gap-2 text-[13px] font-bold">
+                <span
+                  className="rounded-md px-2 py-0.5 text-white"
+                  style={{ background: ob.color }}
                 >
-                  ★ Solução
-                </div>
-                {fs ? (
-                  <button
-                    type="button"
-                    onClick={() => open("sol", fs.id)}
-                    className="block text-left text-[14px] font-semibold leading-snug hover:underline"
-                  >
-                    {fs.title}
-                  </button>
-                ) : (
-                  <p className="text-[14px]">Sem solução em foco</p>
-                )}
-                <p className="text-[12px] text-[var(--rm-muted)]">
-                  {total ? `${done}/${total} tasks feitas` : "sem tasks ainda"}
-                </p>
+                  {ob.tag}
+                </span>
+                <span className="text-[var(--rm-muted)]">#{idx + 1}</span>
               </div>
-            </div>
-          </article>
-        ))}
+              <h2 className="rm-display text-[20px] font-bold leading-tight">
+                {ob.title}
+              </h2>
+              <p className="mt-1 text-[13px] font-semibold">{ob.metric}</p>
+              <div className="mt-4 space-y-3">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted)]">
+                    ★ Problema / Oportunidade
+                  </div>
+                  <p className="text-[15px] font-semibold leading-snug">
+                    {fo?.title ?? "Sem problema em foco"}
+                  </p>
+                </div>
+                <div>
+                  <div
+                    className="text-[11px] font-bold uppercase tracking-wide"
+                    style={{ color: ob.color }}
+                  >
+                    ★ Solução
+                  </div>
+                  <p className="text-[14px] font-semibold leading-snug">
+                    {fs?.title ?? "Sem solução em foco"}
+                  </p>
+                  <p className="text-[12px] text-[var(--rm-muted)]">
+                    {total
+                      ? `${done}/${total} tasks feitas`
+                      : "sem tasks ainda"}
+                  </p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </section>
 
       <section className="space-y-4">

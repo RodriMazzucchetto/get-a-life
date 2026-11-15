@@ -7,13 +7,13 @@ import { SolutionPanel } from "./SolutionPanel";
 import { TaskPanel } from "./TaskPanel";
 
 export function RootmapModals() {
-  const { active, close } = useRootmapModal();
+  const { active, back } = useRootmapModal();
 
   if (!active) return null;
 
   if (active.kind === "opp") {
     return (
-      <RootmapOverlay backLabel="Voltar" onClose={close} width={700}>
+      <RootmapOverlay backLabel="Voltar" onClose={back} width={700}>
         <OpportunityPanel id={active.id} />
       </RootmapOverlay>
     );
@@ -21,14 +21,14 @@ export function RootmapModals() {
 
   if (active.kind === "sol") {
     return (
-      <RootmapOverlay backLabel="Voltar" onClose={close} width={700}>
+      <RootmapOverlay backLabel="Voltar" onClose={back} width={700}>
         <SolutionPanel id={active.id} />
       </RootmapOverlay>
     );
   }
 
   return (
-    <RootmapOverlay backLabel="Voltar" onClose={close} width={700}>
+    <RootmapOverlay backLabel="Voltar" onClose={back} width={700}>
       <TaskPanel id={active.id} />
     </RootmapOverlay>
   );

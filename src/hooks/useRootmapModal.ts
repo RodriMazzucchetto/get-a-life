@@ -7,6 +7,10 @@ export type ModalKind = "opp" | "sol" | "task";
 
 const KEYS: ModalKind[] = ["opp", "sol", "task"];
 
+function stripModalParams(params: URLSearchParams) {
+  for (const k of KEYS) params.delete(k);
+}
+
 export function useRootmapModal() {
   const router = useRouter();
   const pathname = usePathname();
@@ -20,11 +24,11 @@ export function useRootmapModal() {
     return null;
   }, [searchParams]);
 
+  /** Abre uma modal (empilha no histórico do browser). */
   const open = useCallback(
     (kind: ModalKind, id: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      for (const k of KEYS) params.delete(k);
-      // keep filter params like obj=
+      stripModalParams(params);
       params.set(kind, id);
       const q = params.toString();
       router.push(`${pathname}?${q}`, { scroll: false });
@@ -32,12 +36,21 @@ export function useRootmapModal() {
     [pathname, router, searchParams]
   );
 
-  const close = useCallback(() => {
+  /**
+   * Voltar: restaura a modal anterior no histórico (ou a página por baixo).
+   * Cada open() faz push — a pilha fica no browser history.
+   */
+  const back = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  /** Fecha todas as modais (sem passar pela pilha). */
+  const closeAll = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
-    for (const k of KEYS) params.delete(k);
+    stripModalParams(params);
     const q = params.toString();
     router.push(q ? `${pathname}?${q}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  return { active, open, close };
+  return { active, open, back, close: back, closeAll };
 }
