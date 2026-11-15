@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types --test src/lib/**/*.test.ts"
+    "test": "node --experimental-strip-types --test src/_archive/lib/**/*.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

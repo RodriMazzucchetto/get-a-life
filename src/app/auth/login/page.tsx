@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { BrandLogo } from "@/components/BrandLogo";
+import { RootmapLogo } from "@/components/rootmap/Logo";
 
 function mapAuthError(message: string): string {
   const m = message.toLowerCase();
@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace("/os/reports");
+      router.replace("/foco");
     }
   }, [user, authLoading, router]);
 
@@ -48,7 +48,9 @@ export default function LoginPage() {
       setError(resetErr.message);
       return;
     }
-    setInfo("Se existir conta com este e-mail, você receberá instruções para redefinir a senha.");
+    setInfo(
+      "Se existir conta com este e-mail, você receberá instruções para redefinir a senha."
+    );
   }, [email, resetPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,13 +68,13 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.push("/os/reports");
+    router.push("/foco");
   };
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-ta-paper font-mono">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--rm-panel)]">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--rm-muted)]">
           Carregando…
         </div>
       </div>
@@ -80,117 +82,80 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-ta-paper font-mono text-ta-ink">
-      {/* Nav */}
-      <nav className="border-b-[1.5px] border-ta-ink px-6 py-4 md:px-10">
+    <div className="flex min-h-screen flex-col bg-[var(--rm-panel)] text-[var(--rm-ink)]">
+      <nav className="border-b-2 border-[var(--rm-ink)] bg-[var(--rm-paper)] px-6 py-4">
         <Link href="/">
-          <BrandLogo variant="horizontal" className="origin-left" />
+          <RootmapLogo />
         </Link>
       </nav>
 
-      {/* Content */}
       <div className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm">
-          {/* Header */}
-          <div className="mb-10">
-            <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted">
-              Acesso restrito
+          <div className="mb-8">
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--rm-muted)]">
+              Rootmap
             </div>
-            <h1 className="text-2xl font-bold uppercase tracking-tight">
-              Entrar no sistema
+            <h1 className="rm-display text-3xl font-extrabold tracking-tight">
+              Entrar
             </h1>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-0">
-            <div className="border-[1.5px] border-ta-ink">
-              {/* Email */}
-              <div className="border-b-[1.5px] border-ta-ink">
-                <label
-                  htmlFor="login-email"
-                  className="block border-b border-ta-rule px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted"
-                >
-                  Email
-                </label>
-                <input
-                  id="login-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
-                  className="w-full bg-ta-paper px-4 py-3 text-sm font-normal normal-case text-ta-ink placeholder:text-ta-muted-2 focus:outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ta-cyan)] disabled:opacity-60"
-                />
-              </div>
-
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="login-password"
-                  className="block border-b border-ta-rule px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted"
-                >
-                  Senha
-                </label>
-                <input
-                  id="login-password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  className="w-full bg-ta-paper px-4 py-3 text-sm font-normal normal-case text-ta-ink placeholder:text-ta-muted-2 focus:outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ta-cyan)] disabled:opacity-60"
-                />
-              </div>
+          <form onSubmit={handleSubmit} noValidate className="space-y-3">
+            <div className="rm-card overflow-hidden p-0">
+              <label className="block px-4 pt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--rm-muted)]">
+                Email
+              </label>
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                className="w-full border-b border-[var(--rm-line)] bg-transparent px-4 py-3 outline-none"
+              />
+              <label className="block px-4 pt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--rm-muted)]">
+                Senha
+              </label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                className="w-full bg-transparent px-4 py-3 outline-none"
+              />
             </div>
 
-            {/* Errors / Info */}
             {error && (
-              <div className="border-[1.5px] border-ta-red bg-red-50 px-4 py-3 text-xs font-semibold normal-case text-ta-red">
+              <div className="rounded-[10px] border-2 border-red-700 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
                 {error}
               </div>
             )}
             {info && (
-              <div className="border-[1.5px] border-ta-ink bg-ta-paper-2 px-4 py-3 text-xs font-semibold normal-case text-ta-ink">
+              <div className="rounded-[10px] border-2 border-[var(--rm-ink)] px-4 py-3 text-xs font-semibold">
                 {info}
               </div>
             )}
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full border-[1.5px] border-ta-ink bg-ta-ink py-4 text-xs font-semibold uppercase tracking-[0.2em] text-ta-paper transition-colors hover:bg-ta-ink/90 disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading} className="rm-btn w-full">
               {loading ? "Entrando…" : "Entrar →"}
             </button>
           </form>
 
-          {/* Forgot password */}
           <div className="mt-6 text-center">
             <button
               type="button"
               onClick={handleForgotPassword}
               disabled={loading}
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ta-muted transition-colors hover:text-ta-ink disabled:opacity-50"
+              className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--rm-muted)]"
             >
               Esqueceu a senha?
             </button>
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t-[1.5px] border-ta-ink px-6 py-6 md:px-10">
-        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-ta-muted">
-          © {new Date().getFullYear()} Task Architect — Acesso por convite
-        </div>
-      </footer>
     </div>
   );
 }
