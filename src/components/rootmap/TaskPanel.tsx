@@ -11,6 +11,7 @@ import {
   setTaskWait,
   toggleStep,
   toggleTaskDone,
+  updateTask,
   updateTaskStatus,
 } from "@/lib/rootmap/queries";
 import type {
@@ -35,6 +36,8 @@ export function TaskPanel({ id }: { id: string }) {
   const [steps, setSteps] = useState<RmTaskStep[]>([]);
   const [assumption, setAssumption] = useState<RmAssumption | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [hypothesis, setHypothesis] = useState("");
 
   const objective = tree.find(
     (o) =>
@@ -51,6 +54,8 @@ export function TaskPanel({ id }: { id: string }) {
     try {
       const data = await fetchTaskBundle(id);
       setTask(data.task);
+      setTitle(data.task.title);
+      setHypothesis(data.task.hypothesis ?? "");
       setSteps(data.steps);
       setAssumption(data.assumption);
       setError(null);
@@ -63,7 +68,7 @@ export function TaskPanel({ id }: { id: string }) {
     void load();
   }, [id]);
 
-  if (error) return <p className="text-red-700">{error}</p>;
+  if (error && !task) return <p className="text-red-700">{error}</p>;
   if (!task) return <p className="rm-muted">A carregar…</p>;
 
   const color = objective?.color ?? "var(--rm-ink)";
@@ -117,9 +122,30 @@ export function TaskPanel({ id }: { id: string }) {
                     await reload();
                   }}
                 />
-                <h1 className="rm-display text-[28px] font-extrabold leading-tight">
-                  {task.title}
-                </h1>
+                <textarea
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onBlur={async () => {
+                    const next = title.trim();
+                    if (!next || next === task.title) {
+                      setTitle(task.title);
+                      return;
+                    }
+                    try {
+                      const updated = await updateTask(id, { title: next });
+                      setTask(updated);
+                      await reload();
+                    } catch (e) {
+                      setError(
+                        e instanceof Error ? e.message : "Erro ao salvar"
+                      );
+                      await load();
+                    }
+                  }}
+                  rows={2}
+                  className="rm-display min-w-0 flex-1 resize-none border-0 bg-transparent p-0 text-[28px] font-extrabold leading-tight outline-none focus:bg-black/[0.03]"
+                  placeholder="Título da task"
+                />
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5">
@@ -187,9 +213,30 @@ export function TaskPanel({ id }: { id: string }) {
                     <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--rm-test)]">
                       Hipótese
                     </div>
-                    <p className="mt-1 text-[15px] leading-relaxed">
-                      {task.hypothesis ?? "—"}
-                    </p>
+                    <textarea
+                      value={hypothesis}
+                      onChange={(e) => setHypothesis(e.target.value)}
+                      onBlur={async () => {
+                        const next = hypothesis.trim();
+                        const prev = task.hypothesis ?? "";
+                        if (next === prev) return;
+                        try {
+                          const updated = await updateTask(id, {
+                            hypothesis: next || null,
+                          });
+                          setTask(updated);
+                          await reload();
+                        } catch (e) {
+                          setError(
+                            e instanceof Error ? e.message : "Erro ao salvar"
+                          );
+                          await load();
+                        }
+                      }}
+                      rows={2}
+                      className="mt-1 w-full resize-y border-0 bg-transparent p-0 text-[15px] leading-relaxed outline-none placeholder:text-[var(--rm-muted-2)] focus:bg-black/[0.03]"
+                      placeholder='Se X, espero Y'
+                    />
                   </div>
                   <div>
                     <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--rm-test)]">

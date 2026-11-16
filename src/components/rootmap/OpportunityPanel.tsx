@@ -6,8 +6,10 @@ import { useRootmapModal } from "@/hooks/useRootmapModal";
 import {
   addDiary,
   addEvidence,
+  createSolution,
   fetchOpportunityBundle,
   setOpportunityFocus,
+  updateOpportunity,
   updateOpportunityStatus,
 } from "@/lib/rootmap/queries";
 import type {
@@ -33,6 +35,10 @@ export function OpportunityPanel({ id }: { id: string }) {
   const [diary, setDiary] = useState<RmDiaryEntry[]>([]);
   const [solutions, setSolutions] = useState<RmSolution[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [successSignal, setSuccessSignal] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const objective = tree.find((o) =>
     o.opportunities.some((op) => op.id === id)
@@ -42,6 +48,9 @@ export function OpportunityPanel({ id }: { id: string }) {
     try {
       const data = await fetchOpportunityBundle(id);
       setOpportunity(data.opportunity);
+      setTitle(data.opportunity.title);
+      setDescription(data.opportunity.description ?? "");
+      setSuccessSignal(data.opportunity.success_signal ?? "");
       setEvidences(data.evidences);
       setDiary(data.diary);
       setSolutions(data.solutions);
@@ -55,7 +64,28 @@ export function OpportunityPanel({ id }: { id: string }) {
     void load();
   }, [id]);
 
-  if (error) return <p className="text-red-700">{error}</p>;
+  async function saveField(
+    patch: {
+      title?: string;
+      description?: string | null;
+      success_signal?: string | null;
+    }
+  ) {
+    if (!opportunity || saving) return;
+    setSaving(true);
+    try {
+      const updated = await updateOpportunity(id, patch);
+      setOpportunity(updated);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao salvar");
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (error && !opportunity) return <p className="text-red-700">{error}</p>;
   if (!opportunity || !objective) {
     return <p className="rm-muted">A carregar…</p>;
   }
@@ -64,6 +94,7 @@ export function OpportunityPanel({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {error && <p className="text-[14px] text-red-700">{error}</p>}
       <div
         className="rounded-[22px] p-6"
         style={{ background: objective.soft_color }}
@@ -85,14 +116,34 @@ export function OpportunityPanel({ id }: { id: string }) {
                   ◎ {objective.title}
                 </span>
               </div>
-              <h1 className="rm-display text-[32px] font-extrabold leading-tight">
-                {opportunity.title}
-              </h1>
-              {opportunity.description && (
-                <p className="text-[16px] leading-relaxed text-[#2e2a24]">
-                  {opportunity.description}
-                </p>
-              )}
+              <textarea
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={() => {
+                  const next = title.trim();
+                  if (!next || next === opportunity.title) {
+                    setTitle(opportunity.title);
+                    return;
+                  }
+                  void saveField({ title: next });
+                }}
+                rows={2}
+                className="rm-display w-full resize-none border-0 bg-transparent p-0 text-[32px] font-extrabold leading-tight outline-none ring-0 focus:bg-black/[0.03]"
+                placeholder="Título do problema / oportunidade"
+              />
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onBlur={() => {
+                  const next = description.trim();
+                  const prev = opportunity.description ?? "";
+                  if (next === prev) return;
+                  void saveField({ description: next || null });
+                }}
+                rows={3}
+                className="w-full resize-y border-0 bg-transparent p-0 text-[16px] leading-relaxed text-[#2e2a24] outline-none placeholder:text-[var(--rm-muted-2)] focus:bg-black/[0.03]"
+                placeholder="Descrição (opcional) — clique para editar"
+              />
             </div>
             <div className="flex w-[118px] shrink-0 flex-col gap-0.5 pt-8">
               {STATUSES.map((st) => (
@@ -187,16 +238,43 @@ export function OpportunityPanel({ id }: { id: string }) {
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                className="mt-2 text-[13px] font-bold text-[var(--rm-muted-2)]"
+                onClick={async () => {
+                  const t = window.prompt("Nova solução");
+                  if (!t?.trim()) return;
+                  const created = await createSolution({
+                    opportunity_id: id,
+                    title: t.trim(),
+                  });
+                  await load();
+                  await reload();
+                  open("sol", created.id);
+                }}
+              >
+                + solução
+              </button>
             </section>
 
-            {opportunity.success_signal && (
-              <section>
-                <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted-2)]">
-                  Sinal de sucesso
-                </div>
-                <p className="text-[15px]">{opportunity.success_signal}</p>
-              </section>
-            )}
+            <section>
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted-2)]">
+                Sinal de sucesso
+              </div>
+              <textarea
+                value={successSignal}
+                onChange={(e) => setSuccessSignal(e.target.value)}
+                onBlur={() => {
+                  const next = successSignal.trim();
+                  const prev = opportunity.success_signal ?? "";
+                  if (next === prev) return;
+                  void saveField({ success_signal: next || null });
+                }}
+                rows={2}
+                className="w-full resize-y border-0 bg-transparent p-0 text-[15px] outline-none placeholder:text-[var(--rm-muted-2)] focus:bg-black/[0.03]"
+                placeholder="Como saberemos que o problema foi resolvido?"
+              />
+            </section>
           </div>
 
           <div
@@ -215,6 +293,11 @@ export function OpportunityPanel({ id }: { id: string }) {
               <br />
               <span className="text-[var(--rm-muted-2)]">ativas na árvore</span>
             </span>
+            {saving && (
+              <span className="ml-auto self-center normal-case tracking-normal text-[var(--rm-muted)]">
+                Salvando…
+              </span>
+            )}
           </div>
         </div>
       </div>

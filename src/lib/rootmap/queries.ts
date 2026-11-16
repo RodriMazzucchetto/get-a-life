@@ -516,6 +516,43 @@ export async function updateOpportunityStatus(
   if (error) throw error;
 }
 
+export async function updateOpportunity(
+  id: string,
+  patch: {
+    title?: string;
+    description?: string | null;
+    success_signal?: string | null;
+  }
+) {
+  const supabase = sb();
+  const { data, error } = await supabase
+    .from("rm_opportunities")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as RmOpportunity;
+}
+
+export async function updateSolution(
+  id: string,
+  patch: {
+    title?: string;
+    description?: string | null;
+  }
+) {
+  const supabase = sb();
+  const { data, error } = await supabase
+    .from("rm_solutions")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as RmSolution;
+}
+
 export async function setOpportunityFocus(
   opportunityId: string,
   objectiveId: string,
@@ -571,6 +608,25 @@ export async function updateTaskStatus(id: string, status: HorizonStatus) {
   const supabase = sb();
   const { error } = await supabase.from("rm_tasks").update({ status }).eq("id", id);
   if (error) throw error;
+}
+
+export async function updateTask(
+  id: string,
+  patch: {
+    title?: string;
+    notes?: string | null;
+    hypothesis?: string | null;
+  }
+) {
+  const supabase = sb();
+  const { data, error } = await supabase
+    .from("rm_tasks")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as RmTask;
 }
 
 /** Coloca em espera (motivo) ou tira da espera. Em espera → fundo da fila (pos). */
