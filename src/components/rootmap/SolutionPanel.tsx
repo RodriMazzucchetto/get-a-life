@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
+import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import {
   createAssumption,
   createTask,
@@ -34,8 +35,6 @@ export function SolutionPanel({ id }: { id: string }) {
   const [assumptions, setAssumptions] = useState<RmAssumption[]>([]);
   const [tasks, setTasks] = useState<RmTask[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
 
   const objective = tree.find((o) =>
     o.opportunities.some((op) =>
@@ -50,8 +49,6 @@ export function SolutionPanel({ id }: { id: string }) {
     try {
       const data = await fetchSolutionBundle(id);
       setSolution(data.solution);
-      setTitle(data.solution.title);
-      setDescription(data.solution.description ?? "");
       setAssumptions(data.assumptions);
       setTasks(data.tasks);
       setError(null);
@@ -123,33 +120,31 @@ export function SolutionPanel({ id }: { id: string }) {
                   {opportunity.title.length > 42 ? "…" : ""}
                 </button>
               </div>
-              <textarea
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={() => {
-                  const next = title.trim();
-                  if (!next || next === solution.title) {
-                    setTitle(solution.title);
+              <InlineEditable
+                as="h1"
+                value={solution.title}
+                className="rm-display text-[32px] font-extrabold leading-tight"
+                placeholder="Título da solução"
+                onCommit={async (next) => {
+                  if (!next) {
+                    await load();
                     return;
                   }
-                  void saveField({ title: next });
+                  if (next === solution.title) return;
+                  await saveField({ title: next });
                 }}
-                rows={2}
-                className="rm-display w-full resize-none border-0 bg-transparent p-0 text-[32px] font-extrabold leading-tight outline-none focus:bg-black/[0.03]"
-                placeholder="Título da solução"
               />
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={() => {
-                  const next = description.trim();
+              <InlineEditable
+                as="p"
+                multiline
+                value={solution.description ?? ""}
+                className="text-[16px] leading-relaxed"
+                placeholder="Descrição (opcional) — clique para editar"
+                onCommit={async (next) => {
                   const prev = solution.description ?? "";
                   if (next === prev) return;
-                  void saveField({ description: next || null });
+                  await saveField({ description: next || null });
                 }}
-                rows={2}
-                className="w-full resize-y border-0 bg-transparent p-0 text-[16px] leading-relaxed outline-none placeholder:text-[var(--rm-muted-2)] focus:bg-black/[0.03]"
-                placeholder="Descrição (opcional) — clique para editar"
               />
             </div>
             <div className="flex w-[118px] shrink-0 flex-col gap-0.5 pt-8">

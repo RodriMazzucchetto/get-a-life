@@ -51,6 +51,24 @@ a {
   font-family: var(--font-display);
 }
 
+/* contentEditable / campos inline: mantém a tipografia do design */
+.rm-editable {
+  outline: none;
+  border-radius: 4px;
+  cursor: text;
+}
+
+.rm-editable:focus {
+  background: color-mix(in oklab, var(--rm-ink) 4%, transparent);
+}
+
+.rm-editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--rm-muted-2);
+  font-weight: 500;
+  pointer-events: none;
+}
+
 .rm-shell {
   display: grid;
   grid-template-columns: 220px 1fr;

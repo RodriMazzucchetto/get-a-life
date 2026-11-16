@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
+import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import {
   addTaskStep,
   applyTestResult,
@@ -36,8 +37,6 @@ export function TaskPanel({ id }: { id: string }) {
   const [steps, setSteps] = useState<RmTaskStep[]>([]);
   const [assumption, setAssumption] = useState<RmAssumption | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [hypothesis, setHypothesis] = useState("");
 
   const objective = tree.find(
     (o) =>
@@ -54,8 +53,6 @@ export function TaskPanel({ id }: { id: string }) {
     try {
       const data = await fetchTaskBundle(id);
       setTask(data.task);
-      setTitle(data.task.title);
-      setHypothesis(data.task.hypothesis ?? "");
       setSteps(data.steps);
       setAssumption(data.assumption);
       setError(null);
@@ -122,15 +119,17 @@ export function TaskPanel({ id }: { id: string }) {
                     await reload();
                   }}
                 />
-                <textarea
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onBlur={async () => {
-                    const next = title.trim();
-                    if (!next || next === task.title) {
-                      setTitle(task.title);
+                <InlineEditable
+                  as="h1"
+                  value={task.title}
+                  className="rm-display min-w-0 flex-1 text-[28px] font-extrabold leading-tight"
+                  placeholder="Título da task"
+                  onCommit={async (next) => {
+                    if (!next) {
+                      await load();
                       return;
                     }
+                    if (next === task.title) return;
                     try {
                       const updated = await updateTask(id, { title: next });
                       setTask(updated);
@@ -142,9 +141,6 @@ export function TaskPanel({ id }: { id: string }) {
                       await load();
                     }
                   }}
-                  rows={2}
-                  className="rm-display min-w-0 flex-1 resize-none border-0 bg-transparent p-0 text-[28px] font-extrabold leading-tight outline-none focus:bg-black/[0.03]"
-                  placeholder="Título da task"
                 />
               </div>
 
@@ -213,11 +209,13 @@ export function TaskPanel({ id }: { id: string }) {
                     <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--rm-test)]">
                       Hipótese
                     </div>
-                    <textarea
-                      value={hypothesis}
-                      onChange={(e) => setHypothesis(e.target.value)}
-                      onBlur={async () => {
-                        const next = hypothesis.trim();
+                    <InlineEditable
+                      as="p"
+                      multiline
+                      value={task.hypothesis ?? ""}
+                      className="mt-1 text-[15px] leading-relaxed"
+                      placeholder='Se X, espero Y'
+                      onCommit={async (next) => {
                         const prev = task.hypothesis ?? "";
                         if (next === prev) return;
                         try {
@@ -233,9 +231,6 @@ export function TaskPanel({ id }: { id: string }) {
                           await load();
                         }
                       }}
-                      rows={2}
-                      className="mt-1 w-full resize-y border-0 bg-transparent p-0 text-[15px] leading-relaxed outline-none placeholder:text-[var(--rm-muted-2)] focus:bg-black/[0.03]"
-                      placeholder='Se X, espero Y'
                     />
                   </div>
                   <div>

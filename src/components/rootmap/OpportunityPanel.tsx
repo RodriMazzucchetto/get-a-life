@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
+import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import {
   addDiary,
   addEvidence,
@@ -35,9 +36,6 @@ export function OpportunityPanel({ id }: { id: string }) {
   const [diary, setDiary] = useState<RmDiaryEntry[]>([]);
   const [solutions, setSolutions] = useState<RmSolution[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [successSignal, setSuccessSignal] = useState("");
   const [saving, setSaving] = useState(false);
 
   const objective = tree.find((o) =>
@@ -48,9 +46,6 @@ export function OpportunityPanel({ id }: { id: string }) {
     try {
       const data = await fetchOpportunityBundle(id);
       setOpportunity(data.opportunity);
-      setTitle(data.opportunity.title);
-      setDescription(data.opportunity.description ?? "");
-      setSuccessSignal(data.opportunity.success_signal ?? "");
       setEvidences(data.evidences);
       setDiary(data.diary);
       setSolutions(data.solutions);
@@ -116,33 +111,31 @@ export function OpportunityPanel({ id }: { id: string }) {
                   ◎ {objective.title}
                 </span>
               </div>
-              <textarea
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={() => {
-                  const next = title.trim();
-                  if (!next || next === opportunity.title) {
-                    setTitle(opportunity.title);
+              <InlineEditable
+                as="h1"
+                value={opportunity.title}
+                className="rm-display text-[32px] font-extrabold leading-tight"
+                placeholder="Título do problema / oportunidade"
+                onCommit={async (next) => {
+                  if (!next) {
+                    await load();
                     return;
                   }
-                  void saveField({ title: next });
+                  if (next === opportunity.title) return;
+                  await saveField({ title: next });
                 }}
-                rows={2}
-                className="rm-display w-full resize-none border-0 bg-transparent p-0 text-[32px] font-extrabold leading-tight outline-none ring-0 focus:bg-black/[0.03]"
-                placeholder="Título do problema / oportunidade"
               />
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={() => {
-                  const next = description.trim();
+              <InlineEditable
+                as="p"
+                multiline
+                value={opportunity.description ?? ""}
+                className="text-[16px] leading-relaxed text-[#2e2a24]"
+                placeholder="Descrição (opcional) — clique para editar"
+                onCommit={async (next) => {
                   const prev = opportunity.description ?? "";
                   if (next === prev) return;
-                  void saveField({ description: next || null });
+                  await saveField({ description: next || null });
                 }}
-                rows={3}
-                className="w-full resize-y border-0 bg-transparent p-0 text-[16px] leading-relaxed text-[#2e2a24] outline-none placeholder:text-[var(--rm-muted-2)] focus:bg-black/[0.03]"
-                placeholder="Descrição (opcional) — clique para editar"
               />
             </div>
             <div className="flex w-[118px] shrink-0 flex-col gap-0.5 pt-8">
@@ -261,18 +254,17 @@ export function OpportunityPanel({ id }: { id: string }) {
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted-2)]">
                 Sinal de sucesso
               </div>
-              <textarea
-                value={successSignal}
-                onChange={(e) => setSuccessSignal(e.target.value)}
-                onBlur={() => {
-                  const next = successSignal.trim();
+              <InlineEditable
+                as="p"
+                multiline
+                value={opportunity.success_signal ?? ""}
+                className="text-[15px]"
+                placeholder="Como saberemos que o problema foi resolvido?"
+                onCommit={async (next) => {
                   const prev = opportunity.success_signal ?? "";
                   if (next === prev) return;
-                  void saveField({ success_signal: next || null });
+                  await saveField({ success_signal: next || null });
                 }}
-                rows={2}
-                className="w-full resize-y border-0 bg-transparent p-0 text-[15px] outline-none placeholder:text-[var(--rm-muted-2)] focus:bg-black/[0.03]"
-                placeholder="Como saberemos que o problema foi resolvido?"
               />
             </section>
           </div>
