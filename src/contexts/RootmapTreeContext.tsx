@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -37,9 +38,11 @@ export function RootmapTreeProvider({
   const [tasks, setTasks] = useState<RmTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoaded = useRef(false);
 
   const reload = useCallback(async () => {
-    setLoading(true);
+    // Soft reload: não desmonta a UI (ex.: modal aberta) após o 1º load
+    if (!hasLoaded.current) setLoading(true);
     setError(null);
     try {
       let data = await fetchTree();
@@ -54,6 +57,7 @@ export function RootmapTreeProvider({
       setTree(data);
       setTasks(allTasks);
       setCompanies(comps);
+      hasLoaded.current = true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {

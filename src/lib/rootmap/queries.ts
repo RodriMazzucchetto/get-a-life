@@ -338,11 +338,15 @@ export async function deleteObjective(id: string) {
 
 export async function deleteOpportunity(id: string) {
   const supabase = sb();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("rm_opportunities")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (error) throw error;
+  if (!data?.length) {
+    throw new Error("Não foi possível remover o problema (sem permissão ou já removido).");
+  }
 }
 
 export async function createOpportunity(input: {

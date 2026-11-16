@@ -15,8 +15,12 @@ export default function ObjetivosPage() {
     .map((o) => o.company_id)
     .filter((id): id is string => Boolean(id));
 
-  if (loading) return <p className="rm-muted">A carregar Objetivos…</p>;
-  if (error) return <p className="text-red-700">{error}</p>;
+  if (loading && tree.length === 0) {
+    return <p className="rm-muted">A carregar Objetivos…</p>;
+  }
+  if (error && tree.length === 0) {
+    return <p className="text-red-700">{error}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -114,12 +118,19 @@ export default function ObjetivosPage() {
       {editor && (
         <ObjectiveEditorModal
           mode={editor.mode}
-          objective={editor.mode === "edit" ? editor.objective : null}
+          objective={
+            editor.mode === "edit"
+              ? (tree.find((o) => o.id === editor.objective.id) ??
+                editor.objective)
+              : null
+          }
           companies={companies}
           takenCompanyIds={takenCompanyIds}
           nextPos={(tree.length + 1) * 1000}
           onClose={() => setEditor(null)}
-          onSaved={reload}
+          onSaved={async () => {
+            await reload();
+          }}
         />
       )}
     </div>

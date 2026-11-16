@@ -48,30 +48,44 @@ export function ObjectiveEditorModal({
     });
   }, [companies, takenCompanyIds, mode, objective?.company_id]);
 
+  // Sync lista de problemas com o objetivo atual (após reload soft).
+  // Campos editáveis só reiniciam quando muda o id do objetivo / modo.
+  const objectiveId = objective?.id ?? null;
+  const opportunitySig = objective
+    ? objective.opportunities.map((o) => o.id).join(",")
+    : "";
+
   useEffect(() => {
     if (mode === "edit" && objective) {
       setCompanyId(objective.company_id ?? "");
       setTitle(objective.title);
       setDescription(objective.description ?? "");
       setMetric(objective.metric ?? "");
-      setOpps(
-        objective.opportunities.map((o) => ({
-          key: o.id,
-          id: o.id,
-          title: o.title,
-          existing: true,
-        }))
-      );
-    } else {
+      setNewOpp("");
+      setError(null);
+    } else if (mode === "create") {
       setCompanyId("");
       setTitle("");
       setDescription("");
       setMetric("");
       setOpps([]);
+      setNewOpp("");
+      setError(null);
     }
-    setNewOpp("");
-    setError(null);
-  }, [mode, objective]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao trocar de objetivo
+  }, [mode, objectiveId]);
+
+  useEffect(() => {
+    if (mode !== "edit" || !objective) return;
+    setOpps(
+      objective.opportunities.map((o) => ({
+        key: o.id,
+        id: o.id,
+        title: o.title,
+        existing: true,
+      }))
+    );
+  }, [mode, objectiveId, opportunitySig, objective]);
 
   const selected = companies.find((c) => c.id === companyId) ?? null;
 
@@ -168,12 +182,15 @@ export function ObjectiveEditorModal({
         return;
       }
       setBusy(true);
+      setError(null);
+      // Optimistic: some da lista já; se falhar, o sync do objective restaura
+      setOpps((list) => list.filter((o) => o.key !== draft.key));
       try {
         await deleteOpportunity(draft.id);
-        setOpps((list) => list.filter((o) => o.key !== draft.key));
         await onSaved();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Erro ao remover problema");
+        await onSaved();
       } finally {
         setBusy(false);
       }
