@@ -11,6 +11,7 @@ export type RmObjective = {
   user_id: string;
   tag: string;
   title: string;
+  description: string | null;
   metric: string | null;
   color: string;
   soft_color: string;

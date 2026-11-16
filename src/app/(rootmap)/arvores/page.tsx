@@ -4,15 +4,14 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
+import { ObjectiveEditorModal } from "@/components/rootmap/ObjectiveEditorModal";
 import {
-  createObjective,
   createOpportunity,
   createSolution,
   createTask,
   toggleTaskDone,
 } from "@/lib/rootmap/queries";
 import type {
-  RmTask,
   TreeOpportunity,
   TreeSolution,
 } from "@/lib/rootmap/types";
@@ -78,6 +77,7 @@ function ArvoresInner() {
   const filterParam = params.get("obj");
   const [filter, setFilter] = useState<string>(filterParam ?? "all");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [creating, setCreating] = useState(false);
 
   const visible = useMemo(
     () => (filter === "all" ? tree : tree.filter((o) => o.id === filter)),
@@ -89,21 +89,6 @@ function ArvoresInner() {
   }
   function flip(key: string, cur: boolean) {
     setCollapsed((s) => ({ ...s, [key]: !cur }));
-  }
-
-  async function onNewTree() {
-    const tag = window.prompt("Tag da empresa (ex: KMN)", "");
-    if (!tag?.trim()) return;
-    const title = window.prompt("Objetivo", "");
-    if (!title?.trim()) return;
-    const metric = window.prompt("Métrica (opcional)", "") || undefined;
-    await createObjective({
-      tag: tag.trim().toUpperCase().slice(0, 8),
-      title: title.trim(),
-      metric,
-      pos: tree.length,
-    });
-    await reload();
   }
 
   if (loading) return <p className="rm-muted">A carregar Árvores…</p>;
@@ -163,7 +148,11 @@ function ArvoresInner() {
           >
             Recolher tudo
           </button>
-          <button type="button" className="rm-btn" onClick={() => void onNewTree()}>
+          <button
+            type="button"
+            className="rm-btn"
+            onClick={() => setCreating(true)}
+          >
             + Nova árvore
           </button>
         </div>
@@ -272,6 +261,15 @@ function ArvoresInner() {
           );
         })}
       </div>
+
+      {creating && (
+        <ObjectiveEditorModal
+          mode="create"
+          nextPos={(tree.length + 1) * 1000}
+          onClose={() => setCreating(false)}
+          onSaved={reload}
+        />
+      )}
     </div>
   );
 }

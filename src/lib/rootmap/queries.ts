@@ -172,6 +172,7 @@ export async function fetchTaskBundle(id: string) {
 export async function createObjective(input: {
   tag: string;
   title: string;
+  description?: string | null;
   metric?: string;
   color?: string;
   soft_color?: string;
@@ -188,6 +189,7 @@ export async function createObjective(input: {
       user_id: user.id,
       tag: input.tag,
       title: input.title,
+      description: input.description ?? null,
       metric: input.metric ?? null,
       color: input.color ?? "oklch(0.55 0.2 28)",
       soft_color: input.soft_color ?? "oklch(0.94 0.04 28)",
@@ -197,6 +199,44 @@ export async function createObjective(input: {
     .single();
   if (error) throw error;
   return data as RmObjective;
+}
+
+export async function updateObjective(
+  id: string,
+  patch: {
+    tag?: string;
+    title?: string;
+    description?: string | null;
+    metric?: string | null;
+    color?: string;
+    soft_color?: string;
+    pos?: number;
+  }
+) {
+  const supabase = sb();
+  const { data, error } = await supabase
+    .from("rm_objectives")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as RmObjective;
+}
+
+export async function deleteObjective(id: string) {
+  const supabase = sb();
+  const { error } = await supabase.from("rm_objectives").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteOpportunity(id: string) {
+  const supabase = sb();
+  const { error } = await supabase
+    .from("rm_opportunities")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function createOpportunity(input: {
