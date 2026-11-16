@@ -9,14 +9,16 @@ import {
   useState,
 } from "react";
 import {
+  fetchCompanies,
   fetchLooseAndAllTasks,
   fetchTree,
   seedRootmapDemo,
 } from "@/lib/rootmap/queries";
-import type { RmTask, TreeObjective } from "@/lib/rootmap/types";
+import type { RmCompany, RmTask, TreeObjective } from "@/lib/rootmap/types";
 
 type Ctx = {
   tree: TreeObjective[];
+  companies: RmCompany[];
   tasks: RmTask[];
   loading: boolean;
   error: string | null;
@@ -31,6 +33,7 @@ export function RootmapTreeProvider({
   children: React.ReactNode;
 }) {
   const [tree, setTree] = useState<TreeObjective[]>([]);
+  const [companies, setCompanies] = useState<RmCompany[]>([]);
   const [tasks, setTasks] = useState<RmTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,9 +47,13 @@ export function RootmapTreeProvider({
         await seedRootmapDemo();
         data = await fetchTree();
       }
-      const allTasks = await fetchLooseAndAllTasks();
+      const [allTasks, comps] = await Promise.all([
+        fetchLooseAndAllTasks(),
+        fetchCompanies(),
+      ]);
       setTree(data);
       setTasks(allTasks);
+      setCompanies(comps);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {
@@ -59,8 +66,8 @@ export function RootmapTreeProvider({
   }, [reload]);
 
   const value = useMemo(
-    () => ({ tree, tasks, loading, error, reload }),
-    [tree, tasks, loading, error, reload]
+    () => ({ tree, companies, tasks, loading, error, reload }),
+    [tree, companies, tasks, loading, error, reload]
   );
 
   return (

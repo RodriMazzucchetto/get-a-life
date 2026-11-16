@@ -7,10 +7,13 @@ import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import type { TreeObjective } from "@/lib/rootmap/types";
 
 export default function ObjetivosPage() {
-  const { tree, loading, error, reload } = useRootmapTree();
+  const { tree, companies, loading, error, reload } = useRootmapTree();
   const [editor, setEditor] = useState<
     null | { mode: "create" } | { mode: "edit"; objective: TreeObjective }
   >(null);
+  const takenCompanyIds = tree
+    .map((o) => o.company_id)
+    .filter((id): id is string => Boolean(id));
 
   if (loading) return <p className="rm-muted">A carregar Objetivos…</p>;
   if (error) return <p className="text-red-700">{error}</p>;
@@ -112,6 +115,8 @@ export default function ObjetivosPage() {
         <ObjectiveEditorModal
           mode={editor.mode}
           objective={editor.mode === "edit" ? editor.objective : null}
+          companies={companies}
+          takenCompanyIds={takenCompanyIds}
           nextPos={(tree.length + 1) * 1000}
           onClose={() => setEditor(null)}
           onSaved={reload}

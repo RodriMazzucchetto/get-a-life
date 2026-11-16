@@ -71,13 +71,16 @@ function lineEnds(i: number, n: number) {
 }
 
 function ArvoresInner() {
-  const { tree, loading, error, reload } = useRootmapTree();
+  const { tree, companies, loading, error, reload } = useRootmapTree();
   const { open } = useRootmapModal();
   const params = useSearchParams();
   const filterParam = params.get("obj");
   const [filter, setFilter] = useState<string>(filterParam ?? "all");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [creating, setCreating] = useState(false);
+  const takenCompanyIds = tree
+    .map((o) => o.company_id)
+    .filter((id): id is string => Boolean(id));
 
   const visible = useMemo(
     () => (filter === "all" ? tree : tree.filter((o) => o.id === filter)),
@@ -265,6 +268,8 @@ function ArvoresInner() {
       {creating && (
         <ObjectiveEditorModal
           mode="create"
+          companies={companies}
+          takenCompanyIds={takenCompanyIds}
           nextPos={(tree.length + 1) * 1000}
           onClose={() => setCreating(false)}
           onSaved={reload}

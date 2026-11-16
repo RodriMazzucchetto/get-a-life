@@ -9,69 +9,51 @@ import {
   deleteOpportunity,
   updateObjective,
 } from "@/lib/rootmap/queries";
-import type { TreeObjective } from "@/lib/rootmap/types";
-
-const COLOR_PRESETS: { color: string; soft: string; label: string }[] = [
-  {
-    label: "Vermelho",
-    color: "oklch(0.55 0.2 28)",
-    soft: "oklch(0.94 0.04 28)",
-  },
-  {
-    label: "Roxo",
-    color: "oklch(0.5 0.18 295)",
-    soft: "oklch(0.94 0.04 295)",
-  },
-  {
-    label: "Azul",
-    color: "oklch(0.5 0.14 245)",
-    soft: "oklch(0.94 0.03 245)",
-  },
-  {
-    label: "Verde",
-    color: "oklch(0.5 0.13 150)",
-    soft: "oklch(0.94 0.04 150)",
-  },
-  {
-    label: "Âmbar",
-    color: "oklch(0.62 0.14 75)",
-    soft: "oklch(0.95 0.04 75)",
-  },
-];
+import type { RmCompany, TreeObjective } from "@/lib/rootmap/types";
 
 type DraftOpp = { key: string; id?: string; title: string; existing?: boolean };
 
 export function ObjectiveEditorModal({
   mode,
   objective,
+  companies,
+  takenCompanyIds = [],
   nextPos,
   onClose,
   onSaved,
 }: {
   mode: "create" | "edit";
   objective?: TreeObjective | null;
+  companies: RmCompany[];
+  /** Empresas que já têm objetivo (excluídas no create; no edit mantém a atual). */
+  takenCompanyIds?: string[];
   nextPos: number;
   onClose: () => void;
   onSaved: () => Promise<void> | void;
 }) {
-  const [tag, setTag] = useState("");
+  const [companyId, setCompanyId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [metric, setMetric] = useState("");
-  const [colorIdx, setColorIdx] = useState(0);
   const [opps, setOpps] = useState<DraftOpp[]>([]);
   const [newOpp, setNewOpp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const selectable = useMemo(() => {
+    const taken = new Set(takenCompanyIds);
+    return companies.filter((c) => {
+      if (mode === "edit" && objective?.company_id === c.id) return true;
+      return !taken.has(c.id);
+    });
+  }, [companies, takenCompanyIds, mode, objective?.company_id]);
+
   useEffect(() => {
     if (mode === "edit" && objective) {
-      setTag(objective.tag);
+      setCompanyId(objective.company_id ?? "");
       setTitle(objective.title);
       setDescription(objective.description ?? "");
       setMetric(objective.metric ?? "");
-      const idx = COLOR_PRESETS.findIndex((c) => c.color === objective.color);
-      setColorIdx(idx >= 0 ? idx : 0);
       setOpps(
         objective.opportunities.map((o) => ({
           key: o.id,
@@ -81,22 +63,21 @@ export function ObjectiveEditorModal({
         }))
       );
     } else {
-      setTag("");
+      setCompanyId("");
       setTitle("");
       setDescription("");
       setMetric("");
-      setColorIdx(0);
       setOpps([]);
     }
     setNewOpp("");
     setError(null);
   }, [mode, objective]);
 
-  const preset = COLOR_PRESETS[colorIdx] ?? COLOR_PRESETS[0];
+  const selected = companies.find((c) => c.id === companyId) ?? null;
 
   const canSave = useMemo(
-    () => tag.trim().length > 0 && title.trim().length > 0,
-    [tag, title]
+    () => Boolean(companyId) && title.trim().length > 0,
+    [companyId, title]
   );
 
   function addOppDraft() {
@@ -110,19 +91,16 @@ export function ObjectiveEditorModal({
   }
 
   async function save() {
-    if (!canSave || busy) return;
+    if (!canSave || busy || !companyId) return;
     setBusy(true);
     setError(null);
     try {
-      const company = tag.trim().toUpperCase().slice(0, 8);
       if (mode === "create") {
         const created = await createObjective({
-          tag: company,
+          company_id: companyId,
           title: title.trim(),
           description: description.trim() || null,
           metric: metric.trim() || undefined,
-          color: preset.color,
-          soft_color: preset.soft,
           pos: nextPos,
         });
         for (let i = 0; i < opps.length; i++) {
@@ -135,12 +113,10 @@ export function ObjectiveEditorModal({
         }
       } else if (objective) {
         await updateObjective(objective.id, {
-          tag: company,
+          company_id: companyId,
           title: title.trim(),
           description: description.trim() || null,
           metric: metric.trim() || null,
-          color: preset.color,
-          soft_color: preset.soft,
         });
         const fresh = opps.filter((o) => !o.existing);
         for (let i = 0; i < fresh.length; i++) {
@@ -207,18 +183,15 @@ export function ObjectiveEditorModal({
   }
 
   return (
-    <RootmapOverlay
-      backLabel="Voltar"
-      onClose={onClose}
-      width={560}
-    >
+    <RootmapOverlay backLabel="Voltar" onClose={onClose} width={560}>
       <div className="flex flex-col gap-5">
         <div>
           <h1 className="rm-display text-[32px] font-extrabold leading-tight">
             {mode === "create" ? "Nova árvore" : "Editar objetivo"}
           </h1>
           <p className="mt-1 text-[14px] text-[var(--rm-muted)]">
-            Empresa, outcome e os primeiros problemas da árvore.
+            Escolha a empresa e defina o outcome. Empresas se gerem em
+            Configurações.
           </p>
         </div>
 
@@ -226,13 +199,35 @@ export function ObjectiveEditorModal({
           <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted)]">
             Empresa
           </span>
-          <input
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
-            maxLength={8}
-            placeholder="Ex: KMN"
-            className="rounded-[10px] border-2 border-[var(--rm-ink)] bg-[var(--rm-card)] px-3 py-2.5 text-[15px] font-bold uppercase outline-none"
-          />
+          {selectable.length === 0 ? (
+            <p className="rounded-[10px] border-2 border-dashed border-[var(--rm-line)] px-3 py-3 text-[14px] text-[var(--rm-muted)]">
+              {companies.length === 0
+                ? "Nenhuma empresa cadastrada. Vá em Configurações e adicione uma."
+                : "Todas as empresas já têm objetivo. Adicione outra em Configurações."}
+            </p>
+          ) : (
+            <div className="relative">
+              <select
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                className="w-full appearance-none rounded-[10px] border-2 border-[var(--rm-ink)] bg-[var(--rm-card)] px-3 py-2.5 pr-10 text-[15px] font-bold outline-none"
+              >
+                <option value="">Selecionar empresa…</option>
+                {selectable.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.tag}
+                    {c.name ? ` — ${c.name}` : ""}
+                  </option>
+                ))}
+              </select>
+              {selected && (
+                <span
+                  className="pointer-events-none absolute right-10 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full"
+                  style={{ background: selected.color }}
+                />
+              )}
+            </div>
+          )}
         </label>
 
         <label className="flex flex-col gap-1.5">
@@ -271,29 +266,6 @@ export function ObjectiveEditorModal({
             className="rounded-[10px] border-2 border-[var(--rm-ink)] bg-[var(--rm-card)] px-3 py-2.5 text-[14px] outline-none"
           />
         </label>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted)]">
-            Cor
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {COLOR_PRESETS.map((c, i) => (
-              <button
-                key={c.color}
-                type="button"
-                onClick={() => setColorIdx(i)}
-                className="h-9 w-9 rounded-full border-2 border-[var(--rm-ink)]"
-                style={{
-                  background: c.color,
-                  boxShadow:
-                    colorIdx === i ? `3px 3px 0 var(--rm-ink)` : undefined,
-                }}
-                title={c.label}
-                aria-label={c.label}
-              />
-            ))}
-          </div>
-        </div>
 
         <div className="flex flex-col gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted)]">
@@ -356,8 +328,8 @@ export function ObjectiveEditorModal({
           <button
             type="button"
             className="rm-btn"
-            style={{ background: preset.color }}
-            disabled={!canSave || busy}
+            style={{ background: selected?.color ?? "var(--rm-ink)" }}
+            disabled={!canSave || busy || selectable.length === 0}
             onClick={() => void save()}
           >
             {busy ? "Salvando…" : mode === "create" ? "Criar árvore" : "Salvar"}

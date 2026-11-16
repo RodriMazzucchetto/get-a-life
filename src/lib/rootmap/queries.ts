@@ -4,6 +4,7 @@ import type {
   HorizonStatus,
   OpportunityStatus,
   RmAssumption,
+  RmCompany,
   RmDiaryEntry,
   RmEvidence,
   RmObjective,
@@ -169,11 +170,19 @@ export async function fetchTaskBundle(id: string) {
   };
 }
 
-export async function createObjective(input: {
+export async function fetchCompanies(): Promise<RmCompany[]> {
+  const supabase = sb();
+  const { data, error } = await supabase
+    .from("rm_companies")
+    .select("*")
+    .order("pos");
+  if (error) throw error;
+  return (data ?? []) as RmCompany[];
+}
+
+export async function createCompany(input: {
   tag: string;
-  title: string;
-  description?: string | null;
-  metric?: string;
+  name?: string | null;
   color?: string;
   soft_color?: string;
   pos?: number;
@@ -184,15 +193,101 @@ export async function createObjective(input: {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
   const { data, error } = await supabase
+    .from("rm_companies")
+    .insert({
+      user_id: user.id,
+      tag: input.tag.trim().toUpperCase().slice(0, 8),
+      name: input.name?.trim() || null,
+      color: input.color ?? "oklch(0.55 0.2 28)",
+      soft_color: input.soft_color ?? "oklch(0.94 0.04 28)",
+      pos: input.pos ?? Date.now(),
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as RmCompany;
+}
+
+export async function updateCompany(
+  id: string,
+  patch: {
+    tag?: string;
+    name?: string | null;
+    color?: string;
+    soft_color?: string;
+    pos?: number;
+  }
+) {
+  const supabase = sb();
+  const next: Record<string, unknown> = { ...patch };
+  if (typeof patch.tag === "string") {
+    next.tag = patch.tag.trim().toUpperCase().slice(0, 8);
+  }
+  const { data, error } = await supabase
+    .from("rm_companies")
+    .update(next)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  const company = data as RmCompany;
+  // Mantém tag/cor denormalizadas nos objetivos ligados
+  await supabase
+    .from("rm_objectives")
+    .update({
+      tag: company.tag,
+      color: company.color,
+      soft_color: company.soft_color,
+    })
+    .eq("company_id", id);
+  return company;
+}
+
+export async function deleteCompany(id: string) {
+  const supabase = sb();
+  const { count } = await supabase
+    .from("rm_objectives")
+    .select("*", { count: "exact", head: true })
+    .eq("company_id", id);
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      "Esta empresa tem objetivos. Remova ou mova os objetivos antes."
+    );
+  }
+  const { error } = await supabase.from("rm_companies").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function createObjective(input: {
+  company_id: string;
+  title: string;
+  description?: string | null;
+  metric?: string;
+  pos?: number;
+}) {
+  const supabase = sb();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado");
+  const { data: company, error: cErr } = await supabase
+    .from("rm_companies")
+    .select("*")
+    .eq("id", input.company_id)
+    .single();
+  if (cErr) throw cErr;
+  const c = company as RmCompany;
+  const { data, error } = await supabase
     .from("rm_objectives")
     .insert({
       user_id: user.id,
-      tag: input.tag,
+      company_id: c.id,
+      tag: c.tag,
       title: input.title,
       description: input.description ?? null,
       metric: input.metric ?? null,
-      color: input.color ?? "oklch(0.55 0.2 28)",
-      soft_color: input.soft_color ?? "oklch(0.94 0.04 28)",
+      color: c.color,
+      soft_color: c.soft_color,
       pos: input.pos ?? Date.now(),
     })
     .select("*")
@@ -204,19 +299,30 @@ export async function createObjective(input: {
 export async function updateObjective(
   id: string,
   patch: {
-    tag?: string;
+    company_id?: string;
     title?: string;
     description?: string | null;
     metric?: string | null;
-    color?: string;
-    soft_color?: string;
     pos?: number;
   }
 ) {
   const supabase = sb();
+  const next: Record<string, unknown> = { ...patch };
+  if (patch.company_id) {
+    const { data: company, error: cErr } = await supabase
+      .from("rm_companies")
+      .select("*")
+      .eq("id", patch.company_id)
+      .single();
+    if (cErr) throw cErr;
+    const c = company as RmCompany;
+    next.tag = c.tag;
+    next.color = c.color;
+    next.soft_color = c.soft_color;
+  }
   const { data, error } = await supabase
     .from("rm_objectives")
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update(next)
     .eq("id", id)
     .select("*")
     .single();
@@ -556,36 +662,57 @@ export async function seedRootmapDemo() {
     .select("*", { count: "exact", head: true });
   if ((count ?? 0) > 0) return { seeded: false };
 
-  const kmn = await createObjective({
+  const cKmn = await createCompany({
     tag: "KMN",
-    title: "Fazer a KimonoLab ganhar market share",
-    metric: "Pedidos/mês: 18 → 60",
+    name: "KimonoLab",
     color: "oklch(0.55 0.2 28)",
     soft_color: "oklch(0.94 0.04 28)",
     pos: 1000,
   });
-  const ext = await createObjective({
+  const cExt = await createCompany({
     tag: "EXT",
-    title: "Reduzir o volume de suporte na ExitLag",
-    metric: "Tickets/semana −30%",
+    name: "ExitLag",
     color: "oklch(0.5 0.18 295)",
     soft_color: "oklch(0.94 0.04 295)",
     pos: 2000,
   });
-  const mzc = await createObjective({
+  const cMzc = await createCompany({
     tag: "MZCTO",
-    title: "Fazer a MZCTO rodar sem depender de mim",
-    metric: "Minhas horas/semana: 15 → 5",
+    name: "MZCTO",
     color: "oklch(0.5 0.14 245)",
     soft_color: "oklch(0.94 0.035 245)",
     pos: 3000,
   });
-  const own = await createObjective({
+  const cOwn = await createCompany({
     tag: "OWN",
-    title: "Casa e finanças prontas para o bebê",
-    metric: "Até março",
+    name: "Pessoal",
     color: "oklch(0.5 0.13 150)",
     soft_color: "oklch(0.94 0.04 150)",
+    pos: 4000,
+  });
+
+  const kmn = await createObjective({
+    company_id: cKmn.id,
+    title: "Fazer a KimonoLab ganhar market share",
+    metric: "Pedidos/mês: 18 → 60",
+    pos: 1000,
+  });
+  const ext = await createObjective({
+    company_id: cExt.id,
+    title: "Reduzir o volume de suporte na ExitLag",
+    metric: "Tickets/semana −30%",
+    pos: 2000,
+  });
+  const mzc = await createObjective({
+    company_id: cMzc.id,
+    title: "Fazer a MZCTO rodar sem depender de mim",
+    metric: "Minhas horas/semana: 15 → 5",
+    pos: 3000,
+  });
+  const own = await createObjective({
+    company_id: cOwn.id,
+    title: "Casa e finanças prontas para o bebê",
+    metric: "Até março",
     pos: 4000,
   });
 
