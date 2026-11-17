@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
-import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import {
   createAssumption,
   createTask,
-  fetchSolutionBundle,
+  fetchSolutionAssumptions,
   setSolutionFocus,
   toggleTaskDone,
   updateSolution,
@@ -29,36 +29,53 @@ const STATUSES: SolutionStatus[] = [
 ];
 
 export function SolutionPanel({ id }: { id: string }) {
-  const { tree, reload } = useRootmapTree();
+  const { tree, reload, patchSolution, patchTask } = useRootmapTree();
   const { open } = useRootmapModal();
-  const [solution, setSolution] = useState<RmSolution | null>(null);
+
+  const fromTree = useMemo(() => {
+    for (const ob of tree) {
+      for (const opp of ob.opportunities) {
+        const sol = opp.solutions.find((s) => s.id === id);
+        if (sol) {
+          return {
+            objective: ob,
+            opportunity: opp,
+            solution: sol as RmSolution,
+            tasks: sol.tasks as RmTask[],
+          };
+        }
+      }
+    }
+    return null;
+  }, [tree, id]);
+
+  const [solution, setSolution] = useState<RmSolution | null>(
+    fromTree?.solution ?? null
+  );
+  const [tasks, setTasks] = useState<RmTask[]>(fromTree?.tasks ?? []);
   const [assumptions, setAssumptions] = useState<RmAssumption[]>([]);
-  const [tasks, setTasks] = useState<RmTask[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const objective = tree.find((o) =>
-    o.opportunities.some((op) =>
-      op.solutions.some((s) => s.id === id)
-    )
-  );
-  const opportunity = objective?.opportunities.find((op) =>
-    op.solutions.some((s) => s.id === id)
-  );
-
-  async function load() {
-    try {
-      const data = await fetchSolutionBundle(id);
-      setSolution(data.solution);
-      setAssumptions(data.assumptions);
-      setTasks(data.tasks);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro");
-    }
-  }
+  useEffect(() => {
+    if (!fromTree) return;
+    setSolution(fromTree.solution);
+    setTasks(fromTree.tasks);
+  }, [fromTree]);
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+    void fetchSolutionAssumptions(id)
+      .then((list) => {
+        if (!cancelled) setAssumptions(list);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Erro");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   async function saveField(patch: {
@@ -69,12 +86,14 @@ export function SolutionPanel({ id }: { id: string }) {
     try {
       const updated = await updateSolution(id, patch);
       setSolution(updated);
-      await reload();
+      patchSolution(id, updated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao salvar");
-      await load();
     }
   }
+
+  const objective = fromTree?.objective;
+  const opportunity = fromTree?.opportunity;
 
   if (error && !solution) return <p className="text-red-700">{error}</p>;
   if (!solution || !objective || !opportunity) {
@@ -93,6 +112,7 @@ export function SolutionPanel({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {error && <p className="text-[14px] text-red-700">{error}</p>}
       <div
         className="rounded-[22px] p-6"
         style={{ background: objective.soft_color }}
@@ -126,11 +146,7 @@ export function SolutionPanel({ id }: { id: string }) {
                 className="rm-display text-[32px] font-extrabold leading-tight"
                 placeholder="Título da solução"
                 onCommit={async (next) => {
-                  if (!next) {
-                    await load();
-                    return;
-                  }
-                  if (next === solution.title) return;
+                  if (!next || next === solution.title) return;
                   await saveField({ title: next });
                 }}
               />
@@ -160,8 +176,8 @@ export function SolutionPanel({ id }: { id: string }) {
                   }
                   onClick={async () => {
                     await updateSolutionStatus(id, st);
-                    await load();
-                    await reload();
+                    setSolution((s) => (s ? { ...s, status: st } : s));
+                    patchSolution(id, { status: st });
                   }}
                 >
                   {st}
@@ -177,7 +193,6 @@ export function SolutionPanel({ id }: { id: string }) {
                     solution.opportunity_id,
                     !solution.is_focus
                   );
-                  await load();
                   await reload();
                 }}
               >
@@ -238,8 +253,7 @@ export function SolutionPanel({ id }: { id: string }) {
                   const title = window.prompt("Nova premissa");
                   if (!title) return;
                   await createAssumption({ solution_id: id, title });
-                  await load();
-                  await reload();
+                  setAssumptions(await fetchSolutionAssumptions(id));
                 }}
               >
                 + premissa
@@ -262,9 +276,14 @@ export function SolutionPanel({ id }: { id: string }) {
                       background: t.completed ? "var(--rm-ink)" : "transparent",
                     }}
                     onClick={async () => {
-                      await toggleTaskDone(t, !t.completed);
-                      await load();
-                      await reload();
+                      const next = !t.completed;
+                      await toggleTaskDone(t, next);
+                      setTasks((list) =>
+                        list.map((x) =>
+                          x.id === t.id ? { ...x, completed: next } : x
+                        )
+                      );
+                      patchTask(t.id, { completed: next });
                     }}
                   />
                   {t.kind === "teste" && (
@@ -312,7 +331,6 @@ export function SolutionPanel({ id }: { id: string }) {
                         undefined
                       : undefined,
                   });
-                  await load();
                   await reload();
                 }}
               >
@@ -347,8 +365,8 @@ export function SolutionPanel({ id }: { id: string }) {
           className="rm-btn"
           onClick={async () => {
             await updateSolutionStatus(id, "validada");
-            await load();
-            await reload();
+            setSolution((s) => (s ? { ...s, status: "validada" } : s));
+            patchSolution(id, { status: "validada" });
           }}
         >
           Marcar como validada
@@ -358,8 +376,8 @@ export function SolutionPanel({ id }: { id: string }) {
           className="rm-btn rm-btn-ghost"
           onClick={async () => {
             await updateSolutionStatus(id, "descartada");
-            await load();
-            await reload();
+            setSolution((s) => (s ? { ...s, status: "descartada" } : s));
+            patchSolution(id, { status: "descartada" });
           }}
         >
           Descartar

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { startTransition, useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export type ModalKind = "opp" | "sol" | "task";
@@ -31,7 +31,9 @@ export function useRootmapModal() {
       stripModalParams(params);
       params.set(kind, id);
       const q = params.toString();
-      router.push(`${pathname}?${q}`, { scroll: false });
+      startTransition(() => {
+        router.push(`${pathname}?${q}`, { scroll: false });
+      });
     },
     [pathname, router, searchParams]
   );
@@ -41,7 +43,9 @@ export function useRootmapModal() {
    * Cada open() faz push — a pilha fica no browser history.
    */
   const back = useCallback(() => {
-    router.back();
+    startTransition(() => {
+      router.back();
+    });
   }, [router]);
 
   /** Fecha todas as modais (sem passar pela pilha). */
@@ -49,7 +53,9 @@ export function useRootmapModal() {
     const params = new URLSearchParams(searchParams.toString());
     stripModalParams(params);
     const q = params.toString();
-    router.push(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    startTransition(() => {
+      router.push(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    });
   }, [pathname, router, searchParams]);
 
   return { active, open, back, close: back, closeAll };

@@ -12,7 +12,8 @@ import {
 import type { HorizonStatus, RmTask } from "@/lib/rootmap/types";
 
 function FocoInner() {
-  const { tree, tasks, loading, error, reload } = useRootmapTree();
+  const { tree, tasks, loading, error, reload, patchTask, removeTaskLocal } =
+    useRootmapTree();
   const { open } = useRootmapModal();
   const [tab, setTab] = useState<HorizonStatus>("agora");
   const [draft, setDraft] = useState("");
@@ -98,13 +99,15 @@ function FocoInner() {
   }
 
   async function onToggle(t: RmTask) {
-    await toggleTaskDone(t, !t.completed);
-    await reload();
+    const next = !t.completed;
+    await toggleTaskDone(t, next);
+    patchTask(t.id, { completed: next });
   }
 
   async function onToggleWait(t: RmTask) {
     if (t.wait_reason) {
       await setTaskWait(t.id, null);
+      patchTask(t.id, { wait_reason: null });
     } else {
       const reason = window.prompt(
         "Motivo da espera",
@@ -112,14 +115,14 @@ function FocoInner() {
       );
       if (!reason?.trim()) return;
       await setTaskWait(t.id, reason.trim());
+      patchTask(t.id, { wait_reason: reason.trim() });
     }
-    await reload();
   }
 
   async function onDelete(t: RmTask) {
     if (!window.confirm(`Excluir “${t.title}”?`)) return;
     await deleteTask(t.id);
-    await reload();
+    removeTaskLocal(t.id);
   }
 
   if (loading) return <p className="rm-muted">A carregar Foco…</p>;

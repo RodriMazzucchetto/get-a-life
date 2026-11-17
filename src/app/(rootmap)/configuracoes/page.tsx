@@ -103,7 +103,7 @@ export default function ConfigPage() {
         });
       }
       setEditing(null);
-      await reload();
+      await reload({ companies: true });
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Erro ao salvar");
     } finally {
@@ -123,7 +123,7 @@ export default function ConfigPage() {
     setBusy(true);
     try {
       await deleteCompany(c.id);
-      await reload();
+      await reload({ companies: true });
     } catch (e) {
       window.alert(e instanceof Error ? e.message : "Erro ao remover");
     } finally {

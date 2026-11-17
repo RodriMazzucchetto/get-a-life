@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
-import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import {
   addDiary,
   addEvidence,
   createSolution,
-  fetchOpportunityBundle,
+  fetchOpportunityExtras,
   setOpportunityFocus,
   updateOpportunity,
   updateOpportunityStatus,
@@ -29,52 +29,80 @@ const STATUSES: OpportunityStatus[] = [
 ];
 
 export function OpportunityPanel({ id }: { id: string }) {
-  const { tree, reload } = useRootmapTree();
+  const { tree, reload, patchOpportunity } = useRootmapTree();
   const { open } = useRootmapModal();
-  const [opportunity, setOpportunity] = useState<RmOpportunity | null>(null);
+
+  const fromTree = useMemo(() => {
+    for (const ob of tree) {
+      const opp = ob.opportunities.find((o) => o.id === id);
+      if (opp) {
+        return {
+          objective: ob,
+          opportunity: opp as RmOpportunity,
+          solutions: opp.solutions as RmSolution[],
+        };
+      }
+    }
+    return null;
+  }, [tree, id]);
+
+  const [opportunity, setOpportunity] = useState<RmOpportunity | null>(
+    fromTree?.opportunity ?? null
+  );
+  const [solutions, setSolutions] = useState<RmSolution[]>(
+    fromTree?.solutions ?? []
+  );
   const [evidences, setEvidences] = useState<RmEvidence[]>([]);
   const [diary, setDiary] = useState<RmDiaryEntry[]>([]);
-  const [solutions, setSolutions] = useState<RmSolution[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [extrasLoading, setExtrasLoading] = useState(true);
 
-  const objective = tree.find((o) =>
-    o.opportunities.some((op) => op.id === id)
-  );
-
-  async function load() {
-    try {
-      const data = await fetchOpportunityBundle(id);
-      setOpportunity(data.opportunity);
-      setEvidences(data.evidences);
-      setDiary(data.diary);
-      setSolutions(data.solutions);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro");
-    }
-  }
-
+  // Mantém sync com a árvore em memória (abre instantâneo)
   useEffect(() => {
-    void load();
+    if (!fromTree) return;
+    setOpportunity(fromTree.opportunity);
+    setSolutions(fromTree.solutions);
+  }, [fromTree]);
+
+  // Só busca evidências/diário (leve)
+  useEffect(() => {
+    let cancelled = false;
+    setExtrasLoading(true);
+    void fetchOpportunityExtras(id)
+      .then((extras) => {
+        if (cancelled) return;
+        setEvidences(extras.evidences);
+        setDiary(extras.diary);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Erro");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setExtrasLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  async function saveField(
-    patch: {
-      title?: string;
-      description?: string | null;
-      success_signal?: string | null;
-    }
-  ) {
+  const objective = fromTree?.objective;
+
+  async function saveField(patch: {
+    title?: string;
+    description?: string | null;
+    success_signal?: string | null;
+  }) {
     if (!opportunity || saving) return;
     setSaving(true);
     try {
       const updated = await updateOpportunity(id, patch);
       setOpportunity(updated);
-      await reload();
+      patchOpportunity(id, updated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao salvar");
-      await load();
     } finally {
       setSaving(false);
     }
@@ -117,11 +145,7 @@ export function OpportunityPanel({ id }: { id: string }) {
                 className="rm-display text-[32px] font-extrabold leading-tight"
                 placeholder="Título do problema / oportunidade"
                 onCommit={async (next) => {
-                  if (!next) {
-                    await load();
-                    return;
-                  }
-                  if (next === opportunity.title) return;
+                  if (!next || next === opportunity.title) return;
                   await saveField({ title: next });
                 }}
               />
@@ -151,8 +175,8 @@ export function OpportunityPanel({ id }: { id: string }) {
                   }
                   onClick={async () => {
                     await updateOpportunityStatus(id, st);
-                    await load();
-                    await reload();
+                    setOpportunity((o) => (o ? { ...o, status: st } : o));
+                    patchOpportunity(id, { status: st });
                   }}
                 >
                   {st}
@@ -163,12 +187,13 @@ export function OpportunityPanel({ id }: { id: string }) {
                 className="mt-2 rounded-[7px] border px-2.5 py-1 text-[12px] font-bold"
                 style={{ borderColor: color, color }}
                 onClick={async () => {
+                  const next = !opportunity.is_focus;
                   await setOpportunityFocus(
                     id,
                     opportunity.objective_id,
-                    !opportunity.is_focus
+                    next
                   );
-                  await load();
+                  // Um foco por objetivo — soft reload só a árvore
                   await reload();
                 }}
               >
@@ -182,13 +207,17 @@ export function OpportunityPanel({ id }: { id: string }) {
               <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[var(--rm-muted-2)]">
                 Evidências
               </div>
-              <div className="space-y-2">
-                {evidences.map((e) => (
-                  <p key={e.id} className="text-[15px] leading-snug">
-                    {e.body}
-                  </p>
-                ))}
-              </div>
+              {extrasLoading && evidences.length === 0 ? (
+                <p className="text-[13px] text-[var(--rm-muted-2)]">…</p>
+              ) : (
+                <div className="space-y-2">
+                  {evidences.map((e) => (
+                    <p key={e.id} className="text-[15px] leading-snug">
+                      {e.body}
+                    </p>
+                  ))}
+                </div>
+              )}
               <button
                 type="button"
                 className="mt-2 text-[13px] font-bold text-[var(--rm-muted-2)]"
@@ -196,7 +225,8 @@ export function OpportunityPanel({ id }: { id: string }) {
                   const body = window.prompt("Nova evidência");
                   if (!body) return;
                   await addEvidence(id, body);
-                  await load();
+                  const extras = await fetchOpportunityExtras(id);
+                  setEvidences(extras.evidences);
                 }}
               >
                 + evidência
@@ -241,7 +271,6 @@ export function OpportunityPanel({ id }: { id: string }) {
                     opportunity_id: id,
                     title: t.trim(),
                   });
-                  await load();
                   await reload();
                   open("sol", created.id);
                 }}
@@ -313,7 +342,8 @@ export function OpportunityPanel({ id }: { id: string }) {
             const body = window.prompt("Escrever uma atualização…");
             if (!body) return;
             await addDiary(id, body);
-            await load();
+            const extras = await fetchOpportunityExtras(id);
+            setDiary(extras.diary);
           }}
         >
           Escrever uma atualização…

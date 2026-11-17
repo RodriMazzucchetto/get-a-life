@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
-import { InlineEditable } from "@/components/rootmap/InlineEditable";
 import {
   addTaskStep,
   applyTestResult,
   deleteTask,
-  fetchTaskBundle,
+  fetchTaskExtras,
   setTaskWait,
   toggleStep,
   toggleTaskDone,
@@ -31,39 +31,75 @@ const STATUSES: Array<HorizonStatus | "feita"> = [
 ];
 
 export function TaskPanel({ id }: { id: string }) {
-  const { tree, reload } = useRootmapTree();
+  const {
+    tree,
+    tasks: allTasks,
+    reload,
+    patchTask,
+    removeTaskLocal,
+  } = useRootmapTree();
   const { open, back } = useRootmapModal();
-  const [task, setTask] = useState<RmTask | null>(null);
+
+  const fromTree = useMemo(() => {
+    const task = allTasks.find((t) => t.id === id) ?? null;
+    if (!task) return null;
+
+    let objective =
+      tree.find((o) => o.id === task.objective_id) ??
+      tree.find((o) =>
+        o.opportunities.some((op) =>
+          op.solutions.some((s) => s.id === task.solution_id)
+        )
+      ) ??
+      null;
+
+    const solution =
+      objective?.opportunities
+        .flatMap((o) => o.solutions)
+        .find((s) => s.id === task.solution_id) ?? null;
+
+    if (!objective && solution) {
+      objective =
+        tree.find((o) =>
+          o.opportunities.some((op) =>
+            op.solutions.some((s) => s.id === solution.id)
+          )
+        ) ?? null;
+    }
+
+    return { task, objective, solution };
+  }, [tree, allTasks, id]);
+
+  const [task, setTask] = useState<RmTask | null>(fromTree?.task ?? null);
   const [steps, setSteps] = useState<RmTaskStep[]>([]);
   const [assumption, setAssumption] = useState<RmAssumption | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const objective = tree.find(
-    (o) =>
-      o.id === task?.objective_id ||
-      o.opportunities.some((op) =>
-        op.solutions.some((s) => s.id === task?.solution_id)
-      )
-  );
-  const solution = objective?.opportunities
-    .flatMap((o) => o.solutions)
-    .find((s) => s.id === task?.solution_id);
-
-  async function load() {
-    try {
-      const data = await fetchTaskBundle(id);
-      setTask(data.task);
-      setSteps(data.steps);
-      setAssumption(data.assumption);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro");
-    }
-  }
+  useEffect(() => {
+    if (fromTree?.task) setTask(fromTree.task);
+  }, [fromTree]);
 
   useEffect(() => {
-    void load();
-  }, [id]);
+    let cancelled = false;
+    const assumptionId = fromTree?.task?.assumption_id ?? null;
+    void fetchTaskExtras(id, assumptionId)
+      .then((extras) => {
+        if (cancelled) return;
+        setSteps(extras.steps);
+        setAssumption(extras.assumption);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Erro");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, fromTree?.task?.assumption_id]);
+
+  const objective = fromTree?.objective;
+  const solution = fromTree?.solution;
 
   if (error && !task) return <p className="text-red-700">{error}</p>;
   if (!task) return <p className="rm-muted">A carregar…</p>;
@@ -76,6 +112,7 @@ export function TaskPanel({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {error && <p className="text-[14px] text-red-700">{error}</p>}
       <div className="rounded-[22px] p-6" style={{ background: soft }}>
         <div className="rm-card flex flex-col">
           <div className="flex gap-5 p-5 pb-2">
@@ -114,9 +151,10 @@ export function TaskPanel({ id }: { id: string }) {
                       : "transparent",
                   }}
                   onClick={async () => {
-                    await toggleTaskDone(task, !task.completed);
-                    await load();
-                    await reload();
+                    const next = !task.completed;
+                    await toggleTaskDone(task, next);
+                    setTask({ ...task, completed: next });
+                    patchTask(id, { completed: next });
                   }}
                 />
                 <InlineEditable
@@ -125,20 +163,15 @@ export function TaskPanel({ id }: { id: string }) {
                   className="rm-display min-w-0 flex-1 text-[28px] font-extrabold leading-tight"
                   placeholder="Título da task"
                   onCommit={async (next) => {
-                    if (!next) {
-                      await load();
-                      return;
-                    }
-                    if (next === task.title) return;
+                    if (!next || next === task.title) return;
                     try {
                       const updated = await updateTask(id, { title: next });
                       setTask(updated);
-                      await reload();
+                      patchTask(id, updated);
                     } catch (e) {
                       setError(
                         e instanceof Error ? e.message : "Erro ao salvar"
                       );
-                      await load();
                     }
                   }}
                 />
@@ -223,12 +256,11 @@ export function TaskPanel({ id }: { id: string }) {
                             hypothesis: next || null,
                           });
                           setTask(updated);
-                          await reload();
+                          patchTask(id, updated);
                         } catch (e) {
                           setError(
                             e instanceof Error ? e.message : "Erro ao salvar"
                           );
-                          await load();
                         }
                       }}
                     />
@@ -260,7 +292,8 @@ export function TaskPanel({ id }: { id: string }) {
                           }
                           onClick={async () => {
                             await applyTestResult(id, r);
-                            await load();
+                            setTask({ ...task, test_result: r });
+                            patchTask(id, { test_result: r });
                             await reload();
                           }}
                         >
@@ -294,7 +327,11 @@ export function TaskPanel({ id }: { id: string }) {
                       }}
                       onClick={async () => {
                         await toggleStep(s.id, !s.done);
-                        await load();
+                        setSteps((list) =>
+                          list.map((x) =>
+                            x.id === s.id ? { ...x, done: !s.done } : x
+                          )
+                        );
                       }}
                     />
                     <span
@@ -314,7 +351,11 @@ export function TaskPanel({ id }: { id: string }) {
                     const title = window.prompt("Novo passo");
                     if (!title) return;
                     await addTaskStep(id, title);
-                    await load();
+                    const extras = await fetchTaskExtras(
+                      id,
+                      task.assumption_id
+                    );
+                    setSteps(extras.steps);
                   }}
                 >
                   + passo
@@ -336,12 +377,18 @@ export function TaskPanel({ id }: { id: string }) {
                   onClick={async () => {
                     if (st === "feita") {
                       await toggleTaskDone(task, true);
+                      setTask({ ...task, completed: true });
+                      patchTask(id, { completed: true });
                     } else {
                       if (task.completed) await toggleTaskDone(task, false);
                       await updateTaskStatus(id, st);
+                      setTask({
+                        ...task,
+                        completed: false,
+                        status: st,
+                      });
+                      patchTask(id, { completed: false, status: st });
                     }
-                    await load();
-                    await reload();
                   }}
                 >
                   {st}
@@ -381,8 +428,8 @@ export function TaskPanel({ id }: { id: string }) {
           style={{ background: color }}
           onClick={async () => {
             await toggleTaskDone(task, true);
-            await load();
-            await reload();
+            setTask({ ...task, completed: true });
+            patchTask(id, { completed: true });
           }}
         >
           Marcar como feita
@@ -393,16 +440,18 @@ export function TaskPanel({ id }: { id: string }) {
           onClick={async () => {
             if (task.wait_reason) {
               await setTaskWait(id, null);
+              setTask({ ...task, wait_reason: null });
+              patchTask(id, { wait_reason: null });
             } else {
               const reason = window.prompt(
                 "Motivo da espera",
-                task.wait_reason ?? "aguardando algo externo"
+                "aguardando algo externo"
               );
               if (!reason?.trim()) return;
               await setTaskWait(id, reason.trim());
+              setTask({ ...task, wait_reason: reason.trim() });
+              patchTask(id, { wait_reason: reason.trim() });
             }
-            await load();
-            await reload();
           }}
         >
           {task.wait_reason ? "Retirar da espera" : "Colocar em espera"}
@@ -413,7 +462,7 @@ export function TaskPanel({ id }: { id: string }) {
           onClick={async () => {
             if (!window.confirm(`Excluir “${task.title}”?`)) return;
             await deleteTask(id);
-            await reload();
+            removeTaskLocal(id);
             back();
           }}
         >

@@ -22,33 +22,33 @@ function sb() {
   return createClient();
 }
 
-export async function fetchTree(): Promise<TreeObjective[]> {
+/** Árvore + tasks numa só ida (sem assumptions — painel carrega sob demanda). */
+export async function fetchTreeData(): Promise<{
+  tree: TreeObjective[];
+  tasks: RmTask[];
+}> {
   const supabase = sb();
   const [
     { data: objectives, error: e1 },
     { data: opportunities, error: e2 },
     { data: solutions, error: e3 },
-    { data: assumptions, error: e4 },
     { data: tasks, error: e5 },
   ] = await Promise.all([
     supabase.from("rm_objectives").select("*").order("pos"),
     supabase.from("rm_opportunities").select("*").order("pos"),
     supabase.from("rm_solutions").select("*").order("pos"),
-    supabase.from("rm_assumptions").select("*").order("pos"),
     supabase.from("rm_tasks").select("*").order("pos"),
   ]);
   if (e1) throw e1;
   if (e2) throw e2;
   if (e3) throw e3;
-  if (e4) throw e4;
   if (e5) throw e5;
 
   const opps = (opportunities ?? []) as RmOpportunity[];
   const sols = (solutions ?? []) as RmSolution[];
-  const asses = (assumptions ?? []) as RmAssumption[];
   const tks = (tasks ?? []) as RmTask[];
 
-  return ((objectives ?? []) as RmObjective[]).map((ob) => ({
+  const tree = ((objectives ?? []) as RmObjective[]).map((ob) => ({
     ...ob,
     opportunities: opps
       .filter((o) => o.objective_id === ob.id)
@@ -58,57 +58,72 @@ export async function fetchTree(): Promise<TreeObjective[]> {
           .filter((s) => s.opportunity_id === o.id)
           .map((s) => ({
             ...s,
-            assumptions: asses.filter((a) => a.solution_id === s.id),
+            assumptions: [] as RmAssumption[],
             tasks: tks.filter((t) => t.solution_id === s.id),
           })),
       })),
   }));
+
+  return { tree, tasks: tks };
 }
 
-export async function fetchLooseAndAllTasks() {
+export async function fetchTree(): Promise<TreeObjective[]> {
+  const { tree } = await fetchTreeData();
+  return tree;
+}
+
+/** Só evidências + diário — opp/sols já vêm da árvore em memória. */
+export async function fetchOpportunityExtras(id: string) {
   const supabase = sb();
-  const { data, error } = await supabase
-    .from("rm_tasks")
-    .select("*")
-    .order("pos");
-  if (error) throw error;
-  return (data ?? []) as RmTask[];
+  const [{ data: evidences }, { data: diary }] = await Promise.all([
+    supabase
+      .from("rm_evidences")
+      .select("*")
+      .eq("opportunity_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("rm_diary_entries")
+      .select("*")
+      .eq("opportunity_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
+  return {
+    evidences: (evidences ?? []) as RmEvidence[],
+    diary: (diary ?? []) as RmDiaryEntry[],
+  };
 }
 
 export async function fetchOpportunityBundle(id: string) {
   const supabase = sb();
-  const { data: opportunity, error } = await supabase
-    .from("rm_opportunities")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (error) throw error;
-
-  const [{ data: evidences }, { data: diary }, { data: solutions }] =
+  const [{ data: opportunity, error }, extras, { data: solutions }] =
     await Promise.all([
-      supabase
-        .from("rm_evidences")
-        .select("*")
-        .eq("opportunity_id", id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("rm_diary_entries")
-        .select("*")
-        .eq("opportunity_id", id)
-        .order("created_at", { ascending: false }),
+      supabase.from("rm_opportunities").select("*").eq("id", id).single(),
+      fetchOpportunityExtras(id),
       supabase
         .from("rm_solutions")
         .select("*")
         .eq("opportunity_id", id)
         .order("pos"),
     ]);
-
+  if (error) throw error;
   return {
     opportunity: opportunity as RmOpportunity,
-    evidences: (evidences ?? []) as RmEvidence[],
-    diary: (diary ?? []) as RmDiaryEntry[],
+    evidences: extras.evidences,
+    diary: extras.diary,
     solutions: (solutions ?? []) as RmSolution[],
   };
+}
+
+/** Só premissas — solução/tasks já estão na árvore. */
+export async function fetchSolutionAssumptions(id: string) {
+  const supabase = sb();
+  const { data, error } = await supabase
+    .from("rm_assumptions")
+    .select("*")
+    .eq("solution_id", id)
+    .order("pos");
+  if (error) throw error;
+  return (data ?? []) as RmAssumption[];
 }
 
 export async function fetchSolutionBundle(id: string) {
@@ -120,26 +135,39 @@ export async function fetchSolutionBundle(id: string) {
     .single();
   if (error) throw error;
 
-  const [{ data: assumptions }, { data: tasks }, { data: opportunity }] =
-    await Promise.all([
-      supabase
-        .from("rm_assumptions")
-        .select("*")
-        .eq("solution_id", id)
-        .order("pos"),
-      supabase.from("rm_tasks").select("*").eq("solution_id", id).order("pos"),
-      supabase
-        .from("rm_opportunities")
-        .select("*")
-        .eq("id", (solution as RmSolution).opportunity_id)
-        .single(),
-    ]);
+  const [{ data: assumptions }, { data: tasks }] = await Promise.all([
+    supabase
+      .from("rm_assumptions")
+      .select("*")
+      .eq("solution_id", id)
+      .order("pos"),
+    supabase.from("rm_tasks").select("*").eq("solution_id", id).order("pos"),
+  ]);
 
   return {
     solution: solution as RmSolution,
     assumptions: (assumptions ?? []) as RmAssumption[],
     tasks: (tasks ?? []) as RmTask[],
-    opportunity: opportunity as RmOpportunity,
+  };
+}
+
+/** Só passos (+ premissa se houver) — a task já está na árvore. */
+export async function fetchTaskExtras(id: string, assumptionId?: string | null) {
+  const supabase = sb();
+  const [{ data: steps }, assumption] = await Promise.all([
+    supabase.from("rm_task_steps").select("*").eq("task_id", id).order("pos"),
+    assumptionId
+      ? supabase
+          .from("rm_assumptions")
+          .select("*")
+          .eq("id", assumptionId)
+          .maybeSingle()
+          .then((r) => r.data as RmAssumption | null)
+      : Promise.resolve(null),
+  ]);
+  return {
+    steps: (steps ?? []) as RmTaskStep[],
+    assumption,
   };
 }
 
@@ -151,22 +179,14 @@ export async function fetchTaskBundle(id: string) {
     .eq("id", id)
     .single();
   if (error) throw error;
-
-  const [{ data: steps }, { data: assumption }] = await Promise.all([
-    supabase.from("rm_task_steps").select("*").eq("task_id", id).order("pos"),
+  const extras = await fetchTaskExtras(
+    id,
     (task as RmTask).assumption_id
-      ? supabase
-          .from("rm_assumptions")
-          .select("*")
-          .eq("id", (task as RmTask).assumption_id!)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
-
+  );
   return {
     task: task as RmTask,
-    steps: (steps ?? []) as RmTaskStep[],
-    assumption: (assumption as RmAssumption | null) ?? null,
+    steps: extras.steps,
+    assumption: extras.assumption,
   };
 }
 
