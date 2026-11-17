@@ -1,15 +1,37 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useRootmapTree } from "@/contexts/RootmapTreeContext";
 import { useRootmapModal } from "@/hooks/useRootmapModal";
 import {
   createTask,
   deleteTask,
+  reorderTasks,
   setTaskWait,
   toggleTaskDone,
 } from "@/lib/rootmap/queries";
 import type { HorizonStatus, RmTask } from "@/lib/rootmap/types";
+
+type EnrichedTask = RmTask & {
+  tag: string;
+  color: string;
+  origin: string;
+};
 
 function FocoInner() {
   const { tree, tasks, loading, error, reload, patchTask, removeTaskLocal } =
@@ -19,6 +41,10 @@ function FocoInner() {
   const [draft, setDraft] = useState("");
   const [draftTag, setDraftTag] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
 
   const byId = useMemo(() => {
     const m = new Map(tree.map((o) => [o.id, o]));
@@ -74,6 +100,7 @@ function FocoInner() {
     .filter((t) => t.status === tab)
     .slice()
     .sort((a, b) => {
+      // Em espera fica no fim; dentro de cada bloco, por pos.
       const aw = a.wait_reason ? 1 : 0;
       const bw = b.wait_reason ? 1 : 0;
       if (aw !== bw) return aw - bw;
@@ -114,8 +141,11 @@ function FocoInner() {
         "aguardando algo externo"
       );
       if (!reason?.trim()) return;
-      await setTaskWait(t.id, reason.trim());
-      patchTask(t.id, { wait_reason: reason.trim() });
+      const patch = await setTaskWait(t.id, reason.trim());
+      patchTask(t.id, {
+        wait_reason: reason.trim(),
+        ...(patch.pos != null ? { pos: patch.pos } : {}),
+      });
     }
   }
 
@@ -123,6 +153,37 @@ function FocoInner() {
     if (!window.confirm(`Excluir “${t.title}”?`)) return;
     await deleteTask(t.id);
     removeTaskLocal(t.id);
+  }
+
+  async function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = queue.findIndex((t) => t.id === active.id);
+    const newIndex = queue.findIndex((t) => t.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const moved = queue[oldIndex];
+    const target = queue[newIndex];
+    // Não misturar bloco ativo com bloco em espera.
+    if (Boolean(moved.wait_reason) !== Boolean(target.wait_reason)) return;
+
+    const reordered = arrayMove(queue, oldIndex, newIndex);
+    const activeIds = reordered
+      .filter((t) => !t.wait_reason)
+      .map((t) => t.id);
+    const waitIds = reordered.filter((t) => t.wait_reason).map((t) => t.id);
+    const orderedIds = [...activeIds, ...waitIds];
+
+    orderedIds.forEach((id, index) => {
+      patchTask(id, { pos: (index + 1) * 1000 });
+    });
+
+    try {
+      await reorderTasks(orderedIds);
+    } catch {
+      await reload();
+    }
   }
 
   if (loading) return <p className="rm-muted">A carregar Foco…</p>;
@@ -283,83 +344,162 @@ function FocoInner() {
           </button>
         </div>
 
-        <div className="flex flex-col">
-          {queue.map((t, i) => (
-            <div
-              key={t.id}
-              className="rm-task-row flex items-start gap-2 border-b border-[var(--rm-line-soft)] py-3"
-              style={{ opacity: tab === "depois" ? 0.55 : 1 }}
-            >
-              <span className="w-5 pt-0.5 text-[13px] font-bold text-[var(--rm-muted)]">
-                {i + 1}
-              </span>
-              <button
-                type="button"
-                aria-label="Concluir"
-                className="mt-0.5 h-[15px] w-[15px] shrink-0 rounded-[4px] border-2 border-[var(--rm-ink)]"
-                onClick={() => void onToggle(t)}
-              />
-              {t.kind === "teste" && (
-                <span className="rm-test-badge">TESTE</span>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(e) => void onDragEnd(e)}
+        >
+          <SortableContext
+            items={queue.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col">
+              {queue.map((t, i) => (
+                <SortableTaskRow
+                  key={t.id}
+                  task={t}
+                  index={i}
+                  dimmed={tab === "depois"}
+                  onToggle={() => void onToggle(t)}
+                  onOpen={() => open("task", t.id)}
+                  onToggleWait={() => void onToggleWait(t)}
+                  onDelete={() => void onDelete(t)}
+                />
+              ))}
+              {queue.length === 0 && (
+                <p className="py-6 text-[14px] text-[var(--rm-muted)]">
+                  Nenhuma task em {tab}.
+                </p>
               )}
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => open("task", t.id)}
-                  className="text-left text-[15px] font-medium hover:underline"
-                >
-                  {t.title}
-                </button>
-                <div className="text-[12px] text-[var(--rm-muted)]">
-                  {t.origin}
-                </div>
-              </div>
-              {t.wait_reason && (
-                <span className="rm-wait">Em espera · {t.wait_reason}</span>
-              )}
-              <div className="rm-task-actions shrink-0">
-                <button
-                  type="button"
-                  title={
-                    t.wait_reason ? "Retirar da espera" : "Colocar em espera"
-                  }
-                  aria-label={
-                    t.wait_reason ? "Retirar da espera" : "Colocar em espera"
-                  }
-                  onClick={() => void onToggleWait(t)}
-                >
-                  {t.wait_reason ? (
-                    <PlayIcon />
-                  ) : (
-                    <PauseIcon />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="danger"
-                  title="Excluir"
-                  aria-label="Excluir task"
-                  onClick={() => void onDelete(t)}
-                >
-                  <CloseIcon />
-                </button>
-              </div>
-              <span
-                className="rounded-md px-2 py-0.5 text-[11px] font-extrabold text-white"
-                style={{ background: t.color }}
-              >
-                {t.tag}
-              </span>
             </div>
-          ))}
-          {queue.length === 0 && (
-            <p className="py-6 text-[14px] text-[var(--rm-muted)]">
-              Nenhuma task em {tab}.
-            </p>
-          )}
-        </div>
+          </SortableContext>
+        </DndContext>
       </section>
     </div>
+  );
+}
+
+function SortableTaskRow({
+  task: t,
+  index,
+  dimmed,
+  onToggle,
+  onOpen,
+  onToggleWait,
+  onDelete,
+}: {
+  task: EnrichedTask;
+  index: number;
+  dimmed: boolean;
+  onToggle: () => void;
+  onOpen: () => void;
+  onToggleWait: () => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: t.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="rm-task-row flex items-start gap-2 border-b border-[var(--rm-line-soft)] py-3"
+      style={{
+        opacity: isDragging ? 0.55 : dimmed ? 0.55 : 1,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 2 : undefined,
+        position: "relative",
+        background: isDragging ? "var(--rm-panel)" : undefined,
+        cursor: "grab",
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      <span
+        className="mt-0.5 flex w-5 shrink-0 flex-col items-center gap-0.5 text-[var(--rm-muted)]"
+        aria-hidden
+      >
+        <GripIcon />
+        <span className="text-[11px] font-bold">{index + 1}</span>
+      </span>
+      <button
+        type="button"
+        aria-label="Concluir"
+        className="mt-0.5 h-[15px] w-[15px] shrink-0 rounded-[4px] border-2 border-[var(--rm-ink)]"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+      />
+      {t.kind === "teste" && <span className="rm-test-badge">TESTE</span>}
+      <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
+          className="text-left text-[15px] font-medium hover:underline"
+        >
+          {t.title}
+        </button>
+        <div className="text-[12px] text-[var(--rm-muted)]">{t.origin}</div>
+      </div>
+      {t.wait_reason && (
+        <span className="rm-wait">Em espera · {t.wait_reason}</span>
+      )}
+      <div
+        className="rm-task-actions shrink-0"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          title={t.wait_reason ? "Retirar da espera" : "Colocar em espera"}
+          aria-label={
+            t.wait_reason ? "Retirar da espera" : "Colocar em espera"
+          }
+          onClick={onToggleWait}
+        >
+          {t.wait_reason ? <PlayIcon /> : <PauseIcon />}
+        </button>
+        <button
+          type="button"
+          className="danger"
+          title="Excluir"
+          aria-label="Excluir task"
+          onClick={onDelete}
+        >
+          <CloseIcon />
+        </button>
+      </div>
+      <span
+        className="rounded-md px-2 py-0.5 text-[11px] font-extrabold text-white"
+        style={{ background: t.color }}
+      >
+        {t.tag}
+      </span>
+    </div>
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+      <circle cx="3.5" cy="2.5" r="1.1" />
+      <circle cx="8.5" cy="2.5" r="1.1" />
+      <circle cx="3.5" cy="6" r="1.1" />
+      <circle cx="8.5" cy="6" r="1.1" />
+      <circle cx="3.5" cy="9.5" r="1.1" />
+      <circle cx="8.5" cy="9.5" r="1.1" />
+    </svg>
   );
 }
 

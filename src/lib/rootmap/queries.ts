@@ -669,6 +669,23 @@ export async function setTaskWait(taskId: string, reason: string | null) {
     .update(patch)
     .eq("id", taskId);
   if (error) throw error;
+  return patch;
+}
+
+/** Persiste a ordem visual da fila (pos = 1000, 2000, …). */
+export async function reorderTasks(orderedIds: string[]) {
+  if (orderedIds.length === 0) return;
+  const supabase = sb();
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from("rm_tasks")
+        .update({ pos: (index + 1) * 1000 })
+        .eq("id", id)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
 }
 
 export async function deleteTask(taskId: string) {

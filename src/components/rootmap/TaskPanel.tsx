@@ -448,9 +448,17 @@ export function TaskPanel({ id }: { id: string }) {
                 "aguardando algo externo"
               );
               if (!reason?.trim()) return;
-              await setTaskWait(id, reason.trim());
-              setTask({ ...task, wait_reason: reason.trim() });
-              patchTask(id, { wait_reason: reason.trim() });
+              const patch = await setTaskWait(id, reason.trim());
+              const next = {
+                ...task,
+                wait_reason: reason.trim(),
+                ...(patch.pos != null ? { pos: patch.pos } : {}),
+              };
+              setTask(next);
+              patchTask(id, {
+                wait_reason: reason.trim(),
+                ...(patch.pos != null ? { pos: patch.pos } : {}),
+              });
             }
           }}
         >
