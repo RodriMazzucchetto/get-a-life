@@ -12,6 +12,7 @@ import {
   toggleTaskDone,
 } from "@/lib/rootmap/queries";
 import type {
+  TreeObjective,
   TreeOpportunity,
   TreeSolution,
 } from "@/lib/rootmap/types";
@@ -77,10 +78,16 @@ function ArvoresInner() {
   const filterParam = params.get("obj");
   const [filter, setFilter] = useState<string>(filterParam ?? "all");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [creating, setCreating] = useState(false);
+  const [editor, setEditor] = useState<
+    null | { mode: "create" } | { mode: "edit"; objectiveId: string }
+  >(null);
   const takenCompanyIds = tree
     .map((o) => o.company_id)
     .filter((id): id is string => Boolean(id));
+  const editingObjective: TreeObjective | null =
+    editor?.mode === "edit"
+      ? (tree.find((o) => o.id === editor.objectiveId) ?? null)
+      : null;
 
   const visible = useMemo(
     () => (filter === "all" ? tree : tree.filter((o) => o.id === filter)),
@@ -154,7 +161,7 @@ function ArvoresInner() {
           <button
             type="button"
             className="rm-btn"
-            onClick={() => setCreating(true)}
+            onClick={() => setEditor({ mode: "create" })}
           >
             + Nova árvore
           </button>
@@ -189,18 +196,34 @@ function ArvoresInner() {
           return (
             <div key={ob.id} className="flex min-w-min items-start">
               {/* Objective */}
-              <div
-                className="flex w-[220px] shrink-0 flex-col gap-2 rounded-[14px] border-2 border-[var(--rm-ink)] p-3.5 text-white shadow-[4px_4px_0_var(--rm-ink)]"
+              <button
+                type="button"
+                onClick={() =>
+                  setEditor({ mode: "edit", objectiveId: ob.id })
+                }
+                className="flex w-[220px] shrink-0 cursor-pointer flex-col gap-2 rounded-[14px] border-2 border-[var(--rm-ink)] p-3.5 text-left text-white shadow-[4px_4px_0_var(--rm-ink)] transition hover:brightness-110"
                 style={{ background: ob.color }}
               >
                 <div className="flex items-center gap-2 text-[12px] font-bold">
-                  <button
-                    type="button"
-                    onClick={() => flip(ok, oc)}
-                    className="h-6 w-6 rounded-md bg-white/20 text-[13px] text-white"
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      flip(ok, oc);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        flip(ok, oc);
+                      }
+                    }}
+                    className="flex h-6 w-6 items-center justify-center rounded-md bg-white/20 text-[13px] text-white"
+                    aria-label={oc ? "Expandir" : "Recolher"}
                   >
                     {oc ? "▸" : "▾"}
-                  </button>
+                  </span>
                   <span className="rounded-full bg-white/20 px-2 py-0.5">
                     #{oi + 1}
                   </span>
@@ -219,7 +242,7 @@ function ArvoresInner() {
                     {nSol === 1 ? "" : "ões"} · {nTask} tasks
                   </div>
                 )}
-              </div>
+              </button>
 
               {!oc && (
                 <>
@@ -265,13 +288,14 @@ function ArvoresInner() {
         })}
       </div>
 
-      {creating && (
+      {editor && (editor.mode === "create" || editingObjective) && (
         <ObjectiveEditorModal
-          mode="create"
+          mode={editor.mode}
+          objective={editingObjective}
           companies={companies}
           takenCompanyIds={takenCompanyIds}
           nextPos={(tree.length + 1) * 1000}
-          onClose={() => setCreating(false)}
+          onClose={() => setEditor(null)}
           onSaved={reload}
         />
       )}
